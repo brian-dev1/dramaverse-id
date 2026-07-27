@@ -1,0 +1,26 @@
+<?php
+
+namespace App\Http\Requests\Admin;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+class StoreCountryRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    public function rules(): array
+    {
+        return [
+
+            'name' => 'required|string|max:100',
+
+            'slug' => 'required|string|max:100|unique:countries,slug',
+
+            'code' => 'nullable|string|max:10',
+
+        ];
+    }
+}
