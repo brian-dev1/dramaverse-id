@@ -35,11 +35,15 @@ echo "==> Dependensi JS + build aset"
 npm ci
 npm run build
 
+echo "==> Bersihkan cache lama"
+# Wajib sebelum migrate/seed: perintah artisan membaca route & config dari
+# cache, dan cache lama bisa merujuk route yang sudah tidak ada.
+php artisan optimize:clear
+
 echo "==> Migration"
 php artisan migrate --force
 
 echo "==> Bangun ulang cache"
-php artisan optimize:clear
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache

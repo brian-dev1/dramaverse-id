@@ -22,7 +22,10 @@ class BannerSeeder extends Seeder
                 [
                     'subtitle'    => $drama->synopsis,
                     'image'       => $drama->cover ?? '',
-                    'link'        => route('web.drama.show', $drama->slug),
+                    // Simpan path relatif, bukan URL penuh: seeder tidak boleh
+                    // bergantung pada route cache, dan tautan harus tetap benar
+                    // walau domain berubah.
+                    'link'        => '/drama/'.$drama->slug,
                     'button_text' => 'Tonton Sekarang',
                     'position'    => 'hero',
                     'sort_order'  => $i + 1,
