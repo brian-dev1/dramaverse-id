@@ -1,0 +1,313 @@
+/* ==========================================================
+   HERO
+========================================================== */
+
+.hero{
+
+    position:relative;
+
+    margin-top:82px;
+
+    padding:30px;
+
+}
+
+.hero-frame{
+
+    position:relative;
+
+    overflow:hidden;
+
+    border-radius:32px;
+
+    min-height:650px;
+
+    background:#17171f;
+
+    box-shadow:
+        0 30px 80px rgba(0,0,0,.45);
+
+}
+
+.hero-slide{
+
+    position:absolute;
+
+    inset:0;
+
+    opacity:0;
+
+    visibility:hidden;
+
+    transition:
+        opacity .8s ease,
+        transform .8s ease;
+
+    transform:scale(1.05);
+
+}
+
+.hero-slide.active{
+
+    opacity:1;
+
+    visibility:visible;
+
+    transform:scale(1);
+
+}
+
+.hero-slide::before{
+
+    content:"";
+
+    position:absolute;
+
+    inset:0;
+
+    background:
+        linear-gradient(
+            90deg,
+            rgba(8,8,12,.92) 0%,
+            rgba(8,8,12,.65) 35%,
+            rgba(8,8,12,.20) 65%,
+            rgba(8,8,12,.05) 100%
+        );
+
+}
+
+.hero-slide::after{
+
+    content:"";
+
+    position:absolute;
+
+    inset:0;
+
+    background:
+
+        linear-gradient(
+
+            to top,
+
+            rgba(9,9,11,1),
+
+            rgba(9,9,11,.15)
+
+        );
+
+}
+
+.hero-content{
+
+    position:relative;
+
+    z-index:3;
+
+    width:650px;
+
+    padding:
+
+        80px;
+
+}
+
+.hero-eyebrow{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:12px;
+
+    margin-bottom:18px;
+
+    color:#FACC15;
+
+    font-weight:700;
+
+}
+
+.hero-eyebrow .line{
+
+    width:40px;
+
+    height:3px;
+
+    border-radius:999px;
+
+    background:#7C5CFF;
+
+}
+
+.hero-title{
+
+    font-size:68px;
+
+    line-height:1.05;
+
+    font-weight:800;
+
+    margin-bottom:22px;
+
+}
+
+.hero-meta{
+
+    display:flex;
+
+    gap:12px;
+
+    flex-wrap:wrap;
+
+    margin-bottom:25px;
+
+}
+
+.rating{
+
+    color:#FACC15;
+
+    font-weight:700;
+
+}
+
+.chip{
+
+    padding:
+
+        8px 16px;
+
+    border-radius:999px;
+
+    background:
+
+        rgba(255,255,255,.08);
+
+}
+
+.chip.gold{
+
+    background:#FACC15;
+
+    color:#000;
+
+    font-weight:700;
+
+}
+
+.hero-desc{
+
+    color:#b8b8c8;
+
+    line-height:1.9;
+
+    font-size:17px;
+
+    margin-bottom:35px;
+
+}
+
+.hero-actions{
+
+    display:flex;
+
+    gap:15px;
+
+}
+
+.hero-actions .btn{
+
+    height:54px;
+
+    padding:
+
+        0 28px;
+
+}
+
+.hero-actions .btn svg{
+
+    margin-right:8px;
+
+}
+
+.hero-dots{
+
+    position:absolute;
+
+    left:50%;
+
+    transform:translateX(-50%);
+
+    bottom:28px;
+
+    display:flex;
+
+    gap:10px;
+
+    z-index:20;
+
+}
+
+.hero-dots span{
+
+    width:12px;
+
+    height:12px;
+
+    border-radius:50%;
+
+    background:
+
+        rgba(255,255,255,.30);
+
+    cursor:pointer;
+
+    transition:.3s;
+
+}
+
+.hero-dots span.active{
+
+    width:40px;
+
+    border-radius:999px;
+
+    background:#7C5CFF;
+
+}
+
+.hero-slide img{
+
+    width:100%;
+
+    height:100%;
+
+    object-fit:cover;
+
+}
+
+.hero-gradient{
+
+    position:absolute;
+
+    inset:0;
+
+    background:
+
+        radial-gradient(
+
+            circle at top right,
+
+            rgba(124,92,255,.18),
+
+            transparent 40%
+
+        );
+
+    z-index:1;
+
+    pointer-events:none;
+
+}

@@ -1,72 +1,102 @@
-<!DOCTYPE html>
-<html lang="id">
+@extends('web.layouts.app')
 
-<head>
+@section('title', 'Pencarian Drama')
 
-    <meta charset="UTF-8">
+@section('content')
 
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
+<section class="search-page">
 
-    <title>Pencarian Drama</title>
+    <div class="container">
 
-</head>
+        <div class="search-header">
 
-<body>
+            <h1>
 
-<h1>Pencarian Drama</h1>
+                Cari Drama
 
-<form
-    action="{{ route('search') }}"
-    method="GET">
+            </h1>
 
-    <input
-        type="text"
-        name="q"
-        placeholder="Cari drama..."
-        value="{{ $keyword }}"
-    >
+            <p>
 
-    <button type="submit">
+                Temukan drama favoritmu dengan cepat.
 
-        Cari
+            </p>
 
-    </button>
+        </div>
 
-</form>
+        <form
+            action="{{ route('search') }}"
+            method="GET"
+            class="search-box">
 
-<hr>
+            <input
+                type="text"
+                name="q"
+                placeholder="Cari judul drama..."
+                value="{{ $keyword }}">
 
-@if($keyword === '')
+            <button
+                type="submit">
 
-<p>Masukkan judul drama.</p>
+                Cari
 
-@elseif($results->isEmpty())
+            </button>
 
-<p>Tidak ada hasil.</p>
+        </form>
 
-@else
+        @if($keyword=='')
 
-<ul>
+            <div class="search-empty">
 
-@foreach($results as $drama)
+                <h3>
 
-<li>
+                    Mulai Pencarian
 
-<a href="{{ route('drama.show',$drama->slug) }}">
+                </h3>
 
-{{ $drama->title }}
+                <p>
 
-</a>
+                    Ketik judul drama yang ingin kamu cari.
 
-</li>
+                </p>
 
-@endforeach
+            </div>
 
-</ul>
+        @elseif($results->isEmpty())
 
-@endif
+            <div class="search-empty">
 
-</body>
+                <h3>
 
-</html>
+                    Drama Tidak Ditemukan
+
+                </h3>
+
+                <p>
+
+                    Coba gunakan kata kunci lain.
+
+                </p>
+
+            </div>
+
+        @else
+
+            <div class="drama-grid">
+
+                @foreach($results as $drama)
+
+                    <x-web.home.drama-card
+                        :drama="$drama" />
+
+                @endforeach
+
+            </div>
+
+        @endif
+
+    </div>
+
+</section>
+
+@endsection

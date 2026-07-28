@@ -86,7 +86,7 @@
                     <div class="web-episode-right">
 
                         <a
-                            href="{{ route('web.telegram.redirect',$episode->id) }}"
+                            href="{{ route('episode.show',$episode) }}"
                             class="web-btn web-btn-primary">
 
                             Tonton di Telegram

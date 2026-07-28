@@ -1,11 +1,57 @@
-@import 'tailwindcss';
+@import "tailwindcss";
 
-@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
-@source '../../storage/framework/views/*.php';
-@source '../**/*.blade.php';
-@source '../**/*.js';
+/*
+|--------------------------------------------------------------------------
+| DramaVerse Theme
+|--------------------------------------------------------------------------
+*/
+
+@import "./web/home/theme.css";
+@import "./web/home/navbar.css";
+@import "./web/home/hero.css";
+@import "./web/home/card.css";
+@import "./web/home/section.css";
+@import "./web/home/animation.css";
+@import "./web/home/responsive.css";
+@import "./web/search/search.css";
+@import "./web/detail/detail.css";
+@import "./web/detail/episode.css";
+@import "./web/detail/responsive.css";
+
+/*
+|--------------------------------------------------------------------------
+| Laravel Sources
+|--------------------------------------------------------------------------
+*/
+
+@source "../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php";
+@source "../../storage/framework/views/*.php";
+@source "../**/*.blade.php";
+@source "../**/*.js";
+
+/*
+|--------------------------------------------------------------------------
+| Theme
+|--------------------------------------------------------------------------
+*/
 
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-sans:
+        "Plus Jakarta Sans",
+        "Space Grotesk",
+        ui-sans-serif,
+        system-ui,
+        sans-serif;
+
+    --color-primary: #7C5CFF;
+    --color-primary-hover: #9374FF;
+
+    --color-background: #09090B;
+    --color-surface: #17171F;
+    --color-border: rgba(255,255,255,.08);
+
+    --color-text: #FFFFFF;
+    --color-text-secondary: #B8B8C8;
+
+    --radius-xl: 22px;
 }

@@ -1,44 +1,50 @@
-<section class="web-drama-cast">
+@props([
+    'casts' => collect(),
+])
 
-    <div class="container">
+<section class="web-section">
 
-        <div class="web-section-header">
+    <div class="web-section-header">
 
-            <div>
+        <h2 class="web-section-title">
 
-                <span class="web-section-subtitle">
+            Pemeran
 
-                    Cast
+        </h2>
 
-                </span>
+    </div>
 
-                <h2 class="web-section-title">
+    @if($casts->isEmpty())
 
-                    Pemeran Utama
+        <div class="web-empty-card">
 
-                </h2>
+            <div class="web-empty-icon">
+
+                🎭
 
             </div>
 
-            <a href="#" class="web-section-link">
+            <p>
 
-                Lihat Semua
+                Informasi pemeran belum tersedia.
 
-            </a>
+            </p>
 
         </div>
 
-        <div class="web-drama-cast-grid">
+    @else
 
-            @for($i = 1; $i <= 6; $i++)
+        <div class="web-cast-grid">
+
+            @foreach($casts as $cast)
 
                 <div class="web-cast-card">
 
                     <div class="web-cast-image">
 
                         <img
-                            src="https://placehold.co/300x420"
-                            alt="Cast">
+                            src="{{ $cast->photo ? asset($cast->photo) : asset('images/default-avatar.png') }}"
+                            alt="{{ $cast->name }}">
 
                     </div>
 
@@ -46,24 +52,28 @@
 
                         <h3>
 
-                            Zhao Lusi
+                            {{ $cast->name }}
 
                         </h3>
 
-                        <p>
+                        @if(!empty($cast->character))
 
-                            Sebagai Sang Zhi
+                            <span>
 
-                        </p>
+                                {{ $cast->character }}
+
+                            </span>
+
+                        @endif
 
                     </div>
 
                 </div>
 
-            @endfor
+            @endforeach
 
         </div>
 
-    </div>
+    @endif
 
 </section>

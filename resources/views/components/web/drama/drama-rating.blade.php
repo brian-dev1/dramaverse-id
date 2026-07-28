@@ -1,50 +1,118 @@
-<section class="web-drama-rating">
+@props([
+    'drama',
+])
 
-    <div class="container">
+@php
 
-        <div class="web-rating-card">
+$rating = $drama->rating ?? 9.8;
 
-            <div class="web-rating-score">
+$totalVote = $drama->rating_count ?? rand(1000,8000);
 
-                <h2>
+@endphp
 
-                    9.8
+<div class="web-rating-card">
 
-                </h2>
+    <div class="web-rating-header">
 
-                <span>
+        <h3>
 
-                    Excellent
+            Rating
 
-                </span>
+        </h3>
+
+    </div>
+
+    <div class="web-rating-score">
+
+        {{ number_format($rating,1) }}
+
+    </div>
+
+    <div class="web-rating-stars">
+
+        @for($i=1;$i<=5;$i++)
+
+            ⭐
+
+        @endfor
+
+    </div>
+
+    <div class="web-rating-vote">
+
+        {{ number_format($totalVote) }}
+
+        Pengguna
+
+    </div>
+
+    <div class="web-rating-progress">
+
+        <div class="web-progress-item">
+
+            <span>5 ⭐</span>
+
+            <div class="web-progress">
+
+                <div
+                    class="fill"
+                    style="width:88%"></div>
 
             </div>
 
-            <div class="web-rating-progress">
+        </div>
 
-                @for($i=5;$i>=1;$i--)
+        <div class="web-progress-item">
 
-                    <div class="web-rating-row">
+            <span>4 ⭐</span>
 
-                        <span>
+            <div class="web-progress">
 
-                            {{ $i }} ★
+                <div
+                    class="fill"
+                    style="width:72%"></div>
 
-                        </span>
+            </div>
 
-                        <div class="web-rating-bar">
+        </div>
 
-                            <div
-                                class="web-rating-fill"
-                                style="width:{{ 100-($i*10) }}%;">
+        <div class="web-progress-item">
 
-                            </div>
+            <span>3 ⭐</span>
 
-                        </div>
+            <div class="web-progress">
 
-                    </div>
+                <div
+                    class="fill"
+                    style="width:31%"></div>
 
-                @endfor
+            </div>
+
+        </div>
+
+        <div class="web-progress-item">
+
+            <span>2 ⭐</span>
+
+            <div class="web-progress">
+
+                <div
+                    class="fill"
+                    style="width:12%"></div>
+
+            </div>
+
+        </div>
+
+        <div class="web-progress-item">
+
+            <span>1 ⭐</span>
+
+            <div class="web-progress">
+
+                <div
+                    class="fill"
+                    style="width:4%"></div>
 
             </div>
 
@@ -52,4 +120,4 @@
 
     </div>
 
-</section>
+</div>

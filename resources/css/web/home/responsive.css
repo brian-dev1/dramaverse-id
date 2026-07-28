@@ -1,0 +1,134 @@
+/* ===========================
+   Tablet
+=========================== */
+
+@media (max-width: 992px){
+
+    .container{
+        padding-inline:24px;
+    }
+
+    .drama-grid{
+        grid-template-columns:repeat(3,1fr);
+    }
+
+    .hero-content{
+        width:100%;
+    }
+
+}
+
+/* ===========================
+   Mobile
+=========================== */
+
+@media (max-width:768px){
+
+    .drama-grid{
+        grid-template-columns:repeat(2,1fr);
+        gap:18px;
+    }
+
+    .section-title{
+        font-size:1.3rem;
+    }
+
+    .hero-title{
+        font-size:2rem;
+    }
+
+    .top-rank{
+        grid-template-columns:1fr;
+    }
+
+    .rank-number{
+        display:none;
+    }
+
+}
+
+/* ===========================
+   Small Mobile
+=========================== */
+
+@media (max-width:480px){
+
+    .container{
+        padding-inline:16px;
+    }
+
+    .drama-grid{
+        grid-template-columns:1fr;
+    }
+
+    .hero-title{
+        font-size:1.6rem;
+    }
+
+}
+/*==================================================
+MEMBERSHIP RESPONSIVE
+==================================================*/
+
+@media (max-width:768px){
+
+    .membership-banner{
+
+        padding:40px 24px;
+
+    }
+
+    .membership-content h2{
+
+        font-size:2rem;
+
+    }
+
+    .membership-actions{
+
+        flex-direction:column;
+
+    }
+
+    .membership-actions .btn{
+
+        width:100%;
+
+    }
+
+}
+/*==================================================
+FOOTER RESPONSIVE
+==================================================*/
+
+@media(max-width:992px){
+
+.footer-grid{
+
+grid-template-columns:1fr 1fr;
+
+gap:40px;
+
+}
+
+}
+
+@media(max-width:768px){
+
+.footer-grid{
+
+grid-template-columns:1fr;
+
+}
+
+.footer-bottom{
+
+flex-direction:column;
+
+gap:12px;
+
+text-align:center;
+
+}
+
+}

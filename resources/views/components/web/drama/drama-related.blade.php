@@ -1,85 +1,55 @@
-<section class="web-drama-related">
+@props([
+    'related' => collect(),
+])
 
-    <div class="container">
+<div class="web-related-card">
 
-        <div class="web-section-header">
+    <div class="web-related-header">
 
-            <div>
+        <h3>
 
-                <span class="web-section-subtitle">
+            Drama Serupa
 
-                    Recommendation
-
-                </span>
-
-                <h2 class="web-section-title">
-
-                    Drama Serupa
-
-                </h2>
-
-            </div>
-
-            <a href="#" class="web-section-link">
-
-                Lihat Semua
-
-            </a>
-
-        </div>
-
-        <div class="web-drama-related-grid">
-
-            @for($i = 1; $i <= 6; $i++)
-
-                <div class="web-related-card">
-
-                    <div class="web-related-poster">
-
-                        <img
-                            src="https://placehold.co/320x450"
-                            alt="Drama">
-
-                    </div>
-
-                    <div class="web-related-content">
-
-                        <span class="web-related-country">
-
-                            China
-
-                        </span>
-
-                        <h3>
-
-                            Hidden Love
-
-                        </h3>
-
-                        <div class="web-related-meta">
-
-                            <span>
-
-                                ⭐ 9.8
-
-                            </span>
-
-                            <span>
-
-                                2023
-
-                            </span>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-            @endfor
-
-        </div>
+        </h3>
 
     </div>
 
-</section>
+    @forelse($related as $item)
+
+        <a
+            href="{{ route('drama.show',$item->slug) }}"
+            class="web-related-item">
+
+            <img
+                src="{{ asset($item->poster) }}"
+                alt="{{ $item->title }}">
+
+            <div>
+
+                <h4>
+
+                    {{ $item->title }}
+
+                </h4>
+
+                <span>
+
+                    {{ $item->release_year }}
+
+                </span>
+
+            </div>
+
+        </a>
+
+    @empty
+
+        <div class="web-related-empty">
+
+            Belum ada drama serupa.
+
+        </div>
+
+    @endforelse
+
+</div>

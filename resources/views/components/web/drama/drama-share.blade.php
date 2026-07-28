@@ -1,61 +1,43 @@
-<section class="web-drama-share">
+@props([
+    'drama',
+])
 
-    <div class="container">
+<div class="web-share-card">
 
-        <div class="web-share-card">
+    <h3>
 
-            <div>
+        Bagikan Drama
 
-                <span class="web-section-subtitle">
+    </h3>
 
-                    Share
+    <div class="web-share-grid">
 
-                </span>
+        <a
+            href="https://t.me/share/url?url={{ urlencode(request()->url()) }}"
+            target="_blank"
+            class="web-share-btn telegram">
 
-                <h2 class="web-section-title">
+            Telegram
 
-                    Bagikan Drama Ini
+        </a>
 
-                </h2>
+        <a
+            href="https://wa.me/?text={{ urlencode(request()->url()) }}"
+            target="_blank"
+            class="web-share-btn whatsapp">
 
-            </div>
+            WhatsApp
 
-            <div class="web-share-buttons">
+        </a>
 
-                <button>
+        <button
+            onclick="navigator.clipboard.writeText('{{ request()->url() }}')"
+            class="web-share-btn copy">
 
-                    Telegram
+            Copy Link
 
-                </button>
-
-                <button>
-
-                    WhatsApp
-
-                </button>
-
-                <button>
-
-                    Facebook
-
-                </button>
-
-                <button>
-
-                    X
-
-                </button>
-
-                <button>
-
-                    Copy Link
-
-                </button>
-
-            </div>
-
-        </div>
+        </button>
 
     </div>
 
-</section>
+</div>

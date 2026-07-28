@@ -1,0 +1,573 @@
+/* ===========================================
+   DRAMA CARD
+=========================================== */
+
+.drama-grid{
+
+    display:grid;
+
+    grid-template-columns:
+        repeat(auto-fill,minmax(220px,1fr));
+
+    gap:28px;
+
+}
+
+.drama-card{
+
+    position:relative;
+
+    overflow:hidden;
+
+    border-radius:24px;
+
+    background:#17171f;
+
+    transition:.35s;
+
+    cursor:pointer;
+
+}
+
+.drama-card:hover{
+
+    transform:translateY(-10px);
+
+    box-shadow:
+
+        0 25px 60px rgba(0,0,0,.45);
+
+}
+
+.drama-poster{
+
+    position:relative;
+
+    aspect-ratio:2/3;
+
+    overflow:hidden;
+
+}
+
+.drama-poster img{
+
+    width:100%;
+
+    height:100%;
+
+    object-fit:cover;
+
+    transition:.45s;
+
+}
+
+.drama-card:hover img{
+
+    transform:scale(1.08);
+
+}
+
+.drama-overlay{
+
+    position:absolute;
+
+    inset:0;
+
+    background:
+
+        linear-gradient(
+
+            transparent,
+
+            rgba(0,0,0,.92)
+
+        );
+
+}
+
+.drama-content{
+
+    position:absolute;
+
+    left:0;
+
+    right:0;
+
+    bottom:0;
+
+    padding:18px;
+
+    z-index:2;
+
+}
+
+.drama-title{
+
+    font-size:20px;
+
+    font-weight:800;
+
+    margin-bottom:8px;
+
+}
+
+.drama-info{
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:space-between;
+
+    color:#b8b8c8;
+
+    font-size:14px;
+
+}
+
+.rating{
+
+    color:#FACC15;
+
+    font-weight:700;
+
+}
+
+.vip-badge{
+
+    position:absolute;
+
+    top:14px;
+
+    right:14px;
+
+    background:#7C5CFF;
+
+    color:white;
+
+    padding:6px 12px;
+
+    border-radius:999px;
+
+    font-size:12px;
+
+    font-weight:700;
+
+}
+
+.episode-badge{
+
+    position:absolute;
+
+    left:14px;
+
+    top:14px;
+
+    background:rgba(0,0,0,.7);
+
+    backdrop-filter:blur(12px);
+
+    color:white;
+
+    padding:6px 12px;
+
+    border-radius:999px;
+
+    font-size:12px;
+
+}
+
+.card-actions{
+
+    margin-top:16px;
+
+    display:flex;
+
+    gap:10px;
+
+}
+
+.card-btn{
+
+    flex:1;
+
+    border:none;
+
+    border-radius:999px;
+
+    height:42px;
+
+    background:#7C5CFF;
+
+    color:white;
+
+    font-weight:700;
+
+    transition:.25s;
+
+}
+
+.card-btn:hover{
+
+    background:#9374FF;
+
+}
+.card-top{
+
+    position:absolute;
+
+    top:14px;
+
+    left:14px;
+
+    right:14px;
+
+    display:flex;
+
+    justify-content:space-between;
+
+    z-index:5;
+
+}
+
+.card-progress{
+
+    width:100%;
+
+    height:5px;
+
+    background:rgba(255,255,255,.1);
+
+    border-radius:999px;
+
+    margin-top:12px;
+
+    overflow:hidden;
+
+}
+
+.card-progress i{
+
+    display:block;
+
+    height:100%;
+
+    background:#7C5CFF;
+
+    border-radius:999px;
+
+}
+
+.card-btn{
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    width:100%;
+
+    height:44px;
+
+    margin-top:18px;
+
+    border-radius:999px;
+
+    background:#7C5CFF;
+
+    color:white;
+
+    font-weight:700;
+
+    transition:.3s;
+
+}
+
+.drama-card:hover .card-btn{
+
+    background:#9374FF;
+
+}
+/* ===========================================
+   CONTINUE WATCHING
+===========================================*/
+
+.card-progress{
+
+    margin-top:14px;
+
+    width:100%;
+
+    height:6px;
+
+    background:rgba(255,255,255,.08);
+
+    border-radius:999px;
+
+    overflow:hidden;
+
+}
+
+.card-progress i{
+
+    display:block;
+
+    height:100%;
+
+    background:linear-gradient(
+
+        90deg,
+
+        #7C5CFF,
+
+        #9B7BFF
+
+    );
+
+    border-radius:999px;
+
+}
+
+.drama-card:hover .card-progress i{
+
+    filter:brightness(1.2);
+
+}
+
+.drama-card .card-actions{
+
+    opacity:0;
+
+    transform:translateY(10px);
+
+    transition:.3s;
+
+}
+
+.drama-card:hover .card-actions{
+
+    opacity:1;
+
+    transform:translateY(0);
+
+}
+
+.card-btn{
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    width:100%;
+
+    height:44px;
+
+    border-radius:999px;
+
+    background:#7C5CFF;
+
+    color:white;
+
+    font-weight:700;
+
+    margin-top:14px;
+
+    transition:.25s;
+
+}
+
+.card-btn:hover{
+
+    background:#9374FF;
+
+}
+/*=========================================
+TOP RATED
+=========================================*/
+
+.top-rated-grid{
+
+    display:grid;
+
+    gap:28px;
+
+}
+
+.top-rank{
+
+    display:grid;
+
+    grid-template-columns:110px 1fr;
+
+    align-items:center;
+
+    gap:22px;
+
+}
+
+.rank-number{
+
+    font-size:82px;
+
+    font-weight:900;
+
+    line-height:1;
+
+    color:rgba(255,255,255,.07);
+
+    text-align:center;
+
+    user-select:none;
+
+}
+
+.rank-card{
+
+    position:relative;
+
+}
+
+.rating-chip{
+
+    position:absolute;
+
+    top:16px;
+
+    right:16px;
+
+    padding:8px 14px;
+
+    border-radius:999px;
+
+    background:#FFD54F;
+
+    color:#000;
+
+    font-weight:800;
+
+    font-size:.85rem;
+
+    box-shadow:
+
+        0 8px 20px rgba(255,213,79,.25);
+
+}
+
+.top-rank:hover .rank-number{
+
+    color:rgba(124,92,255,.18);
+
+    transition:.3s;
+
+}
+
+.top-rank:hover{
+
+    transform:translateX(8px);
+
+    transition:.3s;
+
+}
+/*==================================================
+SKELETON LOADING
+==================================================*/
+
+.skeleton-card{
+
+    background:#171923;
+
+    border-radius:22px;
+
+    overflow:hidden;
+
+    border:1px solid rgba(255,255,255,.05);
+
+}
+
+.skeleton-poster{
+
+    width:100%;
+
+    aspect-ratio:2/3;
+
+    background:#232532;
+
+}
+
+.skeleton-content{
+
+    padding:18px;
+
+}
+
+.skeleton-line{
+
+    height:12px;
+
+    border-radius:999px;
+
+    background:#2D3142;
+
+    margin-bottom:12px;
+
+}
+
+.skeleton-line.long{
+
+    width:100%;
+
+}
+
+.skeleton-line.medium{
+
+    width:70%;
+
+}
+
+.skeleton-line.short{
+
+    width:45%;
+
+}
+
+.shimmer{
+
+    position:relative;
+
+    overflow:hidden;
+
+}
+
+.shimmer::after{
+
+    content:"";
+
+    position:absolute;
+
+    inset:0;
+
+    transform:translateX(-100%);
+
+    background:linear-gradient(
+        90deg,
+        transparent,
+        rgba(255,255,255,.12),
+        transparent
+    );
+
+    animation:shimmer 1.5s infinite;
+
+}
+
+@keyframes shimmer{
+
+    100%{
+
+        transform:translateX(100%);
+
+    }
+
+}

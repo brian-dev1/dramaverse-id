@@ -1,0 +1,224 @@
+/*==================================================
+ANIMATION
+DramaVerse ID
+==================================================*/
+
+/* Fade Up */
+
+.reveal{
+
+    opacity:0;
+
+    transform:translateY(40px);
+
+    transition:
+        opacity .8s ease,
+        transform .8s ease;
+
+}
+
+.reveal.active{
+
+    opacity:1;
+
+    transform:translateY(0);
+
+}
+
+/* Fade Left */
+
+.reveal-left{
+
+    opacity:0;
+
+    transform:translateX(-50px);
+
+    transition:
+        opacity .8s ease,
+        transform .8s ease;
+
+}
+
+.reveal-left.active{
+
+    opacity:1;
+
+    transform:translateX(0);
+
+}
+
+/* Fade Right */
+
+.reveal-right{
+
+    opacity:0;
+
+    transform:translateX(50px);
+
+    transition:
+        opacity .8s ease,
+        transform .8s ease;
+
+}
+
+.reveal-right.active{
+
+    opacity:1;
+
+    transform:translateX(0);
+
+}
+
+/* Zoom */
+
+.zoom-in{
+
+    opacity:0;
+
+    transform:scale(.92);
+
+    transition:
+        opacity .6s ease,
+        transform .6s ease;
+
+}
+
+.zoom-in.active{
+
+    opacity:1;
+
+    transform:scale(1);
+
+}
+
+/* Card Hover */
+
+.drama-card{
+
+    transition:
+        transform .35s ease,
+        box-shadow .35s ease;
+
+}
+
+.drama-card:hover{
+
+    transform:translateY(-8px);
+
+}
+
+/* Button */
+
+.btn{
+
+    transition:
+        transform .25s ease,
+        opacity .25s ease;
+
+}
+
+.btn:hover{
+
+    transform:translateY(-2px);
+
+}
+
+/* Navbar */
+
+.navbar{
+
+    transition:
+        background .3s ease,
+        backdrop-filter .3s ease,
+        box-shadow .3s ease;
+
+}
+
+/* Hero */
+
+.hero-content>*{
+
+    animation:heroFade .8s ease both;
+
+}
+
+.hero-content>*:nth-child(2){
+
+    animation-delay:.15s;
+
+}
+
+.hero-content>*:nth-child(3){
+
+    animation-delay:.3s;
+
+}
+
+.hero-content>*:nth-child(4){
+
+    animation-delay:.45s;
+
+}
+
+@keyframes heroFade{
+
+    from{
+
+        opacity:0;
+
+        transform:translateY(30px);
+
+    }
+
+    to{
+
+        opacity:1;
+
+        transform:translateY(0);
+
+    }
+
+}
+
+/* Shimmer */
+
+.shimmer{
+
+    position:relative;
+
+    overflow:hidden;
+
+}
+
+.shimmer::after{
+
+    content:"";
+
+    position:absolute;
+
+    inset:0;
+
+    transform:translateX(-100%);
+
+    background:
+
+        linear-gradient(
+            90deg,
+            transparent,
+            rgba(255,255,255,.15),
+            transparent
+        );
+
+    animation:shimmer 1.5s infinite;
+
+}
+
+@keyframes shimmer{
+
+    to{
+
+        transform:translateX(100%);
+
+    }
+
+}

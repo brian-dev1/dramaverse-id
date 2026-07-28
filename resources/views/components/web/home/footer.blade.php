@@ -1,55 +1,56 @@
-<footer class="web-footer">
+<footer class="footer">
 
-    <div class="web-container">
+    <div class="container">
 
-        <div class="web-footer-grid">
+        <div class="footer-grid">
 
             {{-- Brand --}}
+            <div class="footer-brand">
 
-            <div class="web-footer-brand">
+                <a href="{{ route('web.home') }}" class="footer-logo">
 
-                <a
-                    href="{{ route('web.home') }}"
-                    class="web-footer-logo">
+                    <span>🎬</span>
 
-                    DramaVerse
-
-                    <span>ID</span>
+                    <strong>DramaVerse</strong>
 
                 </a>
 
                 <p>
 
-                    DramaVerse ID adalah platform private streaming drama
-                    yang hanya dapat diakses melalui Telegram.
+                    Platform streaming drama Asia modern.
+                    Nikmati ribuan drama Korea, China,
+                    Jepang, Thailand dan lainnya dalam satu tempat.
 
                 </p>
 
-                <div class="web-footer-social">
+                <div class="footer-social">
 
                     <a href="#">
-                        Telegram
+                        <i class="fab fa-telegram"></i>
                     </a>
 
                     <a href="#">
-                        Discord
+                        <i class="fab fa-discord"></i>
                     </a>
 
                     <a href="#">
-                        Facebook
+                        <i class="fab fa-facebook"></i>
+                    </a>
+
+                    <a href="#">
+                        <i class="fab fa-instagram"></i>
                     </a>
 
                 </div>
 
             </div>
 
-            {{-- Navigation --}}
-
+            {{-- Explore --}}
             <div>
 
                 <h4>
 
-                    Jelajahi
+                    Explore
 
                 </h4>
 
@@ -59,7 +60,7 @@
 
                         <a href="{{ route('web.home') }}">
 
-                            Beranda
+                            Home
 
                         </a>
 
@@ -67,9 +68,9 @@
 
                     <li>
 
-                        <a href="{{ route('web.search') }}">
+                        <a href="{{ route('web.trending') }}">
 
-                            Cari Drama
+                            Trending
 
                         </a>
 
@@ -79,7 +80,7 @@
 
                         <a href="{{ route('web.latest') }}">
 
-                            Terbaru
+                            Latest Release
 
                         </a>
 
@@ -89,7 +90,7 @@
 
                         <a href="{{ route('web.popular') }}">
 
-                            Populer
+                            Popular
 
                         </a>
 
@@ -100,7 +101,6 @@
             </div>
 
             {{-- Membership --}}
-
             <div>
 
                 <h4>
@@ -123,9 +123,9 @@
 
                     <li>
 
-                        <a href="{{ route('web.membership') }}">
+                        <a href="{{ route('web.account') }}">
 
-                            Paket Bulanan
+                            My Account
 
                         </a>
 
@@ -133,9 +133,9 @@
 
                     <li>
 
-                        <a href="{{ route('web.membership') }}">
+                        <a href="{{ route('web.history') }}">
 
-                            Paket Tahunan
+                            Watch History
 
                         </a>
 
@@ -146,12 +146,11 @@
             </div>
 
             {{-- Support --}}
-
             <div>
 
                 <h4>
 
-                    Bantuan
+                    Support
 
                 </h4>
 
@@ -161,7 +160,7 @@
 
                         <a href="#">
 
-                            FAQ
+                            Help Center
 
                         </a>
 
@@ -171,17 +170,7 @@
 
                         <a href="#">
 
-                            Hubungi Kami
-
-                        </a>
-
-                    </li>
-
-                    <li>
-
-                        <a href="#">
-
-                            Kebijakan Privasi
+                            Privacy Policy
 
                         </a>
 
@@ -197,29 +186,36 @@
 
                     </li>
 
+                    <li>
+
+                        <a href="#">
+
+                            Contact
+
+                        </a>
+
+                    </li>
+
                 </ul>
 
             </div>
 
         </div>
 
-        <div class="web-footer-bottom">
+        <div class="footer-bottom">
 
-            <div>
+            <span>
 
-                © {{ date('Y') }}
-
-                DramaVerse ID.
-
+                © {{ now()->year }} DramaVerse.
                 All Rights Reserved.
 
-            </div>
+            </span>
 
-            <div>
+            <span>
 
-                Build with Laravel 12
+                Made with ❤️ in Indonesia
 
-            </div>
+            </span>
 
         </div>
 

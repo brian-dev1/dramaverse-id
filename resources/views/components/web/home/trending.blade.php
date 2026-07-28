@@ -2,19 +2,35 @@
     'trendingDramas' => collect(),
 ])
 
-<section class="section section-pad">
+<section class="home-section container">
 
-    <div class="section-head">
+    <div class="section-header">
 
-        <div class="section-title">
+        <div class="section-left">
 
-            🔥 Trending Minggu Ini
+            <div class="section-line"></div>
+
+            <div>
+
+                <h2 class="section-title">
+
+                    🔥 Trending Minggu Ini
+
+                </h2>
+
+                <div class="section-subtitle">
+
+                    Drama yang sedang ramai ditonton minggu ini.
+
+                </div>
+
+            </div>
 
         </div>
 
         <a
             href="{{ route('web.trending') }}"
-            class="see-all">
+            class="section-more">
 
             Lihat Semua →
 
@@ -22,16 +38,13 @@
 
     </div>
 
-    <div class="rail">
+    <div class="drama-grid">
 
         @forelse($trendingDramas as $drama)
 
-            <x-web.drama-card
-
+            <x-web.home.drama-card
                 :drama="$drama"
-
                 :rank="$loop->iteration"
-
             />
 
         @empty
@@ -43,17 +56,11 @@
                 </div>
 
                 <h3>
-
                     Belum Ada Drama Trending
-
                 </h3>
 
                 <p>
-
-                    Data trending akan otomatis muncul setelah admin
-                    menambahkan drama atau sistem mulai menghitung
-                    jumlah penonton.
-
+                    Drama trending akan muncul otomatis setelah ada aktivitas penonton.
                 </p>
 
             </div>

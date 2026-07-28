@@ -2,19 +2,35 @@
     'latestDramas' => collect(),
 ])
 
-<section class="section section-pad">
+<section class="home-section container">
 
-    <div class="section-head">
+    <div class="section-header">
 
-        <div class="section-title">
+        <div class="section-left">
 
-            ✨ Rilis Terbaru
+            <div class="section-line"></div>
+
+            <div>
+
+                <h2 class="section-title">
+
+                    ✨ Rilis Terbaru
+
+                </h2>
+
+                <div class="section-subtitle">
+
+                    Episode dan drama terbaru yang baru ditambahkan.
+
+                </div>
+
+            </div>
 
         </div>
 
         <a
             href="{{ route('web.latest') }}"
-            class="see-all">
+            class="section-more">
 
             Lihat Semua →
 
@@ -22,11 +38,11 @@
 
     </div>
 
-    <div class="rail">
+    <div class="drama-grid">
 
         @forelse($latestDramas as $drama)
 
-            <x-web.drama-card
+            <x-web.home.drama-card
                 :drama="$drama"
                 type="latest"
             />
@@ -36,22 +52,15 @@
             <div class="empty-state">
 
                 <div class="empty-icon">
-
                     🎬
-
                 </div>
 
                 <h3>
-
                     Belum Ada Drama Baru
-
                 </h3>
 
                 <p>
-
-                    Drama terbaru akan otomatis muncul setelah admin
-                    menambahkan atau menerbitkan drama baru.
-
+                    Drama terbaru akan muncul setelah admin menambahkan data baru.
                 </p>
 
             </div>

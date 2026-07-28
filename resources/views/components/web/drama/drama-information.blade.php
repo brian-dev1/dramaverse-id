@@ -1,3 +1,7 @@
+@props([
+    'drama',
+])
+
 <section class="web-drama-information">
 
     <div class="container">
@@ -17,68 +21,54 @@
                     <div class="web-information-list">
 
                         <div class="web-information-item">
+                            <span>Judul</span>
+                            <strong>{{ $drama->title }}</strong>
+                        </div>
 
+                        @if(!empty($drama->original_title))
+                        <div class="web-information-item">
                             <span>Judul Asli</span>
-
-                            <strong>偷偷藏不住</strong>
-
+                            <strong>{{ $drama->original_title }}</strong>
                         </div>
+                        @endif
 
+                        @if($drama->country)
                         <div class="web-information-item">
-
-                            <span>Judul Inggris</span>
-
-                            <strong>Hidden Love</strong>
-
-                        </div>
-
-                        <div class="web-information-item">
-
                             <span>Negara</span>
-
-                            <strong>China</strong>
-
+                            <strong>{{ $drama->country->name }}</strong>
                         </div>
+                        @endif
 
+                        @if($drama->genre)
                         <div class="web-information-item">
-
-                            <span>Tahun</span>
-
-                            <strong>2023</strong>
-
-                        </div>
-
-                        <div class="web-information-item">
-
-                            <span>Status</span>
-
-                            <strong>Completed</strong>
-
-                        </div>
-
-                        <div class="web-information-item">
-
-                            <span>Episode</span>
-
-                            <strong>25 Episode</strong>
-
-                        </div>
-
-                        <div class="web-information-item">
-
-                            <span>Durasi</span>
-
-                            <strong>45 Menit</strong>
-
-                        </div>
-
-                        <div class="web-information-item">
-
                             <span>Genre</span>
-
-                            <strong>Romance, Youth, School</strong>
-
+                            <strong>{{ $drama->genre->name }}</strong>
                         </div>
+                        @endif
+
+                        @if($drama->release_year)
+                        <div class="web-information-item">
+                            <span>Tahun</span>
+                            <strong>{{ $drama->release_year }}</strong>
+                        </div>
+                        @endif
+
+                        <div class="web-information-item">
+                            <span>Status</span>
+                            <strong>{{ $drama->status }}</strong>
+                        </div>
+
+                        <div class="web-information-item">
+                            <span>Total Episode</span>
+                            <strong>{{ $drama->total_episode }}</strong>
+                        </div>
+
+                        @if(!empty($drama->duration))
+                        <div class="web-information-item">
+                            <span>Durasi</span>
+                            <strong>{{ $drama->duration }}</strong>
+                        </div>
+                        @endif
 
                     </div>
 
@@ -98,11 +88,7 @@
 
                     <p class="web-drama-synopsis">
 
-                        Sang Zhi telah lama menyimpan rasa kepada Duan Jia Xu,
-                        sahabat kakaknya. Bertahun-tahun kemudian mereka
-                        kembali bertemu ketika Sang Zhi mulai kuliah di kota
-                        yang sama. Hubungan mereka perlahan berkembang menjadi
-                        kisah cinta yang hangat, manis, dan penuh perjuangan.
+                        {!! nl2br(e($drama->description ?? 'Belum ada sinopsis untuk drama ini.')) !!}
 
                     </p>
 

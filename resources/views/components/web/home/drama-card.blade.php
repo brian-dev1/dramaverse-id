@@ -1,66 +1,58 @@
 @props([
-
     'drama',
-
     'type' => 'default',
-
     'rank' => null,
-
     'progress' => null,
-
 ])
 
 <a
     href="{{ route('web.detail', $drama->slug) }}"
-    class="card {{ $drama->gradient ?? 'g1' }}">
+    class="drama-card {{ $drama->gradient ?? 'g1' }}">
 
-    <div class="card-poster">
+    <div class="drama-poster">
+
+        @if(!empty($drama->poster_url))
+            <img
+                src="{{ $drama->poster_url }}"
+                alt="{{ $drama->title }}">
+        @endif
+
+        <div class="drama-overlay"></div>
 
         {{-- TOP --}}
-
         <div class="card-top">
 
             @if($type == 'continue')
 
-                <span class="card-badge">
-
+                <span class="episode-badge">
                     EP {{ str_pad($drama->last_episode ?? 1,2,'0',STR_PAD_LEFT) }}
-
                 </span>
 
             @elseif($type == 'latest')
 
-                <span class="card-badge">
-
+                <span class="episode-badge">
                     BARU
-
                 </span>
 
             @elseif($type == 'toprated')
 
-                <span class="card-badge">
-
+                <span class="vip-badge">
                     ★ {{ number_format($drama->rating,1) }}
-
                 </span>
 
             @elseif($rank)
 
-                <span class="card-rank">
-
-                    {{ str_pad($rank,2,'0',STR_PAD_LEFT) }}
-
+                <span class="vip-badge">
+                    #{{ str_pad($rank,2,'0',STR_PAD_LEFT) }}
                 </span>
 
             @endif
 
         </div>
 
-        {{-- BOTTOM --}}
+        <div class="drama-content">
 
-        <div>
-
-            <div class="card-title">
+            <div class="drama-title">
 
                 {{ $drama->title }}
 
@@ -70,15 +62,15 @@
 
                 @case('continue')
 
-                    <div class="card-sub">
+                    <div class="drama-info">
 
-                        {{ $progress ?? 0 }}% selesai
+                        <span>{{ $progress ?? 0 }}% selesai</span>
 
                     </div>
 
                     <div class="card-progress">
 
-                        <i style="width: {{ $progress ?? 0 }}%"></i>
+                        <i style="width:{{ $progress ?? 0 }}%"></i>
 
                     </div>
 
@@ -86,13 +78,15 @@
 
                 @case('latest')
 
-                    <div class="card-sub">
+                    <div class="drama-info">
 
-                        EP {{ $drama->episodes }}
+                        <span>
+                            EP {{ $drama->episodes }}
+                        </span>
 
-                        ·
-
-                        {{ $drama->country }}
+                        <span>
+                            {{ $drama->country }}
+                        </span>
 
                     </div>
 
@@ -100,13 +94,19 @@
 
                 @case('toprated')
 
-                    <div class="card-sub">
+                    <div class="drama-info">
 
-                        {{ $drama->genre }}
+                        <span>
 
-                        ·
+                            {{ $drama->genre }}
 
-                        {{ $drama->episodes }} EP
+                        </span>
+
+                        <span>
+
+                            ★ {{ number_format($drama->rating,1) }}
+
+                        </span>
 
                     </div>
 
@@ -114,17 +114,33 @@
 
                 @default
 
-                    <div class="card-sub">
+                    <div class="drama-info">
 
-                        ★ {{ number_format($drama->rating,1) }}
+                        <span>
 
-                        ·
+                            ★ {{ number_format($drama->rating,1) }}
 
-                        {{ $drama->country }}
+                        </span>
+
+                        <span>
+
+                            {{ $drama->country }}
+
+                        </span>
 
                     </div>
 
             @endswitch
+
+            <div class="card-actions">
+
+                <span class="card-btn">
+
+                    Tonton Sekarang
+
+                </span>
+
+            </div>
 
         </div>
 

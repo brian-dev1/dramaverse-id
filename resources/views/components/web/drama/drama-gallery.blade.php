@@ -1,45 +1,58 @@
-<section class="web-drama-gallery">
+@props([
+    'gallery' => collect(),
+])
 
-    <div class="container">
+<section class="web-section">
 
-        <div class="web-section-header">
+    <div class="web-section-header">
 
-            <div>
+        <h2 class="web-section-title">
 
-                <span class="web-section-subtitle">
+            Galeri
 
-                    Gallery
+        </h2>
 
-                </span>
+    </div>
 
-                <h2 class="web-section-title">
+    @if($gallery->isEmpty())
 
-                    Cuplikan Drama
+        <div class="web-empty-card">
 
-                </h2>
+            <div class="web-empty-icon">
+
+                🖼️
 
             </div>
 
+            <p>
+
+                Belum ada gambar.
+
+            </p>
+
         </div>
 
-        <div class="web-drama-gallery-grid">
+    @else
 
-            @for($i = 1; $i <= 8; $i++)
+        <div class="web-gallery-grid">
+
+            @foreach($gallery as $image)
 
                 <a
-                    href="#"
+                    href="{{ asset($image->image) }}"
+                    target="_blank"
                     class="web-gallery-item">
 
                     <img
-                        src="https://placehold.co/600x400"
+                        src="{{ asset($image->image) }}"
                         alt="Gallery">
 
                 </a>
 
-            @endfor
+            @endforeach
 
         </div>
 
-    </div>
+    @endif
 
 </section>

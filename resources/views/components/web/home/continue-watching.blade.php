@@ -1,20 +1,36 @@
 @props([
-    'watchHistories' => collect(),
+    'continueWatching' => collect(),
 ])
 
-<section class="section section-pad">
+<section class="home-section container">
 
-    <div class="section-head">
+    <div class="section-header">
 
-        <div class="section-title">
+        <div class="section-left">
 
-            Lanjutkan Menonton
+            <div class="section-line"></div>
+
+            <div>
+
+                <h2 class="section-title">
+
+                    ▶ Continue Watching
+
+                </h2>
+
+                <div class="section-subtitle">
+
+                    Lanjutkan drama yang terakhir kamu tonton.
+
+                </div>
+
+            </div>
 
         </div>
 
         <a
             href="{{ route('web.history') }}"
-            class="see-all">
+            class="section-more">
 
             Lihat Semua →
 
@@ -22,31 +38,37 @@
 
     </div>
 
-    <div class="rail">
+    <div class="drama-grid">
 
-        @forelse($watchHistories as $history)
+        @forelse($continueWatching as $drama)
 
-            <x-web.drama-card
-
-                :drama="$history->drama"
-
+            <x-web.home.drama-card
+                :drama="$drama"
                 type="continue"
-
-                :progress="$history->progress"
-
+                :progress="$drama->progress ?? rand(10,95)"
             />
 
         @empty
 
-            <div
-                style="
-                    width:100%;
-                    padding:50px;
-                    text-align:center;
-                    color:var(--text-secondary);
-                ">
+            <div class="empty-state">
 
-                Belum ada riwayat menonton.
+                <div class="empty-icon">
+
+                    ▶
+
+                </div>
+
+                <h3>
+
+                    Belum Ada Riwayat Tontonan
+
+                </h3>
+
+                <p>
+
+                    Drama yang sedang kamu tonton akan muncul di sini.
+
+                </p>
 
             </div>
 

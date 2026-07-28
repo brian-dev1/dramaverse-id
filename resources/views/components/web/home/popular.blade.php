@@ -2,19 +2,35 @@
     'popularDramas' => collect(),
 ])
 
-<section class="section section-pad">
+<section class="home-section container">
 
-    <div class="section-head">
+    <div class="section-header">
 
-        <div class="section-title">
+        <div class="section-left">
 
-            ⭐ Drama Populer
+            <div class="section-line"></div>
+
+            <div>
+
+                <h2 class="section-title">
+
+                    ⭐ Drama Populer
+
+                </h2>
+
+                <div class="section-subtitle">
+
+                    Drama dengan jumlah penonton terbanyak.
+
+                </div>
+
+            </div>
 
         </div>
 
         <a
             href="{{ route('web.popular') }}"
-            class="see-all">
+            class="section-more">
 
             Lihat Semua →
 
@@ -22,11 +38,11 @@
 
     </div>
 
-    <div class="rail">
+    <div class="drama-grid">
 
         @forelse($popularDramas as $drama)
 
-            <x-web.drama-card
+            <x-web.home.drama-card
                 :drama="$drama"
             />
 
@@ -39,15 +55,11 @@
                 </div>
 
                 <h3>
-
                     Belum Ada Drama Populer
-
                 </h3>
 
                 <p>
-
-                    Drama populer akan muncul otomatis berdasarkan jumlah penonton.
-
+                    Drama populer akan muncul berdasarkan jumlah penonton.
                 </p>
 
             </div>

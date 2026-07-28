@@ -1,120 +1,86 @@
-<!DOCTYPE html>
-<html lang="id">
+@extends('web.layouts.app')
 
-<head>
+@section('title', $episode->drama->title . ' - Episode ' . $episode->episode_number)
 
-    <meta charset="UTF-8">
+@section('content')
 
-    <title>
+<div
+    class="player-page"
+    data-next-episode="{{ $nextEpisode ? route('episode.show',$nextEpisode) : '' }}">
 
-        {{ $episode->drama->title }}
+    <div class="container">
 
-    </title>
+        <div class="player-header">
 
-</head>
+            <div>
 
-<body>
+                <h1>
 
-<h1>
+                    {{ $episode->drama->title }}
 
-{{ $episode->drama->title }}
+                </h1>
 
-</h1>
+                <p>
 
-<h2>
+                    Episode {{ $episode->episode_number }}
 
-Episode {{ $episode->episode_number }}
+                    @if($episode->title)
 
-</h2>
+                        • {{ $episode->title }}
 
-@if($episode->title)
+                    @endif
 
-<p>
+                </p>
 
-{{ $episode->title }}
+            </div>
 
-</p>
+            <div class="player-header-action">
 
-@endif
+                <a
+                    href="{{ route('drama.show',$episode->drama->slug) }}"
+                    class="player-back-button">
 
-@if($episode->thumbnail)
+                    ← Kembali ke Drama
 
-<img
-    src="{{ asset($episode->thumbnail) }}"
-    width="300"
-    alt="Thumbnail">
+                </a>
 
-@endif
+            </div>
 
-@if($episode->duration)
+        </div>
 
-<p>
+        <div class="player-layout">
 
-Durasi :
-{{ $episode->duration }}
+            <div class="player-main">
 
-</p>
+                <x-web.player.player
+                    :episode="$episode"
+                />
 
-@endif
+                <x-web.player.navigation
+                    :episode="$episode"
+                    :previousEpisode="$previousEpisode"
+                    :nextEpisode="$nextEpisode"
+                />
 
-<hr>
+                <x-web.player.info
+                    :episode="$episode"
+                />
 
-@if($episode->video_url)
+            </div>
 
-<video
-    width="900"
-    controls>
+            <aside class="player-sidebar">
 
-    <source
-        src="{{ $episode->video_url }}">
+                <x-web.player.episode-sidebar
+                    :drama="$episode->drama"
+                    :currentEpisode="$episode"
+                />
 
-</video>
+            </aside>
 
-@else
+        </div>
 
-<p>
+    </div>
 
-Video belum tersedia.
+</div>
 
-</p>
-
-@endif
-
-<hr>
-
-@if($previousEpisode)
-
-<a
-href="{{ route('episode.show',$previousEpisode) }}">
-
-⬅ Episode Sebelumnya
-
-</a>
-
-@endif
-
-@if($nextEpisode)
-
-|
-
-<a
-href="{{ route('episode.show',$nextEpisode) }}">
-
-Episode Berikutnya ➜
-
-</a>
-
-@endif
-
-<br><br>
-
-<a
-href="{{ route('drama.show',$episode->drama->slug) }}">
-
-← Kembali
-
-</a>
-
-</body>
-
-</html>
+@endsection
