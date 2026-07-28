@@ -1,6 +1,10 @@
 <?php
 
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+
+use App\Models\WatchHistory;
+
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\DramaController;
@@ -38,12 +42,40 @@ Route::post(
 
 Route::middleware('auth')->group(function () {
 
+    /*
+    |--------------------------------------------------------------------------
+    | Watch History
+    |--------------------------------------------------------------------------
+    */
+
+    Route::get('/history', function () {
+
+        $histories = WatchHistory::with([
+                'drama',
+                'episode',
+            ])
+            ->where('user_id', Auth::id())
+            ->orderByDesc('last_watched_at')
+            ->paginate(20);
+
+        return view('web.pages.history', [
+            'histories' => $histories,
+        ]);
+
+    })->name('web.history');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Dashboard
+    |--------------------------------------------------------------------------
+    */
+
     Route::get('/dashboard', function () {
 
         return response()->json([
             'success' => true,
             'message' => 'Login berhasil.',
-            'user' => auth()->user(),
+            'user'    => auth()->user(),
         ]);
 
     })->name('dashboard');
