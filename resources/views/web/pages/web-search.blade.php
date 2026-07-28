@@ -1,25 +1,18 @@
 @extends('web.layouts.app')
 
-@section('title','Cari Drama')
+@section('title', 'Cari Drama')
 
 @section('content')
 
-<x-web.web-search-box/>
+<x-web.search.search-box />
 
-<x-web.web-search-filter
-
+<x-web.search.search-filter
     :genres="$genres"
-
     :countries="$countries"
-
 />
 
 <div id="web-search-result">
-
-    @include(
-        'web.components.web-search-empty'
-    )
-
+    @include('components.web.search.search-empty')
 </div>
 
 @endsection
