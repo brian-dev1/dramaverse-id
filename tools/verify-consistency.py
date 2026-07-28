@@ -255,6 +255,23 @@ check(not date_bad, "semua kolom tanggal punya nullable/default eksplisit")
 for b in date_bad: print("        -", b)
 
 
+# ---------- 13. route() di dalam PHP ----------
+print("\n== CEK ROUTE MATI DI PHP ==")
+# Pemeriksaan sebelumnya hanya menelusuri Blade. Controller, middleware, dan
+# seeder juga memanggil route() -- dan route mati di sana sama fatalnya.
+# Pola (?<![>$]) mengecualikan $request->route('x') yang mengambil parameter,
+# bukan menghasilkan URL.
+php_dead = []
+for f in glob.glob('app/**/*.php', recursive=True) + glob.glob('database/**/*.php', recursive=True):
+    src = open(f, encoding='utf-8').read()
+    for m in re.finditer(r"(?<![>$])\broute\(\s*'([a-zA-Z0-9_.\-]+)'", src):
+        name = m.group(1)
+        if name not in defined:
+            php_dead.append(f"{name} <- {f}")
+check(not php_dead, "semua route() di PHP menunjuk route yang terdefinisi")
+for d in php_dead: print("        -", d)
+
+
 print("\n" + "="*60)
 if fail:
     print(f"HASIL: {len(fail)} masalah ditemukan")

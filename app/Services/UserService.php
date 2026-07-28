@@ -2,56 +2,59 @@
 
 namespace App\Services;
 
+use App\Models\User;
 use App\Repositories\UserRepository;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 
 class UserService
 {
     public function __construct(
         protected UserRepository $users
-    ) {}
+    ) {
+    }
 
-    public function syncTelegramUser(array $telegramUser)
+    /**
+     * Menyelaraskan profil Telegram ke tabel users.
+     *
+     * Pengguna biasa tidak punya email maupun kata sandi — identitasnya
+     * sepenuhnya bersandar pada telegram_id. Kolom email/password hanya
+     * dipakai akun admin.
+     */
+    public function syncTelegramUser(array $telegramUser): User
     {
-        $user = $this->users->findByTelegramId($telegramUser['id']);
+        $telegramId = (int) $telegramUser['id'];
 
-        $name = trim(
-            ($telegramUser['first_name'] ?? '') . ' ' . ($telegramUser['last_name'] ?? '')
-        );
+        $attributes = [
+            'name'                => $this->resolveName($telegramUser),
+            'telegram_username'   => $telegramUser['username'] ?? null,
+            'telegram_first_name' => $telegramUser['first_name'] ?? null,
+            'telegram_last_name'  => $telegramUser['last_name'] ?? null,
+            'telegram_language'   => $telegramUser['language_code'] ?? null,
+            'last_seen_at'        => now(),
+        ];
 
-        if ($name === '') {
-            $name = $telegramUser['username'] ?? ('Telegram User ' . $telegramUser['id']);
-        }
+        $user = $this->users->findByTelegramId($telegramId);
 
-        if (!$user) {
-
-            return $this->users->create([
-                'name' => $name,
-                'email' => 'telegram_' . $telegramUser['id'] . '@dramaverse.local',
-                'password' => Hash::make(Str::random(32)),
-                'telegram_id' => $telegramUser['id'],
-                'telegram_username' => $telegramUser['username'] ?? null,
-                'telegram_first_name' => $telegramUser['first_name'],
-                'telegram_last_name' => $telegramUser['last_name'] ?? null,
-                'telegram_language' => $telegramUser['language_code'] ?? null,
-                'last_login_at' => now(),
+        if (! $user) {
+            return $this->users->create($attributes + [
+                'telegram_id' => $telegramId,
+                'is_admin'    => false,
+                'is_active'   => true,
             ]);
         }
 
-        return $this->users->update($user, [
+        return $this->users->update($user, $attributes);
+    }
 
-            'name' => $name,
+    private function resolveName(array $telegramUser): string
+    {
+        $name = trim(
+            ($telegramUser['first_name'] ?? '').' '.($telegramUser['last_name'] ?? '')
+        );
 
-            'telegram_username' => $telegramUser['username'] ?? null,
+        if ($name !== '') {
+            return $name;
+        }
 
-            'telegram_first_name' => $telegramUser['first_name'],
-
-            'telegram_last_name' => $telegramUser['last_name'] ?? null,
-
-            'telegram_language' => $telegramUser['language_code'] ?? null,
-
-            'last_login_at' => now(),
-        ]);
+        return $telegramUser['username'] ?? 'Pengguna Telegram '.$telegramUser['id'];
     }
 }

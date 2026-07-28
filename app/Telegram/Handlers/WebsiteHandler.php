@@ -34,6 +34,8 @@ class WebsiteHandler
 
         $token = $this->login->generate($user);
 
+        $minutes = (int) config('telegram.login_token_ttl', 10);
+
         $url = url('/auth/telegram/' . $token);
 
         $this->telegram->answerCallbackQuery(
@@ -49,7 +51,7 @@ class WebsiteHandler
                 "",
                 $url,
                 "",
-                "⏳ Link hanya berlaku selama 5 menit."
+                "⏳ Link hanya berlaku selama {$minutes} menit dan sekali pakai."
             ]),
             [
                 'parse_mode' => 'Markdown',
