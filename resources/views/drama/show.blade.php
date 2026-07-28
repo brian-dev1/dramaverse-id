@@ -26,7 +26,7 @@
 
         <aside class="drama-sidebar">
 
-            <x-web.drama.recommendation
+            <x-web.drama.drama-related
                 :drama="$drama"
             />
 
