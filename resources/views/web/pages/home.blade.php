@@ -5,7 +5,7 @@
 @section('content')
 
     {{-- HERO --}}
-    <x-web.hero />
+    <x-web.home.hero />
 
     {{-- PERFORATION DIVIDER --}}
     <div class="perf" style="margin-top:32px;">
@@ -15,27 +15,27 @@
     </div>
 
     {{-- CONTINUE WATCHING --}}
-    <x-web.continue-watching />
+    <x-web.home.continue-watching />
 
     {{-- TRENDING --}}
-    <x-web.trending />
+    <x-web.home.trending />
 
     {{-- GENRE --}}
-    <x-web.genre />
+    <x-web.home.genre />
 
     {{-- LATEST RELEASE --}}
-    <x-web.latest-release />
+    <x-web.home.latest-release />
 
     {{-- POPULAR --}}
-    <x-web.popular />
+    <x-web.home.popular />
 
     {{-- COUNTRY --}}
-    <x-web.country />
+    <x-web.home.country />
 
     {{-- TOP RATED --}}
-    <x-web.top-rated />
+    <x-web.home.top-rated />
 
     {{-- MEMBERSHIP --}}
-    <x-web.membership-banner />
+    <x-web.home.membership-banner />
 
 @endsection
