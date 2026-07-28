@@ -18,7 +18,7 @@
                 :drama="$drama"
             />
 
-            <x-web.drama.episode-list
+            <x-web.drama.drama-episode-list
                 :episodes="$drama->episodes"
             />
 
