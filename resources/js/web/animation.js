@@ -1,29 +1,17 @@
-document.addEventListener("DOMContentLoaded",()=>{
+/** Memunculkan section saat masuk viewport. */
+export default function animation() {
+    const targets = document.querySelectorAll('.section');
 
-    const items=document.querySelectorAll(
+    if (!targets.length || !('IntersectionObserver' in window)) return;
 
-        ".reveal,.reveal-left,.reveal-right,.zoom-in"
-
-    );
-
-    const observer=new IntersectionObserver(entries=>{
-
-        entries.forEach(entry=>{
-
-            if(entry.isIntersecting){
-
-                entry.target.classList.add("active");
-
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('is-visible');
+                observer.unobserve(entry.target);
             }
-
         });
+    }, { rootMargin: '0px 0px -10% 0px' });
 
-    },{
-
-        threshold:.15
-
-    });
-
-    items.forEach(item=>observer.observe(item));
-
-});
+    targets.forEach((el) => observer.observe(el));
+}

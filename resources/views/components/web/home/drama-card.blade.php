@@ -1,149 +1,66 @@
 @props([
     'drama',
-    'type' => 'default',
-    'rank' => null,
+    'variant' => 'default',   // default | continue | latest | rank | rated
+    'rank'     => null,
     'progress' => null,
+    'episode'  => null,
 ])
 
-<a
-    href="{{ route('web.detail', $drama->slug) }}"
-    class="drama-card {{ $drama->gradient ?? 'g1' }}">
+<a href="{{ route('web.drama.show', $drama->slug) }}"
+   class="drama-card {{ $drama->gradient ?? 'g1' }}"
+   aria-label="{{ $drama->title }}">
+
+    @if ($drama->poster_url)
+        <img src="{{ $drama->poster_url }}" alt="" loading="lazy" class="drama-poster-img">
+    @endif
 
     <div class="drama-poster">
 
-        @if(!empty($drama->poster_url))
-            <img
-                src="{{ $drama->poster_url }}"
-                alt="{{ $drama->title }}">
-        @endif
-
-        <div class="drama-overlay"></div>
-
-        {{-- TOP --}}
         <div class="card-top">
+            @switch($variant)
+                @case('continue')
+                    <span class="card-badge">EP {{ str_pad($episode ?? 1, 2, '0', STR_PAD_LEFT) }}</span>
+                    @break
 
-            @if($type == 'continue')
+                @case('latest')
+                    <span class="card-badge">BARU</span>
+                    @break
 
-                <span class="episode-badge">
-                    EP {{ str_pad($drama->last_episode ?? 1,2,'0',STR_PAD_LEFT) }}
-                </span>
+                @case('rated')
+                    <span class="card-badge">&#9733; {{ number_format((float) $drama->rating, 1) }}</span>
+                    @break
 
-            @elseif($type == 'latest')
+                @case('rank')
+                    <span class="card-rank">{{ str_pad($rank, 2, '0', STR_PAD_LEFT) }}</span>
+                    @break
+            @endswitch
 
-                <span class="episode-badge">
-                    BARU
-                </span>
-
-            @elseif($type == 'toprated')
-
-                <span class="vip-badge">
-                    ★ {{ number_format($drama->rating,1) }}
-                </span>
-
-            @elseif($rank)
-
-                <span class="vip-badge">
-                    #{{ str_pad($rank,2,'0',STR_PAD_LEFT) }}
-                </span>
-
+            @if ($drama->is_vip && $variant !== 'rank')
+                <span class="card-badge">VIP</span>
             @endif
-
         </div>
 
         <div class="drama-content">
 
-            <div class="drama-title">
+            <div class="card-title">{{ $drama->title }}</div>
 
-                {{ $drama->title }}
+            @if ($variant === 'continue')
+                <div class="card-sub">{{ $progress ?? 0 }}% selesai</div>
+                <div class="card-progress"><i style="width:{{ $progress ?? 0 }}%"></i></div>
+            @else
+                <div class="card-sub">
+                    @if ($variant === 'rank' || $variant === 'default')
+                        <span>&#9733; {{ number_format((float) $drama->rating, 1) }}</span>
+                    @endif
 
-            </div>
-
-            @switch($type)
-
-                @case('continue')
-
-                    <div class="drama-info">
-
-                        <span>{{ $progress ?? 0 }}% selesai</span>
-
-                    </div>
-
-                    <div class="card-progress">
-
-                        <i style="width:{{ $progress ?? 0 }}%"></i>
-
-                    </div>
-
-                @break
-
-                @case('latest')
-
-                    <div class="drama-info">
-
-                        <span>
-                            EP {{ $drama->episodes }}
-                        </span>
-
-                        <span>
-                            {{ $drama->country }}
-                        </span>
-
-                    </div>
-
-                @break
-
-                @case('toprated')
-
-                    <div class="drama-info">
-
-                        <span>
-
-                            {{ $drama->genre }}
-
-                        </span>
-
-                        <span>
-
-                            ★ {{ number_format($drama->rating,1) }}
-
-                        </span>
-
-                    </div>
-
-                @break
-
-                @default
-
-                    <div class="drama-info">
-
-                        <span>
-
-                            ★ {{ number_format($drama->rating,1) }}
-
-                        </span>
-
-                        <span>
-
-                            {{ $drama->country }}
-
-                        </span>
-
-                    </div>
-
-            @endswitch
-
-            <div class="card-actions">
-
-                <span class="card-btn">
-
-                    Tonton Sekarang
-
-                </span>
-
-            </div>
+                    @if ($drama->relationLoaded('country') && $drama->country)
+                        <span>&middot; {{ $drama->country->name }}</span>
+                    @elseif ($drama->total_episode)
+                        <span>&middot; {{ $drama->total_episode }} EP</span>
+                    @endif
+                </div>
+            @endif
 
         </div>
-
     </div>
-
 </a>

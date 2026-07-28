@@ -1,41 +1,44 @@
 @extends('web.layouts.app')
 
-@section('title', 'DramaVerse ID')
+@section('title', 'Beranda')
+@section('description', 'Streaming drama Korea, Tiongkok, Thailand, dan Jepang dengan subtitle Bahasa Indonesia.')
 
 @section('content')
 
-    {{-- HERO --}}
-    <x-web.home.hero />
+    <x-web.home.hero :banners="$banners" :dramas="$trending" />
 
-    {{-- PERFORATION DIVIDER --}}
     <div class="perf" style="margin-top:32px;">
-        @for($i = 0; $i < 30; $i++)
-            <span></span>
-        @endfor
+        @for ($i = 0; $i < 30; $i++)<span></span>@endfor
     </div>
 
-    {{-- CONTINUE WATCHING --}}
-    <x-web.home.continue-watching />
+    <x-web.home.continue-watching :histories="$continueWatching" />
 
-    {{-- TRENDING --}}
-    <x-web.home.trending />
+    <x-web.home.rail
+        :dramas="$trending"
+        title="Trending Minggu Ini"
+        count="Diperbarui setiap hari"
+        variant="rank"
+        :href="route('web.trending')" />
 
-    {{-- GENRE --}}
-    <x-web.home.genre />
+    <x-web.home.genre :genres="$genres" />
 
-    {{-- LATEST RELEASE --}}
-    <x-web.home.latest-release />
+    <x-web.home.grid
+        :dramas="$latest"
+        title="Rilis Terbaru"
+        variant="latest"
+        :href="route('web.latest')" />
 
-    {{-- POPULAR --}}
-    <x-web.home.popular />
+    <x-web.home.rail
+        :dramas="$popular"
+        title="Populer Minggu Ini"
+        :href="route('web.popular')" />
 
-    {{-- COUNTRY --}}
-    <x-web.home.country />
+    <x-web.home.country :countries="$countries" />
 
-    {{-- TOP RATED --}}
-    <x-web.home.top-rated />
-
-    {{-- MEMBERSHIP --}}
-    <x-web.home.membership-banner />
+    <x-web.home.grid
+        :dramas="$topRated"
+        title="Rating Tertinggi"
+        variant="rated"
+        :href="route('web.top-rated')" />
 
 @endsection

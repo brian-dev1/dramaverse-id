@@ -1,224 +1,57 @@
-<footer class="footer">
-
-    <div class="container">
-
-        <div class="footer-grid">
-
-            {{-- Brand --}}
-            <div class="footer-brand">
-
-                <a href="{{ route('web.home') }}" class="footer-logo">
-
-                    <span>🎬</span>
-
-                    <strong>DramaVerse</strong>
-
-                </a>
-
-                <p>
-
-                    Platform streaming drama Asia modern.
-                    Nikmati ribuan drama Korea, China,
-                    Jepang, Thailand dan lainnya dalam satu tempat.
-
-                </p>
-
-                <div class="footer-social">
-
-                    <a href="#">
-                        <i class="fab fa-telegram"></i>
-                    </a>
-
-                    <a href="#">
-                        <i class="fab fa-discord"></i>
-                    </a>
-
-                    <a href="#">
-                        <i class="fab fa-facebook"></i>
-                    </a>
-
-                    <a href="#">
-                        <i class="fab fa-instagram"></i>
-                    </a>
-
-                </div>
-
-            </div>
-
-            {{-- Explore --}}
-            <div>
-
-                <h4>
-
-                    Explore
-
-                </h4>
-
-                <ul>
-
-                    <li>
-
-                        <a href="{{ route('web.home') }}">
-
-                            Home
-
-                        </a>
-
-                    </li>
-
-                    <li>
-
-                        <a href="{{ route('web.trending') }}">
-
-                            Trending
-
-                        </a>
-
-                    </li>
-
-                    <li>
-
-                        <a href="{{ route('web.latest') }}">
-
-                            Latest Release
-
-                        </a>
-
-                    </li>
-
-                    <li>
-
-                        <a href="{{ route('web.popular') }}">
-
-                            Popular
-
-                        </a>
-
-                    </li>
-
-                </ul>
-
-            </div>
-
-            {{-- Membership --}}
-            <div>
-
-                <h4>
-
-                    Membership
-
-                </h4>
-
-                <ul>
-
-                    <li>
-
-                        <a href="{{ route('web.membership') }}">
-
-                            Premium
-
-                        </a>
-
-                    </li>
-
-                    <li>
-
-                        <a href="{{ route('web.account') }}">
-
-                            My Account
-
-                        </a>
-
-                    </li>
-
-                    <li>
-
-                        <a href="{{ route('web.history') }}">
-
-                            Watch History
-
-                        </a>
-
-                    </li>
-
-                </ul>
-
-            </div>
-
-            {{-- Support --}}
-            <div>
-
-                <h4>
-
-                    Support
-
-                </h4>
-
-                <ul>
-
-                    <li>
-
-                        <a href="#">
-
-                            Help Center
-
-                        </a>
-
-                    </li>
-
-                    <li>
-
-                        <a href="#">
-
-                            Privacy Policy
-
-                        </a>
-
-                    </li>
-
-                    <li>
-
-                        <a href="#">
-
-                            Terms of Service
-
-                        </a>
-
-                    </li>
-
-                    <li>
-
-                        <a href="#">
-
-                            Contact
-
-                        </a>
-
-                    </li>
-
-                </ul>
-
-            </div>
-
+<footer class="footer wrap">
+
+    <div class="footer-grid">
+
+        <div class="footer-brand">
+            <a href="{{ route('web.home') }}" class="logo">
+                DramaVerse<span class="dot"></span><span class="id">ID</span>
+            </a>
+            <p>
+                Platform streaming drama Asia — Korea, Tiongkok, Thailand, Jepang,
+                dan lainnya, dengan subtitle Bahasa Indonesia.
+            </p>
         </div>
 
-        <div class="footer-bottom">
-
-            <span>
-
-                © {{ now()->year }} DramaVerse.
-                All Rights Reserved.
-
-            </span>
-
-            <span>
-
-                Made with ❤️ in Indonesia
-
-            </span>
-
+        <div class="footer-col">
+            <h4>Jelajahi</h4>
+            <a href="{{ route('web.trending') }}">Trending</a>
+            <a href="{{ route('web.latest') }}">Rilis Terbaru</a>
+            <a href="{{ route('web.top-rated') }}">Rating Tertinggi</a>
+            <a href="{{ route('web.genre.index') }}">Genre</a>
+            <a href="{{ route('web.country.index') }}">Negara</a>
         </div>
 
+        <div class="footer-col">
+            <h4>Akun</h4>
+            @auth
+                <a href="{{ route('web.profile') }}">Profil Saya</a>
+                <a href="{{ route('web.history') }}">Riwayat Tonton</a>
+                <a href="{{ route('web.my-list') }}">Daftar Saya</a>
+                <a href="{{ route('web.favorites') }}">Favorit</a>
+                <a href="{{ route('web.settings') }}">Pengaturan</a>
+            @else
+                <a href="{{ route('web.membership') }}">Membership</a>
+                <a href="{{ route('web.vip') }}">Koleksi VIP</a>
+            @endauth
+        </div>
+
+        <div class="footer-col">
+            <h4>Bantuan</h4>
+            <a href="{{ route('web.help') }}">Pusat Bantuan</a>
+            <a href="{{ route('web.about') }}">Tentang Kami</a>
+        </div>
+
+        <div class="footer-col">
+            <h4>Legal</h4>
+            <a href="{{ route('web.terms') }}">Ketentuan Layanan</a>
+            <a href="{{ route('web.privacy') }}">Kebijakan Privasi</a>
+        </div>
+
+    </div>
+
+    <div class="footer-bottom">
+        <span>&copy; {{ now()->year }} DramaVerse ID. Seluruh hak cipta dilindungi.</span>
+        <span>Dibuat untuk pencinta drama Asia</span>
     </div>
 
 </footer>

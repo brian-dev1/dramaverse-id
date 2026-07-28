@@ -1,181 +1,181 @@
+/*
+|--------------------------------------------------------------------------
+| DramaVerse ID — Design Token
+|--------------------------------------------------------------------------
+| Sumber kebenaran: dramaverse-preview.html
+| Palet emas + crimson di atas dasar gelap kebiruan.
+*/
+
 :root{
+    /* --- Permukaan --- */
+    --bg-primary:#0B0A10;
+    --bg-secondary:#131019;
+    --bg-card:#1C1822;
+    --bg-card-hover:#231D2A;
 
-    --bg:#09090B;
-    --bg-secondary:#111116;
-    --bg-card:#17171F;
+    /* --- Garis --- */
+    --border:#2B2532;
+    --border-soft:#211C27;
 
-    --primary:#7C5CFF;
-    --primary-hover:#9177FF;
+    /* --- Teks --- */
+    --text-primary:#F3EEE7;
+    --text-secondary:#9C93A6;
+    --text-muted:#645E70;
 
-    --accent:#FACC15;
+    /* --- Aksen --- */
+    --gold:#D9AF6E;
+    --gold-bright:#EAC98C;
+    --crimson:#C1425B;
+    --crimson-deep:#7E2C40;
+    --violet:#5B4B8A;
 
-    --text:#FFFFFF;
-    --text-secondary:#B7B7C8;
+    /* --- Radius --- */
+    --radius-s:6px;
+    --radius-m:12px;
+    --radius-l:20px;
+    --radius-xl:28px;
 
-    --border:rgba(255,255,255,.08);
+    /* --- Spasi --- */
+    --space-1:8px;
+    --space-2:16px;
+    --space-3:24px;
+    --space-4:32px;
+    --space-5:48px;
+    --space-6:64px;
+    --space-7:96px;
 
-    --radius:22px;
+    /* --- Tipografi --- */
+    --font-display:"Space Grotesk", sans-serif;
+    --font-body:"Plus Jakarta Sans", sans-serif;
+    --font-mono:"Plus Jakarta Sans", sans-serif;
 
-    --shadow:
-        0 20px 60px rgba(0,0,0,.35);
-
+    /* --- Gerak --- */
     --transition:.28s ease;
-
+    --ease-out:cubic-bezier(.2,.8,.2,1);
 }
 
-*{
-    margin:0;
-    padding:0;
-    box-sizing:border-box;
-}
+*{ margin:0; padding:0; box-sizing:border-box; }
 
-html{
-
-    scroll-behavior:smooth;
-
-}
+html{ scroll-behavior:smooth; }
 
 body{
-
-    background:
-        radial-gradient(circle at top,#1E1742 0%,#09090B 45%);
-
-    color:var(--text);
-
-    font-family:
-        "Plus Jakarta Sans",
-        sans-serif;
-
+    background:var(--bg-primary);
+    color:var(--text-primary);
+    font-family:var(--font-body);
+    -webkit-font-smoothing:antialiased;
     overflow-x:hidden;
-
 }
 
-img{
+img, svg{ display:block; max-width:100%; }
+a{ color:inherit; text-decoration:none; }
+button{ font-family:inherit; cursor:pointer; border:none; background:none; color:inherit; }
+ul{ list-style:none; }
 
-    display:block;
+::selection{ background:var(--gold); color:#141019; }
 
-    width:100%;
-
+:focus-visible{
+    outline:2px solid var(--gold);
+    outline-offset:3px;
+    border-radius:4px;
 }
 
-a{
-
-    color:inherit;
-
-    text-decoration:none;
-
+@media (prefers-reduced-motion: reduce){
+    *{
+        animation-duration:.001ms !important;
+        animation-iteration-count:1 !important;
+        transition-duration:.001ms !important;
+        scroll-behavior:auto !important;
+    }
 }
 
-button{
-
-    cursor:pointer;
-
-    font-family:inherit;
-
+/* --- Kerangka halaman --- */
+.wrap{
+    max-width:1400px;
+    margin:0 auto;
+    padding:0 var(--space-4);
 }
 
-.container{
-
-    width:min(1280px,92%);
-
-    margin:auto;
-
+.section-pad{
+    padding-left:var(--space-4);
+    padding-right:var(--space-4);
 }
 
-.section{
-
-    padding:70px 0;
-
+/* --- Butiran film (grain overlay) --- */
+.grain{
+    position:fixed; inset:0; pointer-events:none; z-index:1;
+    opacity:.035; mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
-.section-title{
-
-    display:flex;
-
-    align-items:center;
-
-    justify-content:space-between;
-
-    margin-bottom:30px;
-
+/* --- Pembatas perforasi (motif pita seluloid) --- */
+.perf{
+    display:flex; gap:10px;
+    padding:0 var(--space-4);
+    overflow:hidden;
+}
+.perf span{
+    width:6px; height:6px; border-radius:50%;
+    background:var(--border);
+    flex-shrink:0;
 }
 
-.section-title h2{
-
-    font-size:32px;
-
-    font-weight:800;
-
-}
-
-.section-title a{
-
-    color:var(--primary);
-
-    font-weight:700;
-
-}
-
-.glass{
-
-    background:
-
-        rgba(255,255,255,.05);
-
-    backdrop-filter:
-
-        blur(18px);
-
-    border:
-
-        1px solid var(--border);
-
-}
-
+/* --- Tombol --- */
 .btn{
-
-    display:inline-flex;
-
-    align-items:center;
-
-    justify-content:center;
-
-    gap:10px;
-
-    padding:
-
-        14px 28px;
-
-    border-radius:999px;
-
-    transition:var(--transition);
-
-    font-weight:700;
-
+    display:inline-flex; align-items:center; gap:9px;
+    padding:13px 26px; border-radius:var(--radius-m);
+    font-weight:600; font-size:14.5px;
+    transition:transform .2s ease, box-shadow .2s ease, background .2s ease;
 }
-
 .btn-primary{
-
-    background:var(--primary);
-
-    color:white;
-
+    background:linear-gradient(135deg, var(--gold-bright), var(--gold));
+    color:#191118;
 }
-
 .btn-primary:hover{
-
-    background:var(--primary-hover);
-
+    transform:translateY(-2px);
+    box-shadow:0 10px 30px -8px rgba(217,175,110,.5);
 }
-
-.btn-outline{
-
-    border:1px solid rgba(255,255,255,.15);
-
-}
-
-.btn-outline:hover{
-
+.btn-ghost{
     background:rgba(255,255,255,.05);
+    border:1px solid rgba(255,255,255,.14);
+    color:var(--text-primary);
+    backdrop-filter:blur(6px);
+}
+.btn-ghost:hover{ background:rgba(255,255,255,.09); transform:translateY(-2px); }
 
+/* --- Chip & pil --- */
+.chip{
+    padding:5px 12px; border-radius:999px;
+    border:1px solid var(--border);
+    background:rgba(255,255,255,.02);
+    font-size:12.5px; font-weight:500;
+    color:var(--text-secondary);
+}
+.chip.gold{ border-color:rgba(217,175,110,.4); color:var(--gold-bright); }
+
+.pill-row{ display:flex; gap:10px; flex-wrap:wrap; }
+.pill{
+    padding:10px 18px; border-radius:999px;
+    border:1px solid var(--border);
+    background:var(--bg-card);
+    font-size:13.5px; font-weight:600; color:var(--text-secondary);
+    transition:all .2s ease;
+}
+.pill:hover, .pill.active{
+    color:#191118; background:var(--gold); border-color:var(--gold);
+}
+
+.rating{
+    display:flex; align-items:center; gap:5px;
+    font-family:var(--font-mono); color:var(--gold-bright); font-size:13px;
+}
+
+/* --- Notifikasi ringkas --- */
+.flash{
+    margin:var(--space-3) var(--space-4) 0;
+    padding:14px 18px;
+    border-radius:var(--radius-m);
+    border:1px solid rgba(217,175,110,.3);
+    background:rgba(217,175,110,.08);
+    color:var(--gold-bright);
+    font-size:14px;
 }

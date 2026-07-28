@@ -1,79 +1,26 @@
-@props([
-    'continueWatching' => collect(),
-])
+@props(['histories'])
 
-<section class="home-section container">
+@if ($histories->isNotEmpty())
+    <section class="section section-pad">
 
-    <div class="section-header">
+        <x-web.home.section-header
+            title="Lanjutkan Menonton"
+            :href="route('web.continue-watching')" />
 
-        <div class="section-left">
+        <div class="rail">
+            @foreach ($histories as $history)
+                @php
+                    $total   = max((int) ($history->episode->duration ?? 0), 1);
+                    $percent = min(100, (int) round(($history->progress / $total) * 100));
+                @endphp
 
-            <div class="section-line"></div>
-
-            <div>
-
-                <h2 class="section-title">
-
-                    ▶ Continue Watching
-
-                </h2>
-
-                <div class="section-subtitle">
-
-                    Lanjutkan drama yang terakhir kamu tonton.
-
-                </div>
-
-            </div>
-
+                <x-web.home.drama-card
+                    :drama="$history->drama"
+                    variant="continue"
+                    :episode="$history->episode->episode_number"
+                    :progress="$percent" />
+            @endforeach
         </div>
 
-        <a
-            href="{{ route('web.history') }}"
-            class="section-more">
-
-            Lihat Semua →
-
-        </a>
-
-    </div>
-
-    <div class="drama-grid">
-
-        @forelse($continueWatching as $drama)
-
-            <x-web.home.drama-card
-                :drama="$drama"
-                type="continue"
-                :progress="$drama->progress ?? rand(10,95)"
-            />
-
-        @empty
-
-            <div class="empty-state">
-
-                <div class="empty-icon">
-
-                    ▶
-
-                </div>
-
-                <h3>
-
-                    Belum Ada Riwayat Tontonan
-
-                </h3>
-
-                <p>
-
-                    Drama yang sedang kamu tonton akan muncul di sini.
-
-                </p>
-
-            </div>
-
-        @endforelse
-
-    </div>
-
-</section>
+    </section>
+@endif

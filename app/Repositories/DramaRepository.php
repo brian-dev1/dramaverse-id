@@ -14,7 +14,7 @@ class DramaRepository implements DramaRepositoryInterface
         return Drama::query()
             ->with([
                 'country',
-                'genre',
+                'genres',
             ])
             ->latest()
             ->limit($limit)
@@ -26,7 +26,7 @@ class DramaRepository implements DramaRepositoryInterface
         return Drama::query()
             ->with([
                 'country',
-                'genre',
+                'genres',
             ])
             ->where('is_trending', true)
             ->latest()
@@ -39,7 +39,7 @@ class DramaRepository implements DramaRepositoryInterface
         return Drama::query()
             ->with([
                 'country',
-                'genre',
+                'genres',
             ])
             ->where(function ($query) use ($keyword) {
 
@@ -60,7 +60,7 @@ class DramaRepository implements DramaRepositoryInterface
         return Drama::query()
             ->with([
                 'country',
-                'genre',
+                'genres',
                 'episodes',
             ])
             ->where(
@@ -75,7 +75,7 @@ class DramaRepository implements DramaRepositoryInterface
         return Drama::query()
             ->with([
                 'country',
-                'genre',
+                'genres',
             ])
             ->latest()
             ->paginate($perPage);

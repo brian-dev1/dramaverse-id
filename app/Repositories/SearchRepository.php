@@ -26,7 +26,7 @@ class SearchRepository implements SearchRepositoryInterface
         return [
             'dramas' => Drama::query()
                 ->with([
-                    'genre',
+                    'genres',
                     'country',
                 ])
                 ->where(function ($query) use ($keyword) {

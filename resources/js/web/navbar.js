@@ -1,17 +1,11 @@
-document.addEventListener("DOMContentLoaded", () => {
+/** Menambah bayangan pada navbar saat halaman digulir. */
+export default function navbar() {
+    const bar = document.querySelector('.navbar');
 
-    const navbar = document.querySelector(".navbar");
+    if (!bar) return;
 
-    if (!navbar) return;
+    const onScroll = () => bar.classList.toggle('scrolled', window.scrollY > 20);
 
-    window.addEventListener("scroll", () => {
-
-        if (window.scrollY > 20) {
-            navbar.classList.add("scrolled");
-        } else {
-            navbar.classList.remove("scrolled");
-        }
-
-    });
-
-});
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+}

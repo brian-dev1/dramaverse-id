@@ -19,7 +19,7 @@ class LoginTokenRepository
             ->first();
     }
 
-    public function use(LoginToken $token): void
+    public function markAsUsed(LoginToken $token): void
     {
         $token->update([
             'used_at' => now(),

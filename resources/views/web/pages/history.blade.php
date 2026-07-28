@@ -1,43 +1,38 @@
 @extends('web.layouts.app')
 
-@section('title', 'Riwayat Menonton')
+@section('title', $title)
 
 @section('content')
 
-<div class="container py-5">
+    <section class="page-head section-pad">
+        <h1 class="page-title">{{ $title }}</h1>
+        <p class="page-subtitle">Lanjutkan dari tempat Anda berhenti.</p>
+    </section>
 
-    <h2 class="mb-4">
-        Riwayat Menonton
-    </h2>
+    @if ($histories->isEmpty())
+        <x-web.home.empty-state
+            title="Belum ada riwayat"
+            message="Mulai menonton, dan judulnya akan muncul di sini."
+            :href="route('web.trending')" action="Lihat Trending" />
+    @else
+        <section class="section section-pad">
+            <div class="grid">
+                @foreach ($histories as $history)
+                    @php
+                        $total   = max((int) ($history->episode->duration ?? 0), 1);
+                        $percent = min(100, (int) round(($history->progress / $total) * 100));
+                    @endphp
 
-    @forelse($histories as $history)
-
-        <div class="card mb-3">
-            <div class="card-body">
-
-                <h5>
-                    {{ $history->drama->title }}
-                </h5>
-
-                <p class="mb-1">
-                    Episode {{ $history->episode->episode_number }}
-                </p>
-
-                <small>
-                    Progress {{ $history->progress }}%
-                </small>
-
+                    <x-web.home.drama-card
+                        :drama="$history->drama"
+                        variant="continue"
+                        :episode="$history->episode->episode_number"
+                        :progress="$percent" />
+                @endforeach
             </div>
-        </div>
+        </section>
 
-    @empty
-
-        <p>Belum ada riwayat menonton.</p>
-
-    @endforelse
-
-    {{ $histories->links() }}
-
-</div>
+        <div class="section-pad pagination-wrap">{{ $histories->links() }}</div>
+    @endif
 
 @endsection

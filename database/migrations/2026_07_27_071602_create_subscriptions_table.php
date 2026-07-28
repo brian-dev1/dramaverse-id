@@ -25,9 +25,9 @@ return new class extends Migration
 
             $table->decimal('price', 12, 2);
 
-            $table->timestamp('started_at');
+            $table->timestamp('started_at')->nullable();
 
-            $table->timestamp('expired_at');
+            $table->timestamp('expired_at')->nullable();
 
             $table->string('status')->default('active');
 

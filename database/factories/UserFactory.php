@@ -2,44 +2,60 @@
 
 namespace Database\Factories;
 
-use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
 /**
- * @extends Factory<User>
+ * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\User>
  */
 class UserFactory extends Factory
 {
-    /**
-     * The current password being used by the factory.
-     */
     protected static ?string $password;
 
     /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
+     * Pengguna default adalah pengguna Telegram — tanpa email dan kata sandi.
      */
     public function definition(): array
     {
+        $first = fake()->firstName();
+        $last  = fake()->lastName();
+
         return [
-            'name' => fake()->name(),
-            'email' => fake()->unique()->safeEmail(),
-            'email_verified_at' => now(),
-            'password' => static::$password ??= Hash::make('password'),
-            'remember_token' => Str::random(10),
+            'name'                => "{$first} {$last}",
+            'telegram_id'         => fake()->unique()->numberBetween(100_000_000, 999_999_999),
+            'telegram_username'   => Str::lower($first).'_'.fake()->unique()->numberBetween(10, 9999),
+            'telegram_first_name' => $first,
+            'telegram_last_name'  => $last,
+            'telegram_language'   => 'id',
+            'email'               => null,
+            'password'            => null,
+            'is_admin'            => false,
+            'is_active'           => true,
+            'is_banned'           => false,
+            'remember_token'      => Str::random(10),
         ];
     }
 
-    /**
-     * Indicate that the model's email address should be unverified.
-     */
-    public function unverified(): static
+    /** Akun admin: memakai email + kata sandi. */
+    public function admin(): static
     {
         return $this->state(fn (array $attributes) => [
-            'email_verified_at' => null,
+            'telegram_id'       => null,
+            'telegram_username' => null,
+            'email'             => fake()->unique()->safeEmail(),
+            'email_verified_at' => now(),
+            'password'          => static::$password ??= Hash::make('password'),
+            'is_admin'          => true,
+        ]);
+    }
+
+    /** Akun yang diblokir. */
+    public function banned(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'is_banned' => true,
+            'is_active' => false,
         ]);
     }
 }

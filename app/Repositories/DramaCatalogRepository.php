@@ -26,7 +26,7 @@ class DramaCatalogRepository implements DramaCatalogRepositoryInterface
 
                         'country',
 
-                        'genre',
+                        'genres',
 
                     ])
 

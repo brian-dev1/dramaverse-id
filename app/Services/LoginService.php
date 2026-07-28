@@ -19,7 +19,7 @@ class LoginService
         $this->tokens->create([
             'user_id' => $user->id,
             'token' => hash('sha256', $plain),
-            'expires_at' => now()->addMinutes(5),
+            'expires_at' => now()->addMinutes(config('telegram.login_token_ttl', 10)),
         ]);
 
         return $plain;

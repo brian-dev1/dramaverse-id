@@ -27,15 +27,17 @@ class RecommendationRepository implements RecommendationRepositoryInterface
                     'dramas.id'
                 )
 
-                ->pluck('genre_id')
+                ->join('drama_genre', 'dramas.id', '=', 'drama_genre.drama_id')
+
+                ->pluck('drama_genre.genre_id')
 
                 ->unique();
 
             if ($genreIds->isNotEmpty()) {
 
-                $query->whereIn(
-                    'genre_id',
-                    $genreIds
+                $query->whereHas(
+                    'genres',
+                    fn ($q) => $q->whereIn('genres.id', $genreIds)
                 );
 
             }
@@ -59,9 +61,9 @@ class RecommendationRepository implements RecommendationRepositoryInterface
 
         return Drama::query()
 
-            ->where(
-                'genre_id',
-                $drama->genre_id
+            ->whereHas(
+                'genres',
+                fn ($q) => $q->whereIn('genres.id', $drama->genres->pluck('id'))
             )
 
             ->whereKeyNot(

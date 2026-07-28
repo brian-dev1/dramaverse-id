@@ -2,56 +2,66 @@
 
 /*
 |--------------------------------------------------------------------------
-| DramaVerse Theme
+| DramaVerse ID — Entry Stylesheet
 |--------------------------------------------------------------------------
+| Token dan modul dimuat berurutan: token -> tata letak -> komponen.
+| Modul untuk sprint berikutnya menunggu di resources/views/_staging/css
+| dan ditarik ke sini saat fiturnya dikerjakan.
 */
 
+/* --- Token & dasar --- */
 @import "./web/home/theme.css";
+
+/* --- Kerangka --- */
 @import "./web/home/navbar.css";
+@import "./web/home/section.css";
+
+/* --- Komponen --- */
 @import "./web/home/hero.css";
 @import "./web/home/card.css";
-@import "./web/home/section.css";
 @import "./web/home/animation.css";
-@import "./web/home/responsive.css";
+
+/* --- Halaman --- */
 @import "./web/search/search.css";
 @import "./web/detail/detail.css";
 @import "./web/detail/episode.css";
+@import "./web/player/player.css";
+
+/* --- Responsif (terakhir agar dapat menimpa) --- */
+@import "./web/home/responsive.css";
 @import "./web/detail/responsive.css";
 
 /*
 |--------------------------------------------------------------------------
-| Laravel Sources
+| Sumber pemindaian Tailwind
 |--------------------------------------------------------------------------
 */
 
 @source "../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php";
 @source "../../storage/framework/views/*.php";
-@source "../**/*.blade.php";
-@source "../**/*.js";
+@source "../views/**/*.blade.php";
+@source "../js/**/*.js";
 
 /*
 |--------------------------------------------------------------------------
-| Theme
+| Tema Tailwind — dipetakan ke token di atas
 |--------------------------------------------------------------------------
 */
 
 @theme {
-    --font-sans:
-        "Plus Jakarta Sans",
-        "Space Grotesk",
-        ui-sans-serif,
-        system-ui,
-        sans-serif;
+    --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+    --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
 
-    --color-primary: #7C5CFF;
-    --color-primary-hover: #9374FF;
+    --color-ink: #0B0A10;
+    --color-surface: #131019;
+    --color-card: #1C1822;
 
-    --color-background: #09090B;
-    --color-surface: #17171F;
-    --color-border: rgba(255,255,255,.08);
+    --color-gold: #D9AF6E;
+    --color-gold-bright: #EAC98C;
+    --color-crimson: #C1425B;
 
-    --color-text: #FFFFFF;
-    --color-text-secondary: #B8B8C8;
+    --color-body: #F3EEE7;
+    --color-muted: #9C93A6;
 
-    --radius-xl: 22px;
+    --radius-xl: 28px;
 }

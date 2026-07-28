@@ -20,7 +20,7 @@ class DramaResource extends JsonResource
 
             'slug' => $this->slug,
 
-            'description' => $this->description,
+            'synopsis' => $this->synopsis,
 
             'poster' => $this->poster,
 
@@ -28,7 +28,7 @@ class DramaResource extends JsonResource
 
             'country' => $this->country?->name,
 
-            'genre' => $this->genre?->name,
+            'genres' => $this->whenLoaded('genres', fn () => $this->genres->pluck('name')),
 
             'release_year' => $this->release_year,
 

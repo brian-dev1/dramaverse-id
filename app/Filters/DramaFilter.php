@@ -18,9 +18,9 @@ class DramaFilter
 
         if ($this->request->filled('genre')) {
 
-            $query->where(
-                'genre_id',
-                $this->request->integer('genre')
+            $query->whereHas(
+                'genres',
+                fn (Builder $q) => $q->where('genres.slug', $this->request->string('genre'))
             );
 
         }

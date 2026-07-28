@@ -1,73 +1,73 @@
-document.addEventListener("DOMContentLoaded", () => {
-
-    const video = document.querySelector(".web-video-player");
+/**
+ * Sinkronisasi progres pemutar dengan server.
+ *
+ * - Melanjutkan dari posisi terakhir saat metadata siap
+ * - Mengirim progres setiap 15 detik dan saat halaman ditutup
+ * - Menandai selesai ketika video berakhir
+ */
+export default function player() {
+    const video = document.getElementById('player');
 
     if (!video) return;
 
-    const nextUrl = document.body.dataset.nextEpisode;
+    const episodeId = video.dataset.episode;
+    const resumeAt  = Number.parseInt(video.dataset.progress || '0', 10);
+    const token     = document.querySelector('meta[name="csrf-token"]')?.content;
 
-    if (!nextUrl) return;
+    if (!episodeId || !token) return;
 
-    video.addEventListener("ended", () => {
+    const post = (url, body, useBeacon = false) => {
+        const payload = JSON.stringify({ episode_id: episodeId, ...body });
 
-        const overlay = document.createElement("div");
+        if (useBeacon && navigator.sendBeacon) {
+            navigator.sendBeacon(url, new Blob([payload], { type: 'application/json' }));
+            return;
+        }
 
-        overlay.className = "player-next-overlay";
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': token,
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: payload,
+            keepalive: true,
+        }).catch(() => { /* jaringan putus — progres akan dikirim ulang nanti */ });
+    };
 
-        overlay.innerHTML = `
-            <div class="player-next-box">
+    // --- Lanjutkan dari posisi terakhir ---
+    video.addEventListener('loadedmetadata', () => {
+        if (resumeAt > 0 && resumeAt < video.duration - 10) {
+            video.currentTime = resumeAt;
+        }
+    }, { once: true });
 
-                <h2>Episode Selesai</h2>
+    // --- Kirim progres berkala ---
+    let lastSent = 0;
 
-                <p>Episode berikutnya akan diputar dalam</p>
+    video.addEventListener('timeupdate', () => {
+        const now = Math.floor(video.currentTime);
 
-                <div id="countdown">5</div>
-
-                <div class="player-next-action">
-
-                    <button id="cancelNext">
-                        Batal
-                    </button>
-
-                    <a href="${nextUrl}">
-                        Tonton Sekarang
-                    </a>
-
-                </div>
-
-            </div>
-        `;
-
-        document.body.appendChild(overlay);
-
-        let countdown = 5;
-
-        const timer = setInterval(() => {
-
-            countdown--;
-
-            document.getElementById("countdown").textContent = countdown;
-
-            if (countdown <= 0) {
-
-                clearInterval(timer);
-
-                window.location.href = nextUrl;
-
-            }
-
-        },1000);
-
-        document
-            .getElementById("cancelNext")
-            .onclick = () => {
-
-                clearInterval(timer);
-
-                overlay.remove();
-
-            };
-
+        if (now - lastSent >= 15) {
+            lastSent = now;
+            post('/api/v1/player/progress', { progress: now });
+        }
     });
 
-});
+    // --- Simpan saat meninggalkan halaman ---
+    window.addEventListener('pagehide', () => {
+        post('/api/v1/player/progress', { progress: Math.floor(video.currentTime) }, true);
+    });
+
+    // --- Tandai selesai ---
+    video.addEventListener('ended', () => {
+        post(`/api/v1/player/completed/${episodeId}`, { progress: Math.floor(video.duration) });
+
+        const next = document.querySelector('.player-nav .btn-primary');
+
+        if (next) {
+            setTimeout(() => { window.location.href = next.href; }, 5000);
+        }
+    });
+}

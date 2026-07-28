@@ -12,7 +12,7 @@ class AdminDramaRepository implements AdminDramaRepositoryInterface
         return Drama::query()
 
             ->with([
-                'genre',
+                'genres',
                 'country'
             ])
 

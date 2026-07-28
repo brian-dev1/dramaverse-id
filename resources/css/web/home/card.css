@@ -1,573 +1,77 @@
-/* ===========================================
-   DRAMA CARD
-=========================================== */
-
-.drama-grid{
-
-    display:grid;
-
-    grid-template-columns:
-        repeat(auto-fill,minmax(220px,1fr));
-
-    gap:28px;
-
-}
-
+/* ============ KARTU DRAMA ============ */
 .drama-card{
-
     position:relative;
-
+    flex:0 0 168px;
+    scroll-snap-align:start;
+    border-radius:var(--radius-m);
     overflow:hidden;
-
-    border-radius:24px;
-
-    background:#17171f;
-
-    transition:.35s;
-
+    aspect-ratio:2/3;
+    border:1px solid var(--border-soft);
     cursor:pointer;
-
+    display:block;
+    transition:transform .35s var(--ease-out), border-color .3s ease;
 }
+.grid .drama-card{ flex:none; width:100%; }
+.drama-card:hover{ transform:translateY(-6px); border-color:rgba(217,175,110,.35); }
 
-.drama-card:hover{
-
-    transform:translateY(-10px);
-
-    box-shadow:
-
-        0 25px 60px rgba(0,0,0,.45);
-
+.drama-poster-img{
+    position:absolute; inset:0;
+    width:100%; height:100%; object-fit:cover;
+    z-index:0;
 }
 
 .drama-poster{
-
-    position:relative;
-
-    aspect-ratio:2/3;
-
-    overflow:hidden;
-
+    position:relative; z-index:1;
+    padding:16px 14px; height:100%;
+    display:flex; flex-direction:column; justify-content:space-between;
+    background:linear-gradient(to top, rgba(0,0,0,.72) 0%, rgba(0,0,0,.15) 45%, transparent 70%);
 }
 
-.drama-poster img{
+.card-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:6px; }
 
-    width:100%;
-
-    height:100%;
-
-    object-fit:cover;
-
-    transition:.45s;
-
+.card-badge{
+    font-family:var(--font-mono); font-size:9.5px; letter-spacing:1px;
+    padding:3px 7px; border-radius:4px;
+    background:rgba(0,0,0,.35);
+    color:var(--gold-bright);
+    border:1px solid rgba(217,175,110,.3);
+    white-space:nowrap;
+}
+.card-rank{
+    font-family:var(--font-display); font-weight:600;
+    font-size:34px; color:rgba(255,255,255,.22); line-height:1;
 }
 
-.drama-card:hover img{
+.drama-content{ display:flex; flex-direction:column; }
 
-    transform:scale(1.08);
-
+.card-title{
+    font-family:var(--font-display); font-weight:600;
+    font-size:19px; line-height:1.15; color:#FBF6EC;
+    text-shadow:0 2px 12px rgba(0,0,0,.4);
 }
-
-.drama-overlay{
-
-    position:absolute;
-
-    inset:0;
-
-    background:
-
-        linear-gradient(
-
-            transparent,
-
-            rgba(0,0,0,.92)
-
-        );
-
+.card-sub{
+    display:flex; align-items:center; gap:6px; flex-wrap:wrap;
+    font-family:var(--font-mono); font-size:10px;
+    color:rgba(255,255,255,.65); margin-top:6px;
 }
-
-.drama-content{
-
-    position:absolute;
-
-    left:0;
-
-    right:0;
-
-    bottom:0;
-
-    padding:18px;
-
-    z-index:2;
-
-}
-
-.drama-title{
-
-    font-size:20px;
-
-    font-weight:800;
-
-    margin-bottom:8px;
-
-}
-
-.drama-info{
-
-    display:flex;
-
-    align-items:center;
-
-    justify-content:space-between;
-
-    color:#b8b8c8;
-
-    font-size:14px;
-
-}
-
-.rating{
-
-    color:#FACC15;
-
-    font-weight:700;
-
-}
-
-.vip-badge{
-
-    position:absolute;
-
-    top:14px;
-
-    right:14px;
-
-    background:#7C5CFF;
-
-    color:white;
-
-    padding:6px 12px;
-
-    border-radius:999px;
-
-    font-size:12px;
-
-    font-weight:700;
-
-}
-
-.episode-badge{
-
-    position:absolute;
-
-    left:14px;
-
-    top:14px;
-
-    background:rgba(0,0,0,.7);
-
-    backdrop-filter:blur(12px);
-
-    color:white;
-
-    padding:6px 12px;
-
-    border-radius:999px;
-
-    font-size:12px;
-
-}
-
-.card-actions{
-
-    margin-top:16px;
-
-    display:flex;
-
-    gap:10px;
-
-}
-
-.card-btn{
-
-    flex:1;
-
-    border:none;
-
-    border-radius:999px;
-
-    height:42px;
-
-    background:#7C5CFF;
-
-    color:white;
-
-    font-weight:700;
-
-    transition:.25s;
-
-}
-
-.card-btn:hover{
-
-    background:#9374FF;
-
-}
-.card-top{
-
-    position:absolute;
-
-    top:14px;
-
-    left:14px;
-
-    right:14px;
-
-    display:flex;
-
-    justify-content:space-between;
-
-    z-index:5;
-
-}
-
 .card-progress{
-
-    width:100%;
-
-    height:5px;
-
-    background:rgba(255,255,255,.1);
-
-    border-radius:999px;
-
-    margin-top:12px;
-
-    overflow:hidden;
-
+    height:3px; background:rgba(255,255,255,.15);
+    border-radius:2px; margin-top:10px; overflow:hidden;
 }
-
-.card-progress i{
-
-    display:block;
-
-    height:100%;
-
-    background:#7C5CFF;
-
-    border-radius:999px;
-
-}
-
-.card-btn{
-
-    display:flex;
-
-    justify-content:center;
-
-    align-items:center;
-
-    width:100%;
-
-    height:44px;
-
-    margin-top:18px;
-
-    border-radius:999px;
-
-    background:#7C5CFF;
-
-    color:white;
-
-    font-weight:700;
-
-    transition:.3s;
-
-}
-
-.drama-card:hover .card-btn{
-
-    background:#9374FF;
-
-}
-/* ===========================================
-   CONTINUE WATCHING
-===========================================*/
-
-.card-progress{
-
-    margin-top:14px;
-
-    width:100%;
-
-    height:6px;
-
-    background:rgba(255,255,255,.08);
-
-    border-radius:999px;
-
-    overflow:hidden;
-
-}
-
-.card-progress i{
-
-    display:block;
-
-    height:100%;
-
-    background:linear-gradient(
-
-        90deg,
-
-        #7C5CFF,
-
-        #9B7BFF
-
-    );
-
-    border-radius:999px;
-
-}
-
-.drama-card:hover .card-progress i{
-
-    filter:brightness(1.2);
-
-}
-
-.drama-card .card-actions{
-
-    opacity:0;
-
-    transform:translateY(10px);
-
-    transition:.3s;
-
-}
-
-.drama-card:hover .card-actions{
-
-    opacity:1;
-
-    transform:translateY(0);
-
-}
-
-.card-btn{
-
-    display:flex;
-
-    justify-content:center;
-
-    align-items:center;
-
-    width:100%;
-
-    height:44px;
-
-    border-radius:999px;
-
-    background:#7C5CFF;
-
-    color:white;
-
-    font-weight:700;
-
-    margin-top:14px;
-
-    transition:.25s;
-
-}
-
-.card-btn:hover{
-
-    background:#9374FF;
-
-}
-/*=========================================
-TOP RATED
-=========================================*/
-
-.top-rated-grid{
-
-    display:grid;
-
-    gap:28px;
-
-}
-
-.top-rank{
-
-    display:grid;
-
-    grid-template-columns:110px 1fr;
-
-    align-items:center;
-
-    gap:22px;
-
-}
-
-.rank-number{
-
-    font-size:82px;
-
-    font-weight:900;
-
-    line-height:1;
-
-    color:rgba(255,255,255,.07);
-
-    text-align:center;
-
-    user-select:none;
-
-}
-
-.rank-card{
-
-    position:relative;
-
-}
-
-.rating-chip{
-
-    position:absolute;
-
-    top:16px;
-
-    right:16px;
-
-    padding:8px 14px;
-
-    border-radius:999px;
-
-    background:#FFD54F;
-
-    color:#000;
-
-    font-weight:800;
-
-    font-size:.85rem;
-
-    box-shadow:
-
-        0 8px 20px rgba(255,213,79,.25);
-
-}
-
-.top-rank:hover .rank-number{
-
-    color:rgba(124,92,255,.18);
-
-    transition:.3s;
-
-}
-
-.top-rank:hover{
-
-    transform:translateX(8px);
-
-    transition:.3s;
-
-}
-/*==================================================
-SKELETON LOADING
-==================================================*/
-
-.skeleton-card{
-
-    background:#171923;
-
-    border-radius:22px;
-
-    overflow:hidden;
-
-    border:1px solid rgba(255,255,255,.05);
-
-}
-
-.skeleton-poster{
-
-    width:100%;
-
-    aspect-ratio:2/3;
-
-    background:#232532;
-
-}
-
-.skeleton-content{
-
-    padding:18px;
-
-}
-
-.skeleton-line{
-
-    height:12px;
-
-    border-radius:999px;
-
-    background:#2D3142;
-
-    margin-bottom:12px;
-
-}
-
-.skeleton-line.long{
-
-    width:100%;
-
-}
-
-.skeleton-line.medium{
-
-    width:70%;
-
-}
-
-.skeleton-line.short{
-
-    width:45%;
-
-}
-
-.shimmer{
-
-    position:relative;
-
-    overflow:hidden;
-
-}
-
-.shimmer::after{
-
-    content:"";
-
-    position:absolute;
-
-    inset:0;
-
-    transform:translateX(-100%);
-
-    background:linear-gradient(
-        90deg,
-        transparent,
-        rgba(255,255,255,.12),
-        transparent
-    );
-
-    animation:shimmer 1.5s infinite;
-
-}
-
-@keyframes shimmer{
-
-    100%{
-
-        transform:translateX(100%);
-
-    }
-
+.card-progress i{ display:block; height:100%; background:var(--gold); border-radius:2px; }
+
+/* --- Gradien permata sebagai poster cadangan --- */
+.g1{ background:linear-gradient(155deg,#3A2440 0%,#7E2C40 60%,#C1425B 130%); }
+.g2{ background:linear-gradient(155deg,#241A38 0%,#4A3568 55%,#8C6FB8 130%); }
+.g3{ background:linear-gradient(160deg,#2B2013 0%,#6B4E22 55%,#D9AF6E 135%); }
+.g4{ background:linear-gradient(150deg,#1E2E2C 0%,#2E5850 55%,#5FA79A 130%); }
+.g5{ background:linear-gradient(160deg,#331A24 0%,#8C2E42 55%,#E68A6C 135%); }
+.g6{ background:linear-gradient(150deg,#1B1F38 0%,#334A80 55%,#6E93C9 130%); }
+.g7{ background:linear-gradient(160deg,#2A1B30 0%,#5B4B8A 55%,#9C8FD1 135%); }
+.g8{ background:linear-gradient(150deg,#301C16 0%,#7A4128 55%,#C77A45 130%); }
+
+/* --- Pil dengan penghitung --- */
+.pill-count{
+    font-family:var(--font-mono); font-size:10px;
+    opacity:.6; margin-left:6px;
 }

@@ -1,105 +1,205 @@
-.player-next-overlay{
+/* ============ TABEL & FORM UMUM ============ */
+.data-table{
+    width:100%; border-collapse:collapse;
+    font-size:14px;
+    border:1px solid var(--border-soft);
+    border-radius:var(--radius-m);
+    overflow:hidden;
+}
+.data-table th,
+.data-table td{
+    padding:12px 16px;
+    text-align:left;
+    border-bottom:1px solid var(--border-soft);
+}
+.data-table th{
+    font-family:var(--font-mono); font-size:11px;
+    letter-spacing:1px; text-transform:uppercase;
+    color:var(--text-muted);
+    background:var(--bg-card);
+}
+.data-table tbody tr:hover{ background:rgba(255,255,255,.02); }
+.data-table tbody tr:last-child td{ border-bottom:0; }
 
-position:fixed;
-
-inset:0;
-
-background:rgba(0,0,0,.82);
-
-display:flex;
-
-align-items:center;
-
-justify-content:center;
-
-z-index:99999;
-
-backdrop-filter:blur(10px);
-
+/* --- Statistik --- */
+.stat-row{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));
+    gap:var(--space-2);
+}
+.stat-card{
+    display:flex; flex-direction:column; gap:6px;
+    padding:var(--space-3);
+    border:1px solid var(--border-soft);
+    border-radius:var(--radius-m);
+    background:var(--bg-card);
+    transition:border-color .2s ease, transform .2s ease;
+}
+a.stat-card:hover{ border-color:rgba(217,175,110,.35); transform:translateY(-2px); }
+.stat-value{
+    font-family:var(--font-display); font-weight:600;
+    font-size:28px; color:var(--gold-bright); line-height:1;
+}
+.stat-label{
+    font-family:var(--font-mono); font-size:11px;
+    letter-spacing:1px; text-transform:uppercase; color:var(--text-muted);
 }
 
-.player-next-box{
-
-width:420px;
-
-background:#18181B;
-
-padding:40px;
-
-border-radius:24px;
-
-text-align:center;
-
-color:white;
-
+/* --- Form --- */
+.search-input,
+.search-select{
+    width:100%;
+    padding:12px 16px;
+    border-radius:var(--radius-m);
+    border:1px solid var(--border);
+    background:var(--bg-card);
+    color:var(--text-primary);
+    font-family:inherit; font-size:14px;
+    transition:border-color .2s ease;
 }
+.search-input:focus,
+.search-select:focus{ border-color:var(--gold); outline:none; }
+.search-select{ cursor:pointer; }
 
-.player-next-box h2{
-
-margin-bottom:12px;
-
+.search-form{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(160px, 1fr));
+    gap:12px; align-items:center;
 }
-
-#countdown{
-
-font-size:72px;
-
-font-weight:bold;
-
-margin:30px 0;
-
-color:#7C5CFF;
-
+.search-form .search-input{ grid-column:1 / -1; }
+.search-check{
+    display:flex; align-items:center; gap:8px;
+    font-size:13.5px; color:var(--text-secondary); cursor:pointer;
 }
+.search-check input{ accent-color:var(--gold); }
 
-.player-next-action{
-
-display:flex;
-
-gap:15px;
-
-margin-top:25px;
-
+.settings-form{ display:flex; flex-direction:column; gap:12px; max-width:520px; }
+.settings-form label{
+    font-family:var(--font-mono); font-size:11px;
+    letter-spacing:1px; text-transform:uppercase; color:var(--text-muted);
 }
-
-.player-next-action a,
-
-.player-next-action button{
-
-flex:1;
-
-height:52px;
-
-border:none;
-
-border-radius:14px;
-
-cursor:pointer;
-
-display:flex;
-
-align-items:center;
-
-justify-content:center;
-
-text-decoration:none;
-
-font-weight:600;
-
+.settings-form button{ align-self:flex-start; margin-top:var(--space-2); }
+.settings-meta{
+    display:grid; grid-template-columns:auto 1fr; gap:8px var(--space-3);
+    margin:var(--space-3) 0; font-size:13.5px;
 }
+.settings-meta dt{ color:var(--text-muted); font-family:var(--font-mono); font-size:11px; text-transform:uppercase; }
+.settings-meta dd{ color:var(--text-secondary); }
 
-.player-next-action a{
+.form-error{ color:var(--crimson); font-size:13px; }
 
-background:#7C5CFF;
+/* --- Profil --- */
+.profile-head{ display:flex; align-items:center; gap:var(--space-3); flex-wrap:wrap; }
 
-color:white;
-
+/* --- Notifikasi --- */
+.notif-list{ display:flex; flex-direction:column; gap:10px; }
+.notif-item{
+    padding:16px 18px;
+    border:1px solid var(--border-soft);
+    border-left:3px solid transparent;
+    border-radius:var(--radius-m);
+    background:var(--bg-card);
 }
+.notif-item.unread{ border-left-color:var(--gold); }
+.notif-item strong{ font-family:var(--font-display); font-size:15px; }
+.notif-item p{ color:var(--text-secondary); font-size:14px; margin:6px 0; }
+.notif-item time{ font-family:var(--font-mono); font-size:11px; color:var(--text-muted); }
 
-.player-next-action button{
-
-background:#2A2A2A;
-
-color:white;
-
+/* --- Paket membership --- */
+.plan-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));
+    gap:var(--space-3);
 }
+.plan-card{
+    padding:var(--space-4);
+    border:1px solid var(--border);
+    border-radius:var(--radius-l);
+    background:var(--bg-card);
+    display:flex; flex-direction:column; gap:8px;
+}
+.plan-card h3{ font-family:var(--font-display); font-size:22px; font-weight:600; }
+.plan-price{
+    font-family:var(--font-display); font-size:30px;
+    font-weight:600; color:var(--gold-bright);
+}
+.plan-duration,
+.plan-desc{ color:var(--text-secondary); font-size:14px; }
+.plan-card .btn{ margin-top:auto; justify-content:center; }
+
+/* --- Teks panjang --- */
+.prose{ max-width:720px; color:var(--text-secondary); font-size:15px; line-height:1.75; }
+.prose h2{
+    font-family:var(--font-display); font-weight:600;
+    font-size:22px; color:var(--text-primary);
+    margin:var(--space-4) 0 var(--space-2);
+}
+.prose p{ margin-bottom:var(--space-2); }
+.prose ul{ margin:0 0 var(--space-2) var(--space-3); list-style:disc; }
+.prose li{ margin-bottom:6px; }
+.prose em{ color:var(--text-muted); font-size:13px; }
+
+/* --- Halaman masuk admin --- */
+.auth-wrap{
+    min-height:100vh;
+    display:flex; align-items:center; justify-content:center;
+    padding:var(--space-4);
+}
+.auth-card{
+    width:100%; max-width:400px;
+    display:flex; flex-direction:column; gap:12px;
+    padding:var(--space-5);
+    border:1px solid var(--border);
+    border-radius:var(--radius-l);
+    background:var(--bg-card);
+}
+.auth-card label{
+    font-family:var(--font-mono); font-size:11px;
+    letter-spacing:1px; text-transform:uppercase; color:var(--text-muted);
+}
+.auth-card .btn{ justify-content:center; margin-top:var(--space-2); }
+.auth-card .see-all{ justify-content:center; }
+
+/* ============ PANEL ADMIN ============ */
+.admin-body{ background:var(--bg-primary); }
+.admin-shell{ display:grid; grid-template-columns:240px minmax(0, 1fr); min-height:100vh; }
+
+.admin-sidebar{
+    display:flex; flex-direction:column; gap:var(--space-3);
+    padding:var(--space-3);
+    border-right:1px solid var(--border-soft);
+    background:var(--bg-secondary);
+}
+.admin-sidebar nav{ display:flex; flex-direction:column; gap:2px; }
+.admin-sidebar nav a{
+    padding:10px 14px; border-radius:var(--radius-s);
+    font-size:14px; color:var(--text-secondary);
+    transition:background .2s ease, color .2s ease;
+}
+.admin-sidebar nav a:hover{ background:var(--bg-card); color:var(--text-primary); }
+.admin-sidebar nav a.active{ background:var(--gold); color:#191118; font-weight:600; }
+.admin-logout{ margin-top:auto; }
+.admin-logout button{
+    width:100%; padding:10px 14px;
+    border:1px solid var(--border); border-radius:var(--radius-s);
+    color:var(--text-secondary); font-size:14px;
+    transition:border-color .2s ease, color .2s ease;
+}
+.admin-logout button:hover{ border-color:var(--crimson); color:var(--crimson); }
+
+.admin-main{ display:flex; flex-direction:column; min-width:0; }
+.admin-topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:var(--space-3) var(--space-4);
+    border-bottom:1px solid var(--border-soft);
+}
+.admin-topbar h1{ font-family:var(--font-display); font-size:22px; font-weight:600; }
+.admin-user{ font-size:13.5px; color:var(--text-secondary); }
+.admin-content{ padding:var(--space-4); display:flex; flex-direction:column; gap:var(--space-4); }
+.admin-toolbar{ display:flex; gap:12px; align-items:center; max-width:520px; }
+.admin-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));
+    gap:var(--space-4);
+}
+.admin-grid .section-title{ font-size:18px; margin-bottom:var(--space-2); }

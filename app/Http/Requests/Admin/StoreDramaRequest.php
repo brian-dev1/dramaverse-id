@@ -3,36 +3,50 @@
 namespace App\Http\Requests\Admin;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreDramaRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        return $this->user()?->isAdmin() ?? false;
     }
 
     public function rules(): array
     {
         return [
+            'title'          => ['required', 'string', 'max:255'],
+            'slug'           => ['required', 'string', 'max:255', Rule::unique('dramas', 'slug')],
+            'original_title' => ['nullable', 'string', 'max:255'],
+            'synopsis'       => ['nullable', 'string'],
 
-            'title'=>'required|string|max:255',
+            'genres'         => ['required', 'array', 'min:1'],
+            'genres.*'       => ['integer', 'exists:genres,id'],
+            'country_id'     => ['required', 'integer', 'exists:countries,id'],
 
-            'slug'=>'required|string|max:255',
+            'poster'         => ['nullable', 'string', 'max:255'],
+            'cover'          => ['nullable', 'string', 'max:255'],
+            'trailer_url'    => ['nullable', 'url', 'max:255'],
+            'gradient'       => ['nullable', 'string', 'max:8'],
 
-            'genre_id'=>'required|exists:genres,id',
+            'release_year'   => ['nullable', 'integer', 'min:1950', 'max:'.(date('Y') + 5)],
+            'total_episode'  => ['nullable', 'integer', 'min:0', 'max:9999'],
+            'duration'       => ['nullable', 'integer', 'min:0'],
+            'status'         => ['required', Rule::in(['ongoing', 'completed', 'upcoming'])],
+            'rating'         => ['nullable', 'numeric', 'min:0', 'max:10'],
 
-            'country_id'=>'required|exists:countries,id',
+            'is_vip'         => ['boolean'],
+            'is_featured'    => ['boolean'],
+            'is_trending'    => ['boolean'],
+            'published_at'   => ['nullable', 'date'],
+        ];
+    }
 
-            'description'=>'nullable|string',
-
-            'poster'=>'nullable|string',
-
-            'cover'=>'nullable|string',
-
-            'release_year'=>'nullable|integer',
-
-            'status'=>'required|string',
-
+    public function messages(): array
+    {
+        return [
+            'genres.required'  => 'Pilih minimal satu genre.',
+            'country_id.required' => 'Negara wajib dipilih.',
         ];
     }
 }

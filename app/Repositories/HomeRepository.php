@@ -2,80 +2,161 @@
 
 namespace App\Repositories;
 
+use App\Models\Banner;
+use App\Models\Country;
 use App\Models\Drama;
+use App\Models\Genre;
 use App\Models\WatchHistory;
 use App\Repositories\Contracts\HomeRepositoryInterface;
 use Illuminate\Support\Facades\Cache;
 
 class HomeRepository implements HomeRepositoryInterface
 {
+    /** Umur cache untuk blok katalog homepage (menit). */
+    private const CACHE_TTL = 5;
+
+    /** Kolom yang dibutuhkan kartu drama — hindari SELECT *. */
+    private const CARD_COLUMNS = [
+        'id', 'title', 'slug', 'poster', 'gradient', 'country_id',
+        'release_year', 'total_episode', 'status', 'rating', 'views',
+        'is_vip', 'published_at',
+    ];
+
     public function homeData(?int $userId = null): array
     {
-        /*
-        |--------------------------------------------------------------------------
-        | Trending
-        |--------------------------------------------------------------------------
-        */
+        return [
+            'banners'          => $this->banners(),
+            'trending'         => $this->trending(),
+            'latest'           => $this->latest(),
+            'popular'          => $this->popular(),
+            'topRated'         => $this->topRated(),
+            'genres'           => $this->genres(),
+            'countries'        => $this->countries(),
+            'continueWatching' => $this->continueWatching($userId),
+        ];
+    }
 
-        $trending = Cache::remember(
-            'homepage_trending',
-            now()->addMinutes(5),
-            fn() => Drama::query()
-                ->with([
-                    'genre',
-                    'country',
-                ])
-                ->where('is_trending', true)
-                ->latest()
-                ->take(10)
-                ->get()
+    /*
+    |--------------------------------------------------------------------------
+    | Hero
+    |--------------------------------------------------------------------------
+    */
+
+    private function banners()
+    {
+        return Cache::remember(
+            'home:banners',
+            now()->addMinutes(self::CACHE_TTL),
+            fn () => Banner::active('hero')->take(5)->get()
         );
+    }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Latest Drama
-        |--------------------------------------------------------------------------
-        */
+    /*
+    |--------------------------------------------------------------------------
+    | Blok katalog
+    |--------------------------------------------------------------------------
+    */
 
-        $latest = Cache::remember(
-            'homepage_latest',
-            now()->addMinutes(5),
-            fn() => Drama::query()
-                ->with([
-                    'genre',
-                    'country',
-                ])
-                ->latest()
-                ->take(12)
-                ->get()
+    private function trending()
+    {
+        return Cache::remember(
+            'home:trending',
+            now()->addMinutes(self::CACHE_TTL),
+            fn () => $this->cardQuery()->trending()->take(10)->get()
         );
+    }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Continue Watching
-        |--------------------------------------------------------------------------
-        */
+    private function latest()
+    {
+        return Cache::remember(
+            'home:latest',
+            now()->addMinutes(self::CACHE_TTL),
+            fn () => $this->cardQuery()->latestRelease()->take(12)->get()
+        );
+    }
 
-        $continueWatching = collect();
+    private function popular()
+    {
+        return Cache::remember(
+            'home:popular',
+            now()->addMinutes(self::CACHE_TTL),
+            fn () => $this->cardQuery()->popular()->take(10)->get()
+        );
+    }
 
-        if ($userId) {
-            $continueWatching = WatchHistory::query()
-                ->with([
-                    'drama.genre',
-                    'drama.country',
-                    'episode',
-                ])
-                ->where('user_id', $userId)
-                ->where('completed', false)
-                ->orderByDesc('last_watched_at')
-                ->take(10)
-                ->get();
+    private function topRated()
+    {
+        return Cache::remember(
+            'home:top-rated',
+            now()->addMinutes(self::CACHE_TTL),
+            fn () => $this->cardQuery()->topRated()->take(12)->get()
+        );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Taksonomi
+    |--------------------------------------------------------------------------
+    */
+
+    private function genres()
+    {
+        return Cache::remember(
+            'home:genres',
+            now()->addHour(),
+            fn () => Genre::active()->take(12)->get()
+        );
+    }
+
+    private function countries()
+    {
+        return Cache::remember(
+            'home:countries',
+            now()->addHour(),
+            fn () => Country::active()->take(12)->get()
+        );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Lanjutkan menonton (tidak di-cache — spesifik per pengguna)
+    |--------------------------------------------------------------------------
+    */
+
+    private function continueWatching(?int $userId)
+    {
+        if ($userId === null) {
+            return collect();
         }
 
-        return [
-            'trending' => $trending,
-            'latest' => $latest,
-            'continueWatching' => $continueWatching,
-        ];
+        return WatchHistory::query()
+            ->with([
+                'drama:id,title,slug,poster,gradient,total_episode',
+                'episode:id,drama_id,episode_number,title,duration',
+            ])
+            ->where('user_id', $userId)
+            ->where('completed', false)
+            ->whereHas('drama')
+            ->whereHas('episode')
+            ->orderByDesc('last_watched_at')
+            ->take(10)
+            ->get();
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Query dasar kartu drama
+    |--------------------------------------------------------------------------
+    */
+
+    private function cardQuery()
+    {
+        return Drama::query()
+            ->select(self::CARD_COLUMNS)
+            ->with([
+                'country:id,name,slug,flag_emoji',
+                'genres:id,name,slug',
+            ])
+            ->published();
     }
 }

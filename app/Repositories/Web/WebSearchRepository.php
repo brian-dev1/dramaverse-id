@@ -3,120 +3,82 @@
 namespace App\Repositories\Web;
 
 use App\Models\Drama;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 
 class WebSearchRepository
 {
-    public function search(Request $request)
+    private const PER_PAGE = 24;
+
+    /**
+     * Pencarian drama dengan filter genre, negara, tahun, VIP, dan status.
+     *
+     * Menerima parameter `q` (dipakai UI) maupun `keyword` (kompatibilitas lama).
+     */
+    public function search(Request $request): LengthAwarePaginator
     {
+        $keyword = trim((string) ($request->get('q') ?? $request->get('keyword') ?? ''));
 
         $query = Drama::query()
-
-            ->with([
-
-                'country',
-
-                'genres'
-
+            ->select([
+                'id', 'title', 'slug', 'poster', 'gradient', 'country_id',
+                'release_year', 'total_episode', 'status', 'rating', 'views',
+                'is_vip', 'published_at',
             ])
+            ->with([
+                'country:id,name,slug,flag_emoji',
+                'genres:id,name,slug',
+            ])
+            ->published();
 
-            ->where(
-
-                'status',
-
-                'published'
-
-            );
-
-        if($request->filled('keyword')){
-
-            $query->where(function($q) use ($request){
-
-                $q->where(
-
-                    'title',
-
-                    'LIKE',
-
-                    '%'.$request->keyword.'%'
-
-                )
-
-                ->orWhere(
-
-                    'original_title',
-
-                    'LIKE',
-
-                    '%'.$request->keyword.'%'
-
-                );
-
+        // --- Kata kunci ---
+        if ($keyword !== '') {
+            $query->where(function (Builder $q) use ($keyword) {
+                $q->where('title', 'like', "%{$keyword}%")
+                    ->orWhere('original_title', 'like', "%{$keyword}%");
             });
-
         }
 
-        if($request->filled('genre')){
-
+        // --- Genre ---
+        if ($request->filled('genre')) {
             $query->whereHas(
-
                 'genres',
-
-                function($q) use($request){
-
-                    $q->where(
-
-                        'slug',
-
-                        $request->genre
-
-                    );
-
-                }
-
+                fn (Builder $q) => $q->where('genres.slug', $request->string('genre'))
             );
-
         }
 
-        if($request->filled('country')){
-
+        // --- Negara ---
+        if ($request->filled('country')) {
             $query->whereHas(
-
                 'country',
-
-                function($q) use($request){
-
-                    $q->where(
-
-                        'slug',
-
-                        $request->country
-
-                    );
-
-                }
-
+                fn (Builder $q) => $q->where('countries.slug', $request->string('country'))
             );
-
         }
 
-        if($request->filled('year')){
-
-            $query->where(
-
-                'year',
-
-                $request->year
-
-            );
-
+        // --- Tahun rilis ---
+        if ($request->filled('year')) {
+            $query->where('release_year', $request->integer('year'));
         }
 
-        return $query
+        // --- Status tayang ---
+        if ($request->filled('status')) {
+            $query->where('status', $request->string('status'));
+        }
 
-            ->latest()
+        // --- Khusus VIP ---
+        if ($request->boolean('vip')) {
+            $query->where('is_vip', true);
+        }
 
-            ->paginate(20);
+        // --- Urutan ---
+        match ($request->get('sort')) {
+            'rating'  => $query->orderByDesc('rating'),
+            'popular' => $query->orderByDesc('views'),
+            'oldest'  => $query->orderBy('published_at'),
+            default   => $query->orderByDesc('published_at'),
+        };
 
+        return $query->paginate(self::PER_PAGE)->withQueryString();
     }
 }

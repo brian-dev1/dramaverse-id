@@ -1,93 +1,10 @@
-/*==========================================
-SEARCH PAGE
-==========================================*/
+/* ============ PENCARIAN ============ */
+/* Gaya masukan dan filter dibagikan dari modul form (player.css),
+   berkas ini menampung penyesuaian khusus halaman pencarian. */
 
-.search-page{
+.search-form{ margin-bottom:var(--space-2); }
+.search-form .btn{ justify-content:center; }
 
-    padding:70px 0 100px;
-
-}
-
-.search-header{
-
-    text-align:center;
-
-    margin-bottom:40px;
-
-}
-
-.search-header h1{
-
-    font-size:42px;
-
-    margin-bottom:12px;
-
-}
-
-.search-header p{
-
-    color:#A1A1AA;
-
-}
-
-.search-box{
-
-    display:flex;
-
-    gap:16px;
-
-    max-width:760px;
-
-    margin:0 auto 50px;
-
-}
-
-.search-box input{
-
-    flex:1;
-
-    height:58px;
-
-    border:none;
-
-    outline:none;
-
-    border-radius:16px;
-
-    padding:0 22px;
-
-    background:#18181F;
-
-    color:#fff;
-
-    font-size:16px;
-
-}
-
-.search-box button{
-
-    width:150px;
-
-    border:none;
-
-    border-radius:16px;
-
-    background:#7C5CFF;
-
-    color:#fff;
-
-    font-weight:700;
-
-    cursor:pointer;
-
-}
-
-.search-empty{
-
-    text-align:center;
-
-    padding:90px 0;
-
-    color:#9CA3AF;
-
+@media (max-width: 640px){
+    .search-form{ grid-template-columns:1fr; }
 }

@@ -1,73 +1,15 @@
-@props([
-    'genres' => collect(),
-    'activeGenre' => null,
-])
+@props(['genres'])
 
-<section class="section section-pad">
+@if ($genres->isNotEmpty())
+    <section class="section section-pad">
 
-    <div class="section-head">
+        <x-web.home.section-header title="Jelajahi Genre" :href="route('web.genre.index')" />
 
-        <div class="section-title">
-
-            🎭 Jelajahi Berdasarkan Genre
-
+        <div class="pill-row">
+            @foreach ($genres as $genre)
+                <a href="{{ route('web.genre.show', $genre->slug) }}" class="pill">{{ $genre->name }}</a>
+            @endforeach
         </div>
 
-    </div>
-
-    <div class="genre-grid">
-
-        @forelse($genres as $genre)
-
-            <button
-                class="genre-chip {{ $activeGenre == $genre->slug ? 'active' : '' }}"
-                data-slug="{{ $genre->slug }}"
-                data-id="{{ $genre->id }}">
-
-                <div class="genre-icon">
-
-                    @if($genre->icon)
-
-                        <img
-                            src="{{ asset($genre->icon) }}"
-                            alt="{{ $genre->name }}">
-
-                    @else
-
-                        🎬
-
-                    @endif
-
-                </div>
-
-                <div class="genre-content">
-
-                    <div class="genre-name">
-
-                        {{ $genre->name }}
-
-                    </div>
-
-                    <div class="genre-count">
-
-                        {{ number_format($genre->dramas_count) }} Drama
-
-                    </div>
-
-                </div>
-
-            </button>
-
-        @empty
-
-            <div class="empty-state">
-
-                Belum ada genre tersedia.
-
-            </div>
-
-        @endforelse
-
-    </div>
-
-</section>
+    </section>
+@endif

@@ -1,0 +1,77 @@
+@extends('web.layouts.app')
+
+@section('title', $drama->title.' — Episode '.$episode->episode_number)
+
+@section('content')
+
+    <section class="player-wrap section-pad">
+
+        <div class="player-main">
+
+            <div class="player-frame">
+                @if ($episode->embed_url)
+                    <iframe src="{{ $episode->embed_url }}"
+                            allowfullscreen loading="lazy"
+                            title="{{ $drama->title }} Episode {{ $episode->episode_number }}"></iframe>
+                @elseif ($episode->video_url)
+                    <video id="player" controls playsinline preload="metadata"
+                           poster="{{ $episode->thumbnail }}"
+                           data-episode="{{ $episode->id }}"
+                           data-progress="{{ $progress ?? 0 }}">
+                        <source src="{{ $episode->video_url }}" type="video/mp4">
+                        Peramban Anda tidak mendukung pemutar video.
+                    </video>
+                @else
+                    <div class="player-empty">
+                        <p>Sumber video belum diunggah untuk episode ini.</p>
+                    </div>
+                @endif
+            </div>
+
+            <div class="player-info">
+
+                <a href="{{ route('web.drama.show', $drama->slug) }}" class="see-all">&larr; {{ $drama->title }}</a>
+
+                <h1 class="page-title">
+                    Episode {{ $episode->episode_number }}@if ($episode->title) — {{ $episode->title }}@endif
+                </h1>
+
+                @if ($episode->description)
+                    <p class="page-subtitle">{{ $episode->description }}</p>
+                @endif
+
+                <div class="player-nav">
+                    @if ($previousEpisode ?? null)
+                        <a href="{{ route('web.episode.show', $previousEpisode->id) }}" class="btn btn-ghost">
+                            &larr; Episode {{ $previousEpisode->episode_number }}
+                        </a>
+                    @endif
+
+                    @if ($nextEpisode ?? null)
+                        <a href="{{ route('web.episode.show', $nextEpisode->id) }}" class="btn btn-primary">
+                            Episode {{ $nextEpisode->episode_number }} &rarr;
+                        </a>
+                    @endif
+                </div>
+
+            </div>
+        </div>
+
+        <aside class="player-sidebar">
+            <h2 class="section-title">Semua Episode</h2>
+
+            <div class="episode-list episode-list-compact">
+                @foreach ($episodes as $ep)
+                    <a href="{{ route('web.episode.show', $ep->id) }}"
+                       class="episode-item {{ $ep->id === $episode->id ? 'active' : '' }}">
+                        <span class="episode-number">{{ str_pad($ep->episode_number, 2, '0', STR_PAD_LEFT) }}</span>
+                        <span class="episode-title">{{ $ep->title ?: 'Episode '.$ep->episode_number }}</span>
+                        @if ($ep->is_vip)<span class="chip gold">VIP</span>@endif
+                    </a>
+                @endforeach
+            </div>
+        </aside>
+
+    </section>
+
+@endsection
