@@ -15,7 +15,7 @@ class HomeController extends Controller
     public function __invoke()
     {
         return view(
-            'home',
+            'web.pages.home',
             $this->homeService->home(Auth::id())
         );
     }
