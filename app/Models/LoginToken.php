@@ -9,12 +9,12 @@ class LoginToken extends Model
     protected $fillable = [
         'user_id',
         'token',
-        'expired_at',
+        'expires_at',
         'used_at',
     ];
 
     protected $casts = [
-        'expired_at' => 'datetime',
+        'expires_at' => 'datetime',
         'used_at' => 'datetime',
     ];
 
