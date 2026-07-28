@@ -1,0 +1,43 @@
+.web-admin-quick-action{
+
+    margin-left:280px;
+
+    padding:0 35px 35px;
+
+}
+
+.web-admin-action-grid{
+
+    display:grid;
+
+    grid-template-columns:repeat(3,1fr);
+
+    gap:20px;
+
+}
+
+.web-admin-action-grid button{
+
+    height:80px;
+
+    border:none;
+
+    border-radius:18px;
+
+    background:#171717;
+
+    color:#fff;
+
+    cursor:pointer;
+
+    font-size:16px;
+
+    transition:.25s;
+
+}
+
+.web-admin-action-grid button:hover{
+
+    transform:translateY(-4px);
+
+}

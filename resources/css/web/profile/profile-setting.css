@@ -1,0 +1,57 @@
+.web-profile-setting{
+
+    padding:80px 0;
+
+}
+
+.web-setting-list{
+
+    display:flex;
+
+    flex-direction:column;
+
+    gap:20px;
+
+}
+
+.web-setting-item{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    padding:26px 30px;
+
+    border-radius:20px;
+
+    background:#181818;
+
+    border:1px solid rgba(255,255,255,.08);
+
+}
+
+.web-setting-item h4{
+
+    margin-bottom:8px;
+
+}
+
+.web-setting-item p{
+
+    color:#9ca3af;
+
+}
+
+.web-setting-item button{
+
+    padding:14px 28px;
+
+    border:none;
+
+    border-radius:12px;
+
+    cursor:pointer;
+
+}

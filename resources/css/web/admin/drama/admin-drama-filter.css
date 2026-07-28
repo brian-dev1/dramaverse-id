@@ -1,0 +1,29 @@
+.web-admin-drama-filter{
+
+    margin-left:280px;
+
+    padding:0 35px 35px;
+
+    display:flex;
+
+    gap:16px;
+
+}
+
+.web-admin-drama-filter select{
+
+    min-width:220px;
+
+    height:46px;
+
+    border-radius:12px;
+
+    background:#1b1b1b;
+
+    color:#fff;
+
+    border:1px solid rgba(255,255,255,.08);
+
+    padding:0 14px;
+
+}

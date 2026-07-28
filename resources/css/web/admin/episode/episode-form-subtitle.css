@@ -1,0 +1,50 @@
+.subtitle-list{
+
+    display:flex;
+    flex-direction:column;
+    gap:24px;
+
+}
+
+.subtitle-item{
+
+    padding:24px;
+    border:1px solid #e5e7eb;
+    border-radius:16px;
+    background:#fafafa;
+
+}
+
+.subtitle-action{
+
+    display:flex;
+    justify-content:flex-end;
+    margin-top:18px;
+
+}
+
+.subtitle-footer{
+
+    margin-top:28px;
+    display:flex;
+    justify-content:flex-end;
+
+}
+
+@media(max-width:768px){
+
+.subtitle-action,
+.subtitle-footer{
+
+justify-content:stretch;
+
+}
+
+.subtitle-action .btn,
+.subtitle-footer .btn{
+
+width:100%;
+
+}
+
+}

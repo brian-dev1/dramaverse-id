@@ -1,0 +1,29 @@
+.empty-state{
+
+    text-align:center;
+    padding:70px 20px;
+
+}
+
+.empty-state i{
+
+    font-size:70px;
+    color:#6366f1;
+
+}
+
+.empty-state h2{
+
+    margin-top:24px;
+    margin-bottom:14px;
+
+}
+
+.empty-state p{
+
+    max-width:500px;
+    margin:0 auto 30px;
+    color:#6b7280;
+    line-height:1.8;
+
+}

@@ -1,0 +1,81 @@
+.web-membership-hero{
+
+    padding:140px 0;
+
+    text-align:center;
+
+}
+
+.web-membership-hero-content{
+
+    max-width:900px;
+
+    margin:auto;
+
+}
+
+.web-membership-badge{
+
+    display:inline-block;
+
+    padding:10px 22px;
+
+    border-radius:999px;
+
+    background:rgba(124,58,237,.15);
+
+    margin-bottom:30px;
+
+}
+
+.web-membership-hero h1{
+
+    font-size:64px;
+
+    margin-bottom:25px;
+
+}
+
+.web-membership-hero p{
+
+    font-size:18px;
+
+    line-height:2;
+
+    color:#bdbdbd;
+
+    margin-bottom:40px;
+
+}
+
+.web-membership-action{
+
+    display:flex;
+
+    justify-content:center;
+
+    gap:18px;
+
+}
+
+.web-membership-action button{
+
+    padding:18px 34px;
+
+    border:none;
+
+    border-radius:14px;
+
+    cursor:pointer;
+
+}
+
+.web-membership-action a{
+
+    padding:18px 34px;
+
+    border-radius:14px;
+
+    text-decoration:none;
+
+}

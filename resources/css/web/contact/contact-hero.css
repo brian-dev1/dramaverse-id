@@ -1,0 +1,35 @@
+.web-contact-hero{
+
+    padding:160px 0;
+
+    text-align:center;
+
+}
+
+.web-contact-hero-content{
+
+    max-width:760px;
+
+    margin:auto;
+
+}
+
+.web-contact-hero h1{
+
+    font-size:60px;
+
+    margin:25px 0;
+
+}
+
+.web-contact-hero p{
+
+    color:#9ca3af;
+
+    line-height:2;
+
+    max-width:650px;
+
+    margin:auto;
+
+}

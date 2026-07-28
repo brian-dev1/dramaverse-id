@@ -1,0 +1,39 @@
+.web-admin-topbar{
+
+    margin-left:280px;
+
+    height:80px;
+
+    padding:0 40px;
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    border-bottom:1px solid rgba(255,255,255,.08);
+
+}
+
+.web-admin-topbar-right{
+
+    display:flex;
+
+    gap:15px;
+
+}
+
+.web-admin-topbar button{
+
+    width:48px;
+
+    height:48px;
+
+    border:none;
+
+    border-radius:14px;
+
+    cursor:pointer;
+
+}

@@ -1,0 +1,51 @@
+.web-about-workflow{
+
+    padding:110px 0;
+
+}
+
+.web-workflow-grid{
+
+    display:grid;
+
+    grid-template-columns:repeat(4,1fr);
+
+    gap:28px;
+
+}
+
+.web-workflow-card{
+
+    text-align:center;
+
+    padding:40px 25px;
+
+    border-radius:22px;
+
+    background:#171717;
+
+    border:1px solid rgba(255,255,255,.08);
+
+    transition:.3s;
+
+}
+
+.web-workflow-card:hover{
+
+    transform:translateY(-8px);
+
+}
+
+.web-workflow-icon{
+
+    font-size:52px;
+
+    margin-bottom:20px;
+
+}
+
+.web-workflow-card h3{
+
+    font-size:20px;
+
+}

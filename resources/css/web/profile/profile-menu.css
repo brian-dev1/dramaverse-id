@@ -1,0 +1,43 @@
+.web-profile-menu{
+
+    padding:40px 0 70px;
+
+}
+
+.web-profile-menu-list{
+
+    display:flex;
+
+    gap:18px;
+
+    flex-wrap:wrap;
+
+}
+
+.web-profile-menu-list a{
+
+    padding:14px 26px;
+
+    border-radius:14px;
+
+    text-decoration:none;
+
+    background:#181818;
+
+    color:#fff;
+
+    transition:.3s;
+
+}
+
+.web-profile-menu-list a.active{
+
+    background:#7c3aed;
+
+}
+
+.web-profile-menu-list a:hover{
+
+    transform:translateY(-3px);
+
+}

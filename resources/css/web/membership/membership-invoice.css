@@ -1,0 +1,91 @@
+.web-membership-invoice{
+
+    padding:100px 0;
+
+}
+
+.web-invoice-card{
+
+    max-width:850px;
+
+    margin:auto;
+
+    background:#171717;
+
+    border-radius:28px;
+
+    border:1px solid rgba(255,255,255,.08);
+
+    overflow:hidden;
+
+}
+
+.web-invoice-header{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    padding:40px;
+
+    border-bottom:1px solid rgba(255,255,255,.08);
+
+}
+
+.web-invoice-status{
+
+    padding:10px 18px;
+
+    border-radius:999px;
+
+    background:#16a34a;
+
+}
+
+.web-invoice-body{
+
+    padding:40px;
+
+}
+
+.web-invoice-row{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    padding:18px 0;
+
+    border-bottom:1px solid rgba(255,255,255,.06);
+
+}
+
+.web-invoice-row:last-child{
+
+    border-bottom:none;
+
+}
+
+.web-invoice-footer{
+
+    padding:35px 40px;
+
+    border-top:1px solid rgba(255,255,255,.08);
+
+}
+
+.web-invoice-footer button{
+
+    width:100%;
+
+    padding:18px;
+
+    border:none;
+
+    border-radius:14px;
+
+    cursor:pointer;
+
+}

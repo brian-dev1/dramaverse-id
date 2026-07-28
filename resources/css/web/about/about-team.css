@@ -1,0 +1,51 @@
+.web-about-team{
+
+    padding:110px 0;
+
+}
+
+.web-team-grid{
+
+    display:grid;
+
+    grid-template-columns:repeat(4,1fr);
+
+    gap:28px;
+
+}
+
+.web-team-card{
+
+    overflow:hidden;
+
+    border-radius:22px;
+
+    background:#171717;
+
+    border:1px solid rgba(255,255,255,.08);
+
+}
+
+.web-team-card img{
+
+    width:100%;
+
+    aspect-ratio:4/5;
+
+    object-fit:cover;
+
+}
+
+.web-team-content{
+
+    padding:22px;
+
+    text-align:center;
+
+}
+
+.web-team-content span{
+
+    color:#9ca3af;
+
+}

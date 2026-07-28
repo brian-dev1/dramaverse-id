@@ -1,0 +1,99 @@
+.web-drama-information{
+
+    padding:80px 0;
+
+}
+
+.web-drama-information-grid{
+
+    display:grid;
+
+    grid-template-columns:380px 1fr;
+
+    gap:32px;
+
+}
+
+.web-information-card{
+
+    background:#151515;
+
+    border:1px solid rgba(255,255,255,.08);
+
+    border-radius:20px;
+
+    padding:28px;
+
+}
+
+.web-information-title{
+
+    font-size:24px;
+
+    font-weight:700;
+
+    margin-bottom:24px;
+
+}
+
+.web-information-list{
+
+    display:flex;
+
+    flex-direction:column;
+
+    gap:18px;
+
+}
+
+.web-information-item{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    gap:20px;
+
+    padding-bottom:14px;
+
+    border-bottom:1px solid rgba(255,255,255,.08);
+
+}
+
+.web-information-item:last-child{
+
+    border:none;
+
+    padding-bottom:0;
+
+}
+
+.web-information-item span{
+
+    color:#9ca3af;
+
+    font-size:14px;
+
+}
+
+.web-information-item strong{
+
+    font-size:15px;
+
+    font-weight:600;
+
+    text-align:right;
+
+}
+
+.web-drama-synopsis{
+
+    color:#cfcfcf;
+
+    line-height:2;
+
+    font-size:15px;
+
+}

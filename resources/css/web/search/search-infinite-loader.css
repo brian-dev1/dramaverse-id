@@ -1,0 +1,31 @@
+.web-search-infinite-loader{
+
+    padding:40px 0 100px;
+
+}
+
+.web-load-more{
+
+    display:flex;
+
+    justify-content:center;
+
+}
+
+.web-load-more button{
+
+    min-width:240px;
+
+    height:56px;
+
+    border:none;
+
+    border-radius:16px;
+
+    cursor:pointer;
+
+    font-size:16px;
+
+    font-weight:600;
+
+}

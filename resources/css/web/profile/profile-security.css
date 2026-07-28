@@ -1,0 +1,49 @@
+.web-profile-security{
+
+    padding:80px 0;
+
+}
+
+.web-profile-security-card{
+
+    background:#171717;
+
+    border-radius:24px;
+
+    border:1px solid rgba(255,255,255,.08);
+
+    padding:36px;
+
+}
+
+.web-security-list{
+
+    margin-top:28px;
+
+    display:flex;
+
+    flex-direction:column;
+
+    gap:18px;
+
+}
+
+.web-security-item{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    padding:18px 0;
+
+    border-bottom:1px solid rgba(255,255,255,.06);
+
+}
+
+.web-security-item:last-child{
+
+    border-bottom:none;
+
+}

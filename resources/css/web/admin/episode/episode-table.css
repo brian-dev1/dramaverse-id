@@ -1,0 +1,133 @@
+.table-responsive{
+
+    overflow:auto;
+
+}
+
+.admin-table{
+
+    width:100%;
+    border-collapse:collapse;
+
+}
+
+.admin-table thead{
+
+    background:#f8fafc;
+
+}
+
+.admin-table th{
+
+    padding:18px;
+    text-align:left;
+    font-size:14px;
+    color:#64748b;
+    border-bottom:1px solid #e2e8f0;
+
+}
+
+.admin-table td{
+
+    padding:18px;
+    border-bottom:1px solid #f1f5f9;
+    vertical-align:middle;
+
+}
+
+.episode-drama{
+
+    display:flex;
+    align-items:center;
+    gap:16px;
+
+}
+
+.episode-drama img{
+
+    width:55px;
+    height:78px;
+    border-radius:10px;
+    object-fit:cover;
+
+}
+
+.episode-drama h4{
+
+    font-size:15px;
+    margin-bottom:6px;
+    color:#111827;
+
+}
+
+.episode-drama span{
+
+    color:#6b7280;
+    font-size:13px;
+
+}
+
+.badge{
+
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    padding:7px 14px;
+    border-radius:999px;
+    font-size:12px;
+    font-weight:600;
+
+}
+
+.badge-premium{
+
+    background:#fef3c7;
+    color:#92400e;
+
+}
+
+.badge-success{
+
+    background:#dcfce7;
+    color:#166534;
+
+}
+
+.badge-info{
+
+    background:#dbeafe;
+    color:#1d4ed8;
+
+}
+
+.table-action{
+
+    display:flex;
+    gap:10px;
+
+}
+
+.btn-icon{
+
+    width:40px;
+    height:40px;
+    border:none;
+    border-radius:12px;
+    background:#f3f4f6;
+    cursor:pointer;
+    transition:.25s;
+
+}
+
+.btn-icon:hover{
+
+    background:#6366f1;
+    color:#fff;
+
+}
+
+.btn-icon.danger:hover{
+
+    background:#ef4444;
+
+}

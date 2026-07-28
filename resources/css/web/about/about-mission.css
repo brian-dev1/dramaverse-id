@@ -1,0 +1,43 @@
+.web-about-mission{
+
+    padding:110px 0;
+
+}
+
+.web-about-mission-grid{
+
+    display:grid;
+
+    grid-template-columns:1fr 1fr;
+
+    gap:70px;
+
+}
+
+.web-mission-item{
+
+    padding:30px;
+
+    margin-bottom:24px;
+
+    border-radius:20px;
+
+    background:#171717;
+
+    border:1px solid rgba(255,255,255,.08);
+
+}
+
+.web-mission-item h3{
+
+    margin-bottom:16px;
+
+}
+
+.web-mission-item p{
+
+    line-height:1.9;
+
+    color:#bdbdbd;
+
+}

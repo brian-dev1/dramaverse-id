@@ -1,0 +1,63 @@
+.web-search-filter-advanced{
+
+    padding:40px 0;
+
+}
+
+.web-filter-wrapper{
+
+    display:grid;
+
+    grid-template-columns:repeat(5,1fr);
+
+    gap:20px;
+
+}
+
+.web-filter-item{
+
+    display:flex;
+
+    flex-direction:column;
+
+    gap:10px;
+
+}
+
+.web-filter-item label{
+
+    font-size:14px;
+
+    color:#9ca3af;
+
+}
+
+.web-filter-item select{
+
+    height:52px;
+
+    border-radius:14px;
+
+    border:1px solid rgba(255,255,255,.08);
+
+    background:#171717;
+
+    color:#fff;
+
+    padding:0 16px;
+
+}
+
+.web-filter-item button{
+
+    margin-top:auto;
+
+    height:52px;
+
+    border:none;
+
+    border-radius:14px;
+
+    cursor:pointer;
+
+}

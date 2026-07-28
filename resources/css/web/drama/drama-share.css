@@ -1,0 +1,55 @@
+.web-drama-share{
+
+    padding:90px 0;
+
+}
+
+.web-share-card{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    gap:30px;
+
+    padding:36px;
+
+    border-radius:22px;
+
+    border:1px solid rgba(255,255,255,.08);
+
+    background:#181818;
+
+}
+
+.web-share-buttons{
+
+    display:flex;
+
+    flex-wrap:wrap;
+
+    gap:12px;
+
+}
+
+.web-share-buttons button{
+
+    padding:14px 22px;
+
+    border:none;
+
+    border-radius:12px;
+
+    cursor:pointer;
+
+    transition:.3s;
+
+}
+
+.web-share-buttons button:hover{
+
+    transform:translateY(-3px);
+
+}

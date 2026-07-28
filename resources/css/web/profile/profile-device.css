@@ -1,0 +1,53 @@
+.web-profile-device{
+
+    padding:80px 0;
+
+}
+
+.web-device-list{
+
+    display:flex;
+
+    flex-direction:column;
+
+    gap:18px;
+
+}
+
+.web-device-card{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    padding:28px;
+
+    border-radius:18px;
+
+    background:#171717;
+
+    border:1px solid rgba(255,255,255,.08);
+
+}
+
+.web-device-card p{
+
+    color:#9ca3af;
+
+    margin-top:6px;
+
+}
+
+.web-device-card span{
+
+    padding:8px 18px;
+
+    border-radius:999px;
+
+    background:#16a34a;
+
+    font-size:13px;
+
+}

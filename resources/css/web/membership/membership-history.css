@@ -1,0 +1,53 @@
+.web-membership-history{
+
+    padding:100px 0;
+
+}
+
+.web-membership-history-list{
+
+    display:flex;
+
+    flex-direction:column;
+
+    gap:20px;
+
+}
+
+.web-membership-history-item{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    padding:24px 30px;
+
+    background:#171717;
+
+    border-radius:20px;
+
+    border:1px solid rgba(255,255,255,.08);
+
+}
+
+.web-membership-history-item p{
+
+    color:#9ca3af;
+
+    margin-top:8px;
+
+}
+
+.web-membership-history-item span{
+
+    display:block;
+
+    margin-top:8px;
+
+    color:#22c55e;
+
+    font-size:14px;
+
+}

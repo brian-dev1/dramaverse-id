@@ -1,0 +1,43 @@
+.web-about-statistic{
+
+    padding:110px 0;
+
+}
+
+.web-statistic-grid{
+
+    display:grid;
+
+    grid-template-columns:repeat(4,1fr);
+
+    gap:30px;
+
+}
+
+.web-statistic-card{
+
+    text-align:center;
+
+    padding:45px;
+
+    border-radius:22px;
+
+    background:#171717;
+
+    border:1px solid rgba(255,255,255,.08);
+
+}
+
+.web-statistic-card h2{
+
+    font-size:52px;
+
+    margin-bottom:12px;
+
+}
+
+.web-statistic-card span{
+
+    color:#9ca3af;
+
+}

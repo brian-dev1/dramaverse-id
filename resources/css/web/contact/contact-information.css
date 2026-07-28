@@ -1,0 +1,41 @@
+.web-contact-information{
+
+    padding-bottom:100px;
+
+}
+
+.web-contact-info-grid{
+
+    display:grid;
+
+    grid-template-columns:repeat(3,1fr);
+
+    gap:30px;
+
+}
+
+.web-contact-info-card{
+
+    padding:35px;
+
+    text-align:center;
+
+    border-radius:20px;
+
+    background:#171717;
+
+    border:1px solid rgba(255,255,255,.08);
+
+}
+
+.web-contact-info-card h3{
+
+    margin-bottom:15px;
+
+}
+
+.web-contact-info-card p{
+
+    color:#9ca3af;
+
+}

@@ -1,0 +1,39 @@
+.web-drama-tag{
+
+    padding:90px 0;
+
+}
+
+.web-tag-list{
+
+    display:flex;
+
+    flex-wrap:wrap;
+
+    gap:16px;
+
+}
+
+.web-tag-item{
+
+    padding:14px 24px;
+
+    border-radius:999px;
+
+    background:#1b1b1b;
+
+    border:1px solid rgba(255,255,255,.08);
+
+    color:#fff;
+
+    text-decoration:none;
+
+    transition:.3s;
+
+}
+
+.web-tag-item:hover{
+
+    transform:translateY(-4px);
+
+}

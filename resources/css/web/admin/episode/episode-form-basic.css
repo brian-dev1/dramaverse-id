@@ -1,0 +1,55 @@
+.admin-form-grid{
+
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+    gap:20px;
+
+}
+
+.admin-form-group{
+
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    margin-bottom:20px;
+
+}
+
+.admin-form-group label{
+
+    font-size:14px;
+    font-weight:600;
+    color:#374151;
+
+}
+
+.admin-input,
+.admin-select,
+.admin-textarea{
+
+    width:100%;
+    padding:14px 16px;
+    border:1px solid #d1d5db;
+    border-radius:12px;
+    background:#fff;
+    font-size:14px;
+    transition:.2s;
+
+}
+
+.admin-input:focus,
+.admin-select:focus,
+.admin-textarea:focus{
+
+    outline:none;
+    border-color:#6366f1;
+    box-shadow:0 0 0 3px rgba(99,102,241,.15);
+
+}
+
+.admin-textarea{
+
+    resize:vertical;
+    min-height:140px;
+
+}

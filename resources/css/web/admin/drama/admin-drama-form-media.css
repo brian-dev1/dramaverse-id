@@ -1,0 +1,80 @@
+.poster-upload-wrapper{
+    display:flex;
+    align-items:center;
+    gap:32px;
+}
+
+.poster-preview{
+    width:220px;
+    aspect-ratio:2/3;
+    border:2px dashed #d1d5db;
+    border-radius:18px;
+    background:#f9fafb;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+    gap:14px;
+    transition:.3s;
+    flex-shrink:0;
+}
+
+.poster-preview:hover{
+    border-color:#6366f1;
+    background:#eef2ff;
+}
+
+.poster-preview i{
+    font-size:58px;
+    color:#9ca3af;
+}
+
+.poster-preview span{
+    font-size:14px;
+    font-weight:600;
+    color:#6b7280;
+}
+
+.poster-upload-content{
+    flex:1;
+}
+
+.poster-upload-content h3{
+    font-size:20px;
+    font-weight:700;
+    color:#111827;
+    margin-bottom:10px;
+}
+
+.poster-upload-content p{
+    color:#6b7280;
+    line-height:1.8;
+    margin-bottom:24px;
+}
+
+.poster-upload-content input[type=file]{
+    width:100%;
+    border:2px dashed #d1d5db;
+    border-radius:14px;
+    padding:16px;
+    background:#fff;
+    cursor:pointer;
+    transition:.25s;
+}
+
+.poster-upload-content input[type=file]:hover{
+    border-color:#6366f1;
+}
+
+@media(max-width:768px){
+
+.poster-upload-wrapper{
+    flex-direction:column;
+}
+
+.poster-preview{
+    width:100%;
+    max-width:240px;
+}
+
+}

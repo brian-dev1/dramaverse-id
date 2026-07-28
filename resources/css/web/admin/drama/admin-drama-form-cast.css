@@ -1,0 +1,110 @@
+.cast-list{
+    display:flex;
+    flex-direction:column;
+    gap:24px;
+}
+
+.cast-item{
+    display:flex;
+    gap:24px;
+    align-items:flex-start;
+    padding:22px;
+    border:1px solid #e5e7eb;
+    border-radius:18px;
+    background:#fafafa;
+}
+
+.cast-photo{
+    width:120px;
+    aspect-ratio:1;
+    border:2px dashed #d1d5db;
+    border-radius:16px;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    position:relative;
+    overflow:hidden;
+    flex-shrink:0;
+    background:#fff;
+}
+
+.cast-photo:hover{
+    border-color:#6366f1;
+}
+
+.cast-photo i{
+    font-size:42px;
+    color:#9ca3af;
+}
+
+.cast-photo input{
+    position:absolute;
+    inset:0;
+    opacity:0;
+    cursor:pointer;
+}
+
+.cast-information{
+    flex:1;
+}
+
+.btn-add-cast{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:12px 20px;
+    border:none;
+    border-radius:12px;
+    background:#6366f1;
+    color:#fff;
+    cursor:pointer;
+    transition:.25s;
+    font-weight:600;
+}
+
+.btn-add-cast:hover{
+    background:#4f46e5;
+}
+
+.btn-delete-cast{
+    width:46px;
+    height:46px;
+    border:none;
+    border-radius:12px;
+    background:#fee2e2;
+    color:#dc2626;
+    cursor:pointer;
+    transition:.25s;
+    flex-shrink:0;
+}
+
+.btn-delete-cast:hover{
+    background:#dc2626;
+    color:#fff;
+}
+
+.btn-delete-cast i{
+    font-size:20px;
+}
+
+@media(max-width:991px){
+
+.cast-item{
+    flex-direction:column;
+}
+
+.cast-photo{
+    width:100%;
+    max-width:180px;
+}
+
+}
+
+@media(max-width:576px){
+
+.btn-add-cast{
+    width:100%;
+    justify-content:center;
+}
+
+}

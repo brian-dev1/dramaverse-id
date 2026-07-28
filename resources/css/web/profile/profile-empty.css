@@ -1,0 +1,53 @@
+.web-profile-empty{
+
+    padding:100px 0;
+
+}
+
+.web-empty-state{
+
+    max-width:600px;
+
+    margin:auto;
+
+    text-align:center;
+
+}
+
+.web-empty-state img{
+
+    width:220px;
+
+    margin-bottom:30px;
+
+}
+
+.web-empty-state h2{
+
+    margin-bottom:16px;
+
+    font-size:34px;
+
+}
+
+.web-empty-state p{
+
+    color:#9ca3af;
+
+    margin-bottom:30px;
+
+    line-height:1.8;
+
+}
+
+.web-empty-state button{
+
+    padding:16px 34px;
+
+    border:none;
+
+    border-radius:14px;
+
+    cursor:pointer;
+
+}

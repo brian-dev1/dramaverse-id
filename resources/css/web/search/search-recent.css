@@ -1,0 +1,39 @@
+.web-search-recent{
+
+    padding:70px 0;
+
+}
+
+.web-recent-search-list{
+
+    display:flex;
+
+    flex-wrap:wrap;
+
+    gap:14px;
+
+}
+
+.web-recent-search-list button{
+
+    padding:12px 20px;
+
+    border-radius:999px;
+
+    background:#171717;
+
+    border:1px solid rgba(255,255,255,.08);
+
+    color:#fff;
+
+    cursor:pointer;
+
+    transition:.3s;
+
+}
+
+.web-recent-search-list button:hover{
+
+    transform:translateY(-3px);
+
+}

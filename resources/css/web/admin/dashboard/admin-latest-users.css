@@ -1,0 +1,42 @@
+.web-admin-latest-users{
+
+    margin-left:280px;
+
+    padding:0 35px 35px;
+
+}
+
+.web-admin-table{
+
+    width:100%;
+
+    border-collapse:collapse;
+
+}
+
+.web-admin-table th,
+.web-admin-table td{
+
+    padding:18px;
+
+    text-align:left;
+
+    border-bottom:1px solid rgba(255,255,255,.08);
+
+}
+
+.status{
+
+    padding:8px 14px;
+
+    border-radius:999px;
+
+    font-size:13px;
+
+}
+
+.status.active{
+
+    background:#166534;
+
+}

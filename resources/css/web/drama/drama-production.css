@@ -1,0 +1,47 @@
+.web-drama-production{
+
+    padding:90px 0;
+
+}
+
+.web-production-grid{
+
+    display:grid;
+
+    grid-template-columns:repeat(2,1fr);
+
+    gap:22px;
+
+}
+
+.web-production-item{
+
+    background:#181818;
+
+    border-radius:18px;
+
+    padding:28px;
+
+    border:1px solid rgba(255,255,255,.08);
+
+}
+
+.web-production-item span{
+
+    display:block;
+
+    margin-bottom:10px;
+
+    color:#9ca3af;
+
+    font-size:14px;
+
+}
+
+.web-production-item strong{
+
+    font-size:20px;
+
+    font-weight:600;
+
+}

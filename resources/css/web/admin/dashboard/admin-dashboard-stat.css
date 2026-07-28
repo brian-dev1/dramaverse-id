@@ -1,0 +1,39 @@
+.web-admin-stat{
+
+    margin-left:280px;
+
+    padding:35px;
+
+    display:grid;
+
+    grid-template-columns:repeat(4,1fr);
+
+    gap:24px;
+
+}
+
+.web-admin-stat-card{
+
+    padding:30px;
+
+    border-radius:20px;
+
+    background:#171717;
+
+    border:1px solid rgba(255,255,255,.08);
+
+}
+
+.web-admin-stat-card h3{
+
+    color:#9ca3af;
+
+    margin-bottom:15px;
+
+}
+
+.web-admin-stat-card h2{
+
+    font-size:36px;
+
+}

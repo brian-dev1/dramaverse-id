@@ -1,0 +1,37 @@
+.web-about-hero{
+
+    padding:160px 0;
+
+    text-align:center;
+
+}
+
+.web-about-hero-content{
+
+    max-width:900px;
+
+    margin:auto;
+
+}
+
+.web-about-hero h1{
+
+    font-size:64px;
+
+    margin:25px 0;
+
+}
+
+.web-about-hero p{
+
+    max-width:720px;
+
+    margin:auto;
+
+    line-height:2;
+
+    color:#9ca3af;
+
+    font-size:18px;
+
+}

@@ -1,0 +1,59 @@
+.web-drama-award{
+
+    padding:90px 0;
+
+}
+
+.web-award-grid{
+
+    display:grid;
+
+    grid-template-columns:repeat(3,1fr);
+
+    gap:24px;
+
+}
+
+.web-award-card{
+
+    padding:32px;
+
+    border-radius:22px;
+
+    background:#171717;
+
+    border:1px solid rgba(255,255,255,.08);
+
+    transition:.3s;
+
+}
+
+.web-award-card:hover{
+
+    transform:translateY(-6px);
+
+}
+
+.web-award-icon{
+
+    font-size:40px;
+
+    margin-bottom:18px;
+
+}
+
+.web-award-card h3{
+
+    margin-bottom:10px;
+
+    font-size:22px;
+
+}
+
+.web-award-card p{
+
+    color:#bdbdbd;
+
+    line-height:1.8;
+
+}

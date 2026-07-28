@@ -1,0 +1,63 @@
+.telegram-setting-list{
+
+    display:flex;
+    flex-direction:column;
+    gap:18px;
+
+}
+
+.telegram-setting{
+
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:22px;
+    border:1px solid #e5e7eb;
+    border-radius:16px;
+    background:#fff;
+    transition:.25s;
+
+}
+
+.telegram-setting:hover{
+
+    border-color:#6366f1;
+
+}
+
+.telegram-setting h4{
+
+    font-size:17px;
+    color:#111827;
+    margin-bottom:6px;
+
+}
+
+.telegram-setting p{
+
+    font-size:14px;
+    color:#6b7280;
+    line-height:1.7;
+
+}
+
+.telegram-setting input[type=checkbox]{
+
+    width:22px;
+    height:22px;
+    cursor:pointer;
+    accent-color:#6366f1;
+
+}
+
+@media(max-width:768px){
+
+.telegram-setting{
+
+flex-direction:column;
+align-items:flex-start;
+gap:18px;
+
+}
+
+}

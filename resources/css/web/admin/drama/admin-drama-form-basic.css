@@ -1,0 +1,142 @@
+.admin-card{
+    background:#ffffff;
+    border:1px solid rgba(15,23,42,.08);
+    border-radius:18px;
+    margin-bottom:28px;
+    overflow:hidden;
+    box-shadow:0 10px 30px rgba(15,23,42,.05);
+}
+
+.admin-card-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    padding:24px 30px;
+    border-bottom:1px solid rgba(15,23,42,.06);
+}
+
+.admin-card-header h2{
+    font-size:22px;
+    font-weight:700;
+    color:#111827;
+    margin-bottom:6px;
+}
+
+.admin-card-header p{
+    color:#6b7280;
+    font-size:14px;
+    line-height:1.7;
+}
+
+.admin-card-body{
+    padding:30px;
+}
+
+.admin-form-grid{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:22px;
+    margin-bottom:24px;
+}
+
+.admin-form-group{
+    display:flex;
+    flex-direction:column;
+}
+
+.admin-form-group label{
+    font-size:14px;
+    font-weight:600;
+    color:#374151;
+    margin-bottom:10px;
+}
+
+.admin-form-group label span{
+    color:#ef4444;
+}
+
+.admin-input,
+.admin-select,
+.admin-textarea{
+    width:100%;
+    border:1px solid #d1d5db;
+    background:#fff;
+    border-radius:12px;
+    padding:14px 16px;
+    font-size:15px;
+    transition:.25s;
+    outline:none;
+    color:#111827;
+}
+
+.admin-input::placeholder,
+.admin-textarea::placeholder{
+    color:#9ca3af;
+}
+
+.admin-input:hover,
+.admin-select:hover,
+.admin-textarea:hover{
+    border-color:#818cf8;
+}
+
+.admin-input:focus,
+.admin-select:focus,
+.admin-textarea:focus{
+    border-color:#6366f1;
+    box-shadow:0 0 0 4px rgba(99,102,241,.12);
+}
+
+.admin-select{
+    cursor:pointer;
+}
+
+.admin-textarea{
+    resize:vertical;
+    min-height:180px;
+    line-height:1.8;
+}
+
+.admin-form-group:last-child{
+    margin-bottom:0;
+}
+
+@media(max-width:991px){
+
+    .admin-card-header{
+        padding:22px;
+    }
+
+    .admin-card-body{
+        padding:22px;
+    }
+
+    .admin-form-grid{
+        grid-template-columns:1fr;
+        gap:18px;
+    }
+
+}
+
+@media(max-width:576px){
+
+    .admin-card{
+        border-radius:14px;
+    }
+
+    .admin-card-header h2{
+        font-size:18px;
+    }
+
+    .admin-card-header p{
+        font-size:13px;
+    }
+
+    .admin-input,
+    .admin-select,
+    .admin-textarea{
+        font-size:14px;
+        padding:13px 15px;
+    }
+
+}

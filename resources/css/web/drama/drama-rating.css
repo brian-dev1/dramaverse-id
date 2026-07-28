@@ -1,0 +1,95 @@
+.web-drama-rating{
+
+    padding:80px 0;
+
+}
+
+.web-rating-card{
+
+    display:grid;
+
+    grid-template-columns:250px 1fr;
+
+    gap:40px;
+
+    background:#151515;
+
+    border-radius:20px;
+
+    border:1px solid rgba(255,255,255,.08);
+
+    padding:40px;
+
+}
+
+.web-rating-score{
+
+    text-align:center;
+
+}
+
+.web-rating-score h2{
+
+    font-size:72px;
+
+    margin-bottom:8px;
+
+}
+
+.web-rating-score span{
+
+    color:#FFD54A;
+
+    font-weight:600;
+
+}
+
+.web-rating-progress{
+
+    display:flex;
+
+    flex-direction:column;
+
+    gap:16px;
+
+}
+
+.web-rating-row{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:20px;
+
+}
+
+.web-rating-row span{
+
+    width:50px;
+
+}
+
+.web-rating-bar{
+
+    flex:1;
+
+    height:10px;
+
+    background:#2a2a2a;
+
+    border-radius:999px;
+
+    overflow:hidden;
+
+}
+
+.web-rating-fill{
+
+    height:100%;
+
+    border-radius:999px;
+
+    background:#FFD54A;
+
+}

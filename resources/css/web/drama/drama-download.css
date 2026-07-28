@@ -1,0 +1,63 @@
+.web-drama-download{
+
+    padding:90px 0;
+
+}
+
+.web-download-card{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    gap:40px;
+
+    padding:45px;
+
+    border-radius:24px;
+
+    background:linear-gradient(135deg,#6d28d9,#4f46e5);
+
+}
+
+.web-download-left span{
+
+    text-transform:uppercase;
+
+    letter-spacing:2px;
+
+    font-size:13px;
+
+}
+
+.web-download-left h2{
+
+    margin:12px 0;
+
+    font-size:36px;
+
+}
+
+.web-download-left p{
+
+    opacity:.85;
+
+    line-height:1.8;
+
+}
+
+.web-download-right button{
+
+    padding:16px 34px;
+
+    border:none;
+
+    border-radius:14px;
+
+    cursor:pointer;
+
+    font-weight:600;
+
+}

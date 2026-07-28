@@ -1,0 +1,86 @@
+.web-about-timeline{
+
+    padding:110px 0;
+
+}
+
+.web-timeline{
+
+    position:relative;
+
+    max-width:900px;
+
+    margin:auto;
+
+}
+
+.web-timeline::before{
+
+    content:"";
+
+    position:absolute;
+
+    left:34px;
+
+    top:0;
+
+    bottom:0;
+
+    width:2px;
+
+    background:rgba(255,255,255,.08);
+
+}
+
+.web-timeline-item{
+
+    display:flex;
+
+    gap:30px;
+
+    margin-bottom:40px;
+
+}
+
+.web-timeline-year{
+
+    width:70px;
+    height:70px;
+
+    border-radius:50%;
+
+    display:flex;
+    align-items:center;
+    justify-content:center;
+
+    background:#6D28D9;
+
+    flex-shrink:0;
+
+    font-weight:700;
+
+}
+
+.web-timeline-content{
+
+    flex:1;
+
+    background:#171717;
+
+    border-radius:18px;
+
+    padding:28px;
+
+    border:1px solid rgba(255,255,255,.08);
+
+}
+
+.web-timeline-content p{
+
+    margin-top:12px;
+
+    color:#9ca3af;
+
+    line-height:1.8;
+
+}

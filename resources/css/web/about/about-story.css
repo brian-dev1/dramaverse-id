@@ -1,0 +1,25 @@
+.web-about-story{
+
+    padding:100px 0;
+
+}
+
+.web-about-story-grid{
+
+    display:grid;
+
+    grid-template-columns:1fr 1fr;
+
+    gap:80px;
+
+    align-items:center;
+
+}
+
+.web-about-story p{
+
+    line-height:2;
+
+    color:#bdbdbd;
+
+}

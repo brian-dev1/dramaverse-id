@@ -1,0 +1,59 @@
+.web-membership-expired{
+
+    padding:120px 0;
+
+}
+
+.web-expired-card{
+
+    max-width:650px;
+
+    margin:auto;
+
+    text-align:center;
+
+    padding:60px;
+
+    border-radius:28px;
+
+    background:#171717;
+
+    border:1px solid rgba(255,255,255,.08);
+
+}
+
+.web-expired-icon{
+
+    font-size:64px;
+
+    margin-bottom:25px;
+
+}
+
+.web-expired-card h2{
+
+    margin-bottom:20px;
+
+}
+
+.web-expired-card p{
+
+    color:#9ca3af;
+
+    line-height:1.9;
+
+    margin-bottom:35px;
+
+}
+
+.web-expired-card button{
+
+    padding:18px 34px;
+
+    border:none;
+
+    border-radius:14px;
+
+    cursor:pointer;
+
+}

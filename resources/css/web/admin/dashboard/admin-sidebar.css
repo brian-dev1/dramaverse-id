@@ -1,0 +1,68 @@
+.web-admin-sidebar{
+
+    width:280px;
+    min-height:100vh;
+
+    background:#141414;
+
+    border-right:1px solid rgba(255,255,255,.08);
+
+    position:fixed;
+
+    left:0;
+    top:0;
+
+}
+
+.web-admin-logo{
+
+    padding:35px;
+
+    border-bottom:1px solid rgba(255,255,255,.08);
+
+}
+
+.web-admin-logo h2{
+
+    margin-bottom:8px;
+
+}
+
+.web-admin-logo span{
+
+    color:#9ca3af;
+
+}
+
+.web-admin-menu{
+
+    display:flex;
+
+    flex-direction:column;
+
+    padding:20px;
+
+    gap:10px;
+
+}
+
+.web-admin-menu a{
+
+    padding:16px 20px;
+
+    border-radius:14px;
+
+    color:#fff;
+
+    text-decoration:none;
+
+    transition:.25s;
+
+}
+
+.web-admin-menu a:hover,
+.web-admin-menu a.active{
+
+    background:#6D28D9;
+
+}

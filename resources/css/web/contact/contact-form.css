@@ -1,0 +1,68 @@
+.web-contact-form{
+
+    padding:100px 0;
+
+}
+
+.web-contact-grid{
+
+    display:grid;
+
+    grid-template-columns:1fr 1fr;
+
+    gap:60px;
+
+    align-items:start;
+
+}
+
+.web-contact-information p{
+
+    margin-top:20px;
+
+    color:#9ca3af;
+
+    line-height:1.8;
+
+}
+
+.web-contact-form-box{
+
+    display:flex;
+
+    flex-direction:column;
+
+    gap:22px;
+
+}
+
+.web-input-group input,
+.web-input-group textarea{
+
+    width:100%;
+
+    padding:18px 20px;
+
+    border-radius:16px;
+
+    background:#171717;
+
+    border:1px solid rgba(255,255,255,.08);
+
+    color:#fff;
+
+    resize:none;
+
+}
+
+.web-contact-form-box button{
+
+    padding:18px;
+
+    border:none;
+
+    border-radius:16px;
+
+    cursor:pointer;
+
+}

@@ -1,0 +1,81 @@
+.web-search-result{
+
+    padding:80px 0;
+
+}
+
+.web-search-result-header{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    margin-bottom:40px;
+
+}
+
+.web-search-result-grid{
+
+    display:grid;
+
+    grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
+
+    gap:28px;
+
+}
+
+.web-drama-card{
+
+    background:#171717;
+
+    border-radius:20px;
+
+    overflow:hidden;
+
+    border:1px solid rgba(255,255,255,.08);
+
+    transition:.3s;
+
+}
+
+.web-drama-card:hover{
+
+    transform:translateY(-8px);
+
+}
+
+.web-drama-poster img{
+
+    width:100%;
+
+    display:block;
+
+    aspect-ratio:2/3;
+
+    object-fit:cover;
+
+}
+
+.web-drama-content{
+
+    padding:20px;
+
+}
+
+.web-drama-content span{
+
+    display:block;
+
+    margin:10px 0;
+
+    color:#9ca3af;
+
+}
+
+.web-drama-rating{
+
+    font-weight:600;
+
+}

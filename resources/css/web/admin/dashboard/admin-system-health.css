@@ -1,0 +1,43 @@
+.web-admin-system-health{
+
+    margin-left:280px;
+
+    padding:0 35px 35px;
+
+}
+
+.web-admin-health-grid{
+
+    display:grid;
+
+    grid-template-columns:repeat(4,1fr);
+
+    gap:24px;
+
+}
+
+.web-admin-health-card{
+
+    background:#171717;
+
+    border-radius:20px;
+
+    padding:30px;
+
+    border:1px solid rgba(255,255,255,.08);
+
+}
+
+.web-admin-health-card h4{
+
+    margin-bottom:18px;
+
+}
+
+.online{
+
+    color:#22c55e;
+
+    font-weight:600;
+
+}

@@ -1,0 +1,49 @@
+.web-search-header{
+
+    padding:80px 0 40px;
+
+}
+
+.web-search-header-content{
+
+    max-width:720px;
+
+    margin:auto;
+
+    text-align:center;
+
+}
+
+.web-search-header h1{
+
+    font-size:48px;
+
+    font-weight:700;
+
+    margin:18px 0;
+
+}
+
+.web-search-header p{
+
+    opacity:.7;
+
+    line-height:1.8;
+
+}
+
+.web-search-badge{
+
+    display:inline-flex;
+
+    padding:8px 18px;
+
+    border-radius:999px;
+
+    font-size:13px;
+
+    font-weight:600;
+
+    background:rgba(255,255,255,.08);
+
+}

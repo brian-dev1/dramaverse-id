@@ -1,0 +1,55 @@
+.web-admin-recent-activity{
+
+    margin-left:280px;
+
+    padding:0 35px 35px;
+
+}
+
+.web-admin-activity-list{
+
+    padding:25px;
+
+}
+
+.web-admin-activity-item{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    padding:18px 0;
+
+    border-bottom:1px solid rgba(255,255,255,.08);
+
+}
+
+.web-admin-activity-item:last-child{
+
+    border-bottom:none;
+
+}
+
+.web-admin-activity-item p{
+
+    margin-top:6px;
+
+    color:#9ca3af;
+
+}
+
+.web-admin-activity-item span{
+
+    padding:8px 14px;
+
+    border-radius:999px;
+
+    background:#14532d;
+
+    color:#fff;
+
+    font-size:13px;
+
+}

@@ -1,0 +1,67 @@
+.web-admin-dashboard-chart{
+
+    margin-left:280px;
+
+    padding:0 35px 35px;
+
+}
+
+.web-admin-card{
+
+    background:#171717;
+
+    border-radius:20px;
+
+    border:1px solid rgba(255,255,255,.08);
+
+    overflow:hidden;
+
+}
+
+.web-admin-card-header{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    padding:24px 30px;
+
+    border-bottom:1px solid rgba(255,255,255,.08);
+
+}
+
+.web-admin-card-header select{
+
+    height:42px;
+
+    padding:0 15px;
+
+    border-radius:10px;
+
+    background:#202020;
+
+    color:#fff;
+
+    border:none;
+
+}
+
+.web-admin-chart-placeholder{
+
+    height:360px;
+
+    display:flex;
+
+    flex-direction:column;
+
+    justify-content:center;
+
+    align-items:center;
+
+    gap:15px;
+
+    font-size:52px;
+
+}

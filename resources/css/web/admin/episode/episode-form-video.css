@@ -1,0 +1,33 @@
+.video-cloud-action{
+
+    display:flex;
+    justify-content:flex-end;
+    gap:16px;
+    margin-top:28px;
+
+}
+
+.video-cloud-action .btn{
+
+    display:flex;
+    align-items:center;
+    gap:8px;
+
+}
+
+@media(max-width:768px){
+
+.video-cloud-action{
+
+    flex-direction:column;
+
+}
+
+.video-cloud-action .btn{
+
+    width:100%;
+    justify-content:center;
+
+}
+
+}

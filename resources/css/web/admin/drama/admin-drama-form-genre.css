@@ -1,0 +1,37 @@
+.genre-grid{
+    display:flex;
+    flex-wrap:wrap;
+    gap:14px;
+}
+
+.genre-item{
+    cursor:pointer;
+}
+
+.genre-item input{
+    display:none;
+}
+
+.genre-item span{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:12px 20px;
+    border-radius:999px;
+    border:1px solid #d1d5db;
+    background:#fff;
+    color:#374151;
+    font-size:14px;
+    font-weight:600;
+    transition:.25s;
+}
+
+.genre-item:hover span{
+    border-color:#6366f1;
+}
+
+.genre-item input:checked+span{
+    background:#6366f1;
+    color:#fff;
+    border-color:#6366f1;
+}

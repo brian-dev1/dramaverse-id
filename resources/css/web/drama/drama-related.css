@@ -1,0 +1,103 @@
+.web-drama-related{
+
+    padding:90px 0;
+
+}
+
+.web-drama-related-grid{
+
+    display:grid;
+
+    grid-template-columns:repeat(auto-fill,minmax(230px,1fr));
+
+    gap:28px;
+
+}
+
+.web-related-card{
+
+    background:#171717;
+
+    border-radius:20px;
+
+    overflow:hidden;
+
+    border:1px solid rgba(255,255,255,.08);
+
+    transition:.35s;
+
+}
+
+.web-related-card:hover{
+
+    transform:translateY(-10px);
+
+}
+
+.web-related-poster{
+
+    aspect-ratio:2/3;
+
+    overflow:hidden;
+
+}
+
+.web-related-poster img{
+
+    width:100%;
+
+    height:100%;
+
+    object-fit:cover;
+
+    transition:.4s;
+
+}
+
+.web-related-card:hover img{
+
+    transform:scale(1.08);
+
+}
+
+.web-related-content{
+
+    padding:22px;
+
+}
+
+.web-related-country{
+
+    display:inline-block;
+
+    padding:6px 14px;
+
+    border-radius:999px;
+
+    background:rgba(255,255,255,.08);
+
+    margin-bottom:14px;
+
+    font-size:13px;
+
+}
+
+.web-related-content h3{
+
+    font-size:20px;
+
+    margin-bottom:16px;
+
+}
+
+.web-related-meta{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    color:#b5b5b5;
+
+    font-size:14px;
+
+}

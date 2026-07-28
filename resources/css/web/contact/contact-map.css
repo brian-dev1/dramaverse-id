@@ -1,0 +1,45 @@
+.web-contact-map{
+
+    padding:100px 0 120px;
+
+}
+
+.web-contact-map-box{
+
+    border-radius:24px;
+
+    overflow:hidden;
+
+    border:1px solid rgba(255,255,255,.08);
+
+}
+
+.web-map-placeholder{
+
+    min-height:420px;
+
+    display:flex;
+
+    flex-direction:column;
+
+    justify-content:center;
+
+    align-items:center;
+
+    background:#171717;
+
+    font-size:72px;
+
+    text-align:center;
+
+}
+
+.web-map-placeholder p{
+
+    margin-top:20px;
+
+    font-size:18px;
+
+    color:#9ca3af;
+
+}
