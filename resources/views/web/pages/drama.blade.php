@@ -49,7 +49,7 @@
                 </div>
 
                 @if ($drama->genres->isNotEmpty())
-                    <div class="pill-row" style="margin-bottom:var(--space-3);">
+                    <div class="pill-row detail-genres">
                         @foreach ($drama->genres as $genre)
                             <a href="{{ route('web.genre.show', $genre->slug) }}" class="pill">{{ $genre->name }}</a>
                         @endforeach
@@ -124,4 +124,10 @@
     {{-- DRAMA TERKAIT --}}
     <x-web.home.grid :dramas="$related" title="Drama Serupa" />
 
+@endsection
+
+@section('promo')
+    @guest
+        <x-web.home.membership-banner />
+    @endguest
 @endsection

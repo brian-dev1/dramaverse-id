@@ -48,7 +48,15 @@
         </p>
     </section>
 
-    <x-web.home.continue-watching :histories="$continueWatching" />
+    @if ($continueWatching->isEmpty() && $stats['history'] === 0)
+        <x-web.home.empty-state
+            title="Belum ada aktivitas"
+            message="Riwayat tontonan Anda akan muncul di sini setelah mulai menonton."
+            :href="route('web.trending')"
+            action="Jelajahi Katalog" />
+    @else
+        <x-web.home.continue-watching :histories="$continueWatching" />
+    @endif
 
     <section class="section section-pad">
         <form method="POST" action="{{ route('web.logout') }}">

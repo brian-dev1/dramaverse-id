@@ -25,3 +25,9 @@
     @endif
 
 @endsection
+
+@section('promo')
+    @guest
+        <x-web.home.membership-banner />
+    @endguest
+@endsection

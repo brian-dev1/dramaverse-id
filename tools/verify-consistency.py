@@ -272,6 +272,46 @@ check(not php_dead, "semua route() di PHP menunjuk route yang terdefinisi")
 for d in php_dead: print("        -", d)
 
 
+# ---------- 14. Form: CSRF, method, dan route tujuan ----------
+print("\n== CEK FORM ==")
+form_bad = []
+for f in glob.glob('resources/views/**/*.blade.php', recursive=True):
+    src = open(f, encoding='utf-8').read()
+    # Ambil tiap <form ...> ... </form>
+    for m in re.finditer(r"<form\b([^>]*)>(.*?)</form>", src, re.S | re.I):
+        attrs, body = m.group(1), m.group(2)
+        method = re.search(r"method=[\"']([a-zA-Z]+)[\"']", attrs)
+        verb = (method.group(1) if method else 'GET').upper()
+
+        if verb == 'GET':
+            continue  # form GET tidak butuh CSRF
+
+        if '@csrf' not in body:
+            form_bad.append(f"{f}: form {verb} tanpa @csrf")
+
+        # PUT/PATCH/DELETE dikirim sebagai POST + @method
+        action = re.search(r"action=[\"']\{\{\s*route\(\s*'([^']+)'", attrs)
+        if action and action.group(1) not in defined:
+            form_bad.append(f"{f}: action -> route mati {action.group(1)}")
+
+check(not form_bad, "semua form punya @csrf dan action yang valid")
+for b in form_bad: print("        -", b)
+
+# ---------- 15. href yang menunjuk ke mana-mana ----------
+print("\n== CEK HREF ==")
+href_bad = []
+for f in glob.glob('resources/views/**/*.blade.php', recursive=True):
+    src = open(f, encoding='utf-8').read()
+    for m in re.finditer(r'href="([^"]*)"', src):
+        h = m.group(1).strip()
+        if h in ('#', ''):
+            href_bad.append(f"{f}: href kosong atau '#'")
+        elif h.startswith('{{') and 'route(' not in h and 'url(' not in h and 'asset(' not in h:
+            pass  # variabel dinamis, sudah tercakup pemeriksaan lain
+check(not href_bad, "tidak ada href kosong atau buntu (#)")
+for b in href_bad: print("        -", b)
+
+
 print("\n" + "="*60)
 if fail:
     print(f"HASIL: {len(fail)} masalah ditemukan")

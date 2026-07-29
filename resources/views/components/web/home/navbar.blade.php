@@ -48,7 +48,7 @@
                     {{ auth()->user()->initial }}
                 </a>
             @else
-                <a href="{{ route('web.membership') }}" class="btn btn-primary" style="padding:9px 18px;font-size:13.5px;">
+                <a href="{{ route('web.membership') }}" class="btn btn-primary btn-sm">
                     Masuk via Telegram
                 </a>
             @endauth

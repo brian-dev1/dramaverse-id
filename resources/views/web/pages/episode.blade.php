@@ -61,14 +61,16 @@
             <h2 class="section-title">Semua Episode</h2>
 
             <div class="episode-list episode-list-compact">
-                @foreach ($episodes as $ep)
+                @forelse ($episodes as $ep)
                     <a href="{{ route('web.episode.show', $ep->id) }}"
                        class="episode-item {{ $ep->id === $episode->id ? 'active' : '' }}">
                         <span class="episode-number">{{ str_pad($ep->episode_number, 2, '0', STR_PAD_LEFT) }}</span>
                         <span class="episode-title">{{ $ep->title ?: 'Episode '.$ep->episode_number }}</span>
                         @if ($ep->is_vip)<span class="chip gold">VIP</span>@endif
                     </a>
-                @endforeach
+                @empty
+                    <p class="page-subtitle">Belum ada episode lain.</p>
+                @endforelse
             </div>
         </aside>
 

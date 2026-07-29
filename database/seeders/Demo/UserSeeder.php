@@ -1,27 +1,18 @@
 <?php
 
-namespace Database\Seeders;
+namespace Database\Seeders\Demo;
 
 use App\Models\User;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
 
+/**
+ * Pengguna Telegram contoh — hanya untuk pengembangan.
+ * Di produksi, pengguna dibuat otomatis oleh bot saat mengirim /start.
+ */
 class UserSeeder extends Seeder
 {
     public function run(): void
     {
-        // --- Admin: satu-satunya akun yang memakai email + kata sandi ---
-        User::updateOrCreate(
-            ['email' => 'admin@dramaverse.id'],
-            [
-                'name'      => 'Administrator',
-                'password'  => Hash::make(env('ADMIN_SEED_PASSWORD', 'dramaverse')),
-                'is_admin'  => true,
-                'is_active' => true,
-            ]
-        );
-
-        // --- Pengguna contoh via Telegram (tanpa email dan kata sandi) ---
         $samples = [
             [700_100_001, 'rizky_pratama',  'Rizky',  'Pratama'],
             [700_100_002, 'siti_nurhaliza', 'Siti',   'Nurhaliza'],

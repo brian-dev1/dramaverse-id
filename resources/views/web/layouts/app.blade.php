@@ -32,7 +32,8 @@
         @yield('content')
     </main>
 
-    <x-web.home.membership-banner />
+    {{-- Promo membership hanya muncul di halaman yang meminta lewat @section('promo') --}}
+    @yield('promo')
 
     <x-web.home.footer />
 

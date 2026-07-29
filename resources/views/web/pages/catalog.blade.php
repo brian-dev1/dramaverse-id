@@ -19,9 +19,13 @@
     @else
         <x-web.home.grid :dramas="$dramas" />
 
-        <div class="section-pad pagination-wrap">
-            {{ $dramas->links() }}
-        </div>
+        <div class="section-pad pagination-wrap">{{ $dramas->links() }}</div>
     @endif
 
+@endsection
+
+@section('promo')
+    @guest
+        <x-web.home.membership-banner />
+    @endguest
 @endsection

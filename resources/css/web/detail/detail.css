@@ -59,3 +59,6 @@
     font-family:var(--font-mono); font-size:11px; color:var(--text-muted);
 }
 .episode-list-compact .episode-item{ padding:10px 14px; }
+
+/* Deretan genre pada halaman detail */
+.detail-genres{ margin-bottom:var(--space-3); }

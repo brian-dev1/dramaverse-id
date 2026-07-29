@@ -6,7 +6,7 @@
 
     if ($banners && $banners->isNotEmpty()) {
         $slides = $banners->map(fn ($b) => (object) [
-            'eyebrow'  => 'Sedang Tayang',
+            'eyebrow'  => 'Pilihan Redaksi',
             'title'    => $b->title,
             'subtitle' => $b->subtitle,
             'image'    => $b->image,
@@ -76,15 +76,29 @@
                 </div>
             @endif
         @else
+            {{-- Katalog masih kosong. Tampilkan apa adanya, tanpa judul karangan. --}}
             <div class="hero-content">
                 <div class="hero-eyebrow"><span class="line"></span>DramaVerse ID</div>
+
                 <h1 class="hero-title">Drama Asia,<br>tanpa jeda.</h1>
+
                 <p class="hero-desc">
-                    Katalog sedang disiapkan. Jalankan <code>php artisan migrate --seed</code>
-                    untuk mengisi data contoh.
+                    Platform streaming privat untuk drama Korea, Tiongkok, Thailand, dan Jepang
+                    dengan subtitle Bahasa Indonesia. Akses lewat Telegram.
                 </p>
+
                 <div class="hero-actions">
-                    <a href="{{ route('web.trending') }}" class="btn btn-primary">Jelajahi Katalog</a>
+                    @auth
+                        @if (auth()->user()->isAdmin())
+                            <a href="{{ route('admin.drama.index') }}" class="btn btn-primary">
+                                Kelola Katalog
+                            </a>
+                        @endif
+                        <a href="{{ route('web.genre.index') }}" class="btn btn-ghost">Jelajahi Genre</a>
+                    @else
+                        <a href="{{ route('web.membership') }}" class="btn btn-primary">Lihat Membership</a>
+                        <a href="{{ route('web.about') }}" class="btn btn-ghost">Tentang Kami</a>
+                    @endauth
                 </div>
             </div>
         @endif
