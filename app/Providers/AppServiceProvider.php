@@ -24,6 +24,7 @@ use App\Repositories\Contracts\RecommendationRepositoryInterface;
 use App\Repositories\Contracts\ReviewRepositoryInterface;
 use App\Repositories\Contracts\SearchRepositoryInterface;
 use App\Repositories\Contracts\SettingRepositoryInterface;
+use App\Repositories\Contracts\StorageProviderRepositoryInterface;
 use App\Repositories\Contracts\TelegramRepositoryInterface;
 use App\Repositories\Contracts\WatchHistoryRepositoryInterface;
 use App\Repositories\Contracts\WatchlistRepositoryInterface;
@@ -50,9 +51,12 @@ use App\Repositories\RecommendationRepository;
 use App\Repositories\ReviewRepository;
 use App\Repositories\SearchRepository;
 use App\Repositories\SettingRepository;
+use App\Repositories\StorageProviderRepository;
 use App\Repositories\TelegramRepository;
 use App\Repositories\WatchHistoryRepository;
 use App\Repositories\WatchlistRepository;
+use App\Services\Storage\Contracts\StorageManagerInterface;
+use App\Services\Storage\StorageManager;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\Paginator;
@@ -90,6 +94,7 @@ class AppServiceProvider extends ServiceProvider
         ReviewRepositoryInterface::class => ReviewRepository::class,
         SearchRepositoryInterface::class => SearchRepository::class,
         SettingRepositoryInterface::class => SettingRepository::class,
+        StorageProviderRepositoryInterface::class => StorageProviderRepository::class,
         TelegramRepositoryInterface::class => TelegramRepository::class,
         WatchHistoryRepositoryInterface::class => WatchHistoryRepository::class,
         WatchlistRepositoryInterface::class => WatchlistRepository::class,
@@ -97,7 +102,14 @@ class AppServiceProvider extends ServiceProvider
 
     public function register(): void
     {
-        //
+        // StorageManager dipasang sebagai singleton karena ia memoisasi
+        // instance disk yang sudah dibangun. Kalau tidak singleton,
+        // memoisasinya tidak ada gunanya: setiap injeksi akan membangun
+        // ulang klien S3 dari nol.
+        $this->app->singleton(
+            StorageManagerInterface::class,
+            StorageManager::class
+        );
     }
 
     public function boot(): void

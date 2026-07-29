@@ -167,9 +167,14 @@ def cols_of(table):
     for m in re.finditer(rf"Schema::(?:create|table)\(\s*'{table}'\s*,\s*function[^{{]*\{{", mig):
         start = m.end()
         depth, i = 1, start
+        # Perbandingan di sini sebelumnya '{{' dan '}}' -- dua karakter,
+        # sedangkan mig[i] selalu satu karakter, sehingga tidak pernah cocok.
+        # Akibatnya depth tidak pernah turun, blok membentang sampai akhir
+        # berkas, dan pemeriksaan $fillable hanya menanyakan "apakah nama
+        # kolom ini muncul di migration mana pun" -- bukan "di tabel ini".
         while i < len(mig) and depth:
-            if mig[i] == '{{': depth += 1
-            elif mig[i] == '}}': depth -= 1
+            if mig[i] == '{': depth += 1
+            elif mig[i] == '}': depth -= 1
             i += 1
         blk = mig[start:i]
         cols |= set(re.findall(r"\$table->\w+\(\s*'([a-z_]+)'", blk))
@@ -181,7 +186,10 @@ def cols_of(table):
 
 pairs = {'Drama':'dramas','Episode':'episodes','Genre':'genres','Country':'countries',
          'User':'users','Favorite':'favorites','Watchlist':'watchlists','Banner':'banners',
-         'WatchHistory':'watch_histories','Subscription':'subscriptions','MembershipPlan':'membership_plans'}
+         'WatchHistory':'watch_histories','Subscription':'subscriptions','MembershipPlan':'membership_plans',
+         'Media':'media','Review':'reviews','Setting':'settings','Notification':'notifications',
+         'ActivityLog':'activity_logs','Role':'roles','Permission':'permissions',
+         'StorageProvider':'storage_providers'}
 
 bad = []
 for model, table in pairs.items():
@@ -354,6 +362,50 @@ for f in glob.glob('resources/css/**/*.css', recursive=True):
 
 check(not symbol_bad, "tidak ada emoji, simbol teks, atau SVG inline")
 for b in symbol_bad: print("        -", b)
+
+
+# ---------- 17. match() enum tanpa default harus menangani semua case ----------
+print("\n== CEK KELENGKAPAN MATCH ENUM ==")
+# PHP melempar UnhandledMatchError saat dieksekusi kalau sebuah match tanpa
+# arm `default` menerima nilai yang tidak tercantum. Menambah satu case ke
+# enum tanpa memperbarui setiap match yang memakainya karena itu menghasilkan
+# kesalahan yang tidak terlihat sampai jalur kode itu benar-benar dijalankan --
+# dan untuk storage provider, itu bisa berarti baru terlihat di produksi.
+match_bad = []
+
+def method_bodies(src):
+    """Pasangan (nama metode, isi badan) dengan pencocokan kurung."""
+    for m in re.finditer(r"function\s+(\w+)\s*\([^)]*\)[^{;]*\{", src):
+        start = m.end()
+        depth, i = 1, start
+        while i < len(src) and depth:
+            if src[i] == '{': depth += 1
+            elif src[i] == '}': depth -= 1
+            i += 1
+        yield m.group(1), src[start:i-1]
+
+for f in sorted(glob.glob('app/Enums/*.php')):
+    src = open(f, encoding='utf-8').read()
+    cases = re.findall(r"^\s*case\s+(\w+)\s*=", src, re.M)
+    if not cases:
+        continue
+    enum_name = os.path.basename(f)[:-4]
+
+    for method, body in method_bodies(src):
+        if 'match' not in body:
+            continue
+        if re.search(r"\bdefault\s*=>", body):
+            continue
+        # Arm bisa menggabungkan beberapa case: `self::B2, self::WASABI =>`
+        handled = set(re.findall(r"self::(\w+)", body))
+        missing = [c for c in cases if c not in handled]
+        if missing:
+            match_bad.append(
+                f"{enum_name}::{method}() tidak menangani: {', '.join(missing)}"
+            )
+
+check(not match_bad, "semua match() tanpa default menangani seluruh case enum")
+for b in match_bad: print("        -", b)
 
 
 print("\n" + "="*60)

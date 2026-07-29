@@ -31,6 +31,7 @@ class DatabaseSeeder extends Seeder
             MembershipPlanSeeder::class,
             RoleSeeder::class,
             AdminSeeder::class,
+            StorageProviderSeeder::class,
         ]);
     }
 }
