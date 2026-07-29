@@ -2,49 +2,98 @@
 
 @section('title', 'Laporan')
 
+@php $chartsOnPage = true; @endphp
+
 @section('content')
 
-    <div class="stat-row">
-        <div class="stat-card">
-            <span class="stat-value">Rp {{ number_format((float) $revenue, 0, ',', '.') }}</span>
-            <span class="stat-label">Pendapatan Langganan Aktif</span>
+    {{-- Pemilih jenis laporan dan rentang tanggal --}}
+    <form method="GET" class="admin-toolbar">
+        <select name="type" class="control control-sm">
+            @foreach ($types as $key => $label)
+                <option value="{{ $key }}" @selected($type === $key)>{{ $label }}</option>
+            @endforeach
+        </select>
+
+        <label class="range-label">
+            Dari
+            <input type="date" name="from" value="{{ $from->toDateString() }}" class="control control-sm">
+        </label>
+
+        <label class="range-label">
+            Sampai
+            <input type="date" name="to" value="{{ $to->toDateString() }}" class="control control-sm">
+        </label>
+
+        <button type="submit" class="btn btn-ghost btn-sm">Terapkan</button>
+
+        @if ($total > 0)
+            <a href="{{ route('admin.report.export', request()->only('type', 'from', 'to')) }}"
+               class="btn btn-primary btn-sm toolbar-add">
+                <x-web.home.icon name="file" :size="14" />
+                Unduh CSV
+            </a>
+        @endif
+    </form>
+
+    <div class="chart-grid">
+        <x-admin.chart id="rep-watch" title="Tontonan 12 bulan terakhir" type="bar" color="#5B4B8A"
+                       :labels="$watch['labels']" :values="$watch['values']" />
+
+        <x-admin.chart id="rep-revenue" title="Pendapatan 12 bulan terakhir" color="#EAC98C" money
+                       :labels="$revenue['labels']" :values="$revenue['values']" />
+    </div>
+
+    <section class="panel">
+        <div class="panel-head">
+            <h2>{{ $types[$type] }}</h2>
+            <span class="panel-meta">
+                <span class="meta-item">{{ number_format($total) }} baris</span>
+                @if ($total > 100)
+                    <span class="meta-item">Menampilkan 100 pertama, unduh CSV untuk semuanya</span>
+                @endif
+            </span>
         </div>
-    </div>
 
-    <div class="admin-grid">
-
-        <section>
-            <h2 class="section-title">Drama Paling Banyak Ditonton</h2>
-            <table class="data-table">
-                <thead><tr><th>Judul</th><th>Tontonan</th><th>Rating</th></tr></thead>
-                <tbody>
-                    @forelse ($topDramas as $drama)
+        @if ($rows->isEmpty())
+            <div class="empty-state">
+                <h3>Tidak ada data</h3>
+                <p>Tidak ada catatan pada rentang {{ $from->translatedFormat('d M Y') }}
+                   sampai {{ $to->translatedFormat('d M Y') }}.</p>
+            </div>
+        @else
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
                         <tr>
-                            <td>{{ $drama->title }}</td>
-                            <td>{{ number_format($drama->views) }}</td>
-                            <td>{{ number_format((float) $drama->rating, 1) }}</td>
+                            @foreach ($headers as $header)
+                                <th>{{ $header }}</th>
+                            @endforeach
                         </tr>
-                    @empty
-                        <tr><td colspan="3">Belum ada data.</td></tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </section>
-
-        <section>
-            <h2 class="section-title">Aktivitas 14 Hari Terakhir</h2>
-            <table class="data-table">
-                <thead><tr><th>Tanggal</th><th>Jumlah Tontonan</th></tr></thead>
-                <tbody>
-                    @forelse ($watchPerDay as $row)
-                        <tr><td>{{ $row->day }}</td><td>{{ number_format($row->total) }}</td></tr>
-                    @empty
-                        <tr><td colspan="2">Belum ada aktivitas.</td></tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </section>
-
-    </div>
+                    </thead>
+                    <tbody>
+                        @foreach ($rows as $row)
+                            <tr>
+                                @foreach ($row as $value)
+                                    <td>
+                                        @if ($value instanceof \Illuminate\Support\Carbon)
+                                            {{ $value->translatedFormat('d M Y, H:i') }}
+                                        @elseif (is_bool($value))
+                                            <span class="badge {{ $value ? 'badge-on' : 'badge-off' }}">
+                                                {{ $value ? 'Ya' : 'Tidak' }}
+                                            </span>
+                                        @elseif ($value === null || $value === '')
+                                            <span class="cell-empty">—</span>
+                                        @else
+                                            {{ $value }}
+                                        @endif
+                                    </td>
+                                @endforeach
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
+    </section>
 
 @endsection

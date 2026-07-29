@@ -394,3 +394,83 @@ input[type="color"].control{ height:42px; padding:4px; cursor:pointer; }
 @media (max-width: 1024px){
     .sidebar-toggle{ display:inline-flex; }
 }
+
+/* --- Kartu statistik --- */
+.admin-content .stat-row{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(168px, 1fr));
+    gap:12px;
+}
+.admin-content .stat-card{
+    position:relative;
+    gap:5px;
+    border:1px solid var(--border-soft);
+    background:var(--bg-card);
+    padding:var(--space-3);
+}
+.stat-icon{
+    position:absolute; top:var(--space-3); right:var(--space-3);
+    color:var(--text-muted);
+}
+a.stat-card:hover .stat-icon{ color:var(--gold); }
+.admin-content .stat-value{ font-size:25px; }
+.admin-content .stat-value small{
+    font-family:var(--font-body);
+    font-size:12px; font-weight:400;
+    color:var(--text-muted); margin-left:4px;
+}
+
+/* --- Grafik --- */
+.chart-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(340px, 1fr));
+    gap:var(--space-3);
+}
+.chart-card{
+    padding:var(--space-4);
+    border:1px solid var(--border-soft);
+    border-radius:var(--radius-l);
+    background:var(--bg-card);
+}
+.chart-card h2{
+    font-family:var(--font-display);
+    font-size:15px; font-weight:600;
+    margin-bottom:var(--space-3);
+}
+.chart-canvas{ position:relative; height:220px; }
+.chart-empty{
+    color:var(--text-muted); font-size:13.5px;
+    padding:var(--space-5) 0; text-align:center;
+}
+
+/* --- Panel daftar --- */
+.panel{
+    border:1px solid var(--border-soft);
+    border-radius:var(--radius-l);
+    background:var(--bg-card);
+    overflow:hidden;
+}
+.panel-head{
+    display:flex; align-items:center; justify-content:space-between;
+    gap:var(--space-2);
+    padding:var(--space-3) var(--space-4);
+    border-bottom:1px solid var(--border-soft);
+}
+.panel-head h2{ font-family:var(--font-display); font-size:15px; font-weight:600; }
+.panel .data-table{ border:0; border-radius:0; }
+.panel .data-table th{ background:transparent; }
+
+@media (max-width: 640px){
+    .chart-canvas{ height:190px; }
+    .admin-content .stat-row{ grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); }
+    .admin-content .stat-value{ font-size:21px; }
+}
+
+/* --- Laporan --- */
+.range-label{
+    display:flex; align-items:center; gap:8px;
+    font-size:13px; color:var(--text-secondary);
+    white-space:nowrap;
+}
+.panel-meta{ font-size:12px; color:var(--text-muted); }
+.panel .empty-state{ margin:0; border:0; }

@@ -176,4 +176,96 @@ export default function admin() {
     uploadPreview();
     autoEpisodeNumber();
     dismissToast();
+    charts();
+}
+
+/**
+ * Grafik dashboard.
+ *
+ * Chart.js dimuat dari CDN oleh layout admin dan tersedia sebagai global
+ * `Chart`. Fungsi ini menunggu sampai skrip itu siap, lalu menggambar tiap
+ * <canvas data-chart>. Bila CDN gagal dimuat, grafik dilewati tanpa
+ * mengganggu bagian halaman lainnya.
+ */
+function charts() {
+    const canvases = document.querySelectorAll('[data-chart]');
+    if (!canvases.length) return;
+
+    const draw = () => {
+        if (typeof Chart === 'undefined') return false;
+
+        const css = getComputedStyle(document.documentElement);
+        const grid = 'rgba(255,255,255,.06)';
+        const text = css.getPropertyValue('--text-muted').trim() || '#645E70';
+
+        canvases.forEach((canvas) => {
+            let labels = [];
+            let values = [];
+
+            try {
+                labels = JSON.parse(canvas.dataset.labels || '[]');
+                values = JSON.parse(canvas.dataset.values || '[]');
+            } catch {
+                return;
+            }
+
+            const color = canvas.dataset.color || '#D9AF6E';
+            const money = canvas.dataset.money === '1';
+            const type  = canvas.dataset.type || 'line';
+
+            const fmt = (v) =>
+                money
+                    ? 'Rp ' + Number(v).toLocaleString('id-ID')
+                    : Number(v).toLocaleString('id-ID');
+
+            new Chart(canvas, {
+                type,
+                data: {
+                    labels,
+                    datasets: [{
+                        data: values,
+                        borderColor: color,
+                        backgroundColor: type === 'bar' ? color + '99' : color + '22',
+                        borderWidth: 2,
+                        fill: type === 'line',
+                        tension: 0.35,
+                        pointRadius: 0,
+                        pointHoverRadius: 4,
+                        borderRadius: type === 'bar' ? 3 : 0,
+                    }],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: { label: (ctx) => fmt(ctx.parsed.y) },
+                        },
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: text, font: { size: 10 }, maxRotation: 0, autoSkipPadding: 16 },
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: grid },
+                            ticks: { color: text, font: { size: 10 }, precision: 0, callback: fmt },
+                        },
+                    },
+                },
+            });
+        });
+
+        return true;
+    };
+
+    if (draw()) return;
+
+    // Chart.js dimuat dengan atribut defer — coba lagi sampai siap.
+    let tries = 0;
+    const timer = setInterval(() => {
+        if (draw() || ++tries > 40) clearInterval(timer);
+    }, 100);
 }

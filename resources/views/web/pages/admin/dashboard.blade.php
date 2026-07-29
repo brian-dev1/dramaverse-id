@@ -4,55 +4,125 @@
 
 @section('content')
 
+    {{-- Ringkasan --}}
     <div class="stat-row">
-        @foreach ([
-            'Drama'          => $stats['dramas'],
-            'Episode'        => $stats['episodes'],
-            'Pengguna'       => $stats['users'],
-            'Langganan Aktif'=> $stats['active'],
-            'Total Tontonan' => $stats['watched'],
-        ] as $label => $value)
-            <div class="stat-card">
-                <span class="stat-value">{{ number_format($value) }}</span>
-                <span class="stat-label">{{ $label }}</span>
-            </div>
-        @endforeach
+        <x-admin.stat-card label="Drama"    :value="$summary['dramas']"   icon="film"  :href="route('admin.drama.index')" />
+        <x-admin.stat-card label="Episode"  :value="$summary['episodes']" icon="list"  :href="route('admin.episode.index')" />
+        <x-admin.stat-card label="Pengguna" :value="$summary['users']"    icon="users" :href="route('admin.user.index')" />
+        <x-admin.stat-card label="Pengguna Telegram" :value="$summary['telegramUsers']" icon="send" />
+        <x-admin.stat-card label="Aktif 30 hari"     :value="$summary['activeUsers']"   icon="user" />
     </div>
 
+    <div class="stat-row">
+        <x-admin.stat-card label="Anggota VIP"     :value="$summary['vipMembers']"     icon="card" :href="route('admin.subscription.index')" />
+        <x-admin.stat-card label="Anggota Premium" :value="$summary['premiumMembers']" icon="card" :href="route('admin.subscription.index')" />
+        <x-admin.stat-card label="Total tontonan"  :value="$summary['totalViews']"     icon="chart" />
+        <x-admin.stat-card label="Tontonan hari ini" :value="$summary['watchToday']"   icon="clock" />
+        <x-admin.stat-card label="Pendapatan aktif" :value="$summary['revenue']"       icon="card" money />
+    </div>
+
+    {{-- Grafik --}}
+    <div class="chart-grid">
+        <x-admin.chart id="chart-watch"
+                       title="Tontonan 14 hari terakhir"
+                       :labels="$watchPerDay['labels']"
+                       :values="$watchPerDay['values']" />
+
+        <x-admin.chart id="chart-users"
+                       title="Pengguna baru 30 hari terakhir"
+                       type="bar"
+                       color="#C1425B"
+                       :labels="$userGrowth['labels']"
+                       :values="$userGrowth['values']" />
+    </div>
+
+    {{-- Peringkat --}}
     <div class="admin-grid">
 
-        <section>
-            <h2 class="section-title">Drama Terbaru</h2>
+        <section class="panel">
+            <div class="panel-head">
+                <h2>Drama terpopuler</h2>
+                <a href="{{ route('admin.drama.index') }}" class="see-all">Kelola</a>
+            </div>
+
             <table class="data-table">
-                <thead><tr><th>Judul</th><th>Status</th><th>Rating</th><th>Dibuat</th></tr></thead>
+                <thead><tr><th>Judul</th><th>Tontonan</th><th>Rating</th></tr></thead>
                 <tbody>
-                    @forelse ($latestDramas as $drama)
+                    @forelse ($topDramas as $drama)
                         <tr>
                             <td>{{ $drama->title }}</td>
-                            <td>{{ $drama->status }}</td>
+                            <td>{{ number_format($drama->views) }}</td>
                             <td>{{ number_format((float) $drama->rating, 1) }}</td>
-                            <td>{{ $drama->created_at->format('d M Y') }}</td>
                         </tr>
                     @empty
-                        <tr><td colspan="4">Belum ada drama.</td></tr>
+                        <tr><td colspan="3"><span class="cell-empty">Belum ada drama.</span></td></tr>
                     @endforelse
                 </tbody>
             </table>
         </section>
 
-        <section>
-            <h2 class="section-title">Pengguna Terbaru</h2>
+        <section class="panel">
+            <div class="panel-head">
+                <h2>Genre terbanyak</h2>
+                <a href="{{ route('admin.genre.index') }}" class="see-all">Kelola</a>
+            </div>
+
             <table class="data-table">
-                <thead><tr><th>Nama</th><th>Telegram</th><th>Bergabung</th></tr></thead>
+                <thead><tr><th>Genre</th><th>Jumlah drama</th></tr></thead>
                 <tbody>
-                    @forelse ($latestUsers as $user)
+                    @forelse ($topGenres as $genre)
                         <tr>
-                            <td>{{ $user->name }}</td>
-                            <td>{{ $user->telegram_username ? '@'.$user->telegram_username : '—' }}</td>
-                            <td>{{ $user->created_at->format('d M Y') }}</td>
+                            <td>{{ $genre->name }}</td>
+                            <td>{{ $genre->dramas_count }}</td>
                         </tr>
                     @empty
-                        <tr><td colspan="3">Belum ada pengguna.</td></tr>
+                        <tr><td colspan="2"><span class="cell-empty">Belum ada genre.</span></td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </section>
+
+        <section class="panel">
+            <div class="panel-head">
+                <h2>Negara terbanyak</h2>
+                <a href="{{ route('admin.country.index') }}" class="see-all">Kelola</a>
+            </div>
+
+            <table class="data-table">
+                <thead><tr><th>Negara</th><th>Jumlah drama</th></tr></thead>
+                <tbody>
+                    @forelse ($topCountries as $country)
+                        <tr>
+                            <td>
+                                <x-web.home.country-badge :country="$country" />
+                                {{ $country->name }}
+                            </td>
+                            <td>{{ $country->dramas_count }}</td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="2"><span class="cell-empty">Belum ada negara.</span></td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </section>
+
+        <section class="panel">
+            <div class="panel-head">
+                <h2>Aktivitas terkini</h2>
+                <a href="{{ route('admin.logs.index') }}" class="see-all">Semua log</a>
+            </div>
+
+            <table class="data-table">
+                <thead><tr><th>Keterangan</th><th>Oleh</th><th>Waktu</th></tr></thead>
+                <tbody>
+                    @forelse ($recentLogs as $log)
+                        <tr>
+                            <td>{{ $log->description }}</td>
+                            <td>{{ $log->user?->name ?? '—' }}</td>
+                            <td>{{ $log->created_at->diffForHumans() }}</td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="3"><span class="cell-empty">Belum ada aktivitas.</span></td></tr>
                     @endforelse
                 </tbody>
             </table>

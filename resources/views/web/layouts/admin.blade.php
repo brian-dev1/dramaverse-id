@@ -33,6 +33,7 @@
             ['route' => 'admin.user.index',        'icon' => 'users', 'label' => 'Pengguna'],
         ]],
         ['group' => 'Sistem', 'items' => [
+            ['route' => 'admin.analytics',   'icon' => 'chart',    'label' => 'Analytics'],
             ['route' => 'admin.report',      'icon' => 'file',     'label' => 'Laporan'],
             ['route' => 'admin.logs.index',  'icon' => 'shield',   'label' => 'Log'],
             ['route' => 'admin.settings',    'icon' => 'settings', 'label' => 'Pengaturan'],
@@ -137,5 +138,10 @@
 </div>
 
 @stack('scripts')
+
+{{-- Chart.js hanya dimuat bila halaman benar-benar punya grafik. --}}
+@if (! empty($chartsOnPage ?? false) || request()->routeIs('admin.dashboard', 'admin.report'))
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" defer></script>
+@endif
 </body>
 </html>

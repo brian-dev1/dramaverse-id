@@ -172,7 +172,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/subscription', [Admin\SubscriptionController::class, 'index'])->name('subscription.index');
         Route::get('/logs', [Admin\LogController::class, 'index'])->name('logs.index');
 
+        Route::get('/analytics', [Admin\AnalyticsController::class, 'index'])->name('analytics');
+
         Route::get('/report', [Admin\ReportController::class, 'index'])->name('report');
+        Route::get('/report/export', [Admin\ReportController::class, 'export'])->name('report.export');
 
         Route::get('/settings', [Admin\SettingController::class, 'index'])->name('settings');
         Route::put('/settings', [Admin\SettingController::class, 'update'])->name('settings.update');
