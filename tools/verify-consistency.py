@@ -22,23 +22,14 @@ def collect(src):
         names.add(n)
     return names, gprefix
 
-defined = set()
-# web.php: route di dalam prefix admin. mendapat awalan "admin."
-admin_block = routes[routes.find("Route::prefix('admin')"):] if "Route::prefix('admin')" in routes else ''
-public_block = routes.replace(admin_block, '')
+# Parser nama route: menangani prefix bertingkat seperti
+# Route::name('admin.')->group(... Route::name('user.')->group(... ->name('ban')))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from routeparse import extract as extract_route_names
 
-for m in re.finditer(r"->name\('([^']+)'\)", public_block):
-    defined.add(m.group(1))
-for m in re.finditer(r"->name\('([^']+)'\)", admin_block):
-    n = m.group(1)
-    if not n.endswith('.'):
-        defined.add('admin.' + n)
-defined.discard('admin.')
+defined = extract_route_names(routes) | extract_route_names(api)
 
-
-# --- Route CRUD didaftarkan lewat perulangan, bukan satu per satu ---
-# routes/web.php membangun rute dari array $cruds. Regex biasa hanya melihat
-# potongan '->name("index")', jadi nama penuhnya harus direkonstruksi.
+# Route CRUD dibangun dari perulangan array $cruds, bukan ditulis satu per satu.
 crud_keys = re.findall(r"'(\w+)'\s*=>\s*Admin\\\w+Controller::class", routes)
 crud_actions = ['index', 'create', 'store', 'edit', 'update', 'destroy', 'restore', 'bulk']
 for key in crud_keys:

@@ -5,9 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>@yield('title', 'DramaVerse ID') — DramaVerse ID</title>
+    <title>@yield('title', setting('site_tagline', 'Drama Asia')) — {{ setting('site_name', 'DramaVerse ID') }}</title>
 
-    <meta name="description" content="@yield('description', 'Streaming drama Asia dengan subtitle Bahasa Indonesia.')">
+    <meta name="description" content="@yield('description', setting('site_description', 'Streaming drama Asia dengan subtitle Bahasa Indonesia.'))">
+
+    @if ($favicon = setting('favicon'))
+        <link rel="icon" href="{{ asset('storage/'.$favicon) }}">
+    @endif
+
+    @if ($ogImage = setting('og_image'))
+        <meta property="og:image" content="{{ asset('storage/'.$ogImage) }}">
+    @endif
     <meta name="theme-color" content="#0B0A10">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">

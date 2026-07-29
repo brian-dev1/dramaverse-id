@@ -25,6 +25,8 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
+Route::middleware('maintenance')->group(function () {
+
 Route::get('/', Web\HomeController::class)->name('web.home');
 
 // --- Pencarian ---
@@ -68,6 +70,8 @@ Route::controller(Web\PageController::class)->group(function () {
     Route::get('/privacy', 'privacy')->name('web.privacy');
     Route::get('/terms', 'terms')->name('web.terms');
 });
+
+}); // akhir grup maintenance
 
 /*
 |--------------------------------------------------------------------------
@@ -147,6 +151,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
             'genre'   => Admin\GenreController::class,
             'country' => Admin\CountryController::class,
             'banner'  => Admin\BannerController::class,
+            'membership'   => Admin\MembershipController::class,
+            'subscription' => Admin\SubscriptionController::class,
         ];
 
         foreach ($cruds as $key => $controller) {
@@ -167,9 +173,27 @@ Route::prefix('admin')->name('admin.')->group(function () {
         | Daftar baca-saja (CRUD menyusul di bagian berikutnya)
         |----------------------------------------------------------------------
         */
-        Route::get('/user', [Admin\UserController::class, 'index'])->name('user.index');
-        Route::get('/membership', [Admin\MembershipController::class, 'index'])->name('membership.index');
-        Route::get('/subscription', [Admin\SubscriptionController::class, 'index'])->name('subscription.index');
+        // --- Pengguna: daftar, detail, dan tindakan ---
+        Route::controller(Admin\UserController::class)->prefix('user')->name('user.')->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::get('/{id}', 'show')->name('show')->whereNumber('id');
+            Route::post('/{id}/ban', 'toggleBan')->name('ban')->whereNumber('id');
+            Route::post('/{id}/active', 'toggleActive')->name('active')->whereNumber('id');
+            Route::delete('/{id}', 'destroy')->name('destroy')->whereNumber('id');
+            Route::post('/bulk', 'bulk')->name('bulk');
+        });
+
+        // --- Langganan: aksi tambahan di luar CRUD standar ---
+        Route::post('/subscription/{id}/renew', [Admin\SubscriptionController::class, 'renew'])
+            ->name('subscription.renew')->whereNumber('id');
+        Route::post('/subscription/{id}/cancel', [Admin\SubscriptionController::class, 'cancel'])
+            ->name('subscription.cancel')->whereNumber('id');
+
+        // --- Telegram ---
+        Route::get('/telegram', [Admin\TelegramController::class, 'index'])->name('telegram');
+        Route::post('/telegram/broadcast', [Admin\TelegramController::class, 'broadcast'])
+            ->name('telegram.broadcast');
+
         Route::get('/logs', [Admin\LogController::class, 'index'])->name('logs.index');
 
         Route::get('/analytics', [Admin\AnalyticsController::class, 'index'])->name('analytics');

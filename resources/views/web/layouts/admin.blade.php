@@ -31,6 +31,7 @@
             ['route' => 'admin.membership.index',  'icon' => 'card',  'label' => 'Membership'],
             ['route' => 'admin.subscription.index','icon' => 'card',  'label' => 'Langganan'],
             ['route' => 'admin.user.index',        'icon' => 'users', 'label' => 'Pengguna'],
+            ['route' => 'admin.telegram',          'icon' => 'send',  'label' => 'Telegram'],
         ]],
         ['group' => 'Sistem', 'items' => [
             ['route' => 'admin.analytics',   'icon' => 'chart',    'label' => 'Analytics'],

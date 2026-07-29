@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureUserIsActive;
+use App\Http\Middleware\CheckMaintenanceMode;
 use App\Http\Middleware\VerifyTelegramWebhook;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use Illuminate\Foundation\Application;
@@ -19,6 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin'  => EnsureUserIsAdmin::class,
             'active' => EnsureUserIsActive::class,
             'telegram.webhook' => VerifyTelegramWebhook::class,
+            'maintenance' => CheckMaintenanceMode::class,
         ]);
 
         // Webhook Telegram datang dari luar, tidak membawa token CSRF.

@@ -6,10 +6,7 @@
             <a href="{{ route('web.home') }}" class="logo">
                 DramaVerse<span class="dot"></span><span class="id">ID</span>
             </a>
-            <p>
-                Platform streaming drama Asia — Korea, Tiongkok, Thailand, Jepang,
-                dan lainnya, dengan subtitle Bahasa Indonesia.
-            </p>
+            <p>{{ setting('site_description', 'Platform streaming drama Asia dengan subtitle Bahasa Indonesia.') }}</p>
         </div>
 
         <div class="footer-col">
@@ -50,8 +47,13 @@
     </div>
 
     <div class="footer-bottom">
-        <span>&copy; {{ now()->year }} DramaVerse ID. Seluruh hak cipta dilindungi.</span>
-        <span>Dibuat untuk pencinta drama Asia</span>
+        <span>&copy; {{ now()->year }} {{ setting('site_name', 'DramaVerse ID') }}. Seluruh hak cipta dilindungi.</span>
+
+        @if ($footerText = setting('footer_text'))
+            <span>{{ $footerText }}</span>
+        @else
+            <span>Dibuat untuk pencinta drama Asia</span>
+        @endif
     </div>
 
 </footer>
