@@ -6,7 +6,7 @@
 @section('content')
 
     <section class="page-head section-pad">
-        <a href="{{ route('web.genre.index') }}" class="see-all">&larr; Semua Genre</a>
+        <a href="{{ route('web.genre.index') }}" class="see-all"><x-web.home.icon name="arrow-left" :size="13" /> Semua Genre</a>
         <h1 class="page-title">{{ $genre->name }}</h1>
         @if ($genre->description)
             <p class="page-subtitle">{{ $genre->description }}</p>

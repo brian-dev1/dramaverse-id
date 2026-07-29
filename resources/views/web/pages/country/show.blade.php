@@ -6,8 +6,8 @@
 @section('content')
 
     <section class="page-head section-pad">
-        <a href="{{ route('web.country.index') }}" class="see-all">&larr; Semua Negara</a>
-        <h1 class="page-title">{{ $country->flag_emoji }} {{ $country->name }}</h1>
+        <a href="{{ route('web.country.index') }}" class="see-all"><x-web.home.icon name="arrow-left" :size="13" /> Semua Negara</a>
+        <h1 class="page-title"><x-web.home.country-badge :country="$country" /> {{ $country->name }}</h1>
     </section>
 
     @if ($dramas->isEmpty())

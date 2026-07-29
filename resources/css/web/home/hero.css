@@ -1,9 +1,15 @@
 /* ============ HERO ============ */
-.hero{ position:relative; padding-top:var(--space-5); }
+.hero{
+    position:relative;
+    padding-top:var(--space-5);
+    padding-left:var(--space-5);
+    padding-right:var(--space-5);
+    max-width:1440px;
+    margin:0 auto;
+}
 
 .hero-frame{
     position:relative;
-    margin:0 var(--space-4);
     border-radius:var(--radius-xl);
     overflow:hidden;
     min-height:560px;

@@ -8,7 +8,7 @@
         <div class="pill-row">
             @foreach ($countries as $country)
                 <a href="{{ route('web.country.show', $country->slug) }}" class="pill">
-                    {{ $country->flag_emoji }} {{ $country->name }}
+                    <x-web.home.country-badge :country="$country" /> {{ $country->name }}
                 </a>
             @endforeach
         </div>

@@ -1,5 +1,7 @@
 /* ============ SECTION ============ */
-.section{ padding:var(--space-6) 0 0; }
+/* Hanya jarak vertikal. Jarak horizontal ditangani .section-pad supaya
+   tidak saling menimpa. */
+.section{ padding-top:var(--space-6); }
 
 .section-head{
     display:flex; align-items:baseline; justify-content:space-between;
@@ -22,7 +24,10 @@
 .see-all:hover{ color:var(--gold); gap:8px; }
 
 /* --- Kepala halaman --- */
-.page-head{ padding-top:var(--space-5); }
+.page-head{
+    padding-top:var(--space-6);
+    padding-bottom:var(--space-2);
+}
 .page-title{
     font-family:var(--font-display); font-weight:600;
     font-size:clamp(28px, 4vw, 44px); line-height:1.1;
@@ -52,7 +57,8 @@
 
 /* --- Empty state --- */
 .empty-state{
-    margin:var(--space-5) var(--space-4);
+    max-width:1440px;
+    margin:var(--space-5) auto;
     padding:var(--space-6) var(--space-4);
     text-align:center;
     border:1px dashed var(--border);
@@ -69,7 +75,8 @@
 .membership{
     position:relative; overflow:hidden;
     border-radius:var(--radius-xl);
-    margin:var(--space-6) var(--space-4) 0;
+    max-width:1440px;
+    margin:var(--space-6) auto 0;
     padding:var(--space-6) var(--space-5);
     background:
         radial-gradient(80% 140% at 90% 0%, rgba(217,175,110,.25), transparent 60%),
@@ -88,12 +95,15 @@
     line-height:1.1; margin-bottom:10px;
 }
 .membership-copy p{ color:var(--text-secondary); font-size:14.5px; max-width:420px; }
-.membership-perks{ display:flex; gap:var(--space-3); flex-wrap:wrap; }
+.membership-perks{
+    display:flex; gap:var(--space-3); flex-wrap:wrap;
+    list-style:none; margin:0; padding:0;
+}
 .perk{
     font-family:var(--font-mono); font-size:11px; color:var(--text-secondary);
-    display:flex; align-items:center; gap:6px;
+    display:flex; align-items:center; gap:7px;
 }
-.perk::before{ content:"\2713"; color:var(--gold); font-weight:700; }
+.perk .icon{ color:var(--gold); flex-shrink:0; }
 
 /* --- Footer --- */
 .footer{

@@ -88,16 +88,23 @@ ul{ list-style:none; }
     }
 }
 
-/* --- Kerangka halaman --- */
-.wrap{
-    max-width:1400px;
-    margin:0 auto;
-    padding:0 var(--space-4);
-}
-
+/* --------------------------------------------------------------------------
+| Kontainer
+|
+| Satu aturan lebar untuk seluruh situs. Sebelumnya `.section` memakai
+| shorthand `padding` yang menimpa `.section-pad`, sehingga konten menempel
+| ke tepi layar. Sekarang tanggung jawabnya dipisah:
+|   .section     -> hanya jarak vertikal
+|   .section-pad -> hanya lebar + jarak horizontal
+-------------------------------------------------------------------------- */
+.wrap,
 .section-pad{
-    padding-left:var(--space-4);
-    padding-right:var(--space-4);
+    width:100%;
+    max-width:1440px;
+    margin-left:auto;
+    margin-right:auto;
+    padding-left:var(--space-5);
+    padding-right:var(--space-5);
 }
 
 /* --- Butiran film (grain overlay) --- */
@@ -110,8 +117,9 @@ ul{ list-style:none; }
 /* --- Pembatas perforasi (motif pita seluloid) --- */
 .perf{
     display:flex; gap:10px;
-    padding:0 var(--space-4);
-    margin-top:var(--space-4);
+    max-width:1440px;
+    margin:var(--space-5) auto 0;
+    padding:0 var(--space-5);
     overflow:hidden;
 }
 .perf span{
@@ -185,4 +193,53 @@ ul{ list-style:none; }
 .btn-sm{
     padding:9px 18px;
     font-size:13.5px;
+}
+
+/* --------------------------------------------------------------------------
+| Ikon
+|
+| Semua ikon berupa SVG inline lewat <x-web.home.icon>. Tidak ada karakter
+| teks (★ ✓ → ←) maupun emoji, karena perenderannya berbeda antar sistem
+| operasi — emoji bendera di Windows tampil sebagai dua huruf polos.
+-------------------------------------------------------------------------- */
+.icon{
+    display:inline-block;
+    vertical-align:middle;
+    flex-shrink:0;
+}
+
+/* --- Penanda negara: kode dua huruf, pengganti emoji bendera --- */
+.country-badge{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-width:24px;
+    height:17px;
+    padding:0 5px;
+    border-radius:3px;
+    border:1px solid var(--border);
+    background:rgba(255,255,255,.05);
+    font-family:var(--font-mono);
+    font-size:9.5px;
+    font-weight:700;
+    letter-spacing:.6px;
+    color:var(--text-secondary);
+    text-transform:uppercase;
+}
+.pill:hover .country-badge,
+.pill.active .country-badge{
+    border-color:rgba(0,0,0,.25);
+    background:rgba(0,0,0,.12);
+    color:#191118;
+}
+
+/* --- Pemisah antar potongan metadata, pengganti karakter titik tengah --- */
+.meta-item + .meta-item::before{
+    content:"";
+    display:inline-block;
+    width:3px; height:3px;
+    margin:0 9px 2px;
+    border-radius:50%;
+    background:var(--text-muted);
+    vertical-align:middle;
 }

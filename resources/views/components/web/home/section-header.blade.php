@@ -14,7 +14,7 @@
     </h2>
 
     @if ($href)
-        <a href="{{ $href }}" class="see-all">Lihat Semua &rarr;</a>
+        <a href="{{ $href }}" class="see-all">Lihat Semua <x-web.home.icon name="arrow-right" :size="13" /></a>
     @endif
 
 </div>

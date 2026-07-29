@@ -51,3 +51,36 @@
 
     body{ padding-bottom:70px; }
 }
+
+/* --- Kontainer pada layar sempit --- */
+@media (max-width: 900px){
+    .wrap,
+    .section-pad,
+    .hero{
+        padding-left:var(--space-3);
+        padding-right:var(--space-3);
+    }
+
+    .membership,
+    .empty-state{
+        margin-left:var(--space-3);
+        margin-right:var(--space-3);
+    }
+}
+
+@media (max-width: 640px){
+    .wrap,
+    .section-pad,
+    .hero{
+        padding-left:var(--space-2);
+        padding-right:var(--space-2);
+    }
+
+    .membership,
+    .empty-state{
+        margin-left:var(--space-2);
+        margin-right:var(--space-2);
+    }
+
+    .perf{ padding-left:var(--space-2); padding-right:var(--space-2); }
+}

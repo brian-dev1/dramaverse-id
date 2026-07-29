@@ -11,9 +11,9 @@
                 <h1 class="page-title">{{ $user->display_name }}</h1>
                 <p class="page-subtitle">
                     @if ($user->telegram_username)
-                        &#64;{{ $user->telegram_username }} &middot;
+                        <span class="meta-item">&#64;{{ $user->telegram_username }}</span>
                     @endif
-                    Bergabung {{ $user->created_at->translatedFormat('F Y') }}
+                    <span class="meta-item">Bergabung {{ $user->created_at->translatedFormat('F Y') }}</span>
                 </p>
             </div>
         </div>
@@ -40,8 +40,8 @@
         <x-web.home.section-header title="Membership" :href="route('web.membership')" />
         <p class="page-subtitle">
             @if ($subscription)
-                {{ $subscription->plan?->name }} &middot; berakhir
-                {{ $subscription->expired_at?->translatedFormat('d F Y') ?? '—' }}
+                <span class="meta-item">{{ $subscription->plan?->name }}</span>
+                <span class="meta-item">Berakhir {{ $subscription->expired_at?->translatedFormat('d F Y') ?? 'tidak diketahui' }}</span>
             @else
                 Anda masih memakai paket Gratis.
             @endif

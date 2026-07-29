@@ -38,7 +38,7 @@
 
             <button type="submit" class="btn btn-primary">Masuk</button>
 
-            <a href="{{ route('web.home') }}" class="see-all">&larr; Kembali ke situs</a>
+            <a href="{{ route('web.home') }}" class="see-all"><x-web.home.icon name="arrow-left" :size="13" /> Kembali ke situs</a>
         </form>
     </main>
 

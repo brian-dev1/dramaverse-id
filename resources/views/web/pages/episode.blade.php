@@ -30,7 +30,7 @@
 
             <div class="player-info">
 
-                <a href="{{ route('web.drama.show', $drama->slug) }}" class="see-all">&larr; {{ $drama->title }}</a>
+                <a href="{{ route('web.drama.show', $drama->slug) }}" class="see-all"><x-web.home.icon name="arrow-left" :size="13" /> {{ $drama->title }}</a>
 
                 <h1 class="page-title">
                     Episode {{ $episode->episode_number }}@if ($episode->title) — {{ $episode->title }}@endif
@@ -43,13 +43,13 @@
                 <div class="player-nav">
                     @if ($previousEpisode ?? null)
                         <a href="{{ route('web.episode.show', $previousEpisode->id) }}" class="btn btn-ghost">
-                            &larr; Episode {{ $previousEpisode->episode_number }}
+                            <x-web.home.icon name="arrow-left" :size="14" /> Episode {{ $previousEpisode->episode_number }}
                         </a>
                     @endif
 
                     @if ($nextEpisode ?? null)
                         <a href="{{ route('web.episode.show', $nextEpisode->id) }}" class="btn btn-primary">
-                            Episode {{ $nextEpisode->episode_number }} &rarr;
+                            Episode {{ $nextEpisode->episode_number }} <x-web.home.icon name="arrow-right" :size="14" />
                         </a>
                     @endif
                 </div>

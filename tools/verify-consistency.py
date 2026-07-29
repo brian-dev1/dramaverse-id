@@ -312,6 +312,41 @@ check(not href_bad, "tidak ada href kosong atau buntu (#)")
 for b in href_bad: print("        -", b)
 
 
+# ---------- 16. Emoji, simbol teks, dan SVG inline ----------
+print("\n== CEK IKON ==")
+# Emoji dan karakter simbol dirender berbeda di tiap sistem operasi. Emoji
+# bendera bahkan tidak dirender sama sekali di Windows -- yang tampil justru
+# dua huruf polos, terlihat seperti kesalahan. Semua ikon harus lewat
+# <x-web.home.icon> agar tampil sama di mana pun.
+ICON_COMPONENT = 'resources/views/components/web/home/icon.blade.php'
+symbol_bad = []
+emoji_re = re.compile('[\U0001F300-\U0001FAFF\u2600-\u27BF\u2190-\u21FF\u2713\u2605\u00B7]')
+
+for f in glob.glob('resources/views/**/*.blade.php', recursive=True):
+    if f.replace('\\', '/') == ICON_COMPONENT:
+        continue
+    src = open(f, encoding='utf-8').read()
+
+    if emoji_re.search(src):
+        symbol_bad.append(f"{f}: memuat emoji/simbol teks")
+
+    for ent in ('&#9733;', '&rarr;', '&larr;', '&middot;', '&check;'):
+        if ent in src:
+            symbol_bad.append(f"{f}: memuat entitas {ent}")
+
+    if '<svg' in src:
+        symbol_bad.append(f"{f}: SVG inline, seharusnya <x-web.home.icon>")
+
+# CSS tidak boleh memakai content:"karakter simbol"
+for f in glob.glob('resources/css/**/*.css', recursive=True):
+    for m in re.finditer(r'content:\s*"([^"]+)"', open(f, encoding='utf-8').read()):
+        if emoji_re.search(m.group(1)) or '\\27' in m.group(1) or '\\26' in m.group(1):
+            symbol_bad.append(f"{f}: content simbol {m.group(1)!r}")
+
+check(not symbol_bad, "tidak ada emoji, simbol teks, atau SVG inline")
+for b in symbol_bad: print("        -", b)
+
+
 print("\n" + "="*60)
 if fail:
     print(f"HASIL: {len(fail)} masalah ditemukan")

@@ -27,7 +27,7 @@
                     @break
 
                 @case('rated')
-                    <span class="card-badge">&#9733; {{ number_format((float) $drama->rating, 1) }}</span>
+                    <span class="card-badge"><x-web.home.icon name="star" :size="10" /> {{ number_format((float) $drama->rating, 1) }}</span>
                     @break
 
                 @case('rank')
@@ -50,13 +50,16 @@
             @else
                 <div class="card-sub">
                     @if ($variant === 'rank' || $variant === 'default')
-                        <span>&#9733; {{ number_format((float) $drama->rating, 1) }}</span>
+                        <span class="card-rating">
+                            <x-web.home.icon name="star" :size="10" />
+                            {{ number_format((float) $drama->rating, 1) }}
+                        </span>
                     @endif
 
                     @if ($drama->relationLoaded('country') && $drama->country)
-                        <span>&middot; {{ $drama->country->name }}</span>
+                        <span>{{ $drama->country->name }}</span>
                     @elseif ($drama->total_episode)
-                        <span>&middot; {{ $drama->total_episode }} EP</span>
+                        <span>{{ $drama->total_episode }} EP</span>
                     @endif
                 </div>
             @endif

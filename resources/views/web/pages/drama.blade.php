@@ -29,13 +29,13 @@
 
                 <div class="hero-meta">
                     @if ($drama->rating > 0)
-                        <span class="rating">&#9733; {{ number_format((float) $drama->rating, 1) }}</span>
+                        <span class="rating"><x-web.home.icon name="star" :size="13" /> {{ number_format((float) $drama->rating, 1) }}</span>
                     @endif
                     @if ($drama->release_year)
                         <span class="chip">{{ $drama->release_year }}</span>
                     @endif
                     @if ($drama->country)
-                        <span class="chip">{{ $drama->country->flag_emoji }} {{ $drama->country->name }}</span>
+                        <span class="chip"><x-web.home.country-badge :country="$drama->country" /> {{ $drama->country->name }}</span>
                     @endif
                     <span class="chip">
                         {{ ['ongoing' => 'Sedang Tayang', 'completed' => 'Tamat', 'upcoming' => 'Akan Tayang'][$drama->status] ?? $drama->status }}
@@ -64,9 +64,7 @@
 
                     @if ($drama->episodes->isNotEmpty())
                         <a href="{{ route('web.episode.show', $drama->episodes->first()->id) }}" class="btn btn-primary">
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                                <path d="M8 5v14l11-7z"/>
-                            </svg>
+                            <x-web.home.icon name="play" :size="15" />
                             Tonton Episode 1
                         </a>
                     @endif

@@ -23,7 +23,7 @@
             'href'     => route('web.drama.show', $d->slug),
             'cta'      => 'Tonton Sekarang',
             'meta'     => array_filter([
-                $d->rating > 0 ? '★ '.number_format((float) $d->rating, 1) : null,
+                $d->rating > 0 ? number_format((float) $d->rating, 1) : null,
                 $d->release_year,
                 $d->country?->name,
                 $d->total_episode ? $d->total_episode.' Episode' : null,
@@ -47,7 +47,13 @@
                 @if (! empty($slide->meta))
                     <div class="hero-meta">
                         @foreach ($slide->meta as $i => $meta)
-                            <span class="{{ $i === 0 ? 'rating' : 'chip' }}">{{ $meta }}</span>
+                            @if ($i === 0)
+                                <span class="rating">
+                                    <x-web.home.icon name="star" :size="13" />{{ $meta }}
+                                </span>
+                            @else
+                                <span class="chip">{{ $meta }}</span>
+                            @endif
                         @endforeach
                     </div>
                 @endif
@@ -58,9 +64,7 @@
 
                 <div class="hero-actions">
                     <a href="{{ $slide->href }}" class="btn btn-primary">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                            <path d="M8 5v14l11-7z"/>
-                        </svg>
+                        <x-web.home.icon name="play" :size="15" />
                         {{ $slide->cta }}
                     </a>
                     <a href="{{ $slide->href }}" class="btn btn-ghost">Lihat Detail</a>
