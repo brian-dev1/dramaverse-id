@@ -133,11 +133,40 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         Route::get('/dashboard', [Admin\DashboardController::class, 'index'])->name('dashboard');
 
-        Route::get('/drama', [Admin\DramaController::class, 'index'])->name('drama.index');
-        Route::get('/episode', [Admin\EpisodeController::class, 'index'])->name('episode.index');
-        Route::get('/genre', [Admin\GenreController::class, 'index'])->name('genre.index');
-        Route::get('/country', [Admin\CountryController::class, 'index'])->name('country.index');
-        Route::get('/banner', [Admin\BannerController::class, 'index'])->name('banner.index');
+        /*
+        |----------------------------------------------------------------------
+        | CRUD
+        |
+        | Semua entitas memakai AdminCrudController, jadi pola rutenya sama.
+        | Didaftarkan lewat perulangan agar tidak ada 40 baris berulang.
+        |----------------------------------------------------------------------
+        */
+        $cruds = [
+            'drama'   => Admin\DramaController::class,
+            'episode' => Admin\EpisodeController::class,
+            'genre'   => Admin\GenreController::class,
+            'country' => Admin\CountryController::class,
+            'banner'  => Admin\BannerController::class,
+        ];
+
+        foreach ($cruds as $key => $controller) {
+            Route::controller($controller)->prefix($key)->name($key.'.')->group(function () {
+                Route::get('/', 'index')->name('index');
+                Route::get('/create', 'create')->name('create');
+                Route::post('/', 'store')->name('store');
+                Route::get('/{id}/edit', 'edit')->name('edit')->whereNumber('id');
+                Route::put('/{id}', 'update')->name('update')->whereNumber('id');
+                Route::delete('/{id}', 'destroy')->name('destroy')->whereNumber('id');
+                Route::post('/{id}/restore', 'restore')->name('restore')->whereNumber('id');
+                Route::post('/bulk', 'bulk')->name('bulk');
+            });
+        }
+
+        /*
+        |----------------------------------------------------------------------
+        | Daftar baca-saja (CRUD menyusul di bagian berikutnya)
+        |----------------------------------------------------------------------
+        */
         Route::get('/user', [Admin\UserController::class, 'index'])->name('user.index');
         Route::get('/membership', [Admin\MembershipController::class, 'index'])->name('membership.index');
         Route::get('/subscription', [Admin\SubscriptionController::class, 'index'])->name('subscription.index');

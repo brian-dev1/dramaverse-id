@@ -26,6 +26,7 @@
 @import "./web/detail/detail.css";
 @import "./web/detail/episode.css";
 @import "./web/player/player.css";
+@import "./web/admin/admin.css";
 
 /* --- Responsif (terakhir agar dapat menimpa) --- */
 @import "./web/home/responsive.css";

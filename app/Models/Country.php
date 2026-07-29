@@ -12,6 +12,7 @@ class Country extends Model
         'name',
         'slug',
         'code',
+        'description',
         'flag_emoji',
         'sort_order',
         'is_active',

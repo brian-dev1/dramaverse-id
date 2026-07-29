@@ -35,13 +35,29 @@ for m in re.finditer(r"->name\('([^']+)'\)", admin_block):
         defined.add('admin.' + n)
 defined.discard('admin.')
 
+
+# --- Route CRUD didaftarkan lewat perulangan, bukan satu per satu ---
+# routes/web.php membangun rute dari array $cruds. Regex biasa hanya melihat
+# potongan '->name("index")', jadi nama penuhnya harus direkonstruksi.
+crud_keys = re.findall(r"'(\w+)'\s*=>\s*Admin\\\w+Controller::class", routes)
+crud_actions = ['index', 'create', 'store', 'edit', 'update', 'destroy', 'restore', 'bulk']
+for key in crud_keys:
+    for act in crud_actions:
+        defined.add(f'admin.{key}.{act}')
+        defined.discard(f'admin.{act}')
+
 print("== ROUTE TERDEFINISI (%d) ==" % len(defined))
 for r in sorted(defined): print("   ", r)
 
 # ---------- 2. route() yang dipakai di Blade ----------
 used = {}
 for p in glob.glob('resources/views/**/*.blade.php', recursive=True):
-    for m in re.finditer(r"route\(\s*'([^']+)'", open(p, encoding='utf-8').read()):
+    src_v = open(p, encoding='utf-8').read()
+    # route('admin.'.$key.'.index') disusun saat runtime -- tidak bisa
+    # diperiksa statis, dan sudah dijamin oleh Route::has() di view.
+    for m in re.finditer(r"route\(\s*'([^']+)'\s*(\.)?", src_v):
+        if m.group(2):
+            continue
         used.setdefault(m.group(1), set()).add(p)
 
 print("\n== CEK ROUTE MATI DI BLADE ==")
@@ -264,8 +280,10 @@ print("\n== CEK ROUTE MATI DI PHP ==")
 php_dead = []
 for f in glob.glob('app/**/*.php', recursive=True) + glob.glob('database/**/*.php', recursive=True):
     src = open(f, encoding='utf-8').read()
-    for m in re.finditer(r"(?<![>$])\broute\(\s*'([a-zA-Z0-9_.\-]+)'", src):
+    for m in re.finditer(r"(?<![>$])\broute\(\s*'([a-zA-Z0-9_.\-]+)'\s*(\.)?", src):
         name = m.group(1)
+        if m.group(2):
+            continue
         if name not in defined:
             php_dead.append(f"{name} <- {f}")
 check(not php_dead, "semua route() di PHP menunjuk route yang terdefinisi")
@@ -290,8 +308,8 @@ for f in glob.glob('resources/views/**/*.blade.php', recursive=True):
             form_bad.append(f"{f}: form {verb} tanpa @csrf")
 
         # PUT/PATCH/DELETE dikirim sebagai POST + @method
-        action = re.search(r"action=[\"']\{\{\s*route\(\s*'([^']+)'", attrs)
-        if action and action.group(1) not in defined:
+        action = re.search(r"action=[\"']\{\{\s*route\(\s*'([^']+)'\s*(\.)?", attrs)
+        if action and not action.group(2) and action.group(1) not in defined:
             form_bad.append(f"{f}: action -> route mati {action.group(1)}")
 
 check(not form_bad, "semua form punya @csrf dan action yang valid")
