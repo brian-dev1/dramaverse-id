@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\WatchHistory;
 use App\Services\Admin\CsvExporter;
 use App\Services\Admin\StatsService;
+use App\Services\Admin\XlsxWriter;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -26,7 +27,8 @@ class ReportController extends Controller
 
     public function __construct(
         protected StatsService $stats,
-        protected CsvExporter $csv
+        protected CsvExporter $csv,
+        protected XlsxWriter $xlsx
     ) {
     }
 
@@ -50,8 +52,11 @@ class ReportController extends Controller
         ]);
     }
 
-    public function export(Request $request): StreamedResponse
+    /** Unduh laporan sebagai CSV atau XLSX. */
+    public function export(Request $request, string $format = 'csv')
     {
+        abort_unless(in_array($format, ['csv', 'xlsx'], true), 404);
+
         [$from, $to] = $this->range($request);
 
         $type = $request->get('type', 'watch');
@@ -59,11 +64,35 @@ class ReportController extends Controller
 
         $name = sprintf('%s-%s-sd-%s', $type, $from->toDateString(), $to->toDateString());
 
-        return $this->csv->stream(
-            $name,
-            $this->headers($type),
-            $this->rows($type, $from, $to)
-        );
+        $headers = $this->headers($type);
+        $rows    = $this->rows($type, $from, $to);
+
+        return $format === 'xlsx'
+            ? $this->xlsx->download($name, $headers, $rows, self::TYPES[$type])
+            : $this->csv->stream($name, $headers, $rows);
+    }
+
+    /**
+     * Tampilan siap cetak.
+     *
+     * PDF dihasilkan lewat dialog cetak peramban (Simpan sebagai PDF) —
+     * membuat berkas PDF sungguhan dari PHP membutuhkan paket tambahan
+     * yang sengaja tidak dipasang.
+     */
+    public function print(Request $request): View
+    {
+        [$from, $to] = $this->range($request);
+
+        $type = $request->get('type', 'watch');
+        abort_unless(array_key_exists($type, self::TYPES), 404);
+
+        return view('web.pages.admin.report-print', [
+            'title'   => self::TYPES[$type],
+            'from'    => $from,
+            'to'      => $to,
+            'headers' => $this->headers($type),
+            'rows'    => $this->rows($type, $from, $to),
+        ]);
     }
 
     /*

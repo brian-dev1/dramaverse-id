@@ -27,11 +27,19 @@
         <button type="submit" class="btn btn-ghost btn-sm">Terapkan</button>
 
         @if ($total > 0)
-            <a href="{{ route('admin.report.export', request()->only('type', 'from', 'to')) }}"
-               class="btn btn-primary btn-sm toolbar-add">
-                <x-web.home.icon name="file" :size="14" />
-                Unduh CSV
-            </a>
+            <div class="export-group">
+                <a href="{{ route('admin.report.export', ['format' => 'xlsx'] + request()->only('type', 'from', 'to')) }}"
+                   class="btn btn-primary btn-sm">
+                    <x-web.home.icon name="file" :size="14" />
+                    Excel
+                </a>
+
+                <a href="{{ route('admin.report.export', ['format' => 'csv'] + request()->only('type', 'from', 'to')) }}"
+                   class="btn btn-ghost btn-sm">CSV</a>
+
+                <a href="{{ route('admin.report.print', request()->only('type', 'from', 'to')) }}"
+                   class="btn btn-ghost btn-sm" target="_blank" rel="noopener">PDF</a>
+            </div>
         @endif
     </form>
 

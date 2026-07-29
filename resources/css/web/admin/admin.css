@@ -493,3 +493,29 @@ a.stat-card:hover .stat-icon{ color:var(--gold); }
     background:var(--bg-secondary);
     color:var(--gold-bright);
 }
+
+/* Kelompok tombol unduh laporan */
+.export-group{ display:flex; gap:8px; margin-left:auto; }
+@media (max-width: 640px){
+    .export-group{ margin-left:0; width:100%; }
+    .export-group .btn{ flex:1; justify-content:center; }
+}
+
+/* --- Urutan seret-lepas --- */
+.dnd-hint{
+    display:flex; align-items:center; gap:8px;
+    font-size:12.5px; color:var(--text-muted);
+    margin-bottom:10px;
+}
+.data-table.is-sortable tbody tr{ cursor:grab; }
+.data-table.is-sortable tbody tr.is-dragging{
+    opacity:.45;
+    background:rgba(217,175,110,.1);
+}
+.data-table.is-saving{ opacity:.6; pointer-events:none; }
+
+.toolbar-actions{ display:flex; gap:8px; margin-left:auto; }
+@media (max-width: 640px){
+    .toolbar-actions{ margin-left:0; width:100%; }
+    .toolbar-actions .btn{ flex:1; justify-content:center; }
+}

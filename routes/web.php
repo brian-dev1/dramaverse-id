@@ -128,12 +128,12 @@ Route::prefix('admin')->name('admin.')->group(function () {
     // --- Login (tanpa middleware admin) ---
     Route::controller(Admin\AuthController::class)->group(function () {
         Route::get('/login', 'showLogin')->name('login');
-        Route::post('/login', 'login')->name('login.attempt');
+        Route::post('/login', 'login')->name('login.attempt')->middleware('throttle:admin-login');
         Route::post('/logout', 'logout')->name('logout')->middleware('auth');
     });
 
     // --- Halaman terlindungi ---
-    Route::middleware(['auth', 'admin'])->group(function () {
+    Route::middleware(['auth', 'admin', 'throttle:admin-write'])->group(function () {
 
         Route::get('/dashboard', [Admin\DashboardController::class, 'index'])->name('dashboard');
 
@@ -153,10 +153,27 @@ Route::prefix('admin')->name('admin.')->group(function () {
             'banner'  => Admin\BannerController::class,
             'membership'   => Admin\MembershipController::class,
             'subscription' => Admin\SubscriptionController::class,
+            'role'         => Admin\RoleController::class,
+        ];
+
+        // Izin yang diperlukan tiap modul CRUD.
+        $crudPermissions = [
+            'drama'        => 'drama.manage',
+            'episode'      => 'episode.manage',
+            'genre'        => 'taxonomy.manage',
+            'country'      => 'taxonomy.manage',
+            'banner'       => 'taxonomy.manage',
+            'membership'   => 'membership.manage',
+            'subscription' => 'membership.manage',
+            'role'         => 'role.manage',
         ];
 
         foreach ($cruds as $key => $controller) {
-            Route::controller($controller)->prefix($key)->name($key.'.')->group(function () {
+            Route::controller($controller)
+                ->prefix($key)
+                ->name($key.'.')
+                ->middleware('permission:'.$crudPermissions[$key])
+                ->group(function () {
                 Route::get('/', 'index')->name('index');
                 Route::get('/create', 'create')->name('create');
                 Route::post('/', 'store')->name('store');
@@ -173,8 +190,21 @@ Route::prefix('admin')->name('admin.')->group(function () {
         | Daftar baca-saja (CRUD menyusul di bagian berikutnya)
         |----------------------------------------------------------------------
         */
+        // --- Episode: tambah massal dan pengurutan ---
+        Route::controller(Admin\EpisodeController::class)
+            ->prefix('episode')->name('episode.')
+            ->middleware('permission:episode.manage')
+            ->group(function () {
+                Route::get('/batch', 'batchForm')->name('batch');
+                Route::post('/batch', 'batchStore')->name('batch.store');
+                Route::post('/reorder', 'reorder')->name('reorder');
+            });
+
         // --- Pengguna: daftar, detail, dan tindakan ---
-        Route::controller(Admin\UserController::class)->prefix('user')->name('user.')->group(function () {
+        Route::controller(Admin\UserController::class)
+            ->prefix('user')->name('user.')
+            ->middleware('permission:user.view,user.manage')
+            ->group(function () {
             Route::get('/', 'index')->name('index');
             Route::get('/{id}', 'show')->name('show')->whereNumber('id');
             Route::post('/{id}/ban', 'toggleBan')->name('ban')->whereNumber('id');
@@ -190,18 +220,28 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('subscription.cancel')->whereNumber('id');
 
         // --- Telegram ---
-        Route::get('/telegram', [Admin\TelegramController::class, 'index'])->name('telegram');
-        Route::post('/telegram/broadcast', [Admin\TelegramController::class, 'broadcast'])
-            ->name('telegram.broadcast');
+        Route::middleware('permission:telegram.manage')->group(function () {
+            Route::get('/telegram', [Admin\TelegramController::class, 'index'])->name('telegram');
+            Route::post('/telegram/broadcast', [Admin\TelegramController::class, 'broadcast'])
+                ->name('telegram.broadcast')->middleware('throttle:broadcast');
+        });
 
-        Route::get('/logs', [Admin\LogController::class, 'index'])->name('logs.index');
+        Route::get('/logs', [Admin\LogController::class, 'index'])
+            ->name('logs.index')->middleware('permission:log.view');
 
-        Route::get('/analytics', [Admin\AnalyticsController::class, 'index'])->name('analytics');
+        Route::get('/analytics', [Admin\AnalyticsController::class, 'index'])
+            ->name('analytics')->middleware('permission:report.view');
 
-        Route::get('/report', [Admin\ReportController::class, 'index'])->name('report');
-        Route::get('/report/export', [Admin\ReportController::class, 'export'])->name('report.export');
+        Route::middleware('permission:report.view')->group(function () {
+            Route::get('/report', [Admin\ReportController::class, 'index'])->name('report');
+            Route::get('/report/print', [Admin\ReportController::class, 'print'])->name('report.print');
+            Route::get('/report/export/{format}', [Admin\ReportController::class, 'export'])
+                ->name('report.export')->whereIn('format', ['csv', 'xlsx']);
+        });
 
-        Route::get('/settings', [Admin\SettingController::class, 'index'])->name('settings');
-        Route::put('/settings', [Admin\SettingController::class, 'update'])->name('settings.update');
+        Route::middleware('permission:setting.manage')->group(function () {
+            Route::get('/settings', [Admin\SettingController::class, 'index'])->name('settings');
+            Route::put('/settings', [Admin\SettingController::class, 'update'])->name('settings.update');
+        });
     });
 });

@@ -7,8 +7,12 @@ use App\Models\Episode;
 use App\Services\Admin\MediaService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use App\Services\Admin\ActivityLogger;
+use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class EpisodeController extends AdminCrudController
@@ -205,5 +209,142 @@ class EpisodeController extends AdminCrudController
         Drama::whereKey($dramaId)->update([
             'total_episode' => Episode::where('drama_id', $dramaId)->count(),
         ]);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Tambah banyak episode sekaligus
+    |--------------------------------------------------------------------------
+    */
+
+    public function batchForm(): View
+    {
+        return view('web.pages.admin.episode-batch', [
+            'dramas' => Drama::orderBy('title')->get(['id', 'title']),
+            'nextNumbers' => Episode::query()
+                ->selectRaw('drama_id, MAX(episode_number) + 1 AS next')
+                ->groupBy('drama_id')
+                ->pluck('next', 'drama_id')
+                ->all(),
+        ]);
+    }
+
+    public function batchStore(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'drama_id'   => ['required', 'integer', 'exists:dramas,id'],
+            'start_from' => ['required', 'integer', 'min:1', 'max:9999'],
+            'count'      => ['required', 'integer', 'min:1', 'max:100'],
+            'is_vip'     => ['boolean'],
+            'status'     => ['required', 'in:draft,published'],
+            'duration'   => ['nullable', 'integer', 'min:0'],
+            'url_pattern'=> ['nullable', 'string', 'max:500'],
+        ]);
+
+        $drama = Drama::findOrFail($data['drama_id']);
+
+        // Nomor yang sudah dipakai dilewati, bukan ditimpa.
+        $existing = Episode::where('drama_id', $drama->id)
+            ->pluck('episode_number')
+            ->flip();
+
+        $created = 0;
+        $skipped = 0;
+
+        DB::transaction(function () use ($data, $drama, $existing, &$created, &$skipped, $request) {
+            for ($i = 0; $i < $data['count']; $i++) {
+                $number = $data['start_from'] + $i;
+
+                if ($existing->has($number)) {
+                    $skipped++;
+                    continue;
+                }
+
+                Episode::create([
+                    'drama_id'       => $drama->id,
+                    'episode_number' => $number,
+                    'title'          => 'Episode '.$number,
+                    'slug'           => \Illuminate\Support\Str::slug($drama->slug.'-episode-'.$number),
+                    'video_url'      => $this->expandPattern($data['url_pattern'] ?? null, $number),
+                    'duration'       => $data['duration'] ?? 0,
+                    'is_vip'         => $request->boolean('is_vip'),
+                    'status'         => $data['status'],
+                    'published_at'   => $data['status'] === 'published' ? now() : null,
+                ]);
+
+                $created++;
+            }
+        });
+
+        $this->syncEpisodeCount($drama->id);
+
+        app(ActivityLogger::class)->log('dibuat massal', 'episode', $drama, [
+            'dibuat'    => $created,
+            'dilewati'  => $skipped,
+        ]);
+
+        $message = "{$created} episode dibuat untuk {$drama->title}.";
+
+        if ($skipped > 0) {
+            $message .= " {$skipped} nomor dilewati karena sudah ada.";
+        }
+
+        return redirect()
+            ->route('admin.episode.index', ['drama_id' => $drama->id])
+            ->with('status', $message);
+    }
+
+    /**
+     * Mengubah pola URL menjadi URL episode.
+     * Penanda {n} diganti nomor episode, {nn} diganti nomor dua digit.
+     */
+    private function expandPattern(?string $pattern, int $number): ?string
+    {
+        if (blank($pattern)) {
+            return null;
+        }
+
+        return str_replace(
+            ['{n}', '{nn}', '{nnn}'],
+            [$number, str_pad((string) $number, 2, '0', STR_PAD_LEFT), str_pad((string) $number, 3, '0', STR_PAD_LEFT)],
+            $pattern
+        );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Urutan episode
+    |--------------------------------------------------------------------------
+    */
+
+    /** Menyimpan urutan baru dari seret-lepas. */
+    public function reorder(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'drama_id' => ['required', 'integer', 'exists:dramas,id'],
+            'ids'      => ['required', 'array', 'min:1'],
+            'ids.*'    => ['integer', 'exists:episodes,id'],
+        ]);
+
+        DB::transaction(function () use ($data) {
+            // Dua tahap: nomor dinaikkan jauh dulu supaya tidak melanggar
+            // batasan unik (drama_id, episode_number) saat bertukar posisi.
+            Episode::where('drama_id', $data['drama_id'])
+                ->whereIn('id', $data['ids'])
+                ->increment('episode_number', 10000);
+
+            foreach (array_values($data['ids']) as $index => $id) {
+                Episode::whereKey($id)
+                    ->where('drama_id', $data['drama_id'])
+                    ->update(['episode_number' => $index + 1]);
+            }
+        });
+
+        app(ActivityLogger::class)->log('diurutkan', 'episode', null, [
+            'drama_id' => $data['drama_id'],
+            'jumlah'   => count($data['ids']),
+        ]);
+
+        return response()->json(['ok' => true]);
     }
 }

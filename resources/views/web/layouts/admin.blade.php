@@ -21,23 +21,24 @@
             ['route' => 'admin.dashboard',    'icon' => 'chart',    'label' => 'Dashboard'],
         ]],
         ['group' => 'Katalog', 'items' => [
-            ['route' => 'admin.drama.index',   'icon' => 'film',   'label' => 'Drama'],
-            ['route' => 'admin.episode.index', 'icon' => 'list',   'label' => 'Episode'],
-            ['route' => 'admin.genre.index',   'icon' => 'tag',    'label' => 'Genre'],
-            ['route' => 'admin.country.index', 'icon' => 'globe',  'label' => 'Negara'],
-            ['route' => 'admin.banner.index',  'icon' => 'image',  'label' => 'Banner'],
+            ['route' => 'admin.drama.index',   'icon' => 'film',   'label' => 'Drama',   'can' => 'drama.manage'],
+            ['route' => 'admin.episode.index', 'icon' => 'list',   'label' => 'Episode', 'can' => 'episode.manage'],
+            ['route' => 'admin.genre.index',   'icon' => 'tag',    'label' => 'Genre',   'can' => 'taxonomy.manage'],
+            ['route' => 'admin.country.index', 'icon' => 'globe',  'label' => 'Negara',  'can' => 'taxonomy.manage'],
+            ['route' => 'admin.banner.index',  'icon' => 'image',  'label' => 'Banner',  'can' => 'taxonomy.manage'],
         ]],
         ['group' => 'Anggota', 'items' => [
-            ['route' => 'admin.membership.index',  'icon' => 'card',  'label' => 'Membership'],
-            ['route' => 'admin.subscription.index','icon' => 'card',  'label' => 'Langganan'],
-            ['route' => 'admin.user.index',        'icon' => 'users', 'label' => 'Pengguna'],
-            ['route' => 'admin.telegram',          'icon' => 'send',  'label' => 'Telegram'],
+            ['route' => 'admin.membership.index',  'icon' => 'card',  'label' => 'Membership', 'can' => 'membership.manage'],
+            ['route' => 'admin.subscription.index','icon' => 'card',  'label' => 'Langganan',  'can' => 'membership.manage'],
+            ['route' => 'admin.user.index',        'icon' => 'users', 'label' => 'Pengguna',   'can' => 'user.view'],
+            ['route' => 'admin.telegram',          'icon' => 'send',  'label' => 'Telegram',   'can' => 'telegram.manage'],
         ]],
         ['group' => 'Sistem', 'items' => [
-            ['route' => 'admin.analytics',   'icon' => 'chart',    'label' => 'Analytics'],
-            ['route' => 'admin.report',      'icon' => 'file',     'label' => 'Laporan'],
-            ['route' => 'admin.logs.index',  'icon' => 'shield',   'label' => 'Log'],
-            ['route' => 'admin.settings',    'icon' => 'settings', 'label' => 'Pengaturan'],
+            ['route' => 'admin.analytics',   'icon' => 'chart',    'label' => 'Analytics',    'can' => 'report.view'],
+            ['route' => 'admin.report',      'icon' => 'file',     'label' => 'Laporan',      'can' => 'report.view'],
+            ['route' => 'admin.logs.index',  'icon' => 'shield',   'label' => 'Log',          'can' => 'log.view'],
+            ['route' => 'admin.role.index',  'icon' => 'shield',   'label' => 'Peran & Izin', 'can' => 'role.manage'],
+            ['route' => 'admin.settings',    'icon' => 'settings', 'label' => 'Pengaturan',   'can' => 'setting.manage'],
         ]],
     ];
 @endphp
@@ -58,9 +59,18 @@
 
         <nav class="admin-nav" aria-label="Menu admin">
             @foreach ($menu as $section)
+                @php
+                    // Sembunyikan seluruh kelompok bila tidak ada satu pun
+                    // menu di dalamnya yang boleh diakses.
+                    $visible = collect($section['items'])
+                        ->filter(fn ($i) => ! isset($i['can']) || auth()->user()?->can($i['can']));
+                @endphp
+
+                @continue($visible->isEmpty())
+
                 <p class="admin-nav-group">{{ $section['group'] }}</p>
 
-                @foreach ($section['items'] as $item)
+                @foreach ($visible as $item)
                     @php
                         $base   = Str::beforeLast($item['route'], '.');
                         $active = request()->routeIs($item['route'])

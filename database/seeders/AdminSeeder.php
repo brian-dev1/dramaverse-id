@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -16,7 +17,7 @@ class AdminSeeder extends Seeder
     {
         $email = env('ADMIN_SEED_EMAIL', 'admin@dramaverse.id');
 
-        User::updateOrCreate(
+        $user = User::updateOrCreate(
             ['email' => $email],
             [
                 'name'      => 'Administrator',
@@ -25,6 +26,11 @@ class AdminSeeder extends Seeder
                 'is_active' => true,
             ]
         );
+
+        // Beri peran super admin supaya seluruh menu terbuka.
+        if ($superAdmin = Role::where('slug', Role::SUPER_ADMIN)->first()) {
+            $user->roles()->syncWithoutDetaching([$superAdmin->id]);
+        }
 
         $this->command?->info("Akun admin siap: {$email}");
         $this->command?->warn('Segera ganti kata sandinya: php artisan admin:password '.$email);

@@ -177,6 +177,7 @@ export default function admin() {
     autoEpisodeNumber();
     dismissToast();
     charts();
+    reorderTable();
 }
 
 /**
@@ -268,4 +269,87 @@ function charts() {
     const timer = setInterval(() => {
         if (draw() || ++tries > 40) clearInterval(timer);
     }, 100);
+}
+
+/**
+ * Pengurutan baris tabel dengan seret-lepas.
+ *
+ * Memakai HTML5 Drag and Drop bawaan peramban — tanpa pustaka. Urutan
+ * dikirim ke server setelah baris dilepas, dan bila gagal urutan
+ * dikembalikan seperti semula supaya tampilan tidak berbohong.
+ */
+function reorderTable() {
+    const table = document.querySelector('[data-reorder]');
+    if (!table) return;
+
+    const tbody = table.querySelector('tbody');
+    const url = table.dataset.reorderUrl;
+    const dramaId = table.dataset.dramaId;
+    const token = document.querySelector('meta[name="csrf-token"]')?.content;
+
+    if (!tbody || !url || !token) return;
+
+    let dragged = null;
+    let snapshot = null;
+
+    tbody.addEventListener('dragstart', (e) => {
+        const row = e.target.closest('tr[draggable]');
+        if (!row) return;
+
+        dragged = row;
+        snapshot = [...tbody.querySelectorAll('tr')];
+        row.classList.add('is-dragging');
+        e.dataTransfer.effectAllowed = 'move';
+    });
+
+    tbody.addEventListener('dragover', (e) => {
+        if (!dragged) return;
+        e.preventDefault();
+
+        const row = e.target.closest('tr[draggable]');
+        if (!row || row === dragged) return;
+
+        const box = row.getBoundingClientRect();
+        const after = e.clientY > box.top + box.height / 2;
+
+        tbody.insertBefore(dragged, after ? row.nextSibling : row);
+    });
+
+    tbody.addEventListener('dragend', async () => {
+        if (!dragged) return;
+
+        dragged.classList.remove('is-dragging');
+        dragged = null;
+
+        const ids = [...tbody.querySelectorAll('tr[data-id]')].map((r) => r.dataset.id);
+
+        table.classList.add('is-saving');
+
+        try {
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': token,
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: JSON.stringify({ drama_id: dramaId, ids }),
+            });
+
+            if (!res.ok) throw new Error('gagal');
+
+            // Perbarui kolom nomor agar cocok dengan urutan baru.
+            [...tbody.querySelectorAll('tr[data-id]')].forEach((row, i) => {
+                const cell = row.querySelectorAll('td')[table.querySelector('[data-bulk-all]') ? 2 : 1];
+                if (cell) cell.textContent = i + 1;
+            });
+        } catch {
+            // Kembalikan urutan semula — jangan biarkan tampilan berbeda
+            // dari isi database.
+            snapshot?.forEach((row) => tbody.appendChild(row));
+            alert('Gagal menyimpan urutan. Muat ulang halaman lalu coba lagi.');
+        } finally {
+            table.classList.remove('is-saving');
+        }
+    });
 }

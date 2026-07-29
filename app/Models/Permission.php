@@ -3,20 +3,22 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Permission extends Model
 {
     protected $fillable = [
-
         'name',
-
         'slug',
-
         'module',
-
     ];
 
-    public function roles()
+    public function getRouteKeyName(): string
+    {
+        return 'slug';
+    }
+
+    public function roles(): BelongsToMany
     {
         return $this->belongsToMany(Role::class);
     }

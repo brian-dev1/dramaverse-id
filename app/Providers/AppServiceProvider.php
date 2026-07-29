@@ -53,7 +53,10 @@ use App\Repositories\SettingRepository;
 use App\Repositories\TelegramRepository;
 use App\Repositories\WatchHistoryRepository;
 use App\Repositories\WatchlistRepository;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
 
@@ -104,5 +107,38 @@ class AppServiceProvider extends ServiceProvider
 
         // Pagination memakai markup Tailwind agar seragam dengan tema.
         Paginator::useTailwind();
+
+        $this->registerRateLimiters();
+    }
+
+    /**
+     * Pembatas laju.
+     *
+     * Login admin dibatasi per kombinasi email dan IP supaya penebakan
+     * kata sandi tidak bisa dijalankan berulang, dan supaya satu penyerang
+     * tidak bisa mengunci akun orang lain hanya dengan menebak dari IP
+     * berbeda.
+     */
+    private function registerRateLimiters(): void
+    {
+        RateLimiter::for('admin-login', fn (Request $request) => [
+            Limit::perMinute(5)->by($request->input('email').'|'.$request->ip()),
+            Limit::perMinute(20)->by($request->ip()),
+        ]);
+
+        // Aksi tulis di panel: cukup longgar untuk kerja normal, cukup
+        // ketat untuk menahan skrip otomatis.
+        RateLimiter::for('admin-write', fn (Request $request) =>
+            Limit::perMinute(60)->by($request->user()?->id ?: $request->ip())
+        );
+
+        // Broadcast Telegram mahal — batasi keras.
+        RateLimiter::for('broadcast', fn (Request $request) =>
+            Limit::perHour(6)->by($request->user()?->id ?: $request->ip())
+        );
+
+        RateLimiter::for('api', fn (Request $request) =>
+            Limit::perMinute(90)->by($request->user()?->id ?: $request->ip())
+        );
     }
 }

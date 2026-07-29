@@ -1,28 +1,39 @@
 """
 Mengekstrak nama route lengkap dari berkas routes Laravel.
 
-Menangani prefix nama bertingkat: Route::name('admin.')->group(fn => 
-Route::controller(X)->name('user.')->group(fn => Route::get(...)->name('ban')))
-menghasilkan 'admin.user.ban'.
+Menangani dua hal yang tidak bisa dibaca regex sederhana:
+
+1. Prefix nama bertingkat — Route::name('admin.')->group(fn =>
+   Route::name('user.')->group(fn => Route::get(...)->name('ban')))
+   menghasilkan 'admin.user.ban'.
+
+2. Rantai method yang membentang beberapa baris, misalnya
+   Route::controller(X)
+       ->prefix('episode')->name('episode.')
+       ->middleware('...')
+       ->group(function () {
 """
 import re
 
 
-def extract(src: str) -> set:
-    names = set()
-    stack = []          # tumpukan (prefix, kedalaman_kurawal)
-    depth = 0
-    i = 0
-    n = len(src)
+def _join_chains(src: str) -> str:
+    """Menyatukan ->method() yang ditulis di baris berikutnya."""
+    return re.sub(r'\n\s*->', '->', src)
 
-    # Pola prefix grup: ->name('x.') yang diikuti ->group(
+
+def extract(src: str) -> set:
+    src = _join_chains(src)
+
+    names = set()
+    stack = []          # (prefix, kedalaman kurawal saat didorong)
+    depth = 0
+
     group_prefix = re.compile(r"->name\(\s*'([^']*\.)'\s*\)")
     leaf_name = re.compile(r"->name\(\s*'([^']+)'\s*\)")
 
-    lines = src.split('\n')
-    for line in lines:
-        # Prefix grup pada baris ini
+    for line in src.split('\n'):
         pending = None
+
         if '->group(' in line:
             m = group_prefix.search(line)
             if m:

@@ -9,8 +9,8 @@ use Illuminate\Support\Str;
 /**
  * Penanganan unggahan gambar untuk panel admin.
  *
- * Disimpan di disk `public` agar dapat diakses lewat symlink storage.
- * Berkas lama dihapus saat diganti supaya tidak menumpuk.
+ * Berkas disimpan di disk `public`, diperkecil sesuai peruntukannya, dan
+ * berkas lama dihapus saat diganti supaya storage tidak menumpuk sampah.
  */
 class MediaService
 {
@@ -20,6 +20,20 @@ class MediaService
     /** Jenis berkas yang diizinkan. */
     public const MIMES = ['jpg', 'jpeg', 'png', 'webp'];
 
+    /** Folder penyimpanan => preset ukuran. */
+    private const PRESET_MAP = [
+        'drama/poster'       => 'poster',
+        'drama/cover'        => 'cover',
+        'episode/thumbnail'  => 'thumbnail',
+        'banner'             => 'banner',
+        'settings'           => 'logo',
+    ];
+
+    public function __construct(
+        protected ImageProcessor $processor
+    ) {
+    }
+
     /**
      * Menyimpan berkas dan mengembalikan path relatifnya.
      *
@@ -27,9 +41,16 @@ class MediaService
      */
     public function store(UploadedFile $file, string $folder, ?string $previous = null): string
     {
-        $name = Str::uuid()->toString().'.'.$file->getClientOriginalExtension();
+        $extension = Str::lower($file->getClientOriginalExtension() ?: 'jpg');
+        $name = Str::uuid()->toString().'.'.$extension;
 
         $path = $file->storeAs($folder, $name, 'public');
+
+        // Perkecil di tempat setelah tersimpan.
+        $this->processor->optimise(
+            Storage::disk('public')->path($path),
+            self::PRESET_MAP[$folder] ?? 'default'
+        );
 
         if ($previous) {
             $this->delete($previous);
@@ -55,5 +76,18 @@ class MediaService
             'mimes:'.implode(',', self::MIMES),
             'max:'.self::MAX_KB,
         ]);
+    }
+
+    /** Keterangan batasan untuk ditampilkan di form. */
+    public static function hint(string $preset = 'default'): string
+    {
+        [$w, $h] = ImageProcessor::PRESETS[$preset] ?? ImageProcessor::PRESETS['default'];
+
+        return sprintf(
+            'JPG, PNG, atau WebP. Maksimal %d MB. Otomatis diperkecil ke maksimal %d×%d piksel.',
+            self::MAX_KB / 1024,
+            $w,
+            $h
+        );
     }
 }

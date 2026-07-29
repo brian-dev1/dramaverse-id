@@ -47,12 +47,21 @@
             <a href="{{ route('admin.'.$routeKey.'.index') }}" class="btn btn-ghost btn-sm">Reset</a>
         @endif
 
-        @if ($canCreate)
-            <a href="{{ route('admin.'.$routeKey.'.create') }}" class="btn btn-primary btn-sm toolbar-add">
-                <x-web.home.icon name="plus" :size="14" />
-                Tambah
-            </a>
-        @endif
+        <div class="toolbar-actions">
+            @if ($routeKey === 'episode' && Route::has('admin.episode.batch'))
+                <a href="{{ route('admin.episode.batch', request()->only('drama_id')) }}" class="btn btn-ghost btn-sm">
+                    <x-web.home.icon name="list" :size="14" />
+                    Tambah massal
+                </a>
+            @endif
+
+            @if ($canCreate)
+                <a href="{{ route('admin.'.$routeKey.'.create') }}" class="btn btn-primary btn-sm">
+                    <x-web.home.icon name="plus" :size="14" />
+                    Tambah
+                </a>
+            @endif
+        </div>
     </form>
 
     @if ($records->isEmpty())
@@ -96,8 +105,29 @@
             </div>
         @endif
 
+        @php
+            // Pengurutan seret-lepas hanya masuk akal bila daftar berisi
+            // satu drama dan belum diurutkan ulang oleh pengguna.
+            $sortable_dnd = $routeKey === 'episode'
+                && request()->filled('drama_id')
+                && ! request()->filled('sort')
+                && Route::has('admin.episode.reorder');
+        @endphp
+
+        @if ($sortable_dnd)
+            <p class="dnd-hint">
+                <x-web.home.icon name="sort" :size="13" />
+                Seret baris untuk mengubah urutan episode. Perubahan tersimpan otomatis.
+            </p>
+        @endif
+
         <div class="table-wrap">
-            <table class="data-table">
+            <table class="data-table {{ $sortable_dnd ? 'is-sortable' : '' }}"
+                   @if ($sortable_dnd)
+                       data-reorder
+                       data-reorder-url="{{ route('admin.episode.reorder') }}"
+                       data-drama-id="{{ request('drama_id') }}"
+                   @endif>
                 <thead>
                     <tr>
                         @if ($canBulk)
@@ -131,7 +161,7 @@
 
                 <tbody>
                     @foreach ($records as $record)
-                        <tr>
+                        <tr @if ($sortable_dnd) draggable="true" data-id="{{ $record->id }}" @endif>
                             @if ($canBulk)
                                 <td class="col-check">
                                     <input type="checkbox" name="ids[]" value="{{ $record->id }}"
