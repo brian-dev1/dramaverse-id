@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Episode extends Model
 {
@@ -54,6 +55,22 @@ class Episode extends Model
     public function watchHistories(): HasMany
     {
         return $this->hasMany(WatchHistory::class);
+    }
+
+    /**
+     * Berkas video yang tersimpan di salah satu storage provider.
+     *
+     * `hasOne`, bukan `hasMany`: kolom `episode_id` di `episode_videos` unik.
+     * Mengunggah lagi mengganti barisnya, bukan menambah baris kedua — kalau
+     * tidak, tidak ada yang bisa menjawab video mana yang sedang dipakai.
+     *
+     * Kolom `video_url` yang sudah ada TIDAK digantikan relasi ini. Keduanya
+     * berdampingan: `video_url` untuk sumber yang ditempel manual (URL CDN
+     * luar), relasi ini untuk berkas yang benar-benar diunggah ke provider.
+     */
+    public function video(): HasOne
+    {
+        return $this->hasOne(EpisodeVideo::class);
     }
 
     /*

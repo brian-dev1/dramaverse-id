@@ -519,3 +519,74 @@ a.stat-card:hover .stat-icon{ color:var(--gold); }
     .toolbar-actions{ margin-left:0; width:100%; }
     .toolbar-actions .btn{ flex:1; justify-content:center; }
 }
+
+/* --- Unggah video episode (Sprint 7.5) --- */
+
+/* Kotak seret-lepas versi video: tanpa pratayang gambar, jadi satu kolom
+   penuh alih-alih dua kolom seperti .upload untuk gambar. */
+.upload-video{ flex-direction:column; padding:var(--space-4); }
+.upload-video .upload-body{ width:100%; }
+
+.radio-row{ display:flex; flex-wrap:wrap; gap:var(--space-3); }
+
+/* Pratayang informasi berkas. Grid supaya label dan nilainya tetap sejajar
+   pada layar sempit tanpa memotong nama berkas yang panjang. */
+.file-facts{
+    display:grid; gap:10px var(--space-4);
+    grid-template-columns:repeat(auto-fit, minmax(190px, 1fr));
+    padding:var(--space-3);
+    border:1px solid var(--border-soft);
+    border-radius:var(--radius-m);
+    background:var(--bg-secondary);
+}
+.file-facts dt{
+    font-size:11px; letter-spacing:.06em; text-transform:uppercase;
+    color:var(--text-muted); margin-bottom:3px;
+}
+.file-facts dd{
+    font-size:13px; color:var(--text-primary);
+    word-break:break-all; line-height:1.5;
+}
+
+.progress{ display:flex; flex-direction:column; gap:8px; }
+.progress-track{
+    height:8px; overflow:hidden;
+    border-radius:999px;
+    background:var(--bg-secondary);
+    border:1px solid var(--border-soft);
+}
+.progress-bar{
+    height:100%; width:0;
+    border-radius:999px;
+    background:linear-gradient(90deg, var(--gold), var(--gold-bright));
+    transition:width .2s var(--ease-out);
+}
+.progress-label{ font-size:12.5px; color:var(--text-secondary); }
+
+.upload-result{
+    padding:11px 14px;
+    border-radius:var(--radius-m);
+    border:1px solid var(--border-soft);
+    font-size:13px; line-height:1.6;
+    word-break:break-word;
+}
+.upload-result-success{
+    color:var(--gold-bright);
+    border-color:rgba(217,175,110,.35);
+    background:rgba(217,175,110,.08);
+}
+.upload-result-warn{
+    color:var(--text-primary);
+    border-color:rgba(217,175,110,.25);
+    background:rgba(217,175,110,.05);
+}
+.upload-result-error{
+    color:var(--crimson);
+    border-color:rgba(200,60,70,.35);
+    background:rgba(200,60,70,.07);
+}
+
+@media (max-width:640px){
+    .file-facts{ grid-template-columns:1fr; }
+    .radio-row{ gap:var(--space-2); }
+}

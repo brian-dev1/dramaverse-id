@@ -178,6 +178,329 @@ export default function admin() {
     dismissToast();
     charts();
     reorderTable();
+    videoUpload();
+}
+
+/**
+ * Unggah video episode dengan progress bar.
+ *
+ * Memakai XMLHttpRequest, bukan fetch(), dan itu bukan pilihan gaya: fetch()
+ * tidak menyediakan kemajuan PENGIRIMAN. Untuk berkas berukuran gigabyte,
+ * halaman tanpa progress bar tidak bisa dibedakan dari halaman yang menggantung
+ * — dan orang akan menutupnya di tengah jalan.
+ */
+function videoUpload() {
+    const form = document.querySelector('[data-video-upload]');
+    if (!form) return;
+
+    const token = document.querySelector('meta[name="csrf-token"]')?.content;
+
+    const el = {
+        drama:      form.querySelector('[data-drama]'),
+        episode:    form.querySelector('[data-episode]'),
+        note:       form.querySelector('[data-episode-note]'),
+        title:      form.querySelector('[data-title]'),
+        drop:       form.querySelector('[data-drop]'),
+        file:       form.querySelector('[data-file]'),
+        fileName:   form.querySelector('[data-file-name]'),
+        facts:      form.querySelector('[data-facts]'),
+        factName:   form.querySelector('[data-fact-name]'),
+        factSize:   form.querySelector('[data-fact-size]'),
+        factType:   form.querySelector('[data-fact-type]'),
+        factTarget: form.querySelector('[data-fact-target]'),
+        progress:   form.querySelector('[data-progress]'),
+        bar:        form.querySelector('[data-progress-bar]'),
+        label:      form.querySelector('[data-progress-label]'),
+        result:     form.querySelector('[data-result]'),
+        submit:     form.querySelector('[data-submit]'),
+        providers:  form.querySelector('[data-provider]'),
+        wrap:       form.querySelector('[data-provider-wrap]'),
+    };
+
+    const maxKb = Number(form.dataset.maxKb || 0);
+
+    const mb = (bytes) => `${(bytes / 1024 / 1024).toFixed(2)} MB`;
+
+    const say = (text, kind) => {
+        if (!el.result) return;
+        el.result.hidden = false;
+        el.result.className = `upload-result upload-result-${kind}`;
+        el.result.textContent = text;
+    };
+
+    // --- Mode Auto / Manual ---
+    const syncMode = () => {
+        const manual = form.querySelector('[data-mode]:checked')?.value === 'manual';
+
+        if (el.wrap) el.wrap.hidden = !manual;
+        if (el.providers) el.providers.required = manual;
+
+        updateTarget();
+    };
+
+    const updateTarget = () => {
+        if (!el.factTarget) return;
+
+        const manual = form.querySelector('[data-mode]:checked')?.value === 'manual';
+
+        el.factTarget.textContent = manual
+            ? (el.providers?.selectedOptions[0]?.textContent.trim() || 'belum dipilih')
+            : 'Auto — provider default';
+    };
+
+    form.querySelectorAll('[data-mode]').forEach((r) =>
+        r.addEventListener('change', syncMode)
+    );
+    el.providers?.addEventListener('change', updateTarget);
+
+    // --- Drama -> daftar episode ---
+    const loadEpisodes = async () => {
+        const dramaId = el.drama?.value;
+
+        el.episode.innerHTML = '';
+        el.episode.disabled = true;
+
+        if (!dramaId) {
+            el.episode.innerHTML = '<option value="">— pilih drama dulu —</option>';
+            return;
+        }
+
+        el.episode.innerHTML = '<option value="">memuat…</option>';
+
+        // URL dibangun dengan drama=0 di Blade, lalu angkanya ditukar. Ini
+        // menjaga agar nama route tetap satu-satunya sumber URL — tidak ada
+        // path yang ditulis ulang di JavaScript.
+        const url = (form.dataset.episodesUrl || '').replace(/\/0$/, `/${dramaId}`);
+
+        try {
+            const res = await fetch(url, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            });
+
+            if (!res.ok) throw new Error('gagal');
+
+            const { data } = await res.json();
+
+            if (!data.length) {
+                el.episode.innerHTML = '<option value="">belum ada episode</option>';
+                if (el.note) {
+                    el.note.textContent =
+                        'Drama ini belum punya episode. Buat episodenya dulu di menu Episode.';
+                }
+                return;
+            }
+
+            el.episode.innerHTML = '<option value="">— pilih episode —</option>';
+
+            data.forEach((ep) => {
+                const opt = document.createElement('option');
+                opt.value = ep.id;
+                opt.textContent = ep.has_video ? `${ep.label}  (sudah ada video)` : ep.label;
+                opt.dataset.title = ep.title || '';
+                opt.dataset.hasVideo = ep.has_video ? '1' : '';
+                el.episode.appendChild(opt);
+            });
+
+            el.episode.disabled = false;
+
+            if (el.note) {
+                el.note.textContent =
+                    'Episode yang sudah punya video akan DIGANTI, bukan ditambah.';
+            }
+        } catch {
+            el.episode.innerHTML = '<option value="">gagal memuat</option>';
+            say('Daftar episode gagal dimuat. Muat ulang halaman lalu coba lagi.', 'error');
+        }
+    };
+
+    el.drama?.addEventListener('change', loadEpisodes);
+
+    el.episode?.addEventListener('change', () => {
+        const opt = el.episode.selectedOptions[0];
+
+        // Judul diisi dari episode terpilih, tapi jangan timpa yang sudah
+        // diketik manusia.
+        if (el.title && !el.title.dataset.touched) {
+            el.title.value = opt?.dataset.title || '';
+        }
+
+        if (opt?.dataset.hasVideo) {
+            say('Episode ini sudah punya video. Mengunggah akan menggantinya, '
+                + 'dan berkas lamanya dihapus dari penyimpanan.', 'warn');
+        } else if (el.result) {
+            el.result.hidden = true;
+        }
+    });
+
+    el.title?.addEventListener('input', () => { el.title.dataset.touched = '1'; });
+
+    // --- Seret dan lepas ---
+    if (el.drop && el.file) {
+        ['dragenter', 'dragover'].forEach((ev) =>
+            el.drop.addEventListener(ev, (e) => {
+                e.preventDefault();
+                el.drop.classList.add('is-dragging');
+            })
+        );
+
+        ['dragleave', 'drop'].forEach((ev) =>
+            el.drop.addEventListener(ev, (e) => {
+                e.preventDefault();
+                el.drop.classList.remove('is-dragging');
+            })
+        );
+
+        el.drop.addEventListener('drop', (e) => {
+            if (e.dataTransfer.files.length) {
+                el.file.files = e.dataTransfer.files;
+                el.file.dispatchEvent(new Event('change'));
+            }
+        });
+    }
+
+    el.file?.addEventListener('change', () => {
+        const file = el.file.files?.[0];
+
+        if (!file) {
+            if (el.facts) el.facts.hidden = true;
+            return;
+        }
+
+        if (el.fileName) el.fileName.textContent = file.name;
+
+        if (el.facts) el.facts.hidden = false;
+        if (el.factName) el.factName.textContent = file.name;
+        if (el.factSize) el.factSize.textContent = mb(file.size);
+        if (el.factType) {
+            el.factType.textContent =
+                file.type || (file.name.split('.').pop() || '').toUpperCase();
+        }
+
+        updateTarget();
+
+        // Diperiksa di sisi peramban lebih dulu supaya orang tidak menunggu
+        // pengiriman berjam-jam untuk ditolak di ujung. Server tetap
+        // memeriksanya sendiri — pemeriksaan di sini kesopanan, bukan penjagaan.
+        if (maxKb > 0 && file.size / 1024 > maxKb) {
+            say(`Berkas ${mb(file.size)} melewati batas `
+                + `${(maxKb / 1024).toFixed(0)} MB di server ini.`, 'error');
+        } else if (el.result) {
+            el.result.hidden = true;
+        }
+    });
+
+    // --- Kirim ---
+    form.addEventListener('submit', (e) => {
+        if (!token) return; // tanpa token, biarkan submit biasa berjalan
+
+        e.preventDefault();
+
+        const file = el.file?.files?.[0];
+
+        if (!file) {
+            say('Pilih berkas video lebih dulu.', 'error');
+            return;
+        }
+
+        if (maxKb > 0 && file.size / 1024 > maxKb) {
+            say(`Berkas ${mb(file.size)} melewati batas `
+                + `${(maxKb / 1024).toFixed(0)} MB di server ini.`, 'error');
+            return;
+        }
+
+        const xhr = new XMLHttpRequest();
+        const body = new FormData(form);
+
+        el.submit.disabled = true;
+        el.submit.textContent = 'Mengunggah…';
+        if (el.progress) el.progress.hidden = false;
+        if (el.result) el.result.hidden = true;
+
+        const setProgress = (percent, text) => {
+            if (el.bar) {
+                el.bar.style.width = `${percent}%`;
+                el.bar.setAttribute('aria-valuenow', String(Math.round(percent)));
+            }
+            if (el.label) el.label.textContent = text;
+        };
+
+        xhr.upload.addEventListener('progress', (ev) => {
+            if (!ev.lengthComputable) return;
+
+            const percent = (ev.loaded / ev.total) * 100;
+
+            setProgress(percent, `${percent.toFixed(0)}% — ${mb(ev.loaded)} dari ${mb(ev.total)}`);
+        });
+
+        // Pengiriman selesai bukan berarti selesai: server masih menghitung
+        // checksum dan meneruskan berkas ke provider. Tanpa pesan ini, progress
+        // bar berhenti di 100% dan terlihat seperti menggantung.
+        xhr.upload.addEventListener('load', () => {
+            setProgress(100, 'Terkirim. Server sedang menyimpan ke storage provider…');
+        });
+
+        const selesai = () => {
+            el.submit.disabled = false;
+            el.submit.textContent = 'Unggah video';
+        };
+
+        xhr.addEventListener('load', () => {
+            selesai();
+
+            let payload = null;
+            try { payload = JSON.parse(xhr.responseText); } catch { /* bukan JSON */ }
+
+            if (xhr.status >= 200 && xhr.status < 300 && payload?.ok) {
+                setProgress(100, 'Selesai.');
+
+                const d = payload.data || {};
+
+                say(`${payload.message}  •  ${d.stored_filename || ''} `
+                    + `(${d.size_human || ''}) • checksum ${String(d.checksum || '').slice(0, 12)}…`,
+                    'success');
+
+                el.file.value = '';
+                if (el.facts) el.facts.hidden = true;
+                if (el.fileName) {
+                    el.fileName.textContent =
+                        'Seret berkas ke sini, atau pilih lewat tombol di atas.';
+                }
+                return;
+            }
+
+            if (el.progress) el.progress.hidden = true;
+
+            // 422 dari FormRequest membawa `errors`; dari StorageEngineException
+            // membawa `message`. Keduanya perlu ditampilkan apa adanya.
+            const pesan = payload?.message
+                || Object.values(payload?.errors || {}).flat().join(' ')
+                || `Unggahan gagal (HTTP ${xhr.status}).`;
+
+            say(pesan, 'error');
+        });
+
+        xhr.addEventListener('error', () => {
+            selesai();
+            if (el.progress) el.progress.hidden = true;
+            say('Koneksi terputus saat mengunggah. Berkas belum tersimpan — coba lagi.', 'error');
+        });
+
+        xhr.addEventListener('abort', () => {
+            selesai();
+            if (el.progress) el.progress.hidden = true;
+            say('Unggahan dibatalkan.', 'warn');
+        });
+
+        xhr.open('POST', form.action);
+        xhr.setRequestHeader('X-CSRF-TOKEN', token);
+        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+        xhr.setRequestHeader('Accept', 'application/json');
+        xhr.send(body);
+    });
+
+    // Keadaan awal
+    syncMode();
+    if (el.drama?.value) loadEpisodes();
 }
 
 /**

@@ -145,8 +145,29 @@ php artisan storage:smoke local        # provider tertentu
 ```
 Menjalankan satu siklus penuh lewat engine, termasuk dua penjagaan keamanan.
 
-**Angka saat ini:** 139 route, 18 controller admin, 19 view admin,
-32 migration, 11 middleware, 197 kelas CSS, 26 interface repository.
+### Sprint 7.5 — Upload Video Episode
+Halaman `/admin/episode/video`, plus tombol "Unggah video" di daftar Episode. Seluruh unggahan lewat `StorageEngineInterface` —
+controller dan service nol `Storage::`. Mode Auto (provider default) dan Manual
+(hanya provider aktif yang sudah lolos Test Connection). Tabel `episode_videos`
+menyimpan 13 kolom metadata termasuk checksum SHA256. Drag & drop, progress bar
+XHR, pratayang nama/ukuran/format/tujuan.
+Detail: `SPRINT-7-5-SELESAI.md`.
+
+**Wajib diatur di server sebelum bisa dipakai** — batas bawaan PHP dan Nginx
+jauh di bawah ukuran video episode:
+```
+# /etc/php/8.3/fpm/php.ini
+upload_max_filesize = 4G
+post_max_size = 4G
+max_execution_time = 3600
+# /etc/nginx/sites-available/dramaverse
+client_max_body_size 4G;
+```
+Berkas yang melewati `post_max_size` membuat request kosong dan muncul sebagai
+419 tanpa penjelasan, bukan sebagai pesan validasi.
+
+**Angka saat ini:** 142 route, 19 controller admin, 20 view admin,
+33 migration, 11 middleware, 205 kelas CSS, 26 interface repository.
 
 ---
 
@@ -172,6 +193,12 @@ beberapa masih dangkal:
   otomatis melanjutkan
 
 ### Bug diketahui, belum diperbaiki
+- **Belum ada cara menghapus video episode dari panel.** Mengunggah ulang
+  menggantinya (dan menghapus berkas lama), tapi tidak ada tombol untuk
+  melepaskan video tanpa menggantinya.
+- **Checksum belum pernah diverifikasi ulang.** Kolomnya terisi setiap
+  unggahan, tapi belum ada perintah yang membandingkannya dengan berkas di
+  bucket. Nilainya baru berguna kalau ada yang memeriksanya.
 - **`STORAGE_TIMEOUT` tidak berpengaruh.** Ada di `config/storage.php` dan
   `.env.example`, tapi tidak ada kode yang membacanya — belum disambungkan ke
   klien S3, jadi yang berlaku batas waktu bawaan AWS SDK. Sudah diberi catatan

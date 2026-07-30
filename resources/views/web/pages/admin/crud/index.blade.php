@@ -70,6 +70,13 @@
                 </a>
             @endif
 
+            @if ($routeKey === 'episode' && Route::has('admin.episode.video.form'))
+                <a href="{{ route('admin.episode.video.form', request()->only('drama_id')) }}" class="btn btn-ghost btn-sm">
+                    <x-web.home.icon name="play" :size="14" />
+                    Unggah video
+                </a>
+            @endif
+
             @if ($canCreate)
                 <a href="{{ route('admin.'.$routeKey.'.create') }}" class="btn btn-primary btn-sm">
                     <x-web.home.icon name="plus" :size="14" />

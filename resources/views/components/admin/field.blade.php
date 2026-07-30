@@ -23,13 +23,21 @@
     </label>
 
     @switch($type)
+        {{--
+            `{{ $attributes }}` harus ada di SETIAP cabang, bukan hanya di
+            @default. Sebelumnya hanya cabang input teks yang meneruskannya,
+            sehingga atribut yang dikirim ke select dibuang tanpa suara — dan
+            `data-next-numbers` di halaman Tambah Episode Massal tidak pernah
+            sampai ke DOM, membuat pengisian nomor episode otomatis diam-diam
+            tidak berfungsi sejak dibuat.
+        --}}
         @case('textarea')
             <textarea id="{{ $id }}" name="{{ $name }}" rows="{{ $rows }}"
-                      class="control">{{ $val }}</textarea>
+                      class="control" {{ $attributes }}>{{ $val }}</textarea>
             @break
 
         @case('select')
-            <select id="{{ $id }}" name="{{ $name }}" class="control">
+            <select id="{{ $id }}" name="{{ $name }}" class="control" {{ $attributes }}>
                 <option value="">— pilih —</option>
                 @foreach ($options as $k => $v)
                     <option value="{{ $k }}" @selected((string) $val === (string) $k)>{{ $v }}</option>

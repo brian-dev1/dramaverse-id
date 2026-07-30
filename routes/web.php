@@ -200,6 +200,34 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 Route::post('/reorder', 'reorder')->name('reorder');
             });
 
+        /*
+        |----------------------------------------------------------------------
+        | Episode: unggah video (Sprint 7.5)
+        |
+        | Seluruh unggahan lewat StorageEngineInterface. Controller-nya tidak
+        | pernah menyentuh Storage, tidak tahu driver apa pun, dan tidak
+        | menyebut nama disk.
+        |
+        | `store` membalas JSON, bukan redirect. Itu keperluan progress bar:
+        | satu-satunya cara mengetahui kemajuan pengiriman berkas gigabyte
+        | adalah XMLHttpRequest.upload.onprogress, yang memerlukan respons
+        | yang bisa dibaca JavaScript.
+        |
+        | Prefix `episode/video` tidak bertabrakan dengan CRUD episode:
+        | route `/{id}/edit` dan sejenisnya dibatasi whereNumber, sehingga
+        | "video" tidak akan pernah tertangkap sebagai id.
+        |----------------------------------------------------------------------
+        */
+        Route::controller(Admin\EpisodeVideoController::class)
+            ->prefix('episode/video')->name('episode.video.')
+            ->middleware('permission:episode.manage')
+            ->group(function () {
+                Route::get('/', 'form')->name('form');
+                Route::post('/', 'store')->name('store');
+                Route::get('/episodes/{drama}', 'episodes')
+                    ->name('episodes')->whereNumber('drama');
+            });
+
         // --- Pengguna: daftar, detail, dan tindakan ---
         Route::controller(Admin\UserController::class)
             ->prefix('user')->name('user.')
