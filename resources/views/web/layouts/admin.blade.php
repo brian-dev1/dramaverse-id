@@ -159,6 +159,46 @@
         @endif
 
         <div class="admin-content">
+
+            {{--
+                Hasil tindakan yang terlalu penting untuk sebuah toast.
+
+                Toast di atas menghilang sendiri setelah 4 detik. Itu tepat
+                untuk "berhasil disimpan", tapi salah untuk hasil yang harus
+                dibaca dan ditindaklanjuti — pesan galat Test Connection bisa
+                sepanjang satu paragraf, dan justru di situlah petunjuknya.
+
+                Bentuknya sengaja umum (judul, berhasil/gagal, satu baris
+                keterangan, pesan, petunjuk) supaya bisa dipakai modul lain,
+                bukan hanya storage.
+            --}}
+            @if ($detail = session('detail'))
+                <section class="panel" role="{{ ($detail['ok'] ?? false) ? 'status' : 'alert' }}">
+                    <div class="panel-head">
+                        <h2>{{ $detail['title'] ?? 'Hasil' }}</h2>
+                        <span class="badge {{ ($detail['ok'] ?? false) ? 'badge-on' : 'badge-off' }}">
+                            {{ ($detail['ok'] ?? false) ? 'Berhasil' : 'Gagal' }}
+                        </span>
+                    </div>
+
+                    <div class="detail-body-admin">
+                        @if (! empty($detail['meta']))
+                            <p class="panel-meta">{{ $detail['meta'] }}</p>
+                        @endif
+
+                        @if (! empty($detail['message']))
+                            <p class="{{ ($detail['ok'] ?? false) ? 'field-hint' : 'field-error' }}">
+                                {{ $detail['message'] }}
+                            </p>
+                        @endif
+
+                        @if (! empty($detail['hint']))
+                            <p class="field-hint">{{ $detail['hint'] }}</p>
+                        @endif
+                    </div>
+                </section>
+            @endif
+
             @yield('content')
         </div>
 

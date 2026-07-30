@@ -399,7 +399,8 @@ class StorageProviderService
         $this->repository->recordTest(
             $provider,
             $result->status(),
-            $result->message
+            $result->message,
+            $result->durationMs
         );
 
         return $result;

@@ -113,8 +113,18 @@ semua baris, hanya nilai yang benar-benar berubah yang ditulis.
 Belum ada Test Connection dari panel dan hapus permanen.
 Detail: `SPRINT-7-2D-SELESAI.md`.
 
-**Angka saat ini:** 138 route, 18 controller admin, 19 view admin,
-31 migration, 11 middleware, 197 kelas CSS, 26 interface repository.
+### Sprint 7.3 — Connection Test
+Tombol Test Connection di panel, untuk keenam provider S3 (R2, Amazon S3,
+Backblaze B2, Wasabi, MinIO, Spaces) lewat jalur yang sama. Mesinnya sudah ada
+sejak 7.1 — sprint ini menyambungkannya. Hasil ditampilkan di **panel yang
+menetap**, bukan toast: toast hilang setelah 4 detik, terlalu cepat untuk pesan
+galat SDK yang panjangnya bisa satu paragraf. Durasi kini **disimpan**
+(`last_test_duration_ms`), jadi Response Time tidak hilang saat halaman dimuat
+ulang. Kolom baru "Uji Terakhir" di tabel.
+Detail: `SPRINT-7-3-SELESAI.md`.
+
+**Angka saat ini:** 139 route, 18 controller admin, 19 view admin,
+32 migration, 11 middleware, 197 kelas CSS, 26 interface repository.
 
 ---
 
@@ -140,6 +150,12 @@ beberapa masih dangkal:
   otomatis melanjutkan
 
 ### Bug diketahui, belum diperbaiki
+- **`STORAGE_TIMEOUT` tidak berpengaruh.** Ada di `config/storage.php` dan
+  `.env.example`, tapi tidak ada kode yang membacanya — belum disambungkan ke
+  klien S3, jadi yang berlaku batas waktu bawaan AWS SDK. Sudah diberi catatan
+  di kedua berkas, dan `hint()` tidak lagi menyuruh menaikkannya. Menyambungkan
+  lewat kunci `http` pada config disk harus diuji langsung di server: kunci
+  yang salah mematikan seluruh provider S3 sekaligus.
 - **Form bersarang di `crud/index.blade.php`.** Saat sebuah modul punya aksi
   massal, form bulk membungkus tabel — sehingga form tombol Hapus di dalam
   baris jadi bersarang. Parser HTML membuang tag `<form>` bersarang, jadi
@@ -156,6 +172,12 @@ beberapa masih dangkal:
   index. Kandidat pertama, tapi harus dijalankan di server yang bisa langsung
   diuji: sintaks kolom generated berbeda antar versi MySQL, dan migration yang
   gagal menghentikan `deploy.sh` di langkah migrate.
+- **Sambungkan `STORAGE_TIMEOUT`** ke klien S3 lewat kunci `http`. Sekarang
+  waktu yang tepat: tombol Test Connection membuat akibatnya langsung terlihat.
+- **Test Connection massal** dari panel (satuan sudah ada; semua sekaligus
+  masih lewat `php artisan storage:test`)
+- **Test Connection di antrean** — sekarang sinkron, jadi provider yang lambat
+  menahan permintaan admin sampai SDK menyerah
 - **Hapus permanen** — baris terhapus kini hanya bisa dipulihkan atau dibiarkan
 - **Test Connection dari panel** — sudah ada di `php artisan storage:test`
 - **Kolom hasil test terakhir** di tabel (`last_tested_at`, `last_test_status`)

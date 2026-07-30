@@ -17,13 +17,15 @@
     $canEnable  = Route::has('admin.'.$routeKey.'.enable');
     $canDisable = Route::has('admin.'.$routeKey.'.disable');
     $canDefault = Route::has('admin.'.$routeKey.'.default');
+    $canTest    = Route::has('admin.'.$routeKey.'.test');
 
     // Editor prioritas hanya masuk akal bila route-nya ada DAN kolomnya
     // memang ditampilkan.
     $canPriority = Route::has('admin.'.$routeKey.'.priority')
         && in_array('priority', $columns, true);
 
-    $hasAction  = $canEdit || $canDelete || $canEnable || $canDisable || $canDefault;
+    $hasAction  = $canEdit || $canDelete || $canEnable || $canDisable
+        || $canDefault || $canTest;
     $colspan    = count($columns) + ($canBulk ? 1 : 0) + ($hasAction ? 1 : 0);
 @endphp
 
@@ -243,6 +245,27 @@
                                             </button>
                                         </form>
                                     @else
+                                        {{--
+                                            Test Connection dirender untuk
+                                            setiap baris hidup, termasuk yang
+                                            nonaktif dan yang belum lengkap.
+                                            Justru di situ gunanya: mengujinya
+                                            adalah cara mengetahui apa yang
+                                            masih kurang, dan hasil gagal
+                                            menyebutkan alasannya.
+                                        --}}
+                                        @if ($canTest)
+                                            <form method="POST"
+                                                  action="{{ route('admin.'.$routeKey.'.test', $record->id) }}"
+                                                  class="inline-form">
+                                                @csrf
+                                                <button type="submit" class="btn-icon"
+                                                        title="Test Connection" aria-label="Test Connection">
+                                                    <x-web.home.icon name="activity" :size="15" />
+                                                </button>
+                                            </form>
+                                        @endif
+
                                         {{--
                                             Set Default hanya untuk baris yang
                                             aktif dan belum menjadi default.

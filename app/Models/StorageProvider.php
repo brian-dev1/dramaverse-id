@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\StorageDriver;
 use App\Enums\StorageStatus;
+use App\Services\Storage\StorageTestResult;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -70,6 +71,8 @@ class StorageProvider extends Model
 
         'last_test_message',
 
+        'last_test_duration_ms',
+
     ];
 
     protected $casts = [
@@ -91,6 +94,8 @@ class StorageProvider extends Model
         'options' => 'array',
 
         'last_tested_at' => 'datetime',
+
+        'last_test_duration_ms' => 'integer',
 
     ];
 
@@ -263,6 +268,43 @@ class StorageProvider extends Model
     public function getStatusLabelAttribute(): string
     {
         return $this->status->label();
+    }
+
+    /**
+     * Waktu respons Test Connection terakhir, sudah diformat.
+     */
+    public function getLastTestDurationAttribute(): ?string
+    {
+        return StorageTestResult::formatDuration($this->last_test_duration_ms);
+    }
+
+    /**
+     * Ringkasan Test Connection terakhir untuk satu sel tabel.
+     *
+     * Tiga hal digabung karena ketiganya hanya bermakna bersama-sama:
+     * "Berhasil" tanpa waktu tidak memberi tahu provider mana yang layak
+     * dipakai, dan keduanya tanpa "kapan" tidak memberi tahu apakah angka itu
+     * masih menggambarkan keadaan sekarang.
+     *
+     * Pesan galat sengaja TIDAK ikut. Pesan SDK penyimpanan bisa sepanjang
+     * satu paragraf dan akan merusak tata letak tabel; tempatnya di panel
+     * hasil setelah tombol ditekan, dan di `last_test_message`.
+     */
+    public function getLastTestSummaryAttribute(): ?string
+    {
+        if ($this->last_tested_at === null) {
+            return null;
+        }
+
+        $bagian = [$this->last_test_status === 'ok' ? 'Berhasil' : 'Gagal'];
+
+        if ($durasi = $this->last_test_duration) {
+            $bagian[] = $durasi;
+        }
+
+        $bagian[] = $this->last_tested_at->diffForHumans();
+
+        return implode(', ', $bagian);
     }
 
     /**

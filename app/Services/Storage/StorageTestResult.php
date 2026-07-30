@@ -114,9 +114,16 @@ class StorageTestResult
                 'Host terjawab tapi koneksi ditolak. Periksa port dan firewall '
                 .'— untuk MinIO, pastikan endpoint memuat port yang benar.',
 
+            // Catatan: JANGAN menyarankan menaikkan STORAGE_TIMEOUT di sini.
+            // Nilai itu ada di config/storage.php dan .env.example, tetapi
+            // belum pernah disambungkan ke klien S3 — tidak ada satu baris
+            // kode pun yang membacanya. Menyuruh orang menaikkannya berarti
+            // mengirimnya ke jalan buntu, dan itu lebih buruk daripada tidak
+            // memberi petunjuk sama sekali.
             $has('cURL error 28', 'timed out') =>
-                'Batas waktu terlampaui. Naikkan STORAGE_TIMEOUT, atau periksa '
-                .'apakah VPS bisa keluar ke internet.',
+                'Batas waktu terlampaui sebelum server penyimpanan menjawab. '
+                .'Periksa apakah VPS bisa keluar ke internet, dan apakah '
+                .'endpoint menunjuk host yang benar.',
 
             $has('SignatureDoesNotMatch') =>
                 'Secret key salah, atau region tidak cocok dengan bucket. '
@@ -147,13 +154,27 @@ class StorageTestResult
      */
     public function durationForHumans(): ?string
     {
-        if ($this->durationMs === null) {
+        return self::formatDuration($this->durationMs);
+    }
+
+    /**
+     * Sama, tetapi untuk durasi yang datang dari mana saja.
+     *
+     * Dibuat statis karena durasi test juga disimpan di kolom
+     * `last_test_duration_ms` dan perlu ditampilkan dari model, di luar
+     * daur hidup objek hasil ini. Menulis ulang pemformatannya di sana
+     * berarti dua tempat yang harus diingat bersamaan setiap kali
+     * ambangnya diubah.
+     */
+    public static function formatDuration(int|float|null $ms): ?string
+    {
+        if ($ms === null) {
             return null;
         }
 
-        return $this->durationMs < 1000
-            ? round($this->durationMs).' ms'
-            : round($this->durationMs / 1000, 2).' s';
+        return $ms < 1000
+            ? round($ms).' ms'
+            : round($ms / 1000, 2).' s';
     }
 
     public function toArray(): array

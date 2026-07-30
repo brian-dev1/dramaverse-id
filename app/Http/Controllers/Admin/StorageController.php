@@ -7,6 +7,7 @@ use App\Enums\StorageStatus;
 use App\Models\StorageProvider;
 use App\Services\Admin\ActivityLogger;
 use App\Services\Storage\Exceptions\StorageProviderException;
+use App\Services\Storage\StorageTestResult;
 use App\Services\StorageProviderService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -72,6 +73,13 @@ class StorageController extends AdminCrudController
             'Status'     => 'status',
             'Priority'   => 'priority',
             'Default'    => 'is_default',
+
+            // Accessor, bukan kolom. Menggabungkan hasil, waktu respons, dan
+            // kapan terakhir diuji — ketiganya hanya bermakna bersama-sama.
+            // Pesan galatnya tidak ikut: panjangnya bisa satu paragraf dan
+            // akan merusak tata letak tabel.
+            'Uji Terakhir' => 'last_test_summary',
+
             'Created At' => 'created_at',
         ];
     }
@@ -85,7 +93,14 @@ class StorageController extends AdminCrudController
      */
     protected function sortable(): array
     {
-        return ['name', 'driver', 'status', 'priority', 'is_default', 'created_at'];
+        // `last_test_summary` sengaja tidak ada di sini: ia accessor, bukan
+        // kolom, sehingga `orderBy` atasnya akan menghasilkan galat SQL.
+        // Untuk mengurutkan menurut kapan terakhir diuji, `last_tested_at`
+        // yang dipakai — kolomnya nyata.
+        return [
+            'name', 'driver', 'status', 'priority', 'is_default',
+            'last_tested_at', 'created_at',
+        ];
     }
 
     /**
@@ -682,5 +697,75 @@ class StorageController extends AdminCrudController
             .'dicoba lebih dulu.',
             $jumlah
         ));
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Test Connection (Sprint 7.3)
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Uji koneksi ke satu provider.
+     *
+     * Mesinnya sudah ada sejak Sprint 7.1 dan dipakai `php artisan
+     * storage:test`. Sprint ini hanya menyambungkannya ke tombol — tidak ada
+     * logika pengujian yang ditulis ulang di sini.
+     *
+     * Yang diuji: tulis satu berkas kecil, baca ulang, lalu hapus. Ketiganya
+     * diperlukan. Kredensial yang hanya punya izin tulis akan lolos kalau yang
+     * diuji cuma tulis, lalu gagal saat berkas hendak dibaca pengguna.
+     *
+     * Berlaku untuk keenam provider berprotokol S3 (R2, Amazon S3, Backblaze
+     * B2, Wasabi, MinIO, DigitalOcean Spaces) lewat jalur yang sama persis,
+     * karena semuanya memakai driver Flysystem `s3` — yang berbeda hanya
+     * endpoint, region, dan gaya path, dan itu sudah diurus DiskConfigFactory.
+     *
+     * Kegagalan BUKAN halaman 500. `StorageManager::test()` menangkap seluruh
+     * Throwable dan mengembalikannya sebagai hasil, karena kegagalan koneksi
+     * adalah jawaban yang sah dari sebuah tombol uji — bukan kerusakan
+     * aplikasi.
+     */
+    public function test(int $id): RedirectResponse
+    {
+        /** @var StorageProvider $provider */
+        $provider = $this->findOrFail($id);
+
+        $result = $this->service->test($provider);
+
+        // Panel hasil: menetap di halaman, tidak ikut hilang setelah 4 detik
+        // seperti toast. Pesan galat penyimpanan bisa sepanjang satu paragraf
+        // dan justru di situ petunjuknya.
+        return back()->with('detail', [
+            'ok'    => $result->success,
+            'title' => sprintf('Test Connection: %s', $provider->name),
+            'meta'  => $this->testMeta($provider, $result),
+
+            // Pesan asli dari SDK, apa adanya. Kadang menyesatkan, tapi
+            // kadang justru di situ satu-satunya petunjuk yang menentukan.
+            'message' => $result->message,
+
+            // Terjemahan ke penyebab yang paling mungkin. Menemani pesan
+            // asli, bukan menggantikannya.
+            'hint' => $result->hint(),
+        ]);
+    }
+
+    /**
+     * Baris keterangan di bawah judul panel hasil.
+     */
+    protected function testMeta(StorageProvider $provider, StorageTestResult $result): string
+    {
+        $bagian = [$provider->driver->label()];
+
+        if ($waktu = $result->durationForHumans()) {
+            $bagian[] = 'waktu respons '.$waktu;
+        }
+
+        $bagian[] = $result->success
+            ? 'tulis, baca, dan hapus berhasil'
+            : 'gagal sebelum siklus tulis-baca-hapus selesai';
+
+        return implode(', ', $bagian).'.';
     }
 }

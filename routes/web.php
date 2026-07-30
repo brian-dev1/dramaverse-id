@@ -235,13 +235,13 @@ Route::prefix('admin')->name('admin.')->group(function () {
         |
         | 7.2A: daftar baca-saja. 7.2B: tambah provider. 7.2C: ubah, hapus
         | (soft delete), pulihkan. 7.2D: enable, disable, set default,
-        | update priority.
+        | update priority. 7.3: Test Connection.
         |
-        | `bulk` dan Test Connection sengaja BELUM didaftarkan. Itu bukan
-        | sekadar catatan: crud/index.blade.php memeriksa Route::has() sebelum
-        | merender setiap tombol, jadi selama route-nya tidak ada, tombolnya
-        | tidak pernah muncul. Tombol Enable, Disable, Set Default, dan editor
-        | prioritas muncul dengan sendirinya begitu route di bawah ada.
+        | `bulk` sengaja BELUM didaftarkan. Itu bukan sekadar catatan:
+        | crud/index.blade.php memeriksa Route::has() sebelum merender setiap
+        | tombol, jadi selama route-nya tidak ada, tombolnya tidak pernah
+        | muncul. Semua tombol di halaman ini muncul dengan sendirinya begitu
+        | route-nya ada di bawah.
         |
         | Dua izin diterima di tiap baris. `storage.view` dan `storage.manage`
         | baru ditambahkan ke daftar izin, sehingga barisnya belum ada di
@@ -297,6 +297,21 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 // Pembaruan massal: satu formulir mengirim prioritas seluruh
                 // baris yang tampil, bukan satu permintaan per baris.
                 Route::post('/priority', 'updatePriority')->name('priority')
+                    ->middleware('permission:storage.manage,setting.manage');
+
+                // --- Sprint 7.3 ---
+                //
+                // POST, bukan GET, walaupun terasa seperti "membaca": Test
+                // Connection menulis lalu menghapus berkas uji di bucket.
+                // Sebagai GET, ia bisa terpicu oleh prefetch peramban atau
+                // perayap yang mengikuti tautan.
+                //
+                // Batas lajunya ikut `throttle:admin-write` (60/menit) yang
+                // sudah dipasang di grup admin. Cukup: tiap penekanan tombol
+                // memicu panggilan jaringan keluar dan satu tulis-hapus di
+                // bucket, jadi ia memang tidak boleh bisa ditekan beruntun
+                // tanpa batas.
+                Route::post('/{id}/test', 'test')->name('test')->whereNumber('id')
                     ->middleware('permission:storage.manage,setting.manage');
             });
 

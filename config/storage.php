@@ -133,6 +133,13 @@ return [
         'chunk_mb' => (int) env('STORAGE_CHUNK_MB', 8),
 
         // Batas waktu satu operasi penyimpanan, dalam detik.
+        //
+        // BELUM BERPENGARUH. Nilai ini belum disambungkan ke klien S3 —
+        // tidak ada kode yang membacanya, sehingga yang berlaku adalah batas
+        // waktu bawaan AWS SDK. Disambungkan lewat kunci `http` pada config
+        // disk, tapi itu perlu diuji langsung di server terhadap versi SDK
+        // yang terpasang; kunci yang salah menggagalkan pembuatan klien dan
+        // mematikan SELURUH provider S3 sekaligus.
         'timeout' => (int) env('STORAGE_TIMEOUT', 60),
 
         // Berapa kali provider berikutnya di rantai dicoba saat gagal.

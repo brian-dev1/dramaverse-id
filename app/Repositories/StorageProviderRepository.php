@@ -121,7 +121,8 @@ class StorageProviderRepository implements StorageProviderRepositoryInterface
     public function recordTest(
         StorageProvider $provider,
         string $status,
-        string $message
+        string $message,
+        int|float|null $durationMs = null
     ): StorageProvider {
 
         $provider->update([
@@ -133,6 +134,13 @@ class StorageProviderRepository implements StorageProviderRepositoryInterface
             // Pesan dari SDK penyimpanan bisa memuat seluruh jejak permintaan.
             // Dipotong supaya tidak melewati batas kolom TEXT.
             'last_test_message' => mb_substr($message, 0, 2000),
+
+            // Dibulatkan ke milidetik bulat: kolomnya integer, dan pecahan
+            // mikrodetik dari microtime() tidak berarti apa-apa bagi orang
+            // yang membandingkan dua provider.
+            'last_test_duration_ms' => $durationMs === null
+                ? null
+                : (int) round($durationMs),
 
         ]);
 

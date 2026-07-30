@@ -63,7 +63,8 @@ interface StorageProviderRepositoryInterface
     public function recordTest(
         StorageProvider $provider,
         string $status,
-        string $message
+        string $message,
+        int|float|null $durationMs = null
     ): StorageProvider;
 
     /**
