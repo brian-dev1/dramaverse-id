@@ -59,6 +59,18 @@
                     tidak bisa dibaca lagi.
                 </p>
 
+                @if ($mode === 'edit')
+                    <p class="field-hint">
+                        @if ($credentialsStored['access_key'] || $credentialsStored['secret_key'])
+                            <strong>Sudah ada kunci tersimpan.</strong>
+                            Biarkan kolom di bawah kosong untuk mempertahankannya.
+                            Isi hanya bila Anda memang ingin menggantinya.
+                        @else
+                            Belum ada kunci tersimpan untuk provider ini.
+                        @endif
+                    </p>
+                @endif
+
                 {{-- value dikosongkan dengan sengaja: kredensial tidak pernah
                      diisi ulang, bahkan setelah validasi gagal. --}}
                 <x-admin.field name="access_key" label="Access key" type="password"
@@ -137,18 +149,35 @@
             <section class="form-card form-main">
                 <h2>Setelah disimpan</h2>
 
-                <p class="field-hint">
-                    Provider baru selalu tersimpan dengan status
-                    <strong>nonaktif</strong>, dan tidak dijadikan default.
-                    Itu disengaja: tujuan penyimpanan tidak boleh menerima
-                    lalu lintas sebelum terbukti bisa dihubungi.
-                </p>
+                @if ($mode === 'create')
+                    <p class="field-hint">
+                        Provider baru selalu tersimpan dengan status
+                        <strong>nonaktif</strong>, dan tidak dijadikan default.
+                        Itu disengaja: tujuan penyimpanan tidak boleh menerima
+                        lalu lintas sebelum terbukti bisa dihubungi.
+                    </p>
+                @else
+                    {{-- Penting diberitahukan: form ini tidak memuat kolom
+                         status maupun default, jadi menyimpan perubahan tidak
+                         akan mengubah keduanya. Tanpa keterangan ini, admin
+                         wajar menduga menyunting provider aktif akan
+                         menonaktifkannya. --}}
+                    <p class="field-hint">
+                        Status
+                        <strong>{{ $record->status->label() }}</strong>
+                        dan penanda default
+                        <strong>{{ $record->is_default ? 'Ya' : 'Tidak' }}</strong>
+                        <strong>tidak berubah</strong> saat Anda menyimpan form
+                        ini — keduanya diatur lewat tombol Enable, Disable, dan
+                        Set Default, yang belum dibuat.
+                    </p>
+                @endif
 
                 <p class="field-hint">
-                    Uji dulu dari server dengan
-                    <code>php artisan storage:test</code>. Tombol Test
-                    Connection, Enable, dan Set Default menyusul di sprint
-                    berikutnya.
+                    Uji dari server dengan
+                    <code>php artisan storage:test{{ $record->slug ? ' '.$record->slug : '' }}</code>.
+                    Tombol Test Connection, Enable, dan Set Default menyusul di
+                    sprint berikutnya.
                 </p>
             </section>
 

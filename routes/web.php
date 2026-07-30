@@ -233,13 +233,15 @@ Route::prefix('admin')->name('admin.')->group(function () {
         |----------------------------------------------------------------------
         | Storage Manager
         |
-        | 7.2A: daftar baca-saja. 7.2B: tambah provider.
+        | 7.2A: daftar baca-saja. 7.2B: tambah provider. 7.2C: ubah, hapus
+        | (soft delete), pulihkan.
         |
-        | `edit`, `update`, `destroy`, `restore`, dan `bulk` sengaja BELUM
-        | didaftarkan. Itu bukan sekadar catatan: crud/index.blade.php
-        | memeriksa Route::has() sebelum merender tombol Ubah dan Hapus, jadi
-        | selama route-nya tidak ada, tombolnya tidak pernah muncul. Tombol
-        | Tambah kini muncul dengan sendirinya karena `create` sudah ada.
+        | `bulk` sengaja BELUM didaftarkan, begitu pula route untuk Enable,
+        | Disable, Set Default, dan Test Connection. Itu bukan sekadar catatan:
+        | crud/index.blade.php memeriksa Route::has() sebelum merender setiap
+        | tombol, jadi selama route-nya tidak ada, tombolnya tidak pernah
+        | muncul. Tombol Ubah, Hapus, dan Pulihkan kini muncul dengan
+        | sendirinya karena route-nya sudah ada.
         |
         | Dua izin diterima di tiap baris. `storage.view` dan `storage.manage`
         | baru ditambahkan ke daftar izin, sehingga barisnya belum ada di
@@ -260,6 +262,20 @@ Route::prefix('admin')->name('admin.')->group(function () {
                     ->middleware('permission:storage.manage,setting.manage');
 
                 Route::post('/', 'store')->name('store')
+                    ->middleware('permission:storage.manage,setting.manage');
+
+                // --- Sprint 7.2C ---
+                Route::get('/{id}/edit', 'edit')->name('edit')->whereNumber('id')
+                    ->middleware('permission:storage.manage,setting.manage');
+
+                Route::put('/{id}', 'update')->name('update')->whereNumber('id')
+                    ->middleware('permission:storage.manage,setting.manage');
+
+                // Soft delete: baris tidak hilang, hanya ditandai terhapus.
+                Route::delete('/{id}', 'destroy')->name('destroy')->whereNumber('id')
+                    ->middleware('permission:storage.manage,setting.manage');
+
+                Route::post('/{id}/restore', 'restore')->name('restore')->whereNumber('id')
                     ->middleware('permission:storage.manage,setting.manage');
             });
 

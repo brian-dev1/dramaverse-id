@@ -6,6 +6,7 @@ use App\Enums\StorageDriver;
 use App\Enums\StorageStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * Satu tujuan penyimpanan berkas.
@@ -18,9 +19,17 @@ use Illuminate\Database\Eloquent\Model;
  * Kredensial disimpan terenkripsi memakai APP_KEY. Konsekuensinya: kalau
  * APP_KEY diganti, seluruh access_key dan secret_key di tabel ini tidak bisa
  * lagi dibaca dan harus dimasukkan ulang.
+ *
+ * Memakai soft delete. Penghapusan provider menghilangkan kredensial dan
+ * pemetaan ke bucket tempat berkas sungguhan berada — berkasnya sendiri tidak
+ * ikut terhapus, sehingga tanpa baris ini aplikasi kehilangan satu-satunya
+ * jalan menjangkaunya. Seluruh scope di bawah otomatis hanya melihat baris
+ * hidup, jadi StorageManager tidak pernah memilih provider yang sudah dihapus.
  */
 class StorageProvider extends Model
 {
+    use SoftDeletes;
+
     protected $fillable = [
 
         'name',

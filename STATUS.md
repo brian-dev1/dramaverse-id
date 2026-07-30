@@ -91,8 +91,18 @@ default — aktivasi menunggu Test Connection di sprint berikutnya.
 Kredensial ditambahkan ke `dontFlash` supaya tidak bocor ke session dan HTML
 saat validasi gagal. Detail: `SPRINT-7-2B-SELESAI.md`.
 
-**Angka saat ini:** 130 route, 18 controller admin, 19 view admin,
-30 migration, 11 middleware, 197 kelas CSS, 26 interface repository.
+### Sprint 7.2C — Edit & Delete
+Ubah dan hapus provider, keduanya lewat `StorageProviderService`. **Soft delete
+dibuat tersedia** (`deleted_at`), beserta pemulihannya — menghapus provider
+menghilangkan kredensial dan pemetaan ke bucket, sedangkan berkas di bucket
+tetap ada, jadi kekeliruan harus bisa dibatalkan. Unique slug dipindah ke
+gabungan `(slug, deleted_at)` supaya slug bisa dipakai ulang setelah dihapus.
+Toast `session('error')` baru untuk penolakan yang bukan kesalahan isian.
+Belum ada Enable/Disable/Set Default/Priority/Test Connection/force delete.
+Detail: `SPRINT-7-2C-SELESAI.md`.
+
+**Angka saat ini:** 134 route, 18 controller admin, 19 view admin,
+31 migration, 11 middleware, 197 kelas CSS, 26 interface repository.
 
 ---
 
@@ -117,10 +127,10 @@ beberapa masih dangkal:
 - **Continue watching di pemutar** — progres tersimpan, tapi belum
   otomatis melanjutkan
 
-### Lanjutan Multi Storage (Sprint 7.2B dan seterusnya)
-- **Ubah dan hapus provider** — daftar dan tambah sudah ada
+### Lanjutan Multi Storage (Sprint 7.2D dan seterusnya)
 - **Enable, Disable, Set Default, Update Priority** — service-nya sudah siap
-  di `StorageProviderService`, tinggal route, form, dan tombolnya
+  di `StorageProviderService`, tinggal route, tombol, dan penjagaannya
+- **Hapus permanen** — baris terhapus kini hanya bisa dipulihkan atau dibiarkan
 - **Test Connection dari panel** — sudah ada di `php artisan storage:test`
 - **Kolom hasil test terakhir** di tabel (`last_tested_at`, `last_test_status`)
 - **Router upload dengan failover** — memakai `StorageManager::chain()`

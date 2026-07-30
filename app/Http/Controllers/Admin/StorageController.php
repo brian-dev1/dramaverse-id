@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\StorageDriver;
 use App\Enums\StorageStatus;
 use App\Models\StorageProvider;
+use App\Services\Admin\ActivityLogger;
+use App\Services\Storage\Exceptions\StorageProviderException;
 use App\Services\StorageProviderService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -15,18 +17,19 @@ use Illuminate\Validation\Rule;
 /**
  * Storage Manager.
  *
- * 7.2A: daftar baca-saja. 7.2B: tambah provider.
+ * 7.2A: daftar baca-saja. 7.2B: tambah provider. 7.2C: ubah, hapus (soft
+ * delete), pulihkan.
  *
- * Ubah, hapus, enable, disable, set default, ubah prioritas, dan Test
- * Connection belum ada. Route-nya pun belum didaftarkan, dan itulah yang
- * membuat `crud/index.blade.php` tidak merender tombol Ubah maupun Hapus —
- * view memeriksa `Route::has()` sebelum menampilkan setiap tombol. Sifat
- * "belum ada" ditegakkan oleh ketiadaan route, bukan oleh view yang
- * menyembunyikan tombol yang sebenarnya berfungsi.
+ * Enable, Disable, Set Default, ubah prioritas, dan Test Connection belum ada.
+ * Route-nya pun belum didaftarkan, dan itulah yang membuat tombolnya tidak
+ * pernah muncul — `crud/index.blade.php` memeriksa `Route::has()` sebelum
+ * menampilkan setiap tombol. Sifat "belum ada" ditegakkan oleh ketiadaan
+ * route, bukan oleh view yang menyembunyikan tombol yang sebenarnya berfungsi.
  *
- * Seluruh logika daftar (pencarian, filter, urutan, pagination, empty state)
- * datang dari AdminCrudController. Kelas ini hanya mendeklarasikan konfigurasi,
- * kecuali `store()` yang sengaja ditimpa — alasannya dijelaskan di sana.
+ * Seluruh logika daftar (pencarian, filter, urutan, pagination, empty state,
+ * filter Terhapus) datang dari AdminCrudController. Kelas ini mendeklarasikan
+ * konfigurasi, kecuali `store()`, `update()`, `destroy()`, dan `restore()`
+ * yang sengaja ditimpa — alasan tiap penimpaan dijelaskan di tempatnya.
  */
 class StorageController extends AdminCrudController
 {
@@ -170,6 +173,15 @@ class StorageController extends AdminCrudController
             'driverOptions'     => $this->allowedDriverOptions(),
             'visibilityOptions' => ['private' => 'Privat', 'public' => 'Publik'],
             'requirements'      => $requirements,
+
+            // Apakah kredensial sudah tersimpan — hanya benar/salah, tanpa
+            // isinya. Form perlu tahu ini untuk memberi tahu admin bahwa
+            // membiarkan kolom kosong berarti mempertahankan yang lama.
+            // Dibaca lewat getRawOriginal() agar tidak memicu dekripsi.
+            'credentialsStored' => [
+                'access_key' => $this->alreadyStored($model, 'access_key'),
+                'secret_key' => $this->alreadyStored($model, 'secret_key'),
+            ],
         ];
     }
 
@@ -212,7 +224,14 @@ class StorageController extends AdminCrudController
 
             'slug' => [
                 'nullable', 'string', 'max:100', 'alpha_dash',
-                Rule::unique('storage_providers', 'slug')->ignore($model?->getKey()),
+
+                // `whereNull('deleted_at')` wajib: index unique di database
+                // kini gabungan (slug, deleted_at), jadi slug milik provider
+                // yang sudah dihapus memang boleh dipakai ulang. Tanpa klausa
+                // ini validasi akan menolak sesuatu yang database izinkan.
+                Rule::unique('storage_providers', 'slug')
+                    ->ignore($model?->getKey())
+                    ->whereNull('deleted_at'),
             ],
 
             'driver' => [
@@ -245,6 +264,11 @@ class StorageController extends AdminCrudController
 
         if ($driver !== null) {
             foreach ($driver->requiredFields() as $field) {
+
+                if ($this->alreadyStored($model, $field)) {
+                    continue;
+                }
+
                 $rules[$field] = $this->makeRequired($rules[$field] ?? ['string']);
             }
 
@@ -252,6 +276,39 @@ class StorageController extends AdminCrudController
         }
 
         return $rules;
+    }
+
+    /**
+     * Field kredensial yang boleh dikirim kosong pada penyuntingan.
+     *
+     * Kosong berarti "jangan ubah", bukan "hapus" — penjagaan itu ada di
+     * StorageProviderService::prepare().
+     */
+    private const KEPT_WHEN_BLANK = ['access_key', 'secret_key'];
+
+    /**
+     * Kredensial ini sudah tersimpan, jadi tidak perlu diketik ulang.
+     *
+     * Tanpa pengecualian ini, mengganti nama provider R2 akan menolak simpan
+     * dengan "Driver Cloudflare R2 memerlukan secret key" — padahal form
+     * sengaja tidak pernah menampilkan kembali secret yang tersimpan (7.2B).
+     * Admin jadi harus menggali ulang kunci dari dashboard Cloudflare hanya
+     * untuk memperbaiki satu salah tulis, dan penjagaan "kosong berarti jangan
+     * ubah" di service tidak akan pernah bisa tercapai.
+     *
+     * Nilainya dibaca lewat getRawOriginal(), BUKAN lewat accessor biasa.
+     * Kolom ini memakai cast `encrypted`, sehingga membacanya secara normal
+     * akan mendekripsi — dan melempar DecryptException bila APP_KEY sudah
+     * diganti. Di sini kita hanya perlu tahu apakah ada isinya, bukan apa
+     * isinya, jadi ciphertext mentah sudah cukup dan tidak bisa gagal.
+     */
+    protected function alreadyStored(?Model $model, string $field): bool
+    {
+        if ($model === null || ! in_array($field, self::KEPT_WHEN_BLANK, true)) {
+            return false;
+        }
+
+        return filled($model->getRawOriginal($field));
     }
 
     /**
@@ -305,7 +362,8 @@ class StorageController extends AdminCrudController
     {
         $messages = [
             'required'        => 'Kolom ini wajib diisi.',
-            'slug.unique'     => 'Slug ini sudah dipakai provider lain.',
+            'slug.unique'     => 'Slug ini sudah dipakai provider lain yang masih aktif. '
+                                 .'Slug milik provider yang sudah dihapus boleh dipakai ulang.',
             'slug.alpha_dash' => 'Slug hanya boleh berisi huruf, angka, strip, dan garis bawah.',
             'public_url.url'  => 'URL publik harus lengkap, termasuk https://.',
             'priority.max'    => 'Priority paling besar 65535.',
@@ -378,5 +436,122 @@ class StorageController extends AdminCrudController
                 $provider->name,
                 $provider->slug
             ));
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Ubah, hapus, pulihkan (Sprint 7.2C)
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Simpan perubahan provider.
+     *
+     * Sama seperti `store()`, versi bawaan tidak dipakai karena ia memanggil
+     * `Model::update()` langsung dan dengan begitu melewati
+     * StorageProviderService — tempat penjagaan "kredensial kosong berarti
+     * jangan ubah" berada. Lewat jalur bawaan, mengganti nama provider akan
+     * menimpa access_key dan secret_key dengan string kosong.
+     *
+     * `status` dan `is_default` tidak ikut ditulis, dan itu bukan kelalaian:
+     * keduanya tidak ada di `rules()`, sehingga `validate()` tidak pernah
+     * mengembalikannya dan `update()` tidak pernah menyentuhnya. Enable,
+     * Disable, dan Set Default belum dibuat — provider aktif tidak boleh
+     * diam-diam nonaktif hanya karena namanya disunting.
+     */
+    public function update(Request $request, int $id): RedirectResponse
+    {
+        /** @var StorageProvider $provider */
+        $provider = $this->findOrFail($id);
+
+        $driver = StorageDriver::tryFrom((string) $request->input('driver'));
+
+        $data = $request->validate(
+            $this->rules($request, $provider),
+            $this->validationMessages($driver)
+        );
+
+        // Checkbox yang tidak dicentang tidak ikut terkirim sama sekali.
+        $data['use_path_style'] = $request->boolean('use_path_style');
+
+        $updated = $this->service->update($provider, $data);
+
+        return redirect()
+            ->route('admin.storage.index')
+            ->with('status', sprintf(
+                'Storage provider "%s" diperbarui. Konfigurasi berubah, jadi '
+                .'uji ulang dengan: php artisan storage:test %s',
+                $updated->name,
+                $updated->slug
+            ));
+    }
+
+    /**
+     * Hapus provider (soft delete).
+     *
+     * StorageProviderService menolak penghapusan provider default, karena
+     * situs tanpa tujuan penyimpanan default membuat setiap upload berikutnya
+     * gagal — dengan gejala yang muncul jauh dari sebabnya. Penolakan itu
+     * ditangkap di sini dan ditampilkan sebagai pesan, bukan dibiarkan menjadi
+     * halaman 500.
+     */
+    public function destroy(int $id): RedirectResponse
+    {
+        /** @var StorageProvider $provider */
+        $provider = $this->findOrFail($id);
+
+        try {
+            $this->service->delete($provider);
+        } catch (StorageProviderException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        return back()->with('status', sprintf(
+            'Storage provider "%s" dipindahkan ke terhapus. Konfigurasi dan '
+            .'kredensialnya masih tersimpan dan bisa dipulihkan lewat kotak '
+            .'centang "Terhapus" di daftar.',
+            $provider->name
+        ));
+    }
+
+    /**
+     * Pulihkan provider yang terhapus.
+     *
+     * Tidak memakai `restore()` bawaan karena ada satu penjagaan yang tidak
+     * ada di sana: slug harus unik di antara baris hidup. Setelah provider
+     * `r2` dihapus, slug itu bebas dipakai provider baru — dan bila itu
+     * terjadi, memulihkan yang lama akan ditolak database dengan galat
+     * integritas mentah. Lebih baik ditolak di sini, dengan sebab yang jelas
+     * dan langkah yang bisa dikerjakan.
+     */
+    public function restore(int $id): RedirectResponse
+    {
+        /** @var StorageProvider $provider */
+        $provider = StorageProvider::onlyTrashed()->findOrFail($id);
+
+        // Query tanpa onlyTrashed/withTrashed hanya melihat baris hidup,
+        // yang persis lingkup keunikan yang dijamin index database.
+        $bentrok = StorageProvider::where('slug', $provider->slug)
+            ->whereKeyNot($provider->getKey())
+            ->exists();
+
+        if ($bentrok) {
+            return back()->with('error', sprintf(
+                'Slug "%s" kini dipakai provider lain, jadi "%s" tidak bisa '
+                .'dipulihkan. Ubah slug provider yang memakainya lebih dulu.',
+                $provider->slug,
+                $provider->name
+            ));
+        }
+
+        $provider->restore();
+
+        app(ActivityLogger::class)->log('dipulihkan', 'storage', $provider);
+
+        return back()->with('status', sprintf(
+            'Storage provider "%s" dipulihkan, tetap berstatus %s.',
+            $provider->name,
+            $provider->status->label()
+        ));
     }
 }

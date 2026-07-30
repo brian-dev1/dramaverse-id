@@ -139,6 +139,18 @@
             </div>
         @endif
 
+        {{-- Penolakan yang BUKAN kesalahan isian form: mis. provider default
+             yang tidak boleh dihapus, atau slug yang bentrok saat pemulihan.
+             Sebelumnya pesan seperti ini tidak punya saluran sendiri, sehingga
+             satu-satunya pilihan adalah session('status') — yang dirender
+             hijau bercentang di bawah ini, seolah tindakannya berhasil. --}}
+        @if (session('error'))
+            <div class="toast toast-error" role="alert" data-toast>
+                <x-web.home.icon name="close" :size="15" />
+                {{ session('error') }}
+            </div>
+        @endif
+
         @if ($errors->any())
             <div class="toast toast-error" role="alert" data-toast>
                 <x-web.home.icon name="close" :size="15" />
