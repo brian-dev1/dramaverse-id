@@ -123,6 +123,28 @@ galat SDK yang panjangnya bisa satu paragraf. Durasi kini **disimpan**
 ulang. Kolom baru "Uji Terakhir" di tabel.
 Detail: `SPRINT-7-3-SELESAI.md`.
 
+### Sprint 7.4 — Storage Engine (core upload)
+Pusat seluruh operasi berkas: upload, delete, replace, rename, move, copy,
+URL publik, temporary URL, metadata. Mode Auto (provider default) dan Manual
+(per id/slug). `StorageEngineInterface` adalah satu-satunya pintu — controller
+tidak boleh menyentuh `Storage`. Enum `StorageCollection` menyediakan skema
+alamat 8 koleksi (episode, thumbnail, subtitle, poster, cover, banner, avatar,
+asset) beserta ekstensi, batas ukuran, dan visibility-nya.
+Belum ada load balancing, failover, queue, retry, dan modul upload apa pun.
+Detail: `SPRINT-7-4-SELESAI.md`.
+
+**Modul yang memakai engine WAJIB menyimpan `provider_id` bersama
+`object_key`.** Menyimpan key saja hanya benar sampai provider default
+dipindah — sesudahnya berkas dicari di bucket yang salah, dan gejalanya
+"berkas hilang" tanpa jejak.
+
+**Cara membuktikannya jalan:**
+```
+php artisan storage:smoke              # mode Auto
+php artisan storage:smoke local        # provider tertentu
+```
+Menjalankan satu siklus penuh lewat engine, termasuk dua penjagaan keamanan.
+
 **Angka saat ini:** 139 route, 18 controller admin, 19 view admin,
 32 migration, 11 middleware, 197 kelas CSS, 26 interface repository.
 
@@ -167,7 +189,21 @@ beberapa masih dangkal:
   sudah dipakai editor prioritas di 7.2D. **Uji di browser sebelum dan
   sesudah.**
 
-### Lanjutan Multi Storage (Sprint 7.2E dan seterusnya)
+### Lanjutan Multi Storage (Sprint 7.5 dan seterusnya)
+- **`Admin\MediaService` masih melewati multi-storage.** Menulis dengan
+  `storeAs(..., 'public')` dan `Storage::disk('public')` yang dipatok di kode,
+  jadi poster, cover, thumbnail, banner, dan logo situs tidak pernah sampai ke
+  provider awan meski R2 sudah aktif dan default. Pemanggilnya: Banner, Drama,
+  Episode, Setting controller. Direktori di `StorageCollection` sudah sengaja
+  disamakan dengan peta folder `MediaService`, jadi letak berkas lama tidak
+  berubah saat dipindahkan. **Yang perlu diputuskan:**
+  `ImageProcessor::optimise()` butuh path absolut di disk lokal, yang tidak
+  mungkin untuk berkas yang langsung ditulis ke bucket awan — urutannya harus
+  dibalik: perkecil dulu di berkas sementara, baru unggah.
+- **Load balancing dan failover** — `StorageManager::chain()` sudah menyiapkan
+  urutannya, tapi engine sengaja selalu memakai satu provider dan gagal
+  terang-terangan. Berpindah diam-diam akan menyebarkan berkas satu modul ke
+  beberapa bucket tanpa ada yang memutuskan begitu.
 - **Jaminan satu-default di tingkat database** — kolom generated + unique
   index. Kandidat pertama, tapi harus dijalankan di server yang bisa langsung
   diuji: sintaks kolom generated berbeda antar versi MySQL, dan migration yang

@@ -55,7 +55,9 @@ use App\Repositories\StorageProviderRepository;
 use App\Repositories\TelegramRepository;
 use App\Repositories\WatchHistoryRepository;
 use App\Repositories\WatchlistRepository;
+use App\Services\Storage\Contracts\StorageEngineInterface;
 use App\Services\Storage\Contracts\StorageManagerInterface;
+use App\Services\Storage\StorageEngine;
 use App\Services\Storage\StorageManager;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -109,6 +111,14 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(
             StorageManagerInterface::class,
             StorageManager::class
+        );
+
+        // Storage Engine: pintu masuk tunggal seluruh operasi berkas.
+        // Singleton karena StorageManager yang dipakainya juga singleton —
+        // instance disk yang sudah dibangun ikut terpakai ulang.
+        $this->app->singleton(
+            StorageEngineInterface::class,
+            StorageEngine::class
         );
     }
 

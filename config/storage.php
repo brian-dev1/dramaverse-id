@@ -83,6 +83,82 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Storage Engine
+    |--------------------------------------------------------------------------
+    */
+
+    'engine' => [
+
+        /*
+        | Menolak provider yang belum pernah lulus Test Connection.
+        |
+        | Bawaannya MATI, dan itu keputusan yang disengaja. Menyalakannya
+        | terdengar lebih aman, tapi akibatnya pemasangan baru langsung
+        | terkunci: seeder memasang provider lokal sebagai aktif dan default,
+        | sementara kolom hasil test-nya masih kosong sampai seseorang
+        | menjalankan Test Connection. Seluruh unggahan akan gagal dengan
+        | pesan yang benar tetapi pada saat yang paling membingungkan.
+        |
+        | Engine tetap tidak pernah menguji koneksi sebelum tiap operasi,
+        | menyala maupun mati. Dua kali menghubungi penyimpanan untuk satu
+        | unggahan menggandakan waktu tunggu tanpa menjamin apa pun —
+        | provider bisa rusak di antara pemeriksaan dan operasinya. Yang
+        | menentukan adalah operasinya sendiri, dan kegagalannya dicatat.
+        |
+        | Nyalakan di produksi yang sudah mapan, setelah semua provider
+        | terbukti lulus.
+        */
+        'require_verified_connection' => (bool) env('STORAGE_REQUIRE_VERIFIED', false),
+
+        /*
+        | Pencatatan operasi berkas: upload dan delete, berhasil maupun gagal.
+        |
+        | Sebaiknya jangan dimatikan. Ketika ada berkas yang tidak bisa
+        | ditemukan, log inilah satu-satunya tempat yang bisa menjawab
+        | pertanyaan "berkas ini pernah sampai ke provider mana".
+        */
+        'logging' => (bool) env('STORAGE_ENGINE_LOGGING', true),
+
+        /*
+        | Channel log. Kosong berarti memakai channel bawaan aplikasi.
+        |
+        | Isi dengan nama channel di config/logging.php bila operasi berkas
+        | ingin dipisahkan dari log aplikasi lainnya.
+        */
+        'log_channel' => env('STORAGE_ENGINE_LOG_CHANNEL'),
+
+        /*
+        | Ekstensi yang SELALU ditolak, apa pun koleksinya.
+        |
+        | Ini bukan pengulangan dari pembatasan per koleksi. Koleksi membatasi
+        | apa yang WAJAR (gambar untuk poster, video untuk episode), sedangkan
+        | daftar ini menolak apa yang BERBAHAYA — dan berlaku juga pada
+        | `uploadTo()` serta koleksi ASSET yang sengaja tidak dibatasi.
+        |
+        | Sebabnya konkret. Provider lokal menyimpan di storage/app/public,
+        | yang tersaji ke publik lewat symlink public/storage. Banyak
+        | konfigurasi Nginx meneruskan apa pun berakhiran .php ke PHP-FPM,
+        | termasuk yang ada di bawah /storage. Berkas bernama "shell.jpg.php"
+        | melewati pemeriksaan gambar yang naif (namanya memuat .jpg) tetapi
+        | ekstensi sebenarnya .php — dan begitu tersimpan, ia bisa dieksekusi.
+        |
+        | Daftar ini memuat ekstensi yang dieksekusi server, bukan yang
+        | dieksekusi peramban. Yang berbahaya di peramban (mis. .html, .svg)
+        | ditangani lewat visibility dan Content-Type, bukan di sini.
+        */
+        'blocked_extensions' => [
+            'php', 'php3', 'php4', 'php5', 'php7', 'php8', 'phps',
+            'phtml', 'phar', 'pht',
+            'cgi', 'pl', 'py', 'rb', 'sh', 'bash', 'zsh',
+            'exe', 'dll', 'so', 'bat', 'cmd', 'com', 'msi',
+            'jsp', 'jspx', 'asp', 'aspx', 'cfm',
+            'htaccess', 'htpasswd', 'ini', 'env',
+        ],
+
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Penanda nilai contoh
     |--------------------------------------------------------------------------
     |
