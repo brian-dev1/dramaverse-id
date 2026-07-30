@@ -38,6 +38,12 @@
             ['route' => 'admin.report',      'icon' => 'file',     'label' => 'Laporan',      'can' => 'report.view'],
             ['route' => 'admin.logs.index',  'icon' => 'shield',   'label' => 'Log',          'can' => 'log.view'],
             ['route' => 'admin.role.index',  'icon' => 'shield',   'label' => 'Peran & Izin', 'can' => 'role.manage'],
+            // `can` berupa array berarti salah satu izin sudah cukup. Ini
+            // menyamai middleware route-nya: `storage.view` belum ada di
+            // database sampai RoleSeeder dijalankan ulang, jadi tanpa
+            // `setting.manage` sebagai alternatif menu ini akan tersembunyi
+            // di server yang baru di-deploy.
+            ['route' => 'admin.storage.index', 'icon' => 'database', 'label' => 'Storage Manager', 'can' => ['storage.view', 'setting.manage']],
             ['route' => 'admin.settings',    'icon' => 'settings', 'label' => 'Pengaturan',   'can' => 'setting.manage'],
         ]],
     ];
@@ -62,8 +68,20 @@
                 @php
                     // Sembunyikan seluruh kelompok bila tidak ada satu pun
                     // menu di dalamnya yang boleh diakses.
-                    $visible = collect($section['items'])
-                        ->filter(fn ($i) => ! isset($i['can']) || auth()->user()?->can($i['can']));
+                    //
+                    // `can` boleh berupa string atau array. Array berarti salah
+                    // satu izin sudah cukup — semantik yang sama dengan
+                    // middleware `permission:a,b` pada route-nya.
+                    $visible = collect($section['items'])->filter(function ($i) {
+                        if (! isset($i['can'])) {
+                            return true;
+                        }
+
+                        $user = auth()->user();
+
+                        return $user !== null && collect((array) $i['can'])
+                            ->contains(fn ($izin) => $user->can($izin));
+                    });
                 @endphp
 
                 @continue($visible->isEmpty())

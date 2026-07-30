@@ -68,7 +68,22 @@ Enam dari sembilan provider memakai protokol S3 dan adapternya belum ada di
 `composer require` di lokal supaya lock ikut terbarui, kalau tidak
 `composer install` di `deploy.sh` akan berhenti dengan galat.
 
-**Angka saat ini:** 127 route, 17 controller admin, 18 view admin,
+### Sprint 7.2A — Storage Manager (baca-saja)
+Halaman `/admin/storage` + menu sidebar. Daftar provider dengan pencarian,
+filter driver dan status, pagination, empty state, badge status. Belum ada
+Create/Edit/Delete/Enable/Disable/Default/Priority/Test Connection.
+Memakai `AdminCrudController` yang sudah ada — nol view baru, nol CSS baru.
+Detail: `SPRINT-7-2A-SELESAI.md`.
+
+**Langkah opsional setelah deploy:**
+```
+php artisan db:seed --class='Database\Seeders\RoleSeeder' --force
+```
+Izin `storage.view` baru. Halaman tetap terbuka tanpa langkah ini karena
+route dan menunya juga menerima `setting.manage`; seeder hanya diperlukan
+bila ingin memberi peran lain akses storage tanpa akses Pengaturan.
+
+**Angka saat ini:** 128 route, 18 controller admin, 18 view admin,
 30 migration, 11 middleware, 197 kelas CSS, 26 interface repository.
 
 ---
@@ -94,9 +109,12 @@ beberapa masih dangkal:
 - **Continue watching di pemutar** — progres tersimpan, tapi belum
   otomatis melanjutkan
 
-### Lanjutan Multi Storage (Sprint 7.2 dan seterusnya)
-- **Panel admin storage** — CRUD provider, tombol Test Connection,
-  seret-lepas prioritas, route dan permission modul storage
+### Lanjutan Multi Storage (Sprint 7.2B dan seterusnya)
+- **CRUD provider** — tambah, ubah, hapus (daftar baca-saja sudah ada)
+- **Enable, Disable, Set Default, Update Priority** — service-nya sudah siap
+  di `StorageProviderService`, tinggal route, form, dan tombolnya
+- **Test Connection dari panel** — sudah ada di `php artisan storage:test`
+- **Kolom hasil test terakhir** di tabel (`last_tested_at`, `last_test_status`)
 - **Router upload dengan failover** — memakai `StorageManager::chain()`
 - **Upload video, thumbnail, subtitle** ke provider terpilih
 - **Presigned URL** untuk berkas `private`
@@ -128,7 +146,7 @@ beberapa masih dangkal:
 ## Alat verifikasi
 
 ```bash
-python tools/verify-consistency.py       # 17 pemeriksaan
+python tools/verify-consistency.py       # 18 pemeriksaan
 python tools/check-blade-directives.py resources/views/**/*.blade.php
 python tools/check-css-coverage.py
 python tools/check-php-structure.py app/**/*.php config/*.php database/**/*.php
@@ -137,7 +155,7 @@ python tools/check-php-structure.py app/**/*.php config/*.php database/**/*.php
 `verify-consistency.py` memeriksa: route mati di Blade dan PHP, controller,
 view, komponen, layout, `$fillable` vs migration, urutan foreign key,
 binding repository, PSR-4, import CSS, kolom tanggal, form + CSRF, href
-buntu, emoji, dan kelengkapan `match` enum.
+buntu, emoji, kelengkapan `match` enum, dan route di menu sidebar admin.
 
 **Alat verifikasinya sendiri pernah salah.** Dua bug diperbaiki di Sprint 7.1:
 pembatas blok migration di `cols_of()` tidak pernah bekerja (sehingga

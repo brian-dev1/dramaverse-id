@@ -78,6 +78,20 @@ abstract class AdminCrudController extends Controller
         return [];
     }
 
+    /**
+     * Urutan bawaan, dipakai bila pengguna belum memilih kolom urutan.
+     *
+     * Terbaru-dulu tepat untuk hampir semua modul, tapi tidak semuanya:
+     * daftar storage provider lebih berguna diurutkan menurut prioritas,
+     * karena itulah urutan yang benar-benar dipakai sistem. Disediakan
+     * sebagai hook agar turunan tidak perlu menimpa index() seluruhnya
+     * hanya untuk mengubah satu baris.
+     */
+    protected function applyDefaultSort(Builder $query): void
+    {
+        $query->latest();
+    }
+
     /** Data tambahan untuk form (daftar genre, negara, dan sebagainya). */
     protected function formData(?Model $model = null): array
     {
@@ -155,7 +169,7 @@ abstract class AdminCrudController extends Controller
         if ($sort !== '' && in_array($sort, $this->sortable(), true) && ! str_contains($sort, '.')) {
             $query->orderBy($sort, $dir);
         } else {
-            $query->latest();
+            $this->applyDefaultSort($query);
         }
 
         $records = $query->paginate($this->perPage)->withQueryString();

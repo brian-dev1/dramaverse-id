@@ -3,6 +3,36 @@
 @php
     $value = data_get($record, $path);
     $isImage = in_array($path, ['poster', 'cover', 'image', 'thumbnail'], true);
+
+    // Enum tidak bisa dicetak langsung: `(string) $enum` melempar Error, dan
+    // begitu juga `{{ $enum }}` di Blade. StorageProvider adalah model pertama
+    // yang cast kolom tampilannya ke enum (driver, status), jadi tanpa cabang
+    // ini halaman daftarnya mati total — bukan cuma tampil aneh.
+    //
+    // Nilai mentah enum disimpan terpisah karena yang menentukan warna badge
+    // adalah nilainya, bukan labelnya yang sudah diterjemahkan.
+    $enumValue = null;
+
+    if ($value instanceof \BackedEnum) {
+        $enumValue = (string) $value->value;
+
+        $value = method_exists($value, 'label')
+            ? $value->label()
+            : $enumValue;
+    }
+
+    // Pewarnaan status hanya berlaku untuk nilai ENUM, dan itu disengaja.
+    //
+    // Modul Langganan punya kolom status berisi string 'active' juga. Kalau
+    // pencocokan di bawah memakai nilai string, halaman Langganan ikut berubah
+    // warnanya — perubahan yang tidak diminta dan tidak diuji di sprint ini.
+    // Dengan bertumpu pada $enumValue (null untuk string), seluruh modul lama
+    // dirender sama persis seperti sebelumnya.
+    $statusClass = match ($enumValue) {
+        'active'   => 'badge-on',
+        'inactive' => 'badge-off',
+        default    => 'badge-status',
+    };
 @endphp
 
 @if ($isImage)
@@ -19,7 +49,7 @@
     <time datetime="{{ $value->toDateString() }}">{{ $value->translatedFormat('d M Y') }}</time>
 
 @elseif ($path === 'status')
-    <span class="badge badge-status">{{ ucfirst((string) $value) }}</span>
+    <span class="badge {{ $statusClass }}">{{ ucfirst((string) $value) }}</span>
 
 @elseif ($value === null || $value === '')
     <span class="cell-empty">—</span>

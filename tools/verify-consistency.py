@@ -408,6 +408,33 @@ check(not match_bad, "semua match() tanpa default menangani seluruh case enum")
 for b in match_bad: print("        -", b)
 
 
+# ---------- 18. Route yang dirujuk menu sidebar admin ----------
+print("\n== CEK MENU SIDEBAR ADMIN ==")
+# Menu admin memanggil route($item['route']) dengan variabel, sehingga
+# pemeriksaan route mati di Blade (yang hanya mengenali literal) melewatinya
+# sama sekali. Satu salah tulis di array $menu berarti setiap halaman admin
+# melempar RouteNotFoundException -- seluruh panel mati, bukan satu menu.
+menu_bad = []
+LAYOUT = 'resources/views/web/layouts/admin.blade.php'
+
+if os.path.exists(LAYOUT):
+    layout_src = open(LAYOUT, encoding='utf-8').read()
+    menu_routes = re.findall(r"'route'\s*=>\s*'([^']+)'", layout_src)
+
+    for name in menu_routes:
+        if name not in defined:
+            menu_bad.append(f"menu admin -> route mati: {name}")
+
+    check(
+        not menu_bad,
+        f"{len(menu_routes)} route di menu sidebar semuanya terdefinisi"
+    )
+else:
+    check(False, f"layout admin tidak ditemukan di {LAYOUT}")
+
+for b in menu_bad: print("        -", b)
+
+
 print("\n" + "="*60)
 if fail:
     print(f"HASIL: {len(fail)} masalah ditemukan")
