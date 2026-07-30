@@ -1,8 +1,13 @@
 *.log
 .DS_Store
+# Semua varian .env diabaikan, kecuali contoh yang memang harus ikut.
+# Daftar eksplisit sebelumnya (.env, .env.backup, .env.production) tidak
+# menutup nama lain seperti .env.bak atau .env.old — dan itu terbukti:
+# sebuah `git add -A` yang dijalankan di VPS menyapu .env.bak berisi
+# kredensial produksi ke dalam commit.
 .env
-.env.backup
-.env.production
+.env.*
+!.env.example
 .phpactor.json
 .phpunit.result.cache
 /.fleet
