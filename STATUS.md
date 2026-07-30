@@ -18,9 +18,17 @@ Yang WAJIB dilakukan asisten sebelum menulis satu baris kode:
 1. Baca `STATUS.md` **sampai habis** — termasuk "Bug diketahui" dan
    "Batasan asisten" di bagian bawah.
 2. Baca berkas `SPRINT-*-SELESAI.md` yang relevan dengan pekerjaan berikutnya.
-   Sprint terakhir yang selesai adalah **7.7** (`SPRINT-7-7-SELESAI.md`).
+   Sprint terakhir yang selesai adalah **7.9** (`SPRINT-7-8-7-9-SELESAI.md`).
+   **Phase 7 selesai.** Berikutnya Phase 8 — Telegram Integration.
 3. Jalankan keempat alat verifikasi lebih dulu, untuk tahu keadaan awal yang
    bersih. Kalau ada yang GAGAL sejak awal, laporkan sebelum menambah apa pun.
+4. **Periksa daftar berkas ini lagi sebelum menulis dokumen apa pun.**
+   Di sesi 7.8 pembacaan folder di awal mengembalikan keadaan yang sudah basi:
+   `SPRINT-7-7-SELESAI.md` tidak muncul di daftar dan `STATUS.md` yang terbaca
+   adalah versi sebelum diperbarui, sehingga asisten melaporkan dokumen 7.7
+   hilang padahal ada. Tidak ada yang tertimpa — penulisannya ditolak karena
+   berkasnya sudah ada — tetapi satu pertanyaan ke Anda jadi berdiri di atas
+   premis yang keliru.
 
 Yang WAJIB dilakukan asisten sebelum menyatakan selesai:
 
@@ -239,9 +247,48 @@ di status Menunggu **selamanya, tanpa satu pun pesan galat di mana pun**. Nama
 antrean dan koneksinya ditampilkan di halaman Upload Queue supaya bisa
 dicocokkan.
 
-**Angka saat ini:** 158 route, 21 controller admin, 22 view admin,
-36 migration, 11 middleware, 227 kelas CSS, 26 interface repository,
-7 job antrean.
+### Sprint 7.8–7.9 — Storage Monitoring, File Manager & Batch Upload
+Tiga modul terakhir Phase 7.
+
+**Storage Monitoring** (`/admin/storage/monitor`) — jumlah provider (total,
+aktif, nonaktif, terhubung, gagal, belum diuji), provider default beserta
+keadaannya, total berkas, total ruang terpakai, unggahan hari ini dan bulan
+ini, plus tabel per provider. Tombol Refresh Status dan Test Connection.
+Angkanya dibaca dari **database**, bukan dari isi bucket.
+
+**File Manager** (`/admin/files`) — satu daftar untuk seluruh berkas yang
+dikenal aplikasi, dibaca dari `episode_videos` dan `drama_assets` sekaligus
+lewat UNION. Pencarian, empat penyaring, empat kolom yang bisa diurutkan,
+pagination, pratayang gambar, unduh, salin URL, ganti nama, pindahkan, hapus.
+Semua operasi lewat `StorageEngineInterface`.
+
+**Batch Upload** (`/admin/upload/batch`) — banyak berkas sekali jalan lewat
+antrean yang sama dengan unggahan satuan. Video episode (dipetakan per episode,
+nomornya ditebak dari nama berkas dan bisa dikoreksi) dan aset drama. Tiap
+berkas jadi satu permintaan HTTP dan satu pekerjaan antrean, sehingga progress
+per berkas nyata dan kegagalan satu tidak menghentikan yang lain.
+
+Detail: `SPRINT-7-8-7-9-SELESAI.md`.
+
+**Tiga modul lama ikut disentuh, semuanya aditif dan diverifikasi:**
+`StorageEngineInterface` mendapat **satu** method baru (`readStream()`, tanpa
+mengubah satu pun method lama); `UploadQueueService` diberi jalur kedua lewat
+`createJob()` yang diekstrak dari `queueEpisodeVideo()`; dua helper daftar
+provider di `EpisodeVideoController` pindah ke `StorageChoiceService`.
+`EpisodeVideoService` dan `DramaAssetService` **tidak disentuh**.
+
+**Berkas dihapus:** `app/Models/EpisodeSubtitle.php` — kelas kosong tanpa
+tabel, tanpa migration, tanpa satu pun rujukan. Dead code sejak dibuat.
+
+**Angka saat ini:** 171 route, 24 controller admin, 25 view admin,
+37 migration, 11 middleware, 241 kelas CSS, 26 interface repository,
+8 job antrean.
+
+Angka route dihitung dengan menambahkan 13 route baru ke angka 158 dari 7.7.
+Penghitungan mandiri lewat `tools/routeparse.py` (101 nama di `web.php` + 5 di
+`api.php` + 64 hasil ekspansi perulangan CRUD yang tidak terbaca parser)
+memberi 170 — selisih satu yang tidak bisa saya pastikan tanpa menjalankan
+`php artisan route:list`. Disebutkan supaya bisa diperiksa, bukan ditutupi.
 
 ---
 
@@ -293,10 +340,28 @@ beberapa masih dangkal:
   melepaskan video tanpa menggantinya. Menghapus baris di Upload Queue hanya
   menghapus riwayat dan berkas sementaranya — video yang sudah sampai ke
   storage provider TIDAK ikut terhapus.
-- **Aset drama (7.6) belum lewat antrean.** Hanya video episode yang
-  diantrekan. Kolom `type` di `upload_jobs` sudah disiapkan untuk itu, tapi
-  jalurnya belum ada — mengunggah sepuluh gambar galeri masih memblokir
-  request sampai semuanya sampai ke bucket.
+- **Aset drama lewat antrean hanya dari Batch Upload.** Sejak 7.9 ada jalur
+  `drama_asset` di `upload_jobs`, tapi yang memakainya baru halaman Batch
+  Upload. Halaman Asset Manager per drama (7.6) masih mengunggah di dalam
+  request — mengunggah sepuluh gambar galeri dari sana masih memblokir sampai
+  semuanya sampai ke bucket. Menyatukannya berarti mengubah
+  `DramaAssetController`, dan jalur antreannya sudah terbukti dulu di Batch
+  Upload sebelum modul lama dipindahkan ke sana.
+- **Subtitle banyak sekaligus belum ada.** Subtitle yang ada adalah subtitle
+  tingkat drama, dan jenis itu hanya boleh punya satu berkas per drama
+  (`updateOrCreate` pada `(drama_id, asset_type)`). Batch Upload menolak lebih
+  dari satu dengan pesan yang menyebutkan sebabnya. "Multiple Subtitle" yang
+  berguna adalah subtitle **per episode**, dan modul itu tidak ada sama sekali:
+  tidak ada tabel `episode_subtitles`, tidak ada migration, tidak ada service.
+  Kandidat sprint tersendiri.
+- **File Manager tidak menampilkan berkas yatim.** Daftarnya dibaca dari
+  `episode_videos` dan `drama_assets`; objek di bucket yang barisnya sudah
+  hilang tidak akan muncul meskipun masih menghabiskan ruang berbayar. Belum
+  ada perintah yang menyisir bucket dan membandingkannya dengan database.
+- **Pindah berkas antar provider belum ada.** File Manager memindahkan antar
+  direktori di provider yang SAMA. Antar provider perlu mengalirkan isi berkas,
+  tahan terhadap kegagalan di tengah jalan, dan untuk video gigabyte terlalu
+  lama untuk berada di dalam request — tempatnya di antrean.
 - **Checksum belum pernah diverifikasi ulang.** Kolomnya terisi setiap
   unggahan, tapi belum ada perintah yang membandingkannya dengan berkas di
   bucket. Nilainya baru berguna kalau ada yang memeriksanya.
@@ -338,18 +403,20 @@ beberapa masih dangkal:
   gagal menghentikan `deploy.sh` di langkah migrate.
 - **Sambungkan `STORAGE_TIMEOUT`** ke klien S3 lewat kunci `http`. Sekarang
   waktu yang tepat: tombol Test Connection membuat akibatnya langsung terlihat.
-- **Test Connection massal** dari panel (satuan sudah ada; semua sekaligus
-  masih lewat `php artisan storage:test`)
+- **Test Connection massal** dari panel (satuan sudah ada di Storage Manager
+  dan di Storage Monitoring; semua sekaligus masih lewat
+  `php artisan storage:test`)
 - **Test Connection di antrean** — sekarang sinkron, jadi provider yang lambat
   menahan permintaan admin sampai SDK menyerah
 - **Hapus permanen** — baris terhapus kini hanya bisa dipulihkan atau dibiarkan
-- **Test Connection dari panel** — sudah ada di `php artisan storage:test`
-- **Kolom hasil test terakhir** di tabel (`last_tested_at`, `last_test_status`)
 - **Router upload dengan failover** — memakai `StorageManager::chain()`
-- **Upload video, thumbnail, subtitle** ke provider terpilih
-- **Presigned URL** untuk berkas `private`
 - **Migrasi berkas antar provider**
 - **GCS dan Azure** — baru kerangka, jalur kredensialnya belum selesai
+
+Tiga baris yang dulu ada di daftar ini sudah selesai dan dibuang: Test
+Connection dari panel (7.3), kolom hasil test terakhir di tabel (7.3), dan
+presigned URL untuk berkas privat — yang terakhir dipakai File Manager lewat
+`StorageEngine::temporaryUrl()` sejak 7.8.
 
 ### Belum ada sama sekali
 - PDF otomatis dari PHP (sekarang lewat dialog cetak peramban)
@@ -426,14 +493,20 @@ python tools/verify-consistency.py       # 18 pemeriksaan
 python tools/check-blade-directives.py resources/views/**/*.blade.php
 python tools/check-css-coverage.py
 python tools/check-php-structure.py app/**/*.php config/*.php database/**/*.php
+python tools/audit-sprint-7-8.py         # 143 pemeriksaan khusus Sprint 7.8-7.9
 ```
+
+`audit-sprint-7-8.py` khusus sprint itu, tetapi tetap disimpan: sebagian
+pemeriksaannya berlaku terus — nol `Storage::` di controller dan service,
+satu jalur pembuatan baris antrean, dan tidak ada method kontrak engine yang
+hilang dari implementasinya.
 
 `verify-consistency.py` memeriksa: route mati di Blade dan PHP, controller,
 view, komponen, layout, `$fillable` vs migration, urutan foreign key,
 binding repository, PSR-4, import CSS, kolom tanggal, form + CSRF, href
 buntu, emoji, kelengkapan `match` enum, dan route di menu sidebar admin.
 
-**Alat verifikasinya sendiri sudah tiga kali terbukti salah.** Perlakukan
+**Alat verifikasinya sendiri sudah lima kali terbukti salah.** Perlakukan
 seperti kode lain: bisa keliru, dan perlu diaudit.
 
 - **7.1** — pembatas blok migration di `cols_of()` tidak pernah bekerja,
@@ -447,6 +520,13 @@ seperti kode lain: bisa keliru, dan perlu diaudit.
   komentar Blade**. Kalimat penjelasan yang memuat kata `<form>` terhitung
   sebagai tag pembuka yang tidak pernah ditutup, dan menghasilkan dua GAGAL
   palsu tentang form bersarang.
+- **7.8** — skrip self-audit sprint itu memeriksa "setiap route punya
+  middleware permission" dengan mengambil **3000 karakter tetap** setelah nama
+  grupnya. Jendelanya menembus ke grup berikutnya dan melaporkan
+  `files.: 9 middleware permission untuk 17 route` pada grup yang sebenarnya
+  berisi 6 route dengan 6 middleware. Diperbaiki dengan mencocokkan kurung.
+  Ini kegagalan palsu kedua yang disebabkan penghitungan blok yang naif,
+  setelah `routeparse.py` di 7.6.
 
 Pelajarannya: kalau alat melaporkan GAGAL pada kode yang menurut Anda benar,
 periksa alatnya juga — jangan langsung menganggap kodenya yang salah.

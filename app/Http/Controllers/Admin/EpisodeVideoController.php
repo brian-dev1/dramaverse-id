@@ -7,9 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreEpisodeVideoRequest;
 use App\Models\Drama;
 use App\Models\Episode;
-use App\Models\StorageProvider;
-use App\Services\Storage\Contracts\StorageEngineInterface;
-use App\Services\Storage\Exceptions\StorageEngineException;
+use App\Services\Storage\StorageChoiceService;
 use App\Services\UploadQueueService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
@@ -50,7 +48,7 @@ class EpisodeVideoController extends Controller
 {
     public function __construct(
         protected UploadQueueService $queue,
-        protected StorageEngineInterface $storage,
+        protected StorageChoiceService $choices,
     ) {
     }
 
@@ -234,46 +232,24 @@ class EpisodeVideoController extends Controller
     /**
      * Provider yang boleh dipilih di mode Manual.
      *
-     * Syaratnya sama dengan yang ditegakkan `UsableStorageProvider`: aktif,
-     * lengkap, adapternya terpasang, tanpa nilai contoh, dan sudah lolos Test
-     * Connection. Daftar dan validasinya membaca syarat yang sama, jadi tidak
-     * ada pilihan yang tampil lalu ditolak.
+     * Isinya dipindahkan ke `StorageChoiceService` di Sprint 7.9, saat halaman
+     * unggah kedua (Batch Upload) memerlukan daftar yang sama. Dua salinan
+     * syarat "provider yang boleh dipilih" adalah cara paling mudah
+     * mendapatkan satu halaman yang menawarkan provider yang halaman lain
+     * tolak. Syarat dan bentuk labelnya tidak berubah sedikit pun.
      *
      * @return array<int, string>  id => label
      */
     protected function providerOptions(): array
     {
-        return StorageProvider::query()
-            ->active()
-            ->byPriority()
-            ->get()
-            ->filter(fn (StorageProvider $p) => $p->isUsable() && $p->last_test_status === 'ok')
-            ->mapWithKeys(fn (StorageProvider $p) => [
-                $p->id => sprintf(
-                    '%s — %s%s',
-                    $p->name,
-                    $p->driver->label(),
-                    $p->is_default ? ' (default)' : ''
-                ),
-            ])
-            ->all();
+        return $this->choices->manualOptions();
     }
 
     /**
      * Keterangan tujuan mode AUTO, atau null bila belum ada.
-     *
-     * Ditampilkan di form supaya "Auto" tidak terasa seperti kotak hitam.
-     * Admin yang mengunggah berkas 3 GB berhak tahu ke mana berkasnya pergi
-     * sebelum menekan tombol.
      */
     protected function autoTarget(): ?string
     {
-        try {
-            $provider = $this->storage->resolveProvider();
-        } catch (StorageEngineException) {
-            return null;
-        }
-
-        return sprintf('%s — %s', $provider->name, $provider->driver->label());
+        return $this->choices->autoTarget();
     }
 }

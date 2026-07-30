@@ -2,8 +2,12 @@
 
 namespace App\Services;
 
+use App\Enums\DramaAssetType;
 use App\Enums\UploadStatus;
+use App\Jobs\ProcessDramaAssetUpload;
 use App\Jobs\ProcessEpisodeVideoUpload;
+use App\Models\Drama;
+use App\Models\DramaAsset;
 use App\Models\Episode;
 use App\Models\EpisodeVideo;
 use App\Models\UploadJob;
@@ -65,7 +69,77 @@ class UploadQueueService
         Episode $episode,
         UploadedFile $file,
         string $mode = 'auto',
-        ?int $providerId = null
+        ?int $providerId = null,
+        ?string $batchUuid = null
+    ): UploadJob {
+
+        return $this->createJob(
+            $file,
+            UploadJob::TYPE_EPISODE_VIDEO,
+            [
+                'episode_id' => $episode->id,
+                'batch_uuid' => $batchUuid,
+            ],
+            $mode,
+            $providerId,
+            ['episode_id' => $episode->id, 'drama_id' => $episode->drama_id]
+        );
+    }
+
+    /**
+     * Terima satu berkas aset drama, simpan sementara, lalu antrekan.
+     *
+     * Ditambahkan Sprint 7.9. Bentuknya sengaja menyamai
+     * `queueEpisodeVideo()` dan keduanya memakai `createJob()` yang sama —
+     * pementasan berkas, pembuatan baris, pencatatan, dan pengiriman ke
+     * antrean tidak ditulis dua kali.
+     *
+     * @param  string  $mode  'auto' | 'manual'
+     *
+     * @throws RuntimeException bila berkas gagal dipindahkan ke staging
+     */
+    public function queueDramaAsset(
+        Drama $drama,
+        DramaAssetType $type,
+        UploadedFile $file,
+        string $mode = 'auto',
+        ?int $providerId = null,
+        ?string $batchUuid = null
+    ): UploadJob {
+
+        return $this->createJob(
+            $file,
+            UploadJob::TYPE_DRAMA_ASSET,
+            [
+                'drama_id'   => $drama->id,
+                'asset_type' => $type->value,
+                'batch_uuid' => $batchUuid,
+            ],
+            $mode,
+            $providerId,
+            ['drama_id' => $drama->id, 'asset_type' => $type->value]
+        );
+    }
+
+    /**
+     * Bagian yang sama untuk setiap jenis unggahan.
+     *
+     * Diekstrak dari `queueEpisodeVideo()` saat jenis kedua ditambahkan.
+     * Perilaku jenis pertama tidak berubah sedikit pun — urutan langkahnya,
+     * isi barisnya, dan isi log `queued`-nya sama persis dengan sebelumnya.
+     *
+     * @param  array<string, mixed>  $target      kolom tujuan khusus jenis ini
+     * @param  array<string, mixed>  $logContext  konteks tambahan untuk log
+     *
+     * @throws RuntimeException
+     */
+    protected function createJob(
+        UploadedFile $file,
+        string $type,
+        array $target,
+        string $mode,
+        ?int $providerId,
+        array $logContext = []
     ): UploadJob {
 
         // Semua keterangan berkas dibaca SEBELUM dipindahkan. Setelah
@@ -80,10 +154,9 @@ class UploadQueueService
 
         $staged = $this->stage($file, $uuid, $extension);
 
-        $job = UploadJob::create([
+        $job = UploadJob::create($target + [
             'uuid'                  => $uuid,
-            'type'                  => UploadJob::TYPE_EPISODE_VIDEO,
-            'episode_id'            => $episode->id,
+            'type'                  => $type,
             'requested_provider_id' => $mode === 'manual' ? $providerId : null,
             'storage_mode'          => $mode === 'manual' ? 'manual' : 'auto',
             'status'                => UploadStatus::PENDING->value,
@@ -100,9 +173,9 @@ class UploadQueueService
             'queued_at'             => now(),
         ]);
 
-        $this->log($job, 'info', 'queued', 'Pekerjaan unggah masuk antrean.', [
-            'episode_id'   => $episode->id,
-            'drama_id'     => $episode->drama_id,
+        $this->log($job, 'info', 'queued', 'Pekerjaan unggah masuk antrean.', $logContext + [
+            'jenis'        => $type,
+            'batch'        => $job->batch_uuid,
             'mode'         => $job->storage_mode,
             'provider_id'  => $job->requested_provider_id,
             'size'         => $size,
@@ -137,6 +210,32 @@ class UploadQueueService
     }
 
     /**
+     * Pekerjaan aset yang masih berjalan untuk (drama, jenis) yang sama.
+     *
+     * Hanya berlaku untuk jenis yang cuma boleh punya SATU berkas.
+     * `DramaAssetService` memakai `updateOrCreate` pada pasangan itu lalu
+     * menghapus objek yang digantikannya — sehingga dua pekerjaan yang
+     * berjalan bersamaan bisa saling menghapus berkas, persis seperti yang
+     * dijaga `activeFor()` pada video episode.
+     *
+     * Galeri sengaja TIDAK dijaga: banyak berkas memang boleh diproses
+     * bersamaan, dan itulah inti dari unggah galeri.
+     */
+    public function activeForAsset(Drama $drama, DramaAssetType $type): ?UploadJob
+    {
+        if ($type->allowsMultiple()) {
+            return null;
+        }
+
+        return UploadJob::query()
+            ->where('drama_id', $drama->id)
+            ->where('asset_type', $type->value)
+            ->unfinished()
+            ->latest('id')
+            ->first();
+    }
+
+    /**
      * Kirim pekerjaan ke antrean.
      *
      * Dipanggil saat pertama kali diantrekan DAN saat Retry, supaya kedua
@@ -146,8 +245,16 @@ class UploadQueueService
      */
     protected function dispatchJob(UploadJob $job): void
     {
-        $pending = ProcessEpisodeVideoUpload::dispatch($job->id)
-            ->onQueue($this->queueName());
+        // Kelas job dipilih dari `type` barisnya, bukan dari argumen
+        // pemanggil. Retry memanggil method ini tanpa tahu jenis apa pun, dan
+        // jenis yang ditebak salah di sana akan menjalankan berkas aset lewat
+        // jalur video — yang akan mencari episode yang memang tidak ada.
+        $kelas = match ($job->type) {
+            UploadJob::TYPE_DRAMA_ASSET => ProcessDramaAssetUpload::class,
+            default                     => ProcessEpisodeVideoUpload::class,
+        };
+
+        $pending = $kelas::dispatch($job->id)->onQueue($this->queueName());
 
         if ($connection = $this->connection()) {
             $pending->onConnection($connection);
@@ -200,27 +307,78 @@ class UploadQueueService
 
     public function markSuccess(UploadJob $job, EpisodeVideo $video, int $durationMs): void
     {
-        $job->forceFill([
-            'status'           => UploadStatus::SUCCESS->value,
-            'episode_video_id' => $video->id,
-            'error_class'      => null,
-            'error_message'    => null,
-            'duration_ms'      => $durationMs,
-            'finished_at'      => now(),
+        $this->finishSuccess(
+            $job,
+            ['episode_video_id' => $video->id],
+            'Video tersimpan di storage provider.',
+            [
+                'episode_id'  => $job->episode_id,
+                'video_id'    => $video->id,
+                'provider_id' => $video->storage_provider_id,
+                'object_key'  => $video->object_key,
+                'size'        => $video->size,
+            ],
+            $durationMs
+        );
+    }
+
+    /**
+     * Pasangan `markSuccess()` untuk aset drama.
+     *
+     * Method terpisah, bukan satu method dengan parameter longgar: keduanya
+     * mengisi kolom hasil yang berbeda, dan tipe argumennya yang tegas
+     * membuat pemanggilan yang salah tertangkap PHP, bukan menjadi baris yang
+     * kolom hasilnya kosong tanpa ada yang menyadarinya.
+     *
+     * Isi yang benar-benar sama — perpindahan status, penghapusan berkas
+     * staging, pencatatan — ada di `finishSuccess()` dan tidak ditulis dua
+     * kali.
+     */
+    public function markAssetSuccess(UploadJob $job, DramaAsset $asset, int $durationMs): void
+    {
+        $this->finishSuccess(
+            $job,
+            ['drama_asset_id' => $asset->id],
+            'Aset tersimpan di storage provider.',
+            [
+                'drama_id'    => $job->drama_id,
+                'asset_id'    => $asset->id,
+                'asset_type'  => $asset->asset_type,
+                'provider_id' => $asset->storage_provider_id,
+                'object_key'  => $asset->object_key,
+                'size'        => $asset->size,
+            ],
+            $durationMs
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $hasil    kolom hasil khusus jenisnya
+     * @param  array<string, mixed>  $context  konteks log
+     */
+    protected function finishSuccess(
+        UploadJob $job,
+        array $hasil,
+        string $pesan,
+        array $context,
+        int $durationMs
+    ): void {
+
+        $job->forceFill($hasil + [
+            'status'        => UploadStatus::SUCCESS->value,
+            'error_class'   => null,
+            'error_message' => null,
+            'duration_ms'   => $durationMs,
+            'finished_at'   => now(),
         ])->save();
 
-        $this->log($job, 'info', 'success', 'Video tersimpan di storage provider.', [
-            'episode_id'  => $job->episode_id,
-            'video_id'    => $video->id,
-            'provider_id' => $video->storage_provider_id,
-            'object_key'  => $video->object_key,
-            'size'        => $video->size,
-            'durasi_ms'   => $durationMs,
+        $this->log($job, 'info', 'success', $pesan, $context + [
+            'durasi_ms' => $durationMs,
         ]);
 
         // Berkas staging sudah tidak berguna: salinannya kini ada di provider,
-        // dan `episode_videos` sudah tahu di mana. Membiarkannya berarti
-        // menyimpan setiap video dua kali, satu di antaranya di disk VPS yang
+        // dan tabel metadatanya sudah tahu di mana. Membiarkannya berarti
+        // menyimpan setiap berkas dua kali, satu di antaranya di disk VPS yang
         // paling cepat penuh.
         $this->releaseStagedFile($job);
     }

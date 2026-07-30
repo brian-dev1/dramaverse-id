@@ -193,6 +193,38 @@ interface StorageEngineInterface
     public function exists(int|string $provider, string $objectKey): bool;
 
     /**
+     * Buka isi berkas sebagai stream.
+     *
+     * DITAMBAHKAN di Sprint 7.8. Ini satu-satunya method baru pada kontrak
+     * ini sejak 7.4; tidak ada satu pun method lama yang berubah bentuk
+     * maupun perilakunya.
+     *
+     * Alasannya konkret. File Manager harus bisa mengunduh dan memratayangkan
+     * berkas, dan sebelum ini engine hanya bisa menyebutkan ALAMAT berkas
+     * (`url()`, `temporaryUrl()`) — bukan isinya. Untuk provider `local`,
+     * yang justru dipakai setiap pemasangan baru, keduanya menghasilkan
+     * `null`: tidak ada URL publik yang bisa ditebak dan tidak ada tanda
+     * tangan yang bisa dibuat. Akibatnya tombol Unduh dan pratayang gambar
+     * mati persis pada provider yang paling mungkin sedang dipakai orang yang
+     * baru memasang panelnya.
+     *
+     * Menambahkannya di sini, dan bukan dengan memanggil `Storage` atau
+     * `StorageManager::build()` dari controller, karena aturan "engine adalah
+     * satu-satunya pintu" tetap berlaku. Pintu yang kurang satu daun bukan
+     * alasan membuat pintu kedua.
+     *
+     * Mengembalikan `null` bila berkasnya tidak ada — pemanggil membalas 404,
+     * bukan 500. Berkas yang barisnya masih tercatat tetapi objeknya sudah
+     * hilang dari bucket adalah keadaan yang wajar setelah ada yang
+     * membersihkan bucket secara manual.
+     *
+     * @return resource|null
+     *
+     * @throws \App\Services\Storage\Exceptions\StorageEngineException
+     */
+    public function readStream(int|string $provider, string $objectKey);
+
+    /**
      * Keterangan berkas: ukuran, mime, waktu ubah, visibility, URL.
      */
     public function metadata(int|string $provider, string $objectKey): FileMetadata;

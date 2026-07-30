@@ -486,6 +486,52 @@ class StorageEngine implements StorageEngineInterface
         return $this->disk($resolved)->exists(ObjectKey::assertSafe($objectKey));
     }
 
+    /**
+     * @return resource|null
+     */
+    public function readStream(int|string $provider, string $objectKey)
+    {
+        $resolved = $this->resolveProvider($provider);
+
+        $key = ObjectKey::assertSafe($objectKey);
+
+        $disk = $this->disk($resolved);
+
+        // Diperiksa lebih dulu supaya berkas yang memang tidak ada menjadi
+        // `null` yang bisa dibalas 404, bukan exception yang bentuknya
+        // berbeda-beda antar adapter. Flysystem melempar UnableToReadFile,
+        // sedangkan sebagian klien S3 justru mengembalikan aliran kosong.
+        if (! $disk->exists($key)) {
+            $this->log('info', 'read.absent', $this->context($resolved, $key));
+
+            return null;
+        }
+
+        try {
+            $stream = $disk->readStream($key);
+        } catch (Throwable $e) {
+            $this->logFailure('read', $resolved, $key, $e);
+
+            throw StorageEngineException::operationFailed('read', $resolved, $key, $e);
+        }
+
+        // Sebagian adapter mengembalikan `false` alih-alih melempar. Itu tetap
+        // kegagalan, dan menyerahkannya apa adanya ke pemanggil akan berakhir
+        // sebagai TypeError di tempat yang jauh dari sebabnya.
+        if ($stream === false || $stream === null) {
+            throw StorageEngineException::operationFailed(
+                'read',
+                $resolved,
+                $key,
+                new \RuntimeException('penyimpanan tidak mengembalikan aliran berkas')
+            );
+        }
+
+        $this->log('info', 'read.success', $this->context($resolved, $key));
+
+        return $stream;
+    }
+
     public function metadata(int|string $provider, string $objectKey): FileMetadata
     {
         $resolved = $this->resolveProvider($provider);

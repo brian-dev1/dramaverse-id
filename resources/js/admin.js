@@ -181,6 +181,13 @@ export default function admin() {
     videoUpload();
     assetManager();
     uploadQueue();
+
+    // Sprint 7.8 dan 7.9. Ketiganya berhenti sendiri di baris pertama bila
+    // elemen penandanya tidak ada, jadi memanggilnya di setiap halaman admin
+    // tidak menimbulkan biaya apa pun.
+    storageMonitor();
+    fileManager();
+    batchUpload();
 }
 
 /**
@@ -1341,4 +1348,876 @@ function reorderTable() {
             table.classList.remove('is-saving');
         }
     });
+}
+
+/*
+|==============================================================================
+| Sprint 7.8 — Storage Monitoring
+|==============================================================================
+*/
+
+/**
+ * Tombol Refresh Status di halaman Storage Monitoring.
+ *
+ * Yang disegarkan hanya ANGKA — kartu ringkasan dan empat kolom di tabel yang
+ * memang bisa berubah tanpa jumlah barisnya berubah. Halaman tidak dimuat
+ * ulang, dan itu disengaja: hasil Test Connection yang sedang dibaca ada di
+ * panel yang menetap, dan memuat ulang halaman akan membuangnya justru ketika
+ * pesannya paling perlu dibaca.
+ *
+ * Kalau JUMLAH provider berubah, angka di kartu ikut berubah tetapi barisnya
+ * tidak — menyusun ulang seluruh tabel dari JavaScript berarti menulis markup
+ * baris untuk kedua kalinya di tempat yang berbeda dari Blade, dan dua salinan
+ * markup adalah cara paling mudah membuat keduanya berbeda. Yang muncul adalah
+ * catatan beserta tautan untuk memuat ulang.
+ */
+function storageMonitor() {
+    const root = document.querySelector('[data-monitor]');
+    if (!root) return;
+
+    const url = root.dataset.refreshUrl;
+    if (!url) return;
+
+    const tombol = root.querySelector('[data-monitor-refresh]');
+    const waktu  = root.querySelector('[data-monitor-at]');
+
+    const ambilJalur = (obj, jalur) =>
+        jalur.split('.').reduce((o, k) => (o == null ? undefined : o[k]), obj);
+
+    const angka = (v) =>
+        typeof v === 'number' ? v.toLocaleString('id-ID') : String(v ?? '—');
+
+    let catatan = null;
+
+    const beriTahuBerubah = () => {
+        if (catatan) return;
+
+        catatan = document.createElement('p');
+        catatan.className = 'queue-note';
+        catatan.textContent =
+            'Jumlah providernya berubah. Muat ulang halaman supaya tabelnya ikut '
+            + 'menyesuaikan.';
+
+        const tautan = document.createElement('a');
+        tautan.href = window.location.href;
+        tautan.className = 'btn btn-ghost btn-sm';
+        tautan.textContent = 'Muat ulang';
+
+        catatan.appendChild(tautan);
+        root.parentNode.insertBefore(catatan, root.nextSibling);
+    };
+
+    tombol?.addEventListener('click', async () => {
+        tombol.disabled = true;
+
+        const teksAsli = tombol.textContent;
+        tombol.textContent = 'Menyegarkan…';
+
+        try {
+            const res = await fetch(url, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' },
+            });
+
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+            const { data } = await res.json();
+
+            document.querySelectorAll('[data-monitor-value]').forEach((el) => {
+                el.textContent = angka(ambilJalur(data, el.dataset.monitorValue));
+            });
+
+            if (waktu) waktu.textContent = data.at || '';
+
+            const barisTampil = document.querySelectorAll('[data-monitor-row]').length;
+
+            (data.rows || []).forEach((row) => {
+                const tr = document.querySelector(`[data-monitor-row="${row.id}"]`);
+                if (!tr) return;
+
+                const badge = tr.querySelector('[data-monitor-test]');
+                if (badge) {
+                    badge.textContent = row.test_label;
+                    badge.className = `badge badge-status ${row.test_badge}`;
+                }
+
+                const diuji = tr.querySelector('[data-monitor-tested]');
+                if (diuji) {
+                    diuji.textContent = row.tested_at || '—';
+
+                    if (row.duration) {
+                        const sub = document.createElement('span');
+                        sub.className = 'asset-sub';
+                        sub.textContent = row.duration;
+                        diuji.appendChild(sub);
+                    }
+                }
+
+                const berkas = tr.querySelector('[data-monitor-files]');
+                if (berkas) berkas.textContent = angka(row.files);
+
+                const ukuran = tr.querySelector('[data-monitor-size]');
+                if (ukuran) ukuran.textContent = row.size_human;
+            });
+
+            if ((data.rows || []).length !== barisTampil) {
+                beriTahuBerubah();
+            }
+        } catch (err) {
+            // Kegagalan menyegarkan tidak boleh menghapus angka yang sudah
+            // tampil. Yang lama tetap benar sampai detik terakhir ia dibaca;
+            // menggantinya dengan tanda tanya justru menghilangkan informasi.
+            if (waktu) {
+                waktu.textContent = `gagal disegarkan (${err.message}) — angka di atas dari pemuatan terakhir`;
+            }
+        } finally {
+            tombol.disabled = false;
+            tombol.textContent = teksAsli;
+        }
+    });
+}
+
+/*
+|==============================================================================
+| Sprint 7.8 — File Manager
+|==============================================================================
+*/
+
+/**
+ * Halaman File Manager.
+ *
+ * Tiga pekerjaan: membuka rincian beserta pratayang gambar, menyalin URL, dan
+ * mengarahkan dua formulir (ganti nama, pindahkan) ke berkas yang dipilih.
+ *
+ * URL formulir TIDAK disusun di sini. Blade merender action-nya dengan
+ * penampung (`episode_video/0`), dan yang dilakukan JavaScript hanya menukar
+ * penampung itu dengan sumber dan id yang sebenarnya. Dengan begitu nama route
+ * tetap menjadi satu-satunya sumber URL, dan mengubah prefix route tidak
+ * meninggalkan path yang salah di dalam JavaScript.
+ */
+function fileManager() {
+    const table = document.querySelector('[data-file-manager]');
+    if (!table) return;
+
+    const PENAMPUNG = 'episode_video/0';
+
+    const template = table.dataset.showUrl || '';
+
+    // "episode_video:12" -> "episode_video/12"
+    const jalurDari = (ref) => ref.replace(':', '/');
+
+    const urlUntuk = (ref) => template.replace(PENAMPUNG, jalurDari(ref));
+
+    const panel = document.querySelector('[data-file-panel]');
+    if (!panel) return;
+
+    const el = {
+        title:   panel.querySelector('[data-file-title]'),
+        meta:    panel.querySelector('[data-file-meta]'),
+        url:     panel.querySelector('[data-file-url]'),
+        error:   panel.querySelector('[data-file-error]'),
+        preview: panel.querySelector('[data-file-preview]'),
+        image:   panel.querySelector('[data-file-image]'),
+        copy:    panel.querySelector('[data-file-copy]'),
+        close:   panel.querySelector('[data-file-close]'),
+        rename:  panel.querySelector('[data-file-form-rename]'),
+        move:    panel.querySelector('[data-file-form-move]'),
+        inputName: panel.querySelector('[data-file-input-name]'),
+        inputDir:  panel.querySelector('[data-file-input-dir]'),
+    };
+
+    let urlTerakhir = null;
+
+    const bersihkan = () => {
+        el.error.hidden = true;
+        el.url.hidden = true;
+        el.copy.hidden = true;
+        el.preview.hidden = true;
+        el.image.removeAttribute('src');
+        el.rename.hidden = true;
+        el.move.hidden = true;
+        urlTerakhir = null;
+    };
+
+    const buka = () => {
+        panel.hidden = false;
+        panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    };
+
+    // --- Rincian dan pratayang ---
+    table.addEventListener('click', async (e) => {
+        const btn = e.target.closest('[data-file-detail]');
+        if (!btn) return;
+
+        bersihkan();
+        el.title.textContent = 'Memuat rincian…';
+        el.meta.textContent = '';
+        buka();
+
+        try {
+            const res = await fetch(urlUntuk(btn.dataset.fileDetail), {
+                headers: { 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' },
+            });
+
+            const json = await res.json();
+
+            if (!res.ok || !json.ok) {
+                throw new Error(json.message || `HTTP ${res.status}`);
+            }
+
+            const d = json.data;
+
+            el.title.textContent = d.filename;
+
+            el.meta.textContent =
+                `${d.original} — ${d.size_human} — ${d.mime_type}`
+                + (d.provider ? ` — ${d.provider}` : '')
+                + ` — ${d.object_key}`;
+
+            if (d.url) {
+                urlTerakhir = d.url;
+                el.url.hidden = false;
+                el.url.textContent = d.url;
+                el.copy.hidden = false;
+
+                // Pratayang hanya untuk gambar, dan hanya bila ada URL yang
+                // bisa dipasang. Berkas video sengaja tidak dipratayangkan:
+                // menaruh <video> yang menunjuk berkas berukuran gigabyte akan
+                // membuat peramban mulai mengunduhnya hanya karena panelnya
+                // dibuka.
+                if ((d.mime_type || '').startsWith('image/')) {
+                    el.image.src = d.url;
+                    el.preview.hidden = false;
+                }
+            } else if (d.url_note) {
+                el.error.hidden = false;
+                el.error.textContent = d.url_note;
+            }
+        } catch (err) {
+            el.title.textContent = 'Rincian gagal dimuat';
+            el.error.hidden = false;
+            el.error.textContent = err.message;
+        }
+    });
+
+    // --- Ganti nama ---
+    table.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-file-rename]');
+        if (!btn) return;
+
+        bersihkan();
+        el.title.textContent = `Ganti nama: ${btn.dataset.fileName || ''}`;
+        el.meta.textContent = 'Ekstensinya tidak ikut berubah.';
+        el.rename.action = el.rename.action.replace(PENAMPUNG, jalurDari(btn.dataset.fileRename));
+        el.rename.hidden = false;
+        el.inputName.value = btn.dataset.fileName || '';
+        buka();
+        el.inputName.focus();
+    });
+
+    // --- Pindahkan ---
+    table.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-file-move]');
+        if (!btn) return;
+
+        bersihkan();
+        el.title.textContent = 'Pindahkan berkas';
+        el.meta.textContent = `Sekarang di: ${btn.dataset.fileDir || '(akar)'}`;
+        el.move.action = el.move.action.replace(PENAMPUNG, jalurDari(btn.dataset.fileMove));
+        el.move.hidden = false;
+        el.inputDir.value = btn.dataset.fileDir || '';
+        buka();
+        el.inputDir.focus();
+    });
+
+    // --- Salin URL ---
+    el.copy?.addEventListener('click', async () => {
+        if (!urlTerakhir) return;
+
+        const semula = el.copy.textContent;
+
+        try {
+            // `navigator.clipboard` hanya tersedia di konteks aman (https atau
+            // localhost). Panel admin di server pengembangan yang diakses lewat
+            // http tidak punya API ini sama sekali — tanpa cadangan di bawah,
+            // tombolnya diam tanpa memberi tahu apa pun.
+            if (navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(urlTerakhir);
+            } else {
+                const kotak = document.createElement('textarea');
+                kotak.value = urlTerakhir;
+                kotak.setAttribute('readonly', '');
+                kotak.style.position = 'absolute';
+                kotak.style.left = '-9999px';
+                document.body.appendChild(kotak);
+                kotak.select();
+                document.execCommand('copy');
+                kotak.remove();
+            }
+
+            el.copy.textContent = 'URL disalin';
+        } catch {
+            el.copy.textContent = 'Gagal menyalin — salin manual dari teks di atas';
+        }
+
+        setTimeout(() => { el.copy.textContent = semula; }, 2500);
+    });
+
+    el.close?.addEventListener('click', () => { panel.hidden = true; });
+}
+
+/*
+|==============================================================================
+| Sprint 7.9 — Batch Upload
+|==============================================================================
+*/
+
+/**
+ * Halaman Batch Upload.
+ *
+ * Tiap berkas dikirim sebagai permintaan tersendiri, BERURUTAN. Dua alasan,
+ * keduanya praktis:
+ *
+ * - Progress per berkas hanya bisa didapat dari
+ *   `XMLHttpRequest.upload.onprogress`, dan itu berlaku per permintaan. Satu
+ *   permintaan berisi dua puluh berkas hanya punya satu angka.
+ *
+ * - Berurutan, bukan bersamaan. Dua puluh unggahan paralel akan berebut lebar
+ *   pita yang sama sehingga semuanya lambat, dan sebagian server menutup
+ *   koneksi yang terlalu banyak dari satu klien. Berurutan juga membuat
+ *   "berhenti setelah yang ini" mungkin dilakukan.
+ *
+ * Kegagalan satu berkas TIDAK menghentikan sisanya: barisnya ditandai Gagal
+ * beserta sebabnya, lalu perulangannya lanjut ke berkas berikutnya.
+ */
+function batchUpload() {
+    const form = document.querySelector('[data-batch-upload]');
+    if (!form) return;
+
+    const token = document.querySelector('meta[name="csrf-token"]')?.content;
+    if (!token) return;
+
+    const PENAMPUNG_UUID = '00000000-0000-0000-0000-000000000000';
+
+    const el = {
+        kinds:     [...form.querySelectorAll('[data-kind]')],
+        drama:     form.querySelector('[data-drama]'),
+        dramaNote: form.querySelector('[data-drama-note]'),
+        assetWrap: form.querySelector('[data-asset-wrap]'),
+        assetType: form.querySelector('[data-asset-type]'),
+        modes:     [...form.querySelectorAll('[data-mode]')],
+        provider:  form.querySelector('[data-provider]'),
+        providerWrap: form.querySelector('[data-provider-wrap]'),
+        dropzone:  form.querySelector('[data-dropzone]'),
+        input:     form.querySelector('[data-files]'),
+        panel:     form.querySelector('[data-batch-panel]'),
+        list:      form.querySelector('[data-batch-list]'),
+        count:     form.querySelector('[data-batch-count]'),
+        note:      form.querySelector('[data-batch-note]'),
+        error:     form.querySelector('[data-batch-error]'),
+        submit:    form.querySelector('[data-batch-submit]'),
+        clear:     form.querySelector('[data-batch-clear]'),
+        summary:   form.querySelector('[data-batch-summary]'),
+    };
+
+    /** @type {{file: File, li: HTMLElement, pilih: HTMLSelectElement|null}[]} */
+    let antrean = [];
+
+    let episodes = [];
+
+    let batchUuid = null;
+
+    const kind = () => el.kinds.find((r) => r.checked)?.value || 'video';
+
+    const mode = () => el.modes.find((r) => r.checked)?.value || 'auto';
+
+    const mb = (bytes) => `${(bytes / 1024 / 1024).toFixed(2)} MB`;
+
+    const galat = (pesan) => {
+        el.error.hidden = pesan === null;
+        el.error.textContent = pesan || '';
+    };
+
+    /*
+    |--------------------------------------------------------------------------
+    | Pilihan tujuan
+    |--------------------------------------------------------------------------
+    */
+
+    const perbaruiJenis = () => {
+        const aset = kind() === 'asset';
+
+        el.assetWrap.hidden = !aset;
+
+        el.dramaNote.textContent = aset
+            ? 'Seluruh berkas dalam batch ini menjadi aset drama yang dipilih.'
+            : 'Daftar episodenya menyusul setelah drama dipilih.';
+
+        // Batasan ekstensi di kotak berkas ikut berganti. Ini hanya
+        // kenyamanan — penjagaan yang sebenarnya ada di FormRequest dan di
+        // service, keduanya di server.
+        if (aset) {
+            const opsi = el.assetType.selectedOptions[0];
+            el.input.accept = (opsi?.dataset.extensions || '')
+                .split(',').filter(Boolean).map((e) => `.${e}`).join(',');
+        } else {
+            el.input.accept = '.mp4,.mkv,.webm,.mov,.m4v';
+        }
+
+        gambarUlang();
+    };
+
+    const perbaruiMode = () => {
+        el.providerWrap.hidden = mode() !== 'manual';
+    };
+
+    /*
+    |--------------------------------------------------------------------------
+    | Episode
+    |--------------------------------------------------------------------------
+    */
+
+    const muatEpisode = async () => {
+        episodes = [];
+
+        const id = el.drama.value;
+
+        if (!id || kind() === 'asset') {
+            gambarUlang();
+            return;
+        }
+
+        try {
+            const url = form.dataset.episodesUrl.replace(/\/0(\?|$)/, `/${id}$1`);
+
+            const res = await fetch(url, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' },
+            });
+
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+            episodes = (await res.json()).data || [];
+
+            if (!episodes.length) {
+                galat('Drama itu belum punya episode. Buat episodenya dulu lewat menu Episode.');
+            } else {
+                galat(null);
+            }
+        } catch (err) {
+            galat(
+                'Daftar episode gagal dimuat: ' + err.message + '. '
+                + 'Kalau ini 403, peran Anda perlu izin episode.manage — daftar '
+                + 'episode dibaca dari endpoint milik modul unggah video.'
+            );
+        }
+
+        gambarUlang();
+    };
+
+    /**
+     * Tebak nomor episode dari nama berkas.
+     *
+     * Yang diambil adalah rangkaian angka TERAKHIR sebelum ekstensi. Nama
+     * berkas nyata biasanya berbentuk "Judul Drama S1 E07.mp4" atau
+     * "drama-07.mkv", dan angka terakhirlah yang menyebut episodenya —
+     * angka pertama justru sering nomor musim atau tahun.
+     *
+     * Tebakan ini SELALU bisa dikoreksi di dropdown. Itu bukan basa-basi:
+     * tebakan yang salah akan mengganti video episode yang keliru, dan yang
+     * lama sudah terlanjur dihapus ketika ketahuan.
+     */
+    const tebakNomor = (nama) => {
+        const tanpaExt = nama.replace(/\.[^.]+$/, '');
+
+        const angka = tanpaExt.match(/\d+/g);
+
+        return angka ? parseInt(angka[angka.length - 1], 10) : null;
+    };
+
+    /*
+    |--------------------------------------------------------------------------
+    | Daftar berkas
+    |--------------------------------------------------------------------------
+    */
+
+    const tambahBerkas = (fileList) => {
+        const aset = kind() === 'asset';
+
+        const banyakBoleh = !aset || el.assetType.selectedOptions[0]?.dataset.multiple === '1';
+
+        for (const file of fileList) {
+            // Berkas yang sama dipilih dua kali adalah kekeliruan yang wajar
+            // saat menyeret dua kali. Ditolak diam-diam akan membingungkan,
+            // jadi yang dilakukan hanya tidak menambahkannya lagi.
+            if (antrean.some((i) => i.file.name === file.name && i.file.size === file.size)) {
+                continue;
+            }
+
+            antrean.push({ file, li: null, pilih: null });
+        }
+
+        if (!banyakBoleh && antrean.length > 1) {
+            galat(
+                'Jenis aset ini hanya menerima satu berkas per drama. Berkas '
+                + 'berikutnya akan menimpa yang sebelumnya, jadi hanya yang '
+                + 'pertama yang dipertahankan.'
+            );
+
+            antrean = antrean.slice(0, 1);
+        }
+
+        gambarUlang();
+    };
+
+    const gambarUlang = () => {
+        el.list.innerHTML = '';
+
+        el.panel.hidden = antrean.length === 0;
+
+        el.count.textContent = `${antrean.length} berkas`;
+
+        const aset = kind() === 'asset';
+
+        el.note.textContent = aset
+            ? 'Seluruh berkas dikirim sebagai jenis aset yang dipilih di atas.'
+            : 'Nomor episode ditebak dari nama berkas — periksa dan perbaiki sebelum '
+              + 'mengunggah. Tebakan yang salah akan mengganti video episode yang keliru.';
+
+        antrean.forEach((item, index) => {
+            const li = document.createElement('li');
+            li.className = 'batch-file';
+
+            const utama = document.createElement('div');
+            utama.className = 'batch-file-main';
+
+            const nama = document.createElement('span');
+            nama.className = 'batch-file-name';
+            nama.textContent = item.file.name;
+
+            const meta = document.createElement('span');
+            meta.className = 'batch-file-meta';
+            meta.textContent = `${mb(item.file.size)} — ${item.file.type || 'jenis tidak dikenali'}`;
+
+            utama.appendChild(nama);
+            utama.appendChild(meta);
+
+            const tujuan = document.createElement('div');
+            tujuan.className = 'batch-file-target';
+
+            if (aset) {
+                tujuan.textContent = el.assetType.selectedOptions[0]?.textContent?.split(' — ')[0] || 'Aset';
+                item.pilih = null;
+            } else {
+                const pilih = document.createElement('select');
+                pilih.className = 'control control-sm';
+
+                const kosong = document.createElement('option');
+                kosong.value = '';
+                kosong.textContent = episodes.length ? '— pilih episode —' : '— pilih drama dulu —';
+                pilih.appendChild(kosong);
+
+                const tebakan = tebakNomor(item.file.name);
+
+                episodes.forEach((ep) => {
+                    const opt = document.createElement('option');
+                    opt.value = ep.id;
+                    opt.textContent = ep.label + (ep.has_video ? ' (sudah ada video)' : '');
+                    if (tebakan !== null && Number(ep.number) === tebakan) {
+                        opt.selected = true;
+                    }
+                    pilih.appendChild(opt);
+                });
+
+                tujuan.appendChild(pilih);
+                item.pilih = pilih;
+            }
+
+            const progress = document.createElement('div');
+            progress.className = 'progress';
+
+            const track = document.createElement('div');
+            track.className = 'progress-track';
+
+            const bar = document.createElement('div');
+            bar.className = 'progress-bar';
+            bar.style.width = '0%';
+
+            track.appendChild(bar);
+
+            const label = document.createElement('span');
+            label.className = 'progress-label';
+            label.textContent = 'Menunggu';
+
+            progress.appendChild(track);
+            progress.appendChild(label);
+
+            // Tombolnya berlabel kata, bukan karakter simbol.
+            //
+            // Aturan ikon proyek melarang simbol teks karena perenderannya
+            // berbeda antar sistem operasi, dan komponen <x-web.home.icon>
+            // tidak bisa dipanggil dari JavaScript. Menyalin SVG-nya ke sini
+            // akan menjadi salinan kedua yang tertinggal saat yang asli
+            // berubah — jadi yang dipakai adalah kata biasa.
+            const buang = document.createElement('button');
+            buang.type = 'button';
+            buang.className = 'btn btn-ghost btn-sm';
+            buang.title = 'Keluarkan dari daftar';
+            buang.textContent = 'Buang';
+            buang.addEventListener('click', () => {
+                antrean.splice(index, 1);
+                gambarUlang();
+            });
+
+            li.appendChild(utama);
+            li.appendChild(tujuan);
+            li.appendChild(progress);
+            li.appendChild(buang);
+
+            el.list.appendChild(li);
+
+            item.li = li;
+            item.bar = bar;
+            item.label = label;
+            item.buang = buang;
+        });
+    };
+
+    /*
+    |--------------------------------------------------------------------------
+    | Pengiriman
+    |--------------------------------------------------------------------------
+    */
+
+    const kirimSatu = (item) => new Promise((resolve) => {
+        const data = new FormData();
+
+        data.append('_token', token);
+        data.append('kind', kind());
+        data.append('storage_mode', mode());
+        data.append('file', item.file);
+
+        if (batchUuid) data.append('batch', batchUuid);
+
+        if (mode() === 'manual') {
+            data.append('storage_provider_id', el.provider.value);
+        }
+
+        if (kind() === 'asset') {
+            data.append('drama_id', el.drama.value);
+            data.append('asset_type', el.assetType.value);
+        } else {
+            data.append('episode_id', item.pilih?.value || '');
+        }
+
+        const xhr = new XMLHttpRequest();
+
+        xhr.open('POST', form.action, true);
+        xhr.setRequestHeader('Accept', 'application/json');
+        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+
+        xhr.upload.onprogress = (e) => {
+            if (!e.lengthComputable) return;
+
+            const persen = Math.round((e.loaded / e.total) * 100);
+
+            item.bar.style.width = `${persen}%`;
+            item.label.textContent = `Mengirim ${persen}%`;
+        };
+
+        xhr.onload = () => {
+            let json = {};
+
+            try {
+                json = JSON.parse(xhr.responseText || '{}');
+            } catch {
+                json = {};
+            }
+
+            if (xhr.status === 202 && json.ok) {
+                batchUuid = json.batch || batchUuid;
+
+                item.uuid = json.data?.uuid || null;
+                item.bar.style.width = '100%';
+                item.label.textContent = 'Masuk antrean';
+                item.li.classList.add('is-queued');
+
+                resolve(true);
+                return;
+            }
+
+            // 422 dari validasi Laravel membawa `errors`, bukan `message` kita.
+            // Pesan pertama dari sana jauh lebih berguna daripada "berkas
+            // ditolak" yang tidak menyebutkan apa pun.
+            const pesan = json.message
+                || Object.values(json.errors || {})[0]?.[0]
+                || `Ditolak server (HTTP ${xhr.status})`;
+
+            item.bar.style.width = '0%';
+            item.label.textContent = pesan;
+            item.li.classList.add('is-failed');
+
+            resolve(false);
+        };
+
+        xhr.onerror = () => {
+            item.label.textContent = 'Koneksi terputus sebelum berkas terkirim.';
+            item.li.classList.add('is-failed');
+            resolve(false);
+        };
+
+        xhr.send(data);
+    });
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        if (!antrean.length) return;
+
+        if (!el.drama.value) {
+            galat('Pilih drama tujuan lebih dulu.');
+            return;
+        }
+
+        if (mode() === 'manual' && !el.provider.value) {
+            galat('Mode Manual memerlukan storage provider yang dipilih.');
+            return;
+        }
+
+        if (kind() === 'video' && antrean.some((i) => !i.pilih?.value)) {
+            galat('Masih ada berkas yang belum dipetakan ke episode.');
+            return;
+        }
+
+        galat(null);
+
+        el.submit.disabled = true;
+        el.clear.disabled = true;
+        el.input.disabled = true;
+        antrean.forEach((i) => { i.buang.disabled = true; if (i.pilih) i.pilih.disabled = true; });
+
+        let berhasil = 0;
+        let gagal = 0;
+
+        for (const item of antrean) {
+            // Kegagalan satu berkas TIDAK menghentikan yang lain — inilah
+            // tempat janji itu ditepati di sisi peramban.
+            const ok = await kirimSatu(item);
+
+            ok ? berhasil++ : gagal++;
+        }
+
+        el.summary.hidden = false;
+        el.summary.textContent =
+            `${berhasil} berkas masuk antrean, ${gagal} ditolak. `
+            + 'Masuk antrean belum berarti tersimpan — pengirimannya ke storage '
+            + 'provider berjalan di latar belakang.';
+
+        const tautan = document.createElement('a');
+        tautan.href = form.dataset.queueUrl;
+        tautan.className = 'btn btn-ghost btn-sm';
+        tautan.textContent = 'Lihat Upload Queue';
+        el.summary.appendChild(tautan);
+
+        el.clear.disabled = false;
+        el.input.disabled = false;
+
+        if (batchUuid) pantauBatch();
+    });
+
+    /**
+     * Pantau nasib seluruh pekerjaan batch sampai semuanya final.
+     *
+     * Satu permintaan untuk seluruh batch, bukan satu per pekerjaan. Berhenti
+     * sendiri ketika tidak ada lagi yang berubah — polling yang tidak pernah
+     * berhenti akan terus berjalan selama tab dibiarkan terbuka.
+     */
+    const pantauBatch = () => {
+        const url = (form.dataset.statusUrl || '').replace(PENAMPUNG_UUID, batchUuid);
+
+        if (!url) return;
+
+        const timer = setInterval(async () => {
+            try {
+                const res = await fetch(url, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' },
+                });
+
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+                const json = await res.json();
+
+                (json.data || []).forEach((row) => {
+                    const item = antrean.find((i) => i.uuid === row.uuid);
+                    if (!item) return;
+
+                    item.label.textContent = row.error
+                        ? `${row.status_text}: ${row.error}`
+                        : row.status_text;
+
+                    item.li.classList.toggle('is-failed', row.status === 'failed');
+                    item.li.classList.toggle('is-done', row.status === 'success');
+                });
+
+                if (json.done) {
+                    clearInterval(timer);
+
+                    el.summary.textContent =
+                        `Selesai: ${json.ringkasan.sukses} berhasil, `
+                        + `${json.ringkasan.gagal} gagal dari ${json.ringkasan.total} berkas.`;
+                }
+            } catch {
+                // Satu kali gagal menanyakan tidak menghentikan pemantauan.
+                // Percobaan berikutnya akan menanyakannya lagi.
+            }
+        }, 4000);
+    };
+
+    /*
+    |--------------------------------------------------------------------------
+    | Peristiwa
+    |--------------------------------------------------------------------------
+    */
+
+    el.kinds.forEach((r) => r.addEventListener('change', () => { perbaruiJenis(); muatEpisode(); }));
+    el.modes.forEach((r) => r.addEventListener('change', perbaruiMode));
+    el.assetType?.addEventListener('change', perbaruiJenis);
+    el.drama?.addEventListener('change', muatEpisode);
+
+    el.input?.addEventListener('change', () => {
+        tambahBerkas(el.input.files);
+
+        // Kotak dikosongkan supaya berkas yang sama bisa dipilih lagi setelah
+        // dikeluarkan dari daftar. Tanpa ini, event `change` tidak menyala
+        // untuk pilihan yang identik dengan sebelumnya.
+        el.input.value = '';
+    });
+
+    el.clear?.addEventListener('click', () => {
+        antrean = [];
+        batchUuid = null;
+        el.summary.hidden = true;
+        el.submit.disabled = false;
+        galat(null);
+        gambarUlang();
+    });
+
+    ['dragenter', 'dragover'].forEach((ev) =>
+        el.dropzone?.addEventListener(ev, (e) => {
+            e.preventDefault();
+            el.dropzone.classList.add('is-dragging');
+        })
+    );
+
+    ['dragleave', 'drop'].forEach((ev) =>
+        el.dropzone?.addEventListener(ev, (e) => {
+            e.preventDefault();
+            el.dropzone.classList.remove('is-dragging');
+        })
+    );
+
+    el.dropzone?.addEventListener('drop', (e) => {
+        if (e.dataTransfer?.files?.length) tambahBerkas(e.dataTransfer.files);
+    });
+
+    perbaruiJenis();
+    perbaruiMode();
 }

@@ -257,6 +257,45 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         /*
         |----------------------------------------------------------------------
+        | Batch Upload (Sprint 7.9)
+        |
+        | Banyak berkas sekali jalan, seluruhnya lewat antrean yang sama dengan
+        | unggahan satuan. Tiap berkas dikirim sebagai permintaan tersendiri —
+        | itulah cara progress per berkas dan "satu gagal, yang lain tetap
+        | jalan" dijamin sekaligus. Alasan lengkapnya di
+        | StoreBatchUploadRequest.
+        |
+        | Didaftarkan SEBELUM grup `upload/{uuid}` di bawah. Bukan keharusan —
+        | `whereUuid()` sudah membuat "batch" tidak mungkin tertangkap sebagai
+        | uuid — tetapi urutan ini membuat maksudnya terbaca tanpa perlu
+        | memeriksa batasan route di bawahnya.
+        |
+        | Nama grupnya `batch.`, bukan `upload.batch.`, supaya menu sidebar
+        | Upload Queue tidak ikut tersorot saat halaman ini dibuka: penanda
+        | aktif di layout admin memakai `routeIs('admin.upload.*')`.
+        |----------------------------------------------------------------------
+        */
+        Route::controller(Admin\BatchUploadController::class)
+            ->prefix('upload/batch')->name('batch.')
+            ->group(function () {
+
+                Route::get('/', 'form')->name('form')
+                    ->middleware('permission:upload.manage,episode.manage');
+
+                Route::post('/', 'store')->name('store')
+                    ->middleware('permission:upload.manage,episode.manage');
+
+                // Status seluruh berkas satu batch dalam satu permintaan.
+                // Dipanggil berkala selama batch berjalan; menanyakannya satu
+                // per satu lewat admin.upload.show akan berarti dua puluh
+                // permintaan setiap beberapa detik.
+                Route::get('/{batch}/status', 'status')->name('status')
+                    ->whereUuid('batch')
+                    ->middleware('permission:upload.view,episode.manage');
+            });
+
+        /*
+        |----------------------------------------------------------------------
         | Upload Queue (Sprint 7.7)
         |
         | Riwayat pekerjaan unggah beserta Retry, Cancel, dan Hapus.
@@ -291,6 +330,51 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
                 Route::delete('/{uuid}', 'destroy')->name('destroy')->whereUuid('uuid')
                     ->middleware('permission:upload.manage,episode.manage');
+            });
+
+        /*
+        |----------------------------------------------------------------------
+        | File Manager (Sprint 7.8)
+        |
+        | Satu daftar untuk seluruh berkas yang dikenal aplikasi, dibaca dari
+        | `episode_videos` dan `drama_assets` sekaligus. Seluruh operasinya —
+        | rename, move, delete, unduh — lewat StorageEngineInterface.
+        |
+        | Parameternya SEPASANG (`{source}/{id}`), bukan satu referensi
+        | gabungan seperti `episode_video:12`. Titik dua di dalam segmen URL
+        | selamat melewati router, tetapi `route()` meng-encode-nya menjadi
+        | `%3A` dan hasilnya berbeda-beda antar proxy — bentuk dua segmen tidak
+        | punya masalah itu sama sekali. `whereIn` menjaga agar sumber yang
+        | tidak dikenal ditolak router, bukan menjadi query ke database.
+        |
+        | `show` membalas JSON: pratayang gambar dan tombol Salin URL
+        | memerlukan URL bertanda tangan yang tidak boleh ikut dirender di
+        | halaman daftar.
+        |----------------------------------------------------------------------
+        */
+        Route::controller(Admin\FileManagerController::class)
+            ->prefix('files')->name('files.')
+            ->whereIn('source', ['episode_video', 'drama_asset'])
+            ->whereNumber('id')
+            ->group(function () {
+
+                Route::get('/', 'index')->name('index')
+                    ->middleware('permission:storage.view,setting.manage');
+
+                Route::get('/{source}/{id}', 'show')->name('show')
+                    ->middleware('permission:storage.view,setting.manage');
+
+                Route::get('/{source}/{id}/download', 'download')->name('download')
+                    ->middleware('permission:storage.view,setting.manage');
+
+                Route::post('/{source}/{id}/rename', 'rename')->name('rename')
+                    ->middleware('permission:storage.manage,setting.manage');
+
+                Route::post('/{source}/{id}/move', 'move')->name('move')
+                    ->middleware('permission:storage.manage,setting.manage');
+
+                Route::delete('/{source}/{id}', 'destroy')->name('destroy')
+                    ->middleware('permission:storage.manage,setting.manage');
             });
 
         // --- Pengguna: daftar, detail, dan tindakan ---
@@ -344,6 +428,40 @@ Route::prefix('admin')->name('admin.')->group(function () {
         | sebagai bug.
         |----------------------------------------------------------------------
         */
+        /*
+        |----------------------------------------------------------------------
+        | Storage Monitoring (Sprint 7.8)
+        |
+        | Halaman pengamatan: jumlah provider, keadaan koneksi, jumlah dan
+        | ukuran berkas, unggahan hari ini dan bulan ini.
+        |
+        | Didaftarkan SEBELUM grup `storage/{id}` di bawah. Sama seperti Batch
+        | Upload, ini bukan keharusan — `{id}` sudah dibatasi whereNumber
+        | sehingga "monitor" tidak mungkin tertangkap sebagai id — tetapi
+        | urutannya membuat maksudnya terbaca langsung.
+        |
+        | `test` di sini POST dengan alasan yang sama seperti di Storage
+        | Manager: Test Connection menulis lalu menghapus berkas uji di bucket,
+        | dan sebagai GET ia bisa terpicu prefetch peramban.
+        |----------------------------------------------------------------------
+        */
+        Route::controller(Admin\StorageMonitorController::class)
+            ->prefix('storage/monitor')->name('storage-monitor.')
+            ->group(function () {
+
+                Route::get('/', 'index')->name('index')
+                    ->middleware('permission:storage.view,setting.manage');
+
+                // Membaca ulang database saja. TIDAK menghubungi provider mana
+                // pun — menguji koneksi adalah tombol yang berbeda, dengan
+                // biaya dan waktu tunggu yang berbeda pula.
+                Route::get('/refresh', 'refresh')->name('refresh')
+                    ->middleware('permission:storage.view,setting.manage');
+
+                Route::post('/{id}/test', 'test')->name('test')->whereNumber('id')
+                    ->middleware('permission:storage.manage,setting.manage');
+            });
+
         Route::controller(Admin\StorageController::class)
             ->prefix('storage')->name('storage.')
             ->group(function () {

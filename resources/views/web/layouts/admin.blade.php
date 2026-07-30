@@ -32,6 +32,9 @@
             // alternatif dengan alasan yang sama seperti route-nya — izin
             // `upload.view` belum ada sampai RoleSeeder dijalankan ulang.
             ['route' => 'admin.upload.index',  'icon' => 'clock',  'label' => 'Upload Queue', 'can' => ['upload.view', 'episode.manage']],
+            // Batch Upload duduk di sebelah Upload Queue karena keduanya satu
+            // alur: unggah banyak berkas di sini, lihat nasibnya di sana.
+            ['route' => 'admin.batch.form',    'icon' => 'plus',   'label' => 'Batch Upload', 'can' => ['upload.manage', 'episode.manage']],
         ]],
         ['group' => 'Anggota', 'items' => [
             ['route' => 'admin.membership.index',  'icon' => 'card',  'label' => 'Membership', 'can' => 'membership.manage'],
@@ -50,6 +53,12 @@
             // `setting.manage` sebagai alternatif menu ini akan tersembunyi
             // di server yang baru di-deploy.
             ['route' => 'admin.storage.index', 'icon' => 'database', 'label' => 'Storage Manager', 'can' => ['storage.view', 'setting.manage']],
+            // Nama route-nya `admin.storage-monitor.*`, bukan
+            // `admin.storage.monitor.*`, supaya penanda aktif Storage Manager
+            // di bawah — yang memakai `routeIs('admin.storage.*')` — tidak
+            // ikut menyala ketika halaman ini yang sedang dibuka.
+            ['route' => 'admin.storage-monitor.index', 'icon' => 'activity', 'label' => 'Storage Monitoring', 'can' => ['storage.view', 'setting.manage']],
+            ['route' => 'admin.files.index',  'icon' => 'file',     'label' => 'File Manager', 'can' => ['storage.view', 'setting.manage']],
             ['route' => 'admin.settings',    'icon' => 'settings', 'label' => 'Pengaturan',   'can' => 'setting.manage'],
         ]],
     ];

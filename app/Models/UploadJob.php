@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\DramaAssetType;
 use App\Enums\UploadStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -21,10 +22,13 @@ class UploadJob extends Model
 {
     protected $fillable = [
         'uuid',
+        'batch_uuid',
         'type',
         'episode_id',
+        'drama_id',
         'requested_provider_id',
         'storage_mode',
+        'asset_type',
         'status',
         'original_filename',
         'extension',
@@ -36,6 +40,7 @@ class UploadJob extends Model
         'queue_connection',
         'queue_name',
         'episode_video_id',
+        'drama_asset_id',
         'error_class',
         'error_message',
         'duration_ms',
@@ -48,8 +53,10 @@ class UploadJob extends Model
 
     protected $casts = [
         'episode_id'            => 'integer',
+        'drama_id'              => 'integer',
         'requested_provider_id' => 'integer',
         'episode_video_id'      => 'integer',
+        'drama_asset_id'        => 'integer',
         'created_by'            => 'integer',
         'size'                  => 'integer',
         'attempts'              => 'integer',
@@ -64,6 +71,9 @@ class UploadJob extends Model
 
     /** Jenis unggahan yang sudah diimplementasikan. */
     public const TYPE_EPISODE_VIDEO = 'episode_video';
+
+    /** Aset drama lewat antrean — ditambahkan Sprint 7.9 (Batch Upload). */
+    public const TYPE_DRAMA_ASSET = 'drama_asset';
 
     /*
     |--------------------------------------------------------------------------
@@ -81,9 +91,19 @@ class UploadJob extends Model
         return $this->belongsTo(StorageProvider::class, 'requested_provider_id');
     }
 
+    public function drama(): BelongsTo
+    {
+        return $this->belongsTo(Drama::class);
+    }
+
     public function video(): BelongsTo
     {
         return $this->belongsTo(EpisodeVideo::class, 'episode_video_id');
+    }
+
+    public function asset(): BelongsTo
+    {
+        return $this->belongsTo(DramaAsset::class, 'drama_asset_id');
     }
 
     public function creator(): BelongsTo
@@ -117,6 +137,12 @@ class UploadJob extends Model
             UploadStatus::PENDING->value,
             UploadStatus::PROCESSING->value,
         ]);
+    }
+
+    /** Seluruh pekerjaan dalam satu batch, urut sesuai pengirimannya. */
+    public function scopeBatch(Builder $query, string $batchUuid): Builder
+    {
+        return $query->where('batch_uuid', $batchUuid)->orderBy('id');
     }
 
     /*
@@ -176,9 +202,20 @@ class UploadJob extends Model
         return sprintf('%s %s', round($size, $i > 1 ? 2 : 0), $units[$i]);
     }
 
-    /** Label episode untuk tabel: "Judul Drama — Episode 07". */
+    /**
+     * Tujuan pekerjaan, untuk kolom di tabel panel.
+     *
+     * Bentuknya berbeda per jenis: video menyebut episode, aset menyebut
+     * drama dan jenis asetnya. Dipilih di sini dan bukan di Blade supaya
+     * halaman Upload Queue — yang sudah ada sejak 7.7 dan tidak tahu apa-apa
+     * tentang aset — ikut menampilkan yang benar tanpa disunting.
+     */
     public function getTargetLabelAttribute(): string
     {
+        if ($this->type === self::TYPE_DRAMA_ASSET) {
+            return $this->assetTargetLabel();
+        }
+
         $episode = $this->episode;
 
         if ($episode === null) {
@@ -190,6 +227,20 @@ class UploadJob extends Model
             $episode->drama?->title ?: 'Tanpa drama',
             str_pad((string) (int) $episode->episode_number, 2, '0', STR_PAD_LEFT)
         );
+    }
+
+    protected function assetTargetLabel(): string
+    {
+        $drama = $this->drama;
+
+        if ($drama === null) {
+            return 'Drama sudah dihapus';
+        }
+
+        $jenis = DramaAssetType::tryFrom((string) $this->asset_type)?->label()
+            ?: 'Aset';
+
+        return sprintf('%s — %s', $drama->title, $jenis);
     }
 
     /** Keterangan tujuan penyimpanan yang diminta. */
