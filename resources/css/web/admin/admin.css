@@ -695,3 +695,101 @@ a.stat-card:hover .stat-icon{ color:var(--gold); }
     .asset-items-grid{ grid-template-columns:1fr; }
     .asset-head{ flex-direction:column; }
 }
+
+/* ==========================================================================
+   Upload Queue (Sprint 7.7)
+   ========================================================================== */
+
+/* Badge status pekerjaan. Warnanya dipetakan dari UploadStatus::badgeClass(),
+   bukan ditebak di Blade, supaya menambah satu case enum tidak meninggalkan
+   badge tanpa warna di halaman yang tidak ikut disunting.
+
+   `success` memakai .badge-on dan `failed` memakai .badge-off yang sudah ada —
+   keduanya sudah berarti persis itu di seluruh panel, dan menambahkan warna
+   kelima dan keenam hanya akan membuat halaman ini bicara bahasa sendiri. */
+.badge-pending{
+    color:var(--text-secondary);
+    border-color:var(--border);
+    background:rgba(155,147,166,.06);
+}
+.badge-processing{
+    color:var(--gold);
+    border-color:rgba(217,175,110,.35);
+    background:rgba(217,175,110,.10);
+}
+.badge-cancelled{
+    color:var(--text-muted);
+    border-color:var(--border-soft);
+    background:transparent;
+}
+
+/* Catatan konfigurasi antrean di atas tabel. Bukan hiasan: nama antrean yang
+   tidak didengarkan worker adalah penyebab paling sering dari pekerjaan yang
+   menggantung, dan tidak ada tempat lain yang menyebutkannya. */
+.queue-note{
+    display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+    margin:0 0 14px;
+    padding:10px 14px;
+    border:1px solid var(--border-soft);
+    border-radius:var(--radius-s);
+    background:var(--bg-secondary);
+    font-size:12.5px; line-height:1.7;
+    color:var(--text-secondary);
+}
+.queue-note code{
+    font-family:var(--font-mono);
+    color:var(--gold-bright);
+}
+
+/* Keadaan pekerjaan di halaman unggah video. Terpisah dari progress bar di
+   atasnya karena mengukur hal yang berbeda: progress bar mengukur pengiriman
+   peramban ke server, baris ini melaporkan pengiriman server ke provider. */
+.queue-status{
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    margin-top:12px;
+    padding:10px 14px;
+    border:1px solid var(--border-soft);
+    border-radius:var(--radius-s);
+    background:var(--bg-secondary);
+    font-size:12.5px;
+    color:var(--text-secondary);
+}
+
+.queue-detail{ margin-top:18px; }
+
+.queue-error{
+    white-space:pre-wrap;
+    word-break:break-word;
+    font-family:var(--font-mono);
+    font-size:12px;
+}
+
+.queue-log{
+    list-style:none;
+    margin:14px 0 0;
+    padding:0;
+    display:flex; flex-direction:column; gap:2px;
+}
+.queue-log-item{
+    display:flex; gap:12px; align-items:baseline; flex-wrap:wrap;
+    padding:7px 10px;
+    border-left:2px solid var(--border);
+    background:var(--bg-primary);
+    font-size:12px; line-height:1.6;
+    color:var(--text-secondary);
+    word-break:break-word;
+}
+.queue-log-time{
+    flex:0 0 auto;
+    font-family:var(--font-mono);
+    font-size:11px;
+    color:var(--text-muted);
+}
+.log-info{ border-left-color:var(--border); }
+.log-warn{ border-left-color:var(--gold); color:var(--gold-bright); }
+.log-error{ border-left-color:var(--crimson); color:var(--crimson); }
+
+@media (max-width:640px){
+    .queue-status{ flex-direction:column; align-items:flex-start; }
+    .queue-log-item{ flex-direction:column; gap:2px; }
+}

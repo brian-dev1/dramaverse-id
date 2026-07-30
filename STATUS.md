@@ -1,9 +1,47 @@
 # DramaVerse ID — Status Proyek
 
 **Berkas ini untuk dibaca lebih dulu saat memulai sesi baru.**
-Tempel isinya, atau cukup minta: *"baca STATUS.md di folder ini."*
 
-Terakhir diperbarui: 30 Juli 2026
+Terakhir diperbarui: 31 Juli 2026
+
+---
+
+## Memulai sesi baru
+
+Kalimat pembuka yang cukup, tanpa perlu menjelaskan apa pun lagi:
+
+> Baca `STATUS.md` di folder ini sampai habis, lalu ikuti seluruh aturan di
+> dalamnya. Sesudah itu tunggu spesifikasi sprint dari saya.
+
+Yang WAJIB dilakukan asisten sebelum menulis satu baris kode:
+
+1. Baca `STATUS.md` **sampai habis** — termasuk "Bug diketahui" dan
+   "Batasan asisten" di bagian bawah.
+2. Baca berkas `SPRINT-*-SELESAI.md` yang relevan dengan pekerjaan berikutnya.
+   Sprint terakhir yang selesai adalah **7.7** (`SPRINT-7-7-SELESAI.md`).
+3. Jalankan keempat alat verifikasi lebih dulu, untuk tahu keadaan awal yang
+   bersih. Kalau ada yang GAGAL sejak awal, laporkan sebelum menambah apa pun.
+
+Yang WAJIB dilakukan asisten sebelum menyatakan selesai:
+
+1. Jalankan keempat alat verifikasi lagi — semuanya harus lolos.
+2. Lakukan **self-audit** khusus sprint itu, dan laporkan hasilnya apa adanya
+   termasuk yang GAGAL palsu karena cacat skrip auditnya sendiri.
+3. Tulis `SPRINT-<nomor>-SELESAI.md` berisi keputusan desain **beserta
+   alasannya**, bug yang ditemukan, dan apa yang sengaja tidak dikerjakan.
+4. Perbarui `STATUS.md`: ringkasan sprint, angka terkini, bug baru yang
+   diketahui.
+5. Hapus `.git/index.lock` (lihat catatan di bawah).
+6. Tutup dengan dua blok perintah PC/VPS + daftar yang harus dilihat di browser.
+
+**`.git/index.lock` sering tersangkut** setelah asisten menyentuh berkas.
+Selama berkas itu ada, `git add` maupun `git commit` di PC akan gagal dengan
+*"Another git process seems to be running"*. Asisten harus menghapusnya di
+akhir setiap sprint. Kalau terlanjur tertinggal, di PowerShell:
+
+```powershell
+Remove-Item C:\ProjectDrama\dramaverse-id\.git\index.lock
+```
 
 ---
 
@@ -177,8 +215,33 @@ progress, pratayang, ganti, dan hapus.
 dari domain yang sama dengan panel admin.
 Detail: `SPRINT-7-6-SELESAI.md`.
 
-**Angka saat ini:** 145 route, 20 controller admin, 21 view admin,
-34 migration, 11 middleware, 222 kelas CSS, 26 interface repository.
+### Sprint 7.7 — Queue & Background Upload
+Pengiriman video episode ke storage provider pindah ke background lewat
+Laravel Queue. Halaman `/admin/upload` berisi riwayat pekerjaan dengan lima
+status (Menunggu, Diproses, Berhasil, Gagal, Dibatalkan), Retry, Cancel,
+Hapus, dan log per pekerjaan. Storage Engine (7.4) dan `EpisodeVideoService`
+(7.5) **tidak diubah satu baris pun** — rantainya tetap
+Job → EpisodeVideoService → StorageEngineInterface.
+Detail: `SPRINT-7-7-SELESAI.md`.
+
+**Yang dipindahkan ke background hanya bagian keduanya.** Pengiriman peramban
+ke server tetap di dalam request — byte-nya datang lewat request itu sendiri
+dan tidak bisa dipindahkan rancangan mana pun. Yang berpindah adalah
+pengiriman server ke bucket, dan itulah yang selama ini menggantung berpuluh
+menit.
+
+**Worker WAJIB mendengarkan antrean `uploads`:**
+```
+php artisan queue:work uploads --queue=uploads --timeout=3600 --tries=1
+```
+Worker yang hanya mendengarkan `default` membuat setiap unggahan menggantung
+di status Menunggu **selamanya, tanpa satu pun pesan galat di mana pun**. Nama
+antrean dan koneksinya ditampilkan di halaman Upload Queue supaya bisa
+dicocokkan.
+
+**Angka saat ini:** 158 route, 21 controller admin, 22 view admin,
+36 migration, 11 middleware, 227 kelas CSS, 26 interface repository,
+7 job antrean.
 
 ---
 
@@ -204,6 +267,20 @@ beberapa masih dangkal:
   otomatis melanjutkan
 
 ### Bug diketahui, belum diperbaiki
+- **Berkas staging bisa menumpuk di disk VPS.** Selama pekerjaan unggah belum
+  berhasil, videonya tersimpan dua kali: di `storage/app/upload-queue` dan
+  (nanti) di bucket. Berkas milik pekerjaan **Gagal** sengaja dipertahankan
+  supaya tombol Retry punya bahan. Sepuluh unggahan 3 GB yang gagal berbarengan
+  berarti 30 GB tertahan sampai ada yang mengulang atau menjalankan
+  `php artisan upload:prune`. Perintah itu belum dijadwalkan otomatis.
+- **Baris antrean bisa tersangkut di status Diproses.** Worker yang dimatikan
+  di tengah jalan (restart supervisor, reboot, OOM killer) tidak sempat
+  menjalankan penanganan galat mana pun. Hook `failed()` menangkap kasus batas
+  waktu, tapi tidak menangkap proses yang dibunuh paksa. Yang melepaskannya
+  `upload:prune`, dijalankan manual.
+- **Berkas staging yatim tidak terdeteksi.** Kalau baris `upload_jobs` dihapus
+  langsung dari database (bukan lewat panel), berkasnya tertinggal tanpa ada
+  yang menunjuk. `upload:prune` bekerja dari baris, bukan dari isi folder.
 - **Galeri belum bisa diurutkan ulang.** Kolom `sort_order` sudah ada dan
   terisi urut unggah, tapi belum ada UI seret-lepas untuk mengubahnya.
 - **`EpisodeVideoService` dan `DramaAssetService` berbagi pola yang sama**
@@ -213,7 +290,13 @@ beberapa masih dangkal:
   mengubah keduanya.
 - **Belum ada cara menghapus video episode dari panel.** Mengunggah ulang
   menggantinya (dan menghapus berkas lama), tapi tidak ada tombol untuk
-  melepaskan video tanpa menggantinya.
+  melepaskan video tanpa menggantinya. Menghapus baris di Upload Queue hanya
+  menghapus riwayat dan berkas sementaranya — video yang sudah sampai ke
+  storage provider TIDAK ikut terhapus.
+- **Aset drama (7.6) belum lewat antrean.** Hanya video episode yang
+  diantrekan. Kolom `type` di `upload_jobs` sudah disiapkan untuk itu, tapi
+  jalurnya belum ada — mengunggah sepuluh gambar galeri masih memblokir
+  request sampai semuanya sampai ke bucket.
 - **Checksum belum pernah diverifikasi ulang.** Kolomnya terisi setiap
   unggahan, tapi belum ada perintah yang membandingkannya dengan berkas di
   bucket. Nilainya baru berguna kalau ada yang memeriksanya.
@@ -326,6 +409,10 @@ ditempelkan setiap kali:
 - `php artisan db:seed --class='Database\Seeders\StorageProviderSeeder' --force`
   → di **VPS**, hanya bila ada data referensi baru
 - `php artisan storage:test` → di **VPS**, setiap kali storage disentuh
+- `supervisorctl restart dramaverse-worker:*` → di **VPS**, setiap kali job
+  atau konfigurasi antrean berubah. Worker memuat kode saat dinyalakan, jadi
+  yang lama akan terus menjalankan versi sebelumnya sampai direstart
+- `php artisan upload:prune` → di **VPS**, saat berkas staging perlu dibersihkan
 
 Tutup dengan daftar singkat **apa yang harus dilihat di browser**, karena
 seluruh alat verifikasi proyek ini statis dan tidak pernah merender apa pun.
@@ -346,12 +433,23 @@ view, komponen, layout, `$fillable` vs migration, urutan foreign key,
 binding repository, PSR-4, import CSS, kolom tanggal, form + CSRF, href
 buntu, emoji, kelengkapan `match` enum, dan route di menu sidebar admin.
 
-**Alat verifikasinya sendiri pernah salah.** Dua bug diperbaiki di Sprint 7.1:
-pembatas blok migration di `cols_of()` tidak pernah bekerja (sehingga
-pemeriksaan `$fillable` jauh lebih longgar dari yang terlihat), dan
-pemeriksaan paritas tanda kutip di `check-php-structure.py` menuduh delapan
-berkas sah — termasuk `config/app.php` bawaan Laravel. Perlakukan alat ini
-seperti kode lain: bisa salah, dan perlu diaudit.
+**Alat verifikasinya sendiri sudah tiga kali terbukti salah.** Perlakukan
+seperti kode lain: bisa keliru, dan perlu diaudit.
+
+- **7.1** — pembatas blok migration di `cols_of()` tidak pernah bekerja,
+  sehingga pemeriksaan `$fillable` jauh lebih longgar daripada yang terlihat.
+- **7.1** — pemeriksaan paritas tanda kutip di `check-php-structure.py`
+  menuduh delapan berkas sah, termasuk `config/app.php` bawaan Laravel.
+- **7.6** — `routeparse.py` menghitung `{` dan `}` yang ada **di dalam
+  string**, sehingga `->prefix('drama/{drama}/asset')` membuat prefix nama
+  dibuang dan seluruh route di grup itu dilaporkan mati padahal benar.
+- **7.7** — skrip self-audit sprint itu sendiri menghitung `<form` **di dalam
+  komentar Blade**. Kalimat penjelasan yang memuat kata `<form>` terhitung
+  sebagai tag pembuka yang tidak pernah ditutup, dan menghasilkan dua GAGAL
+  palsu tentang form bersarang.
+
+Pelajarannya: kalau alat melaporkan GAGAL pada kode yang menurut Anda benar,
+periksa alatnya juga — jangan langsung menganggap kodenya yang salah.
 
 **Penting:** semua pemeriksaan ini **statis**. Tidak menjalankan PHP.
 Beberapa kesalahan hanya muncul saat dieksekusi — rekam jejak sprint
@@ -388,15 +486,30 @@ pengguna sungguhan.
 - `composer dump-autoload` setelah menambah helper di `autoload.files`
 - `php artisan storage:link` supaya gambar unggahan tampil
 - Worker antrean harus jalan agar broadcast Telegram terkirim
+- **Worker antrean juga harus mendengarkan `uploads`** sejak Sprint 7.7, kalau
+  tidak setiap unggahan video menggantung di status Menunggu tanpa galat
+- `php artisan upload:prune` sesekali, supaya berkas staging milik unggahan
+  yang gagal tidak menumpuk di disk VPS
 - `RoleSeeder` perlu dijalankan sekali agar peran dan izin terisi
 
 ---
 
 ## Catatan jujur soal batasan asisten
 
-PHP tidak tersedia di lingkungan tempat saya bekerja. Artinya saya
-**tidak pernah menjalankan** `php artisan route:list`, tidak pernah
-merender satu halaman pun, dan tidak pernah mengirim satu form pun.
+Di lingkungan tempat asisten bekerja **tidak tersedia**: PHP, composer,
+MySQL, maupun peramban. Yang ada hanya Python dan Node.
+
+Artinya asisten **tidak pernah menjalankan** `php artisan route:list`, tidak
+pernah menjalankan migration, tidak pernah merender satu halaman pun, dan
+tidak pernah mengirim satu form pun. Seluruh "verifikasi" yang dilaporkannya
+bersifat statis — pembacaan teks, bukan eksekusi.
+
+Konsekuensi praktisnya:
+
+- `composer require` selalu jadi tugas Anda di PC, bukan asisten.
+- Migration baru belum pernah benar-benar dijalankan sampai Anda deploy.
+- Perubahan tampilan belum pernah dilihat sampai Anda membukanya di browser.
+- Kalau asisten menulis "sudah diverifikasi", tanyakan **dengan cara apa**.
 
 Selama pengerjaan, beberapa kesalahan lolos dari pemeriksaan statis dan
 baru muncul saat dieksekusi:

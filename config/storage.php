@@ -194,6 +194,102 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Antrean unggah (Sprint 7.7)
+    |--------------------------------------------------------------------------
+    |
+    | Pengiriman berkas ke storage provider dipindahkan ke background. Yang
+    | masih berjalan di dalam request hanya penerimaan berkas dari peramban —
+    | itu memang tidak bisa dipindahkan, karena byte-nya datang lewat request
+    | itu sendiri.
+    |
+    */
+
+    'queue' => [
+
+        /*
+        | Koneksi antrean.
+        |
+        | Bawaannya `uploads` — koneksi yang ditambahkan di config/queue.php,
+        | isinya sama dengan `database` kecuali `retry_after` yang jauh lebih
+        | panjang. Alasan lengkapnya ada di sana; ringkasnya: dengan
+        | `retry_after` bawaan 90 detik, unggahan yang memakan sepuluh menit
+        | akan dianggap hilang dan diambil ulang berkali-kali selagi masih
+        | berjalan.
+        |
+        | Dikosongkan berarti mengikuti QUEUE_CONNECTION aplikasi. Boleh, tapi
+        | pastikan `retry_after` koneksi itu lebih besar dari
+        | UPLOAD_QUEUE_TIMEOUT.
+        |
+        | Jangan diisi `sync` di produksi: driver sync menjalankan job di dalam
+        | request yang sama, sehingga seluruh sprint ini kehilangan gunanya
+        | tanpa satu pun pesan galat. Berguna justru saat menguji di lokal.
+        */
+        'connection' => env('UPLOAD_QUEUE_CONNECTION', 'uploads') ?: null,
+
+        /*
+        | Nama antrean.
+        |
+        | Dipisahkan dari `default` dengan sengaja. Unggahan video berukuran
+        | gigabyte bisa menahan satu worker selama puluhan menit; kalau
+        | broadcast Telegram dan notifikasi ikut mengantre di belakangnya,
+        | keduanya baru terkirim setelah videonya selesai.
+        |
+        | KONSEKUENSINYA: worker WAJIB mendengarkan antrean ini. Perintahnya
+        | harus memuat `--queue=uploads,default` — worker yang hanya
+        | mendengarkan `default` akan membiarkan setiap unggahan menggantung
+        | di status Pending selamanya, tanpa galat di mana pun.
+        */
+        'name' => env('UPLOAD_QUEUE', 'uploads'),
+
+        /*
+        | Batas waktu satu pekerjaan, dalam detik.
+        |
+        | Harus lebih besar dari waktu terlama yang masuk akal untuk mengirim
+        | satu video ke provider. Satu jam dipilih sebagai bawaan: berkas 4 GB
+        | pada 10 Mbps memerlukan sekitar 55 menit.
+        |
+        | Nilai ini juga harus LEBIH KECIL daripada `retry_after` koneksi
+        | antrean di config/queue.php, kalau tidak antrean akan menganggap
+        | pekerjaannya hilang dan menjalankannya untuk kedua kali sementara
+        | yang pertama masih berjalan — dua unggahan berkas yang sama, ke
+        | bucket yang sama, pada saat yang sama.
+        */
+        'timeout' => (int) env('UPLOAD_QUEUE_TIMEOUT', 3600),
+
+        /*
+        | Berapa kali satu pekerjaan dicoba otomatis sebelum ditandai gagal.
+        |
+        | Bawaannya SATU, dan itu disengaja. Spesifikasi sprint meminta tombol
+        | Retry — pengulangan yang diputuskan admin. Mencoba ulang sendiri
+        | sampai tiga kali berarti berkas 4 GB dikirim tiga kali ke provider
+        | berbayar untuk kegagalan yang sebabnya mungkin kredensial salah, dan
+        | itu tidak akan berubah pada percobaan kedua maupun ketiga.
+        */
+        'tries' => max(1, (int) env('UPLOAD_QUEUE_TRIES', 1)),
+
+        /*
+        | Folder berkas staging, relatif terhadap storage_path().
+        |
+        | Berkas sementara PHP dihapus begitu request berakhir, jadi berkasnya
+        | harus dipindahkan ke tempat yang bertahan sampai worker mengambilnya.
+        |
+        | HARUS berada di bawah storage/ dan TIDAK boleh di bawah
+        | storage/app/public — folder itu tersaji ke publik lewat symlink
+        | public/storage, dan video berbayar yang sedang menunggu antrean akan
+        | bisa diunduh siapa pun yang menebak namanya.
+        */
+        'staging_dir' => trim((string) env('UPLOAD_QUEUE_STAGING', 'app/upload-queue'), '/'),
+
+        /*
+        | Umur maksimum berkas staging milik pekerjaan yang sudah selesai,
+        | dalam hari. Dipakai `php artisan upload:prune`.
+        */
+        'keep_days' => max(1, (int) env('UPLOAD_QUEUE_KEEP_DAYS', 7)),
+
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Batas
     |--------------------------------------------------------------------------
     |

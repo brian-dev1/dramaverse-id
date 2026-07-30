@@ -180,6 +180,164 @@ export default function admin() {
     reorderTable();
     videoUpload();
     assetManager();
+    uploadQueue();
+}
+
+/**
+ * Halaman Upload Queue.
+ *
+ * Dua pekerjaan: membuka rincian beserta log satu pekerjaan, dan menyegarkan
+ * badge status baris yang belum selesai.
+ *
+ * Yang SENGAJA tidak dilakukan: memuat ulang halaman sendiri ketika ada
+ * pekerjaan yang selesai. Admin bisa sedang mengetik di kotak pencarian atau
+ * membaca log yang sedang terbuka, dan halaman yang tiba-tiba berganti akan
+ * membuang keduanya. Yang muncul hanyalah catatan bahwa ada yang berubah,
+ * beserta tautan untuk memuat ulang bila memang diinginkan.
+ */
+function uploadQueue() {
+    const table = document.querySelector('[data-upload-queue]');
+    if (!table) return;
+
+    // Route dibangun di Blade dengan uuid nol sebagai penampung, lalu
+    // ditukar di sini. Nama route tetap menjadi satu-satunya sumber URL —
+    // tidak ada path yang ditulis ulang di JavaScript.
+    const PLACEHOLDER = '00000000-0000-0000-0000-000000000000';
+    const template = table.dataset.statusUrl || '';
+
+    const urlFor = (uuid) => template.replace(PLACEHOLDER, uuid);
+
+    const panel = document.querySelector('[data-detail-panel]');
+    const el = {
+        title: panel?.querySelector('[data-detail-title]'),
+        meta:  panel?.querySelector('[data-detail-meta]'),
+        error: panel?.querySelector('[data-detail-error]'),
+        log:   panel?.querySelector('[data-detail-log]'),
+        close: panel?.querySelector('[data-detail-close]'),
+    };
+
+    const ambil = async (uuid) => {
+        const res = await fetch(urlFor(uuid), {
+            headers: { 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' },
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        return res.json();
+    };
+
+    // --- Rincian ---
+    table.addEventListener('click', async (e) => {
+        const btn = e.target.closest('[data-detail]');
+        if (!btn || !panel) return;
+
+        el.title.textContent = 'Memuat rincian…';
+        el.meta.textContent = '';
+        el.error.hidden = true;
+        el.log.innerHTML = '';
+        panel.hidden = false;
+        panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+        try {
+            const { data, logs } = await ambil(btn.dataset.detail);
+
+            el.title.textContent = data.filename;
+
+            el.meta.textContent =
+                `${data.episode} — ${data.storage} — ${data.size_human} — `
+                + `${data.status_text}, percobaan ${data.attempts} dari ${data.max_attempts}`
+                + (data.duration_ms ? ` — ${(data.duration_ms / 1000).toFixed(1)} detik` : '');
+
+            if (data.error) {
+                el.error.hidden = false;
+                el.error.textContent = data.error;
+            }
+
+            (logs || []).forEach((entry) => {
+                const li = document.createElement('li');
+                li.className = `queue-log-item ${entry.class}`;
+
+                const waktu = document.createElement('span');
+                waktu.className = 'queue-log-time';
+                waktu.textContent = entry.at || '';
+
+                const teks = document.createElement('span');
+                teks.textContent = `${entry.event}: ${entry.message || '(tanpa pesan)'}`;
+
+                li.appendChild(waktu);
+                li.appendChild(teks);
+                el.log.appendChild(li);
+            });
+
+            if (!logs || !logs.length) {
+                const li = document.createElement('li');
+                li.className = 'queue-log-item log-info';
+                li.textContent = 'Belum ada catatan untuk pekerjaan ini.';
+                el.log.appendChild(li);
+            }
+        } catch (err) {
+            el.title.textContent = 'Rincian gagal dimuat';
+            el.error.hidden = false;
+            el.error.textContent =
+                'Muat ulang halaman lalu coba lagi. Penyebab: ' + err.message;
+        }
+    });
+
+    el.close?.addEventListener('click', () => { panel.hidden = true; });
+
+    // --- Segarkan badge baris yang belum selesai ---
+    let catatan = null;
+
+    const beriTahuBerubah = () => {
+        if (catatan) return;
+
+        catatan = document.createElement('p');
+        catatan.className = 'queue-note';
+        catatan.textContent =
+            'Ada pekerjaan yang berubah status. Muat ulang halaman supaya tombol '
+            + 'aksinya ikut menyesuaikan.';
+
+        const tautan = document.createElement('a');
+        tautan.href = window.location.href;
+        tautan.className = 'btn btn-ghost btn-sm';
+        tautan.textContent = 'Muat ulang';
+
+        catatan.appendChild(tautan);
+        table.parentNode.insertBefore(catatan, table);
+    };
+
+    const segarkan = async () => {
+        const rows = [...table.querySelectorAll('tr[data-job]')]
+            .filter((row) => !row.dataset.final);
+
+        if (!rows.length) {
+            clearInterval(timer);
+            return;
+        }
+
+        for (const row of rows) {
+            try {
+                const { data } = await ambil(row.dataset.job);
+
+                const cell = row.querySelector('[data-status-cell]');
+
+                if (cell && cell.textContent.trim() !== data.status_text) {
+                    cell.textContent = data.status_text;
+                    cell.className = `badge badge-status ${data.badge}`;
+                }
+
+                if (data.final) {
+                    row.dataset.final = '1';
+                    beriTahuBerubah();
+                }
+            } catch {
+                // Satu baris yang gagal ditanyakan tidak boleh menghentikan
+                // yang lain. Percobaan berikutnya akan menanyakannya lagi.
+            }
+        }
+    };
+
+    const timer = setInterval(segarkan, 4000);
 }
 
 /**
@@ -617,6 +775,9 @@ function videoUpload() {
         submit:     form.querySelector('[data-submit]'),
         providers:  form.querySelector('[data-provider]'),
         wrap:       form.querySelector('[data-provider-wrap]'),
+        queue:      form.querySelector('[data-queue-status]'),
+        queueBadge: form.querySelector('[data-queue-badge]'),
+        queueText:  form.querySelector('[data-queue-text]'),
     };
 
     const maxKb = Number(form.dataset.maxKb || 0);
@@ -628,6 +789,107 @@ function videoUpload() {
         el.result.hidden = false;
         el.result.className = `upload-result upload-result-${kind}`;
         el.result.textContent = text;
+    };
+
+    /*
+     * --- Pengamat antrean (Sprint 7.7) ---
+     *
+     * Sejak unggahan diantrekan, respons server datang JAUH sebelum berkasnya
+     * sampai ke storage provider. Tanpa bagian ini, halaman akan mengatakan
+     * "berhasil" pada saat yang belum ada satu byte pun terkirim ke bucket —
+     * dan kegagalan di worker tidak akan pernah terlihat oleh yang mengunggah.
+     *
+     * Polling berhenti sendiri begitu statusnya final, dan menyerah setelah
+     * lima kegagalan berturut-turut supaya tab yang ditinggalkan terbuka tidak
+     * memanggil server selamanya.
+     */
+    let pollTimer = null;
+
+    const showQueue = (badge, text, kelas) => {
+        if (!el.queue) return;
+
+        el.queue.hidden = false;
+
+        if (el.queueBadge) {
+            el.queueBadge.className = `badge badge-status ${kelas || 'badge-pending'}`;
+            el.queueBadge.textContent = badge;
+        }
+
+        if (el.queueText) el.queueText.textContent = text;
+    };
+
+    const pesanUntuk = (data) => {
+        if (data.status === 'pending') {
+            return 'Menunggu worker mengambil pekerjaannya. Halaman ini boleh ditutup.';
+        }
+        if (data.status === 'processing') {
+            return 'Worker sedang mengirim berkas ke storage provider.';
+        }
+        if (data.status === 'success') {
+            return `Selesai dalam ${((data.duration_ms || 0) / 1000).toFixed(1)} detik.`;
+        }
+        if (data.status === 'cancelled') {
+            return 'Dibatalkan sebelum diproses.';
+        }
+        return data.error || 'Gagal tanpa pesan. Buka Upload Queue untuk log lengkapnya.';
+    };
+
+    const watchJob = (url) => {
+        clearInterval(pollTimer);
+
+        showQueue('Menunggu', 'Menunggu worker mengambil pekerjaannya.', 'badge-pending');
+
+        let gagalBerturut = 0;
+
+        const tanya = async () => {
+            try {
+                const res = await fetch(url, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' },
+                });
+
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+                const { data } = await res.json();
+
+                gagalBerturut = 0;
+
+                showQueue(data.status_text, pesanUntuk(data), data.badge);
+
+                if (!data.final) return;
+
+                clearInterval(pollTimer);
+
+                if (data.status === 'success') {
+                    setProgressBar(100, 'Selesai. Video sudah ada di storage provider.');
+                    say('Video tersimpan di storage provider.', 'success');
+                } else {
+                    say(pesanUntuk(data), data.status === 'cancelled' ? 'warn' : 'error');
+                }
+            } catch (err) {
+                if (++gagalBerturut < 5) return;
+
+                clearInterval(pollTimer);
+
+                showQueue(
+                    'Tidak diketahui',
+                    'Status pekerjaan tidak bisa ditanyakan. Buka Upload Queue untuk memeriksanya.',
+                    'badge-off'
+                );
+            }
+        };
+
+        tanya();
+        pollTimer = setInterval(tanya, 3000);
+    };
+
+    // Progress bar dipakai dua tempat — saat mengirim, dan saat pekerjaan
+    // selesai di antrean — jadi pengaturnya diangkat ke sini.
+    const setProgressBar = (percent, text) => {
+        if (el.bar) {
+            el.bar.style.width = `${percent}%`;
+            el.bar.setAttribute('aria-valuenow', String(Math.round(percent)));
+        }
+        if (el.label) el.label.textContent = text;
     };
 
     // --- Mode Auto / Manual ---
@@ -813,18 +1075,15 @@ function videoUpload() {
         const xhr = new XMLHttpRequest();
         const body = new FormData(form);
 
+        clearInterval(pollTimer);
+
         el.submit.disabled = true;
         el.submit.textContent = 'Mengunggah…';
         if (el.progress) el.progress.hidden = false;
         if (el.result) el.result.hidden = true;
+        if (el.queue) el.queue.hidden = true;
 
-        const setProgress = (percent, text) => {
-            if (el.bar) {
-                el.bar.style.width = `${percent}%`;
-                el.bar.setAttribute('aria-valuenow', String(Math.round(percent)));
-            }
-            if (el.label) el.label.textContent = text;
-        };
+        const setProgress = setProgressBar;
 
         xhr.upload.addEventListener('progress', (ev) => {
             if (!ev.lengthComputable) return;
@@ -834,11 +1093,12 @@ function videoUpload() {
             setProgress(percent, `${percent.toFixed(0)}% — ${mb(ev.loaded)} dari ${mb(ev.total)}`);
         });
 
-        // Pengiriman selesai bukan berarti selesai: server masih menghitung
-        // checksum dan meneruskan berkas ke provider. Tanpa pesan ini, progress
-        // bar berhenti di 100% dan terlihat seperti menggantung.
+        // Pengiriman selesai bukan berarti selesai. Sejak Sprint 7.7 yang
+        // terjadi berikutnya bukan lagi penyimpanan ke provider, melainkan
+        // penyimpanan sementara di server dan pendaftaran ke antrean — jauh
+        // lebih cepat, tapi tetap bukan nol.
         xhr.upload.addEventListener('load', () => {
-            setProgress(100, 'Terkirim. Server sedang menyimpan ke storage provider…');
+            setProgress(100, 'Terkirim ke server. Mendaftarkan ke antrean…');
         });
 
         const selesai = () => {
@@ -853,13 +1113,14 @@ function videoUpload() {
             try { payload = JSON.parse(xhr.responseText); } catch { /* bukan JSON */ }
 
             if (xhr.status >= 200 && xhr.status < 300 && payload?.ok) {
-                setProgress(100, 'Selesai.');
-
                 const d = payload.data || {};
 
-                say(`${payload.message}  •  ${d.stored_filename || ''} `
-                    + `(${d.size_human || ''}) • checksum ${String(d.checksum || '').slice(0, 12)}…`,
-                    'success');
+                setProgress(100, 'Masuk antrean. Pengiriman ke storage provider berjalan di latar belakang.');
+
+                // Pesannya sengaja TIDAK berbunyi "tersimpan". Pada titik ini
+                // berkasnya baru sampai di server; yang tersimpan di storage
+                // provider masih nol byte.
+                say(payload.message, 'success');
 
                 el.file.value = '';
                 if (el.facts) el.facts.hidden = true;
@@ -867,6 +1128,9 @@ function videoUpload() {
                     el.fileName.textContent =
                         'Seret berkas ke sini, atau pilih lewat tombol di atas.';
                 }
+
+                if (d.status_url) watchJob(d.status_url);
+
                 return;
             }
 

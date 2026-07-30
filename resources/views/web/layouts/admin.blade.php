@@ -26,6 +26,12 @@
             ['route' => 'admin.genre.index',   'icon' => 'tag',    'label' => 'Genre',   'can' => 'taxonomy.manage'],
             ['route' => 'admin.country.index', 'icon' => 'globe',  'label' => 'Negara',  'can' => 'taxonomy.manage'],
             ['route' => 'admin.banner.index',  'icon' => 'image',  'label' => 'Banner',  'can' => 'taxonomy.manage'],
+            // Ditempatkan di kelompok Katalog, bukan Sistem: yang membukanya
+            // adalah orang yang baru saja mengunggah video, bukan orang yang
+            // sedang mengurus server. `episode.manage` diterima sebagai
+            // alternatif dengan alasan yang sama seperti route-nya — izin
+            // `upload.view` belum ada sampai RoleSeeder dijalankan ulang.
+            ['route' => 'admin.upload.index',  'icon' => 'clock',  'label' => 'Upload Queue', 'can' => ['upload.view', 'episode.manage']],
         ]],
         ['group' => 'Anggota', 'items' => [
             ['route' => 'admin.membership.index',  'icon' => 'card',  'label' => 'Membership', 'can' => 'membership.manage'],

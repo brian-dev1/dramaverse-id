@@ -44,6 +44,41 @@ return [
             'after_commit' => false,
         ],
 
+        /*
+        | Koneksi khusus unggahan besar (Sprint 7.7).
+        |
+        | Sama persis dengan `database` kecuali satu angka: `retry_after`.
+        |
+        | Angka itulah alasan koneksi ini ada. `retry_after` memberi tahu
+        | antrean berapa lama sebuah pekerjaan boleh dipegang worker sebelum
+        | dianggap hilang dan diserahkan ke worker lain. Bawaannya 90 detik —
+        | benar untuk mengirim satu pesan Telegram, dan jauh terlalu pendek
+        | untuk mengirim berkas 4 GB ke bucket, yang bisa memakan puluhan
+        | menit.
+        |
+        | Dengan 90 detik, pekerjaan unggah akan diambil ulang berkali-kali
+        | selagi yang pertama masih berjalan. Penjagaan `markProcessing()` di
+        | UploadQueueService menahan pekerjaan kedua supaya tidak ikut
+        | mengunggah, tetapi antrean tetap akan menghabiskan jatah percobaan
+        | dan menandai pekerjaannya gagal di tengah unggahan yang sebenarnya
+        | sedang berjalan lancar.
+        |
+        | Menaikkan `retry_after` pada koneksi `database` juga bisa, tetapi
+        | akibatnya kena ke semua pekerjaan: pesan Telegram yang benar-benar
+        | hilang karena worker mati baru akan diulang satu jam kemudian.
+        |
+        | Kalau suatu saat pindah ke Redis, ubah `driver` di sini juga —
+        | koneksi ini harus mengikuti koneksi utama, bukan tertinggal.
+        */
+        'uploads' => [
+            'driver' => 'database',
+            'connection' => env('DB_QUEUE_CONNECTION'),
+            'table' => env('DB_QUEUE_TABLE', 'jobs'),
+            'queue' => env('UPLOAD_QUEUE', 'uploads'),
+            'retry_after' => (int) env('UPLOAD_QUEUE_RETRY_AFTER', 3900),
+            'after_commit' => false,
+        ],
+
         'beanstalkd' => [
             'driver' => 'beanstalkd',
             'host' => env('BEANSTALKD_QUEUE_HOST', 'localhost'),

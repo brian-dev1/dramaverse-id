@@ -8,9 +8,9 @@ use App\Http\Requests\Admin\StoreEpisodeVideoRequest;
 use App\Models\Drama;
 use App\Models\Episode;
 use App\Models\StorageProvider;
-use App\Services\EpisodeVideoService;
 use App\Services\Storage\Contracts\StorageEngineInterface;
 use App\Services\Storage\Exceptions\StorageEngineException;
+use App\Services\UploadQueueService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -21,8 +21,25 @@ use Throwable;
  *
  * Controller ini TIDAK menyentuh Storage, tidak tahu driver apa pun, dan tidak
  * pernah menyebut nama disk. Yang dilakukannya hanya tiga hal: memvalidasi
- * masukan (lewat FormRequest), memanggil EpisodeVideoService, dan menerjemahkan
- * hasilnya menjadi respons.
+ * masukan (lewat FormRequest), menyerahkan berkasnya ke antrean, dan
+ * menerjemahkan hasilnya menjadi respons.
+ *
+ * ## Sejak Sprint 7.7: berkasnya diantrekan, bukan dikirim
+ *
+ * `store()` tidak lagi memanggil `EpisodeVideoService` secara langsung.
+ * Berkasnya diterima, disimpan sementara di server, lalu pekerjaannya
+ * diantrekan — dan responsnya kembali dalam hitungan milidetik alih-alih
+ * menahan request selama pengiriman ke bucket berlangsung.
+ *
+ * Yang TIDAK berubah: `EpisodeVideoService` tetap satu-satunya yang menulis
+ * video ke storage, dan ia tetap memanggil `StorageEngineInterface`. Yang
+ * berpindah hanyalah SIAPA yang memanggilnya — dulu request, sekarang worker.
+ *
+ * Perlu ditegaskan karena mudah disalahpahami: pengiriman berkas dari peramban
+ * ke server TIDAK bisa dipindahkan ke background. Byte-nya datang lewat
+ * request itu sendiri. Yang dipindahkan adalah bagian yang lambat dan mahal —
+ * pengiriman dari server ke storage provider — dan itulah yang selama ini
+ * membuat request menggantung berpuluh menit.
  *
  * Unggahannya berjalan lewat XHR dan membalas JSON, bukan redirect. Itu
  * keperluan progress bar: satu-satunya cara mengetahui kemajuan pengiriman
@@ -32,7 +49,7 @@ use Throwable;
 class EpisodeVideoController extends Controller
 {
     public function __construct(
-        protected EpisodeVideoService $service,
+        protected UploadQueueService $queue,
         protected StorageEngineInterface $storage,
     ) {
     }
@@ -60,6 +77,14 @@ class EpisodeVideoController extends Controller
             'maxKb'      => (new StoreEpisodeVideoRequest)->effectiveMaxKb(),
             'extensions' => $collection->extensions(),
             'directory'  => $collection->directory(),
+
+            // Keterangan antrean. Ditampilkan supaya "masuk antrean" tidak
+            // terasa seperti berkas yang menghilang: admin bisa melihat ke
+            // antrean mana pekerjaannya dikirim, dan halaman mana yang
+            // menampilkan nasibnya.
+            'queueName'  => $this->queue->queueName(),
+            'connection' => $this->queue->connectionLabel(),
+            'sync'       => $this->queue->isSynchronous(),
         ]);
     }
 
@@ -98,12 +123,15 @@ class EpisodeVideoController extends Controller
     }
 
     /**
-     * Terima unggahan.
+     * Terima unggahan dan antrekan pengirimannya.
      *
-     * Balasan selalu JSON: `ok` beserta ringkasan hasil, atau `message` yang
-     * bisa langsung ditampilkan. Kegagalan penyimpanan dikembalikan sebagai
-     * 422 dengan pesan yang sudah dirangkai StorageEngineException — pesan itu
-     * menyebut sebab DAN langkah berikutnya, jadi tidak perlu diganti.
+     * Balasannya **202 Accepted**, bukan 200. Kode itu berarti persis apa yang
+     * terjadi: permintaannya diterima, tetapi pekerjaannya belum selesai.
+     * Membalas 200 akan mengatakan hal yang tidak benar — belum ada satu byte
+     * pun yang sampai ke storage provider ketika respons ini dikirim.
+     *
+     * Yang dikembalikan adalah `uuid` pekerjaan beserta URL untuk menanyakan
+     * statusnya. Peramban menanyakannya berkala sampai statusnya final.
      */
     public function store(StoreEpisodeVideoRequest $request): JsonResponse
     {
@@ -111,70 +139,90 @@ class EpisodeVideoController extends Controller
             ->findOrFail($request->integer('episode_id'));
 
         // Judul diperbarui lebih dulu supaya nama berkas yang dibangun service
-        // memakai data episode yang sudah final.
+        // memakai data episode yang sudah final saat worker mengerjakannya.
         if ($request->filled('title') && $request->string('title')->toString() !== (string) $episode->title) {
             $episode->update(['title' => $request->string('title')->toString()]);
         }
 
-        $providerId = $request->input('storage_mode') === 'manual'
+        $mode = $request->input('storage_mode') === 'manual' ? 'manual' : 'auto';
+
+        $providerId = $mode === 'manual'
             ? (int) $request->integer('storage_provider_id')
             : null;
 
-        try {
-            $video = $this->service->upload(
-                $episode,
-                $request->file('video'),
-                $providerId
-            );
-        } catch (StorageEngineException $e) {
-
-            // Penolakan yang sudah dijelaskan: konfigurasi provider, ekstensi,
-            // ukuran, atau penyimpanan menolak permintaannya.
+        // Satu episode tidak boleh punya dua pekerjaan yang berjalan
+        // bersamaan. Keduanya menulis ke baris `episode_videos` yang sama dan
+        // masing-masing menghapus objek yang digantikannya — yang selesai
+        // belakangan bisa menghapus berkas yang baru saja ditulis yang
+        // satunya, dan yang tersisa adalah baris yang menunjuk objek yang
+        // sudah tidak ada.
+        if ($berjalan = $this->queue->activeFor($episode)) {
             return response()->json([
                 'ok'      => false,
-                'message' => $e->getMessage(),
+                'message' => sprintf(
+                    'Episode ini sudah punya unggahan yang %s di antrean (%s). '
+                    .'Tunggu sampai selesai, atau batalkan dulu di halaman Upload Queue.',
+                    $berjalan->status->label(),
+                    $berjalan->original_filename
+                ),
             ], 422);
+        }
 
+        try {
+            $job = $this->queue->queueEpisodeVideo(
+                $episode,
+                $request->file('video'),
+                $mode,
+                $providerId
+            );
         } catch (Throwable $e) {
 
-            // Kegagalan tak terduga. Pesan aslinya TIDAK dikirim ke peramban —
-            // isinya bisa memuat path server atau potongan konfigurasi. Yang
-            // lengkap sudah tercatat di log oleh service.
+            // Hanya satu blok catch di sini, dan itu berubah dari sebelumnya.
+            //
+            // Sampai Sprint 7.6, `store()` menangkap StorageEngineException
+            // secara terpisah karena ia memang memanggil engine. Sekarang
+            // tidak lagi: yang dipanggil hanya penyimpanan sementara dan
+            // pendaftaran ke antrean, dan engine baru berjalan di worker.
+            // Blok catch untuk exception yang tidak mungkin sampai ke sini
+            // hanya akan menjadi kode mati yang terlihat seperti penanganan.
+            //
+            // Kegagalan engine kini muncul di baris antrean sebagai status
+            // Gagal beserta pesannya, bukan sebagai respons HTTP.
+            //
+            // Kegagalan yang mungkin di sini — paling sering: folder storage/ tidak
+            // bisa ditulis. Pesan aslinya TIDAK dikirim ke peramban karena
+            // bisa memuat path server; yang lengkap tercatat di log.
             report($e);
 
             return response()->json([
                 'ok'      => false,
-                'message' => 'Unggahan gagal karena kesalahan di server. '
-                             .'Rinciannya tercatat di log aplikasi.',
+                'message' => 'Berkas gagal disimpan sementara di server, jadi '
+                             .'unggahannya tidak diantrekan. Rinciannya tercatat '
+                             .'di log aplikasi.',
             ], 500);
         }
 
-        $video->loadMissing('provider:id,name,slug,driver');
-
         return response()->json([
-            'ok'      => true,
+            'ok'     => true,
+            'queued' => true,
             'message' => sprintf(
-                'Video episode %s tersimpan di %s.',
-                str_pad((string) $episode->episode_number, 2, '0', STR_PAD_LEFT),
-                $video->provider?->name ?? 'storage provider'
+                'Video episode %s masuk antrean. Pengirimannya ke storage '
+                .'provider berjalan di latar belakang — halaman ini boleh ditutup.',
+                str_pad((string) $episode->episode_number, 2, '0', STR_PAD_LEFT)
             ),
             'data' => [
-                'episode_id'        => $video->episode_id,
-                'provider'          => $video->provider?->name,
-                'provider_id'       => $video->storage_provider_id,
-                'disk'              => $video->disk,
-                'bucket'            => $video->bucket,
-                'object_key'        => $video->object_key,
-                'stored_filename'   => $video->stored_filename,
-                'original_filename' => $video->original_filename,
-                'extension'         => $video->extension,
-                'mime_type'         => $video->mime_type,
-                'size'              => $video->size,
-                'size_human'        => $video->size_for_humans,
-                'checksum'          => $video->checksum,
-                'uploaded_at'       => $video->uploaded_at?->toDateTimeString(),
+                'uuid'       => $job->uuid,
+                'status'     => $job->status->value,
+                'status_url' => route('admin.upload.show', ['uuid' => $job->uuid]),
+                'queue_url'  => route('admin.upload.index'),
+                'queue'      => $job->queue_name,
+                'connection' => $job->queue_connection,
+                'filename'   => $job->original_filename,
+                'size'       => $job->size,
+                'size_human' => $job->size_for_humans,
+                'storage'    => $job->target_storage,
             ],
-        ]);
+        ], 202);
     }
 
     /*

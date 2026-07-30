@@ -17,6 +17,7 @@
           class="admin-form" enctype="multipart/form-data"
           data-video-upload
           data-episodes-url="{{ route('admin.episode.video.episodes', ['drama' => 0]) }}"
+          data-queue-url="{{ route('admin.upload.index') }}"
           data-max-kb="{{ $maxKb }}">
         @csrf
 
@@ -178,6 +179,41 @@
                 </div>
 
                 <div class="upload-result" data-result hidden></div>
+
+                {{--
+                    Keadaan pekerjaan di antrean, diisi JS lewat polling.
+                    Berbeda dari progress bar di atasnya: yang itu mengukur
+                    pengiriman dari peramban ke server, yang ini melaporkan
+                    pengiriman dari server ke storage provider.
+                --}}
+                <div class="queue-status" data-queue-status hidden>
+                    <span class="badge badge-status" data-queue-badge>Menunggu</span>
+                    <span data-queue-text>Menunggu worker mengambil pekerjaannya.</span>
+                    <a href="{{ route('admin.upload.index') }}" class="btn btn-ghost btn-sm">
+                        Lihat antrean
+                    </a>
+                </div>
+
+                {{--
+                    Sejak Sprint 7.7 pengiriman ke storage provider berjalan di
+                    latar belakang. Ditulis terang-terangan di sini karena
+                    kalimat "berhasil diunggah" tanpa keterangan ini akan
+                    dibaca sebagai "videonya sudah ada di bucket" — padahal
+                    yang baru terjadi adalah berkasnya sampai ke server.
+                --}}
+                <p class="field-hint">
+                    @if ($sync)
+                        <strong>Antrean berjalan sinkron</strong> (koneksi
+                        <code>{{ $connection }}</code> memakai driver <code>sync</code>),
+                        jadi unggahan masih memblokir halaman ini. Perbaiki di
+                        <code>.env</code> sebelum mengandalkan latar belakang.
+                    @else
+                        Berkas dikirim ke storage provider di latar belakang lewat
+                        antrean <code>{{ $queueName }}</code>. Begitu masuk antrean,
+                        halaman ini boleh ditutup — nasibnya bisa dilihat kapan saja
+                        di Upload Queue.
+                    @endif
+                </p>
 
                 <div class="form-actions">
                     <button type="submit" class="btn btn-primary" data-submit>

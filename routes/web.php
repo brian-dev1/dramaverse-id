@@ -255,6 +255,44 @@ Route::prefix('admin')->name('admin.')->group(function () {
                     ->name('episodes')->whereNumber('drama');
             });
 
+        /*
+        |----------------------------------------------------------------------
+        | Upload Queue (Sprint 7.7)
+        |
+        | Riwayat pekerjaan unggah beserta Retry, Cancel, dan Hapus.
+        |
+        | Parameternya UUID, bukan id berurut. Route `show` dipanggil berulang
+        | kali sebagai polling dari halaman unggah, dan id berurut di sana
+        | membocorkan jumlah unggahan seluruh sistem kepada siapa pun yang bisa
+        | membuka satu halaman panel. `whereUuid()` sekaligus menjaga agar
+        | bentuk yang salah ditolak router, bukan menjadi query ke database.
+        |
+        | Dua izin diterima seperti pola Storage Manager: `upload.*` baru ada
+        | setelah RoleSeeder dijalankan ulang, sedangkan `episode.manage` sudah
+        | dimiliki peran Editor sejak awal. Tanpa alternatif itu, halaman ini
+        | akan tertutup untuk semua orang di server yang baru di-deploy.
+        |----------------------------------------------------------------------
+        */
+        Route::controller(Admin\UploadQueueController::class)
+            ->prefix('upload')->name('upload.')
+            ->group(function () {
+
+                Route::get('/', 'index')->name('index')
+                    ->middleware('permission:upload.view,episode.manage');
+
+                Route::get('/{uuid}', 'show')->name('show')->whereUuid('uuid')
+                    ->middleware('permission:upload.view,episode.manage');
+
+                Route::post('/{uuid}/retry', 'retry')->name('retry')->whereUuid('uuid')
+                    ->middleware('permission:upload.manage,episode.manage');
+
+                Route::post('/{uuid}/cancel', 'cancel')->name('cancel')->whereUuid('uuid')
+                    ->middleware('permission:upload.manage,episode.manage');
+
+                Route::delete('/{uuid}', 'destroy')->name('destroy')->whereUuid('uuid')
+                    ->middleware('permission:upload.manage,episode.manage');
+            });
+
         // --- Pengguna: daftar, detail, dan tindakan ---
         Route::controller(Admin\UserController::class)
             ->prefix('user')->name('user.')

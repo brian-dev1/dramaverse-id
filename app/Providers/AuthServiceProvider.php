@@ -30,6 +30,8 @@ class AuthServiceProvider extends ServiceProvider
         'setting.manage'    => ['setting', 'Ubah pengaturan situs'],
         'storage.view'      => ['storage', 'Lihat storage provider'],
         'storage.manage'    => ['storage', 'Tambah dan ubah storage provider'],
+        'upload.view'       => ['upload', 'Lihat antrean unggah'],
+        'upload.manage'     => ['upload', 'Ulangi, batalkan, dan hapus pekerjaan unggah'],
         'role.manage'       => ['role', 'Kelola peran dan izin'],
     ];
 
