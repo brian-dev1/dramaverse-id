@@ -384,13 +384,31 @@ Telegram memakai 403 untuk beberapa keadaan berbeda, dan kata kunci saja tidak
 cukup karena kalimatnya bisa berubah. Ada pemeriksaan otomatis yang melarang
 pemanggil kembali menebak sebab galat dari potongan kalimat.
 
-### 4. Dua sumber konfigurasi token yang berdampingan
+### 4. Alur pencarian tidak bisa dijangkau pengguna sama sekali
+
+`SearchHandler` ada, `TelegramRouter` sudah menangani state `SEARCH`, dan
+`UserSessionService` sudah menyimpan statenya — tetapi **tidak ada satu pun
+tombol atau perintah yang memulainya**. Menu `/start` hanya punya Continue,
+Favorit, Riwayat, Website, Premium, Profil, dan Bantuan.
+
+`CallbackHandler` juga tidak punya cabang `search`, jadi seandainya tombolnya
+ada pun, ia akan jatuh ke `default` dan hanya menampilkan ulang menu.
+
+Diperbaiki: tombol "Cari Drama" ditaruh paling atas, dan cabang `search`
+ditambahkan. `SearchHandler::start()` menerima chat dan user terpisah karena
+state percakapan disimpan per pengguna (`from.id`) sedangkan balasannya dikirim
+ke chat (`chat.id`) — sama di chat pribadi, berbeda di grup.
+
+Ini melengkapi bug nomor 1: alurnya fatal error **dan** tidak ada jalan untuk
+mencapainya.
+
+### 5. Dua sumber konfigurasi token yang berdampingan
 
 Sudah dijelaskan di bagian "tiga jalur". `config/services.php` sekarang berisi
 komentar yang menjelaskan kenapa blok itu sengaja kosong, bukan dihapus tanpa
 jejak — supaya tidak ada yang menambahkannya kembali karena mengira terlupa.
 
-### 5. `QueueService::telegram()` mengantrekan job yang tidak melakukan apa pun
+### 6. `QueueService::telegram()` mengantrekan job yang tidak melakukan apa pun
 
 `SendTelegramNotificationJob::handle()` isinya hanya komentar `TODO`.
 `QueueService::telegram($message)` mengantrekannya. Kalau ada modul yang

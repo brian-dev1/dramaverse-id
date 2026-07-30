@@ -21,6 +21,16 @@ class CallbackHandler
 
         match ($data) {
 
+            // SearchHandler menerima chat dan user secara terpisah, bukan
+            // seluruh array callback: state percakapan disimpan per PENGGUNA
+            // (`from.id`), sedangkan balasannya dikirim ke CHAT (`chat.id`).
+            // Di chat pribadi keduanya sama, di grup tidak.
+            'search'
+                => app(SearchHandler::class)->start(
+                    (int) $callback['message']['chat']['id'],
+                    (int) $callback['from']['id'],
+                ),
+
             'continue'
                 => app(ContinueWatchingHandler::class)->handle($callback),
 

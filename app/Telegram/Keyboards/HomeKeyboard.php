@@ -9,6 +9,17 @@ class HomeKeyboard
         return [
             'inline_keyboard' => [
 
+                // Cari ditaruh paling atas: SearchHandler sudah ada sejak awal
+                // dan TelegramRouter sudah menangani state SEARCH, tapi tidak
+                // pernah ada tombol yang memulainya — jadi seluruh alur
+                // pencarian tidak bisa dijangkau pengguna sama sekali.
+                [
+                    [
+                        'text' => '🔎 Cari Drama',
+                        'callback_data' => 'search'
+                    ]
+                ],
+
                 [
                     [
                         'text' => '▶️ Continue Watching',
