@@ -118,8 +118,15 @@ for b in bad:
 print("\n== FILE_ID DIPAKAI ULANG ==")
 
 delivery = read(DELIVERY)
-check('telegram_file_id' in delivery, "pengiriman ke pengguna memakai file_id")
-check('isSyncedToTelegram()' in delivery, "pengiriman memeriksa status sinkron dulu")
+CACHE = 'app/Services/Telegram/TelegramCacheService.php'
+
+# Sejak 8.9 file_id dibaca lewat TelegramCacheService, bukan langsung dari
+# relasi. Yang diperiksa tetap invariannya: pengiriman memakai file_id, dan
+# ada penjagaan status sinkron di jalur itu -- bukan di berkas mana
+# tepatnya kodenya berada.
+check('cache->fileId(' in delivery, "pengiriman ke pengguna memakai file_id (lewat cache)")
+check(os.path.exists(CACHE) and 'isSyncedToTelegram()' in read(CACHE),
+      "jalur file_id memeriksa status sinkron dulu")
 check('readStream' not in code_only(delivery) and 'StorageEngine' not in code_only(delivery),
       "pengiriman ke pengguna TIDAK menyentuh storage sama sekali")
 check('canStart' in read('app/Enums/TelegramSyncStatus.php'),
@@ -209,8 +216,15 @@ check("SyncEpisodeVideoToTelegram::dispatch" in read(CTRL),
       "panel mengantrekan, tidak mengirim di dalam request")
 
 ctrl = read(CTRL)
+BULK = 'app/Services/Telegram/TelegramBulkService.php'
+
 check('blocker(' in ctrl, "panel memakai alasan penolakan yang sama dengan service")
-check('max_retry' in ctrl, "batas percobaan ulang ditegakkan")
+
+# Sejak 8.7 Retry satuan dan Retry massal sama-sama lewat TelegramBulkService,
+# jadi batasnya cukup ditegakkan di satu tempat -- justru itu yang dimaksud
+# "tidak ada duplicate code".
+check(os.path.exists(BULK) and 'max_retry' in read(BULK),
+      "batas percobaan ulang ditegakkan di satu tempat")
 
 
 # ------------------------------------------------------------- 10. logging

@@ -161,7 +161,7 @@ class TelegramMenuController extends Controller
 
         $this->menus->forget();
 
-        app(ActivityLogger::class)->log('delete', 'telegram-menu', $id, ['label' => $label]);
+        app(ActivityLogger::class)->log('delete', 'telegram-menu', null, ['id' => $id, 'label' => $label]);
 
         return back()->with('status', "Tombol \"{$label}\" dihapus.");
     }

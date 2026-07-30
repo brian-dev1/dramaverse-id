@@ -46,7 +46,8 @@ class TelegramVideoSyncService
 {
     public function __construct(
         protected TelegramServiceInterface $telegram,
-        protected StorageEngineInterface $storage
+        protected StorageEngineInterface $storage,
+        protected TelegramAlertService $alerts
     ) {
     }
 
@@ -134,9 +135,16 @@ class TelegramVideoSyncService
 
         } catch (Throwable $e) {
 
-            $this->fail($video, $this->reason($e));
+            $sebab = $this->reason($e);
 
-            $this->log('error', 'sync.failed', $video, ['sebab' => $this->reason($e)]);
+            $this->fail($video, $sebab);
+
+            $this->log('error', 'sync.failed', $video, ['sebab' => $sebab]);
+
+            // Operator diberi tahu. Penahannya ada di TelegramAlertService:
+            // sepuluh video yang gagal karena sebab yang sama tidak menjadi
+            // sepuluh pesan.
+            $this->alerts->syncFailed($video->id, $sebab);
 
             throw $e;
 

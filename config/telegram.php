@@ -278,4 +278,111 @@ return [
 
     'episode_page_size' => $angka('TELEGRAM_EPISODE_PAGE_SIZE', 20, 4),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Otomatisasi
+    |--------------------------------------------------------------------------
+    |
+    | auto_sync — video yang baru diunggah langsung diantrekan sinkronisasinya.
+    | Bawaannya MATI. Menyalakannya berarti setiap unggahan langsung memakan
+    | kuota Telegram sebelum ada yang memutuskan berkas itu memang akan
+    | disajikan lewat bot. Nyalakan setelah alurnya terbukti jalan.
+    |
+    | auto_retry — percobaan ulang otomatis untuk sinkronisasi yang gagal,
+    | dijalankan scheduler. Yang diulang hanya yang belum melewati
+    | sync.max_retry; kegagalan permanen seperti berkas terlalu besar akan
+    | berhenti sendiri di batas itu, bukan dicoba selamanya.
+    |
+    | stuck_minutes — baris yang tertahan di status Diproses lebih lama dari
+    | ini dianggap yatim. Worker yang dibunuh paksa (restart, OOM) tidak sempat
+    | menjalankan penanganan galat apa pun, dan barisnya akan menghalangi
+    | percobaan berikutnya selamanya.
+    |
+    */
+
+    'automation' => [
+
+        'auto_sync' => $boolean('TELEGRAM_AUTO_SYNC', false),
+
+        'auto_retry' => $boolean('TELEGRAM_AUTO_RETRY', true),
+
+        'stuck_minutes' => $angka('TELEGRAM_STUCK_MINUTES', 60, 5),
+
+        'health_check' => $boolean('TELEGRAM_HEALTH_CHECK', true),
+
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Pemberitahuan
+    |--------------------------------------------------------------------------
+    |
+    | chat_id — ke mana peringatan dikirim. Kosongkan untuk hanya menulis log.
+    | Ini boleh chat pribadi admin; bedakan dari storage_chat_id.
+    |
+    | throttle_minutes — satu jenis peringatan tidak dikirim lagi selama
+    | rentang ini. Tanpa penahan, bot yang sedang bermasalah akan mengirim
+    | ratusan pesan tentang masalah yang sama, dan yang membacanya akan
+    | mematikan pemberitahuannya sama sekali — persis kebalikan dari yang
+    | dimaksud.
+    |
+    */
+
+    'alerts' => [
+
+        'chat_id' => env('TELEGRAM_ALERT_CHAT_ID'),
+
+        'throttle_minutes' => $angka('TELEGRAM_ALERT_THROTTLE', 30, 1),
+
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Pembatas laju
+    |--------------------------------------------------------------------------
+    |
+    | Telegram membatasi sekitar 30 pesan per detik untuk seluruh bot. Yang ada
+    | sampai 8.6 hanya reaksi terhadap 429 — kita menunggu setelah ditegur.
+    | Ini mencegahnya lebih dulu.
+    |
+    | Angka bawaannya 25, di bawah batas Telegram dengan sengaja: batas itu
+    | tidak diumumkan persis dan bisa berbeda per bot, jadi mendekatinya
+    | sampai angka terakhir hanya memindahkan masalah, bukan menyelesaikannya.
+    |
+    | Penghitungnya di cache dan dipakai bersama semua worker. Dengan driver
+    | `array` (pengujian) pembatas ini tidak berlaku lintas proses — itu
+    | disengaja, karena pengujian tidak boleh tidur.
+    |
+    */
+
+    'rate_limit' => [
+
+        'enabled' => $boolean('TELEGRAM_RATE_LIMIT', true),
+
+        'per_second' => $angka('TELEGRAM_RATE_PER_SECOND', 25, 1),
+
+        'max_wait_ms' => $angka('TELEGRAM_RATE_MAX_WAIT_MS', 3000, 0),
+
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Cache
+    |--------------------------------------------------------------------------
+    |
+    | file_id dan metadata episode nyaris tidak pernah berubah, tetapi dibaca
+    | setiap kali ada yang menekan tombol. TTL-nya panjang dan cache-nya
+    | dibuang secara eksplisit saat datanya berubah — bukan menunggu
+    | kedaluwarsa.
+    |
+    */
+
+    'cache' => [
+
+        'enabled' => $boolean('TELEGRAM_CACHE', true),
+
+        'ttl' => $angka('TELEGRAM_CACHE_TTL', 3600, 60),
+
+    ],
+
 ];

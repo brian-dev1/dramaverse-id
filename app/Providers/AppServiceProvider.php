@@ -59,6 +59,8 @@ use App\Services\Storage\Contracts\StorageEngineInterface;
 use App\Services\Storage\Contracts\StorageManagerInterface;
 use App\Services\Storage\StorageEngine;
 use App\Services\Storage\StorageManager;
+use App\Models\EpisodeVideo;
+use App\Observers\EpisodeVideoObserver;
 use App\Services\Telegram\Contracts\TelegramClientInterface;
 use App\Services\Telegram\Contracts\TelegramServiceInterface;
 use App\Services\Telegram\TelegramClient;
@@ -155,6 +157,23 @@ class AppServiceProvider extends ServiceProvider
     {
         // MySQL < 5.7.7 membatasi panjang index string.
         Schema::defaultStringLength(191);
+
+        /*
+        |----------------------------------------------------------------------
+        | Observer video episode
+        |----------------------------------------------------------------------
+        |
+        | Membuang cache Telegram dan — bila dinyalakan — mengantrekan
+        | sinkronisasi otomatis.
+        |
+        | Observer, bukan panggilan di dalam service, karena ada TIGA jalur
+        | yang membuat baris `episode_videos`: unggahan satuan (7.5), antrean
+        | (7.7), dan Batch Upload (7.9). Menaruhnya di salah satunya berarti
+        | dua jalur lain diam-diam tidak melakukannya — dan tidak ada yang
+        | akan menyadarinya sampai ada video yang tidak pernah tersinkron.
+        |
+        */
+        EpisodeVideo::observe(EpisodeVideoObserver::class);
 
         // Pagination memakai markup Tailwind agar seragam dengan tema.
         Paginator::useTailwind();

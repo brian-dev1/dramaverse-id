@@ -25,7 +25,7 @@ Yang WAJIB dilakukan asisten sebelum menulis satu baris kode:
 1. Baca `STATUS.md` **sampai habis** — termasuk "Bug diketahui" dan
    "Batasan asisten" di bagian bawah.
 2. Baca berkas `SPRINT-*-SELESAI.md` yang relevan dengan pekerjaan berikutnya.
-   Sprint terakhir yang selesai adalah **8.6** (`SPRINT-8-2-SELESAI.md`).
+   Sprint terakhir yang selesai adalah **8.9** (`SPRINT-8-7-SELESAI.md`).
    **Phase 7 dan Phase 8 selesai.**
 3. Jalankan kelima alat verifikasi lebih dulu, untuk tahu keadaan awal yang
    bersih. Kalau ada yang GAGAL sejak awal, laporkan sebelum menambah apa pun.
@@ -389,9 +389,40 @@ Channel itu tidak boleh publik: isinya seluruh katalog video termasuk yang
 berbayar, dan siapa pun yang bisa membukanya menonton tanpa lewat pemeriksaan
 membership.
 
-**Angka saat ini:** 180 route, 26 controller admin, 27 view admin,
-39 migration, 11 middleware, 256 kelas CSS, 26 interface repository,
-9 job antrean, 382 berkas PHP, 72 blade, 7 perintah artisan.
+### Sprint 8.7-8.9 - Telegram Finalization
+Admin tools, otomatisasi, dan optimasi di atas seluruh arsitektur sebelumnya,
+tanpa mengubah satu pun fitur yang sudah berjalan.
+Detail: `SPRINT-8-7-SELESAI.md`.
+
+- **Admin tools** - `/admin/telegram/sync` kini punya kartu status (bot,
+  webhook, antrean, tersangkut), statistik, pencarian, penyaring, pengurutan,
+  pagination, dan **lima aksi massal**: Bulk Sync, Bulk Retry, Bulk Cancel,
+  Refresh Status, Verifikasi file_id. Semuanya lewat antrean.
+  Plus `/admin/telegram/log` - pembaca log Telegram tanpa perlu masuk server.
+- **Otomatisasi** - `EpisodeVideoObserver` (auto sync + pembuangan cache) dan
+  `php artisan telegram:auto retry|health|cleanup|all`, dijadwalkan tiap 15
+  menit, 30 menit, dan tiap jam.
+- **Notifikasi** - `TelegramAlertService` untuk sync gagal, antrean gagal,
+  galat API, bot mati, dan scheduler gagal. Ke log selalu; ke Telegram bila
+  `TELEGRAM_ALERT_CHAT_ID` diisi, dengan penahan supaya tidak membanjiri.
+- **Optimasi** - pembatas laju sebelum Telegram menahan, cache `file_id` dan
+  metadata episode, eager loading, pembacaan log dari ujung berkas.
+
+**Bug yang ditemukan:** `ActivityLogger::log()` menerima `?Model`, bukan `int`.
+Sprint 8.1 dan 8.2 memanggilnya dengan `$video->id` di tiga tempat - TypeError
+setiap kali tombol Sync, Retry, atau Hapus menu ditekan. Lolos dari empat alat
+statis karena tak satu pun memeriksa tipe argumen.
+
+**WAJIB dipasang di VPS - tanpa ini seluruh otomatisasi tidak pernah jalan:**
+```
+crontab -e
+* * * * * cd /var/www/dramaverse && php artisan schedule:run >> /dev/null 2>&1
+```
+Tidak akan ada satu pun galat yang memberitahukan kalau baris ini lupa dipasang.
+
+**Angka saat ini:** 182 route, 27 controller admin, 28 view admin,
+39 migration, 11 middleware, 257 kelas CSS, 26 interface repository,
+10 job antrean, 394 berkas PHP, 73 blade, 8 perintah artisan.
 
 Empat angka terakhir ditambahkan sebagai pembanding untuk poin 3 di bagian
 "Memulai sesi baru": alat verifikasi yang melaporkan angka lebih kecil berarti
@@ -479,11 +510,22 @@ beberapa masih dangkal:
   Halaman `/admin/telegram` sekarang menampilkan koneksi, nama antrean, dan
   jumlah pekerjaan yang menunggu supaya ketidakcocokan seperti ini terlihat
   tanpa harus masuk ke server.
-- **Belum ada pembatas laju proaktif ke Telegram.** Telegram membatasi sekitar
-  30 pesan per detik. Yang ada sekarang hanya reaksi terhadap 429 — kita
-  menunggu selama yang diminta Telegram, lalu mencoba lagi. Pembatas yang
-  mencegahnya lebih dulu tempatnya di worker antrean, bersama sprint queue
-  Telegram.
+- **Pembatas laju Telegram hanya global, belum per-chat.** Sejak 8.9 ada
+  `TelegramRateLimiter` yang menahan sekitar 25 permintaan per detik. Telegram
+  juga membatasi ~1 pesan/detik per chat, terpisah dari batas global — itu
+  belum ada, dan baru terasa pada broadcast ke satu grup besar.
+  Pembatas ini juga **bukan jaminan**: cache tanpa operasi atomik lintas proses
+  bisa menghitung kurang saat dua worker menambah bersamaan. Yang memberi
+  jaminan tetap penanganan 429 di `TelegramClient`.
+- **Verifikasi `file_id` belum dijadwalkan.** Tombol Bulk Verify ada di panel,
+  tapi tidak ada jadwal yang menjalankannya sendiri. Menjadwalkannya berarti
+  memanggil `getFile` untuk seluruh katalog secara berkala, dan itu keputusan
+  yang tergantung besar katalognya.
+- **Bulk Cancel tidak menghentikan pekerjaan yang sudah berjalan.** Hanya baris
+  berstatus Menunggu yang dibatalkan. Memutus pengiriman berkas separuh jalan
+  meninggalkan berkas rusak di Telegram yang tidak bisa dibedakan dari yang
+  utuh. Yang tersangkut dilepaskan `telegram:auto cleanup` setelah
+  `TELEGRAM_STUCK_MINUTES`.
 - **Percobaan ulang bisa menduakan pesan.** Bot API tidak punya kunci
   idempoten. Kalau pesan sampai lalu koneksinya putus sebelum jawabannya
   kembali, pengulangan mengirim pesan yang sama dua kali. Ini pilihan sadar —
@@ -657,6 +699,11 @@ ditempelkan setiap kali:
   atau konfigurasi antrean berubah. Worker memuat kode saat dinyalakan, jadi
   yang lama akan terus menjalankan versi sebelumnya sampai direstart
 - `php artisan upload:prune` → di **VPS**, saat berkas staging perlu dibersihkan
+- `php artisan telegram:auto all` → di **VPS**, untuk menjalankan perawatan
+  Telegram sekarang juga tanpa menunggu scheduler
+- **`crontab -e` + baris `schedule:run`** → di **VPS**, SEKALI SAJA setelah
+  Sprint 8.9. Tanpa itu seluruh otomatisasi Telegram tidak pernah berjalan, dan
+  tidak ada satu pun galat yang memberitahukannya
 
 Tutup dengan daftar singkat **apa yang harus dilihat di browser**, karena
 seluruh alat verifikasi proyek ini statis dan tidak pernah merender apa pun.
@@ -673,6 +720,7 @@ python tools/check-php-structure.py app/**/*.php config/*.php database/**/*.php
 python tools/audit-sprint-7-8.py         # 143 pemeriksaan khusus Sprint 7.8-7.9
 python tools/audit-sprint-8-1.py         # 81 pemeriksaan khusus Sprint 8.1
 python tools/audit-sprint-8-2.py         # 125 pemeriksaan khusus Sprint 8.2-8.6
+python tools/audit-sprint-8-7.py         # 132 pemeriksaan khusus Sprint 8.7-8.9
 ```
 
 `audit-sprint-8-2.py` memeriksa **integrasi**, bukan keberadaan berkas:
@@ -700,7 +748,7 @@ view, komponen, layout, `$fillable` vs migration, urutan foreign key,
 binding repository, PSR-4, import CSS, kolom tanggal, form + CSRF, href
 buntu, emoji, kelengkapan `match` enum, dan route di menu sidebar admin.
 
-**Alat verifikasinya sendiri sudah enam kali terbukti salah.** Perlakukan
+**Alat verifikasinya sendiri sudah tujuh kali terbukti salah.** Perlakukan
 seperti kode lain: bisa keliru, dan perlu diaudit.
 
 - **7.1** — pembatas blok migration di `cols_of()` tidak pernah bekerja,

@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Enums\TelegramSyncStatus;
 use App\Models\EpisodeVideo;
+use App\Services\Telegram\TelegramAlertService;
 use App\Services\Telegram\TelegramVideoSyncService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -95,5 +96,10 @@ class SyncEpisodeVideoToTelegram implements ShouldQueue
                     .'kehabisan memori, atau melewati batas waktu.',
             'retry_count' => $video->retry_count + 1,
         ])->save();
+
+        app(TelegramAlertService::class)->queueFailed(
+            self::class,
+            'Video #'.$this->videoId.': '.($e?->getMessage() ?: 'worker berhenti sebelum selesai')
+        );
     }
 }

@@ -426,6 +426,14 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 ->name('telegram-sync.sync')->whereNumber('id');
             Route::post('/telegram/sync/{id}/retry', [Admin\TelegramSyncController::class, 'retry'])
                 ->name('telegram-sync.retry')->whereNumber('id');
+
+            // Lima aksi massal lewat satu endpoint — satu form, satu daftar
+            // kotak centang. Lihat alasannya di TelegramSyncController::bulk().
+            Route::post('/telegram/bulk', [Admin\TelegramSyncController::class, 'bulk'])
+                ->name('telegram-sync.bulk');
+
+            Route::get('/telegram/log', [Admin\TelegramLogController::class, 'index'])
+                ->name('telegram-log.index');
         });
 
         Route::get('/logs', [Admin\LogController::class, 'index'])

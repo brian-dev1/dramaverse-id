@@ -37,7 +37,8 @@ class TelegramDeliveryService
         protected TelegramServiceInterface $telegram,
         protected EpisodeAccessService $access,
         protected WatchHistoryService $history,
-        protected FavoriteService $favorites
+        protected FavoriteService $favorites,
+        protected TelegramCacheService $cache
     ) {
     }
 
@@ -100,9 +101,16 @@ class TelegramDeliveryService
         |
         */
 
-        $video = $episode->video;
+        // Lewat cache. Ini pembacaan yang terjadi pada SETIAP penekanan
+        // tombol — setiap Next, setiap Previous, setiap deep link — untuk
+        // nilai yang hanya berubah saat admin menyinkronkan. Cache-nya
+        // dibuang secara eksplisit oleh EpisodeVideoObserver, bukan menunggu
+        // kedaluwarsa: file_id lama untuk video yang baru diganti menghasilkan
+        // "video salah", gejala yang jauh lebih sulit dikenali daripada
+        // "video gagal".
+        $fileId = $this->cache->fileId($episode->id);
 
-        if ($video === null || ! $video->isSyncedToTelegram()) {
+        if ($fileId === null) {
 
             $this->log('warning', 'delivery.missing_file_id', $episode, $user);
 
@@ -125,7 +133,7 @@ class TelegramDeliveryService
 
         $this->telegram->sendVideo(
             $chatId,
-            $video->telegram_file_id,
+            $fileId,
             $this->caption($episode),
             [
                 'supports_streaming' => true,
@@ -133,9 +141,7 @@ class TelegramDeliveryService
             ]
         );
 
-        $this->log('info', 'delivery.sent', $episode, $user, [
-            'unique_file_id' => $video->telegram_unique_file_id,
-        ]);
+        $this->log('info', 'delivery.sent', $episode, $user);
 
         // Riwayat ditulis SETELAH pengiriman berhasil. Menulisnya lebih dulu
         // membuat episode yang gagal terkirim tetap muncul di "lanjut

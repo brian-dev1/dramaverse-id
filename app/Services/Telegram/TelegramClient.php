@@ -119,6 +119,11 @@ class TelegramClient implements TelegramClientInterface
 
             $terakhir = $attempt >= $maxAttempts;
 
+            // Tahan lajunya sebelum Telegram yang menahan. Ini mengurangi
+            // seberapa sering 429 terjadi; penanganan 429 di bawah tetap ada
+            // karena pembatas ini bukan jaminan. Lihat TelegramRateLimiter.
+            $this->limiter()->acquire();
+
             try {
                 $response = $this->dispatch($verb, $method, $payload, $files);
             } catch (ConnectionException $e) {
@@ -461,6 +466,19 @@ class TelegramClient implements TelegramClientInterface
     | Alamat dan token
     |--------------------------------------------------------------------------
     */
+
+    /**
+     * Pembatas laju, diambil dari container saat dibutuhkan.
+     *
+     * Tidak disuntik lewat constructor supaya tanda tangan client tidak
+     * berubah — ia sudah dipasang sebagai singleton di AppServiceProvider
+     * sejak 8.1, dan menambah parameter di sana berarti setiap tiruan di
+     * pengujian ikut harus diperbarui.
+     */
+    protected function limiter(): TelegramRateLimiter
+    {
+        return app(TelegramRateLimiter::class);
+    }
 
     protected function token(): string
     {
