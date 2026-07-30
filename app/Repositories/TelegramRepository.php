@@ -2,44 +2,109 @@
 
 namespace App\Repositories;
 
-use Illuminate\Support\Facades\Http;
+use App\Models\User;
 use App\Repositories\Contracts\TelegramRepositoryInterface;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 
+/**
+ * Lihat TelegramRepositoryInterface untuk alasan bentuknya.
+ *
+ * Tidak ada satu pun panggilan HTTP di sini, dan tidak boleh ada.
+ */
 class TelegramRepository implements TelegramRepositoryInterface
 {
-    protected function token(): string
+    /**
+     * Ambang "tidak aktif", dalam hari.
+     *
+     * Satu tempat saja: segmen `active` dan `inactive` harus selalu jadi
+     * pasangan yang saling melengkapi. Saat dua angka ini ditulis terpisah,
+     * mengubah salah satunya membuat sebagian pengguna tidak masuk segmen
+     * mana pun — dan tidak ada yang menyadarinya karena jumlahnya cuma
+     * berkurang sedikit.
+     */
+    protected const DORMANT_DAYS = 30;
+
+    public function audiences(): array
     {
-        return config('services.telegram.bot_token');
+        return [
+            'all'      => 'Semua pengguna Telegram',
+            'active'   => 'Aktif dalam '.self::DORMANT_DAYS.' hari terakhir',
+            'vip'      => 'Anggota berlangganan aktif',
+            'inactive' => 'Belum aktif lebih dari '.self::DORMANT_DAYS.' hari',
+        ];
     }
 
-    protected function api(string $method): string
+    public function audienceQuery(string $key): Builder
     {
-        return "https://api.telegram.org/bot{$this->token()}/{$method}";
+        $query = User::query()
+            ->where('is_admin', false)
+            ->whereNotNull('telegram_id');
+
+        $batas = now()->subDays(self::DORMANT_DAYS);
+
+        return match ($key) {
+
+            'active' => $query->where('last_seen_at', '>=', $batas),
+
+            // Belum pernah terlihat sama sekali ikut hitungan "tidak aktif".
+            // Tanpa cabang whereNull, pengguna yang mendaftar lalu tidak
+            // pernah kembali tidak masuk segmen mana pun.
+            'inactive' => $query->where(fn ($q) => $q
+                ->whereNull('last_seen_at')
+                ->orWhere('last_seen_at', '<', $batas)),
+
+            'vip' => $query->whereHas('subscriptions', fn ($q) => $q
+                ->where('status', 'active')
+                ->where(fn ($w) => $w
+                    ->whereNull('expired_at')
+                    ->orWhere('expired_at', '>', now()))),
+
+            default => $query,
+        };
     }
 
-    public function sendMessage(
-        string $chatId,
-        string $message,
-        array $options = []
-    ) {
-        return Http::post($this->api('sendMessage'), array_merge([
-            'chat_id' => $chatId,
-            'text' => $message,
-            'parse_mode' => 'HTML',
-        ], $options))->json();
+    public function recipients(string $key): Collection
+    {
+        return $this->audienceQuery($key)
+            ->where('is_banned', false)
+            ->pluck('telegram_id', 'id');
     }
 
-    public function sendPhoto(
-        string $chatId,
-        string $photo,
-        string $caption = '',
-        array $options = []
-    ) {
-        return Http::post($this->api('sendPhoto'), array_merge([
-            'chat_id' => $chatId,
-            'photo' => $photo,
-            'caption' => $caption,
-            'parse_mode' => 'HTML',
-        ], $options))->json();
+    public function counts(): array
+    {
+        $hasil = [];
+
+        foreach (array_keys($this->audiences()) as $key) {
+            $hasil[$key] = $this->audienceQuery($key)->count();
+        }
+
+        return $hasil;
+    }
+
+    public function stats(): array
+    {
+        $base = fn (): Builder => User::query()->whereNotNull('telegram_id');
+
+        return [
+            'total'  => $base()->count(),
+            'active' => $base()->where('is_active', true)->count(),
+            'banned' => $base()->where('is_banned', true)->count(),
+            'today'  => $base()->whereDate('created_at', today())->count(),
+        ];
+    }
+
+    public function findByTelegramId(int|string $telegramId): ?User
+    {
+        return User::query()
+            ->where('telegram_id', $telegramId)
+            ->first();
+    }
+
+    public function deactivateByTelegramId(int|string $telegramId): int
+    {
+        return User::query()
+            ->where('telegram_id', $telegramId)
+            ->update(['is_active' => false]);
     }
 }

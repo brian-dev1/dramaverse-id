@@ -15,20 +15,36 @@ Kalimat pembuka yang cukup, tanpa perlu menjelaskan apa pun lagi:
 
 Yang WAJIB dilakukan asisten sebelum menulis satu baris kode:
 
+0. **Jalankan `git log --oneline -5` lebih dulu, sebelum membaca apa pun.**
+   Judul commit terakhir menyebutkan sprint terakhir yang selesai. Riwayat
+   commit tidak bisa basi dengan cara yang sama seperti daftar berkas, jadi
+   inilah satu-satunya sumber yang bisa dipercaya di detik pertama sesi.
+   Kalau judul commit terakhir menyebut sprint yang lebih baru daripada yang
+   tertulis di poin 2 di bawah, **berarti berkas yang terbaca sudah basi** —
+   berhenti, baca ulang, jangan lanjut.
 1. Baca `STATUS.md` **sampai habis** — termasuk "Bug diketahui" dan
    "Batasan asisten" di bagian bawah.
 2. Baca berkas `SPRINT-*-SELESAI.md` yang relevan dengan pekerjaan berikutnya.
-   Sprint terakhir yang selesai adalah **7.9** (`SPRINT-7-8-7-9-SELESAI.md`).
-   **Phase 7 selesai.** Berikutnya Phase 8 — Telegram Integration.
-3. Jalankan keempat alat verifikasi lebih dulu, untuk tahu keadaan awal yang
+   Sprint terakhir yang selesai adalah **8.1** (`SPRINT-8-1-SELESAI.md`).
+   **Phase 7 selesai.** Phase 8 — Telegram Integration — sedang berjalan.
+3. Jalankan kelima alat verifikasi lebih dulu, untuk tahu keadaan awal yang
    bersih. Kalau ada yang GAGAL sejak awal, laporkan sebelum menambah apa pun.
+   **Cocokkan angkanya dengan "Angka saat ini" di bawah.** Angka yang lebih
+   kecil berarti pohon berkasnya belum lengkap, bukan berarti ada yang hilang.
 4. **Periksa daftar berkas ini lagi sebelum menulis dokumen apa pun.**
-   Di sesi 7.8 pembacaan folder di awal mengembalikan keadaan yang sudah basi:
-   `SPRINT-7-7-SELESAI.md` tidak muncul di daftar dan `STATUS.md` yang terbaca
-   adalah versi sebelum diperbarui, sehingga asisten melaporkan dokumen 7.7
-   hilang padahal ada. Tidak ada yang tertimpa — penulisannya ditolak karena
-   berkasnya sudah ada — tetapi satu pertanyaan ke Anda jadi berdiri di atas
-   premis yang keliru.
+   Pembacaan folder di awal sesi sudah **dua kali** mengembalikan keadaan basi:
+   - **7.8** — `SPRINT-7-7-SELESAI.md` tidak muncul di daftar dan `STATUS.md`
+     yang terbaca adalah versi sebelum diperbarui, sehingga asisten melaporkan
+     dokumen 7.7 hilang padahal ada.
+   - **8.1** — `STATUS.md` yang terbaca berhenti di Sprint 7.6 (468 baris,
+     bukan 604), dua berkas SELESAI dan `tools/audit-sprint-7-8.py` tidak
+     muncul sama sekali, dan baseline alat verifikasi dijalankan di atas pohon
+     yang kurang 22 berkas PHP. Ketahuan hanya karena angka hasil alat
+     verifikasi melompat di tengah sesi.
+
+   Tidak ada yang tertimpa di kedua kejadian, tetapi keduanya membuat sebagian
+   pekerjaan berdiri di atas premis yang keliru. Poin 0 di atas ditambahkan
+   sesudah kejadian kedua.
 
 Yang WAJIB dilakukan asisten sebelum menyatakan selesai:
 
@@ -280,9 +296,46 @@ provider di `EpisodeVideoController` pindah ke `StorageChoiceService`.
 **Berkas dihapus:** `app/Models/EpisodeSubtitle.php` — kelas kosong tanpa
 tabel, tanpa migration, tanpa satu pun rujukan. Dead code sejak dibuat.
 
+### Sprint 8.1 — Telegram Core Service
+Fondasi Phase 8. `TelegramServiceInterface` jadi **satu-satunya pintu** ke
+Telegram Bot API, dengan `TelegramClient` sebagai satu-satunya tempat yang
+membuka koneksi HTTP. Sembilan method dasar (sendMessage, sendPhoto, sendVideo,
+sendDocument, editMessage, deleteMessage, answerCallbackQuery, getFile, getMe)
+plus `call()`/`query()` untuk method Bot API lain. Timeout, percobaan ulang yang
+menghormati `retry_after`, logging request/response/error, dan redaksi token.
+Storage (7.1–7.9) tidak diubah satu baris pun.
+Detail: `SPRINT-8-1-SELESAI.md`.
+
+**Sebelum sprint ini ada TIGA jalur HTTP ke Telegram** — dua service dan satu
+repository, masing-masing dengan token, timeout, dan penanganan galat sendiri;
+salah satunya membaca `services.telegram.bot_token` sementara sisanya membaca
+`telegram.bot_token`. Ketiganya disatukan. Dua kelas `TelegramService` dihapus,
+`TelegramRepository` diubah perannya jadi akses data (segmen broadcast, jumlah,
+penonaktifan pengguna yang memblokir bot).
+
+**Perubahan perilaku:** kegagalan sekarang **dilempar** sebagai
+`TelegramException`, tidak lagi dikembalikan sebagai array yang boleh
+diabaikan — dari 20 pemanggil sebelumnya, 19 tidak pernah memeriksa `ok`.
+Konsekuensinya ditangani di dua tempat: `TelegramWebhookController` menahan
+exception (kalau tidak, Telegram mengirim ulang update yang sama selamanya),
+dan halaman admin memakai `withRetries(1)` supaya tidak menahan permintaan.
+
+**Cara membuktikannya jalan:**
+```
+php artisan telegram:test                          # token + koneksi + webhook
+php artisan telegram:test --chat=<telegram_id>     # kirim pesan sungguhan
+```
+`getMe` membuktikan token dan jaringan; ia TIDAK membuktikan pesan bisa sampai
+ke orang. Untuk itu chat id-nya harus disebut, dan pengguna yang bersangkutan
+harus sudah pernah menekan Start di bot.
+
 **Angka saat ini:** 171 route, 24 controller admin, 25 view admin,
 37 migration, 11 middleware, 241 kelas CSS, 26 interface repository,
-8 job antrean.
+8 job antrean, 366 berkas PHP, 70 blade, 7 perintah artisan.
+
+Empat angka terakhir ditambahkan sebagai pembanding untuk poin 3 di bagian
+"Memulai sesi baru": alat verifikasi yang melaporkan angka lebih kecil berarti
+pohon berkasnya belum lengkap.
 
 Angka route dihitung dengan menambahkan 13 route baru ke angka 158 dari 7.7.
 Penghitungan mandiri lewat `tools/routeparse.py` (101 nama di `web.php` + 5 di
@@ -314,6 +367,26 @@ beberapa masih dangkal:
   otomatis melanjutkan
 
 ### Bug diketahui, belum diperbaiki
+- **`QueueService::telegram()` mengantrekan job yang tidak melakukan apa pun.**
+  `SendTelegramNotificationJob::handle()` isinya hanya komentar `TODO`, tapi
+  `QueueService::telegram($message)` tetap mengantrekannya — notifikasinya
+  hilang tanpa jejak dan antrean melaporkan sukses. Tidak diperbaiki di 8.1
+  karena job itu hanya menerima `$message` tanpa chat id: mengisinya berarti
+  memutuskan siapa penerimanya (semua pengguna? admin? satu chat khusus?), dan
+  itu keputusan modul notifikasi, bukan core service. `QueueService` sendiri
+  saat ini tidak dipanggil dari mana pun, dan tiga job lain yang didaftarkannya
+  (`BroadcastEpisodeJob`, `SendPremiumReminderJob`, `GenerateVideoThumbnailJob`)
+  juga masih kosong.
+- **Belum ada pembatas laju proaktif ke Telegram.** Telegram membatasi sekitar
+  30 pesan per detik. Yang ada sekarang hanya reaksi terhadap 429 — kita
+  menunggu selama yang diminta Telegram, lalu mencoba lagi. Pembatas yang
+  mencegahnya lebih dulu tempatnya di worker antrean, bersama sprint queue
+  Telegram.
+- **Percobaan ulang bisa menduakan pesan.** Bot API tidak punya kunci
+  idempoten. Kalau pesan sampai lalu koneksinya putus sebelum jawabannya
+  kembali, pengulangan mengirim pesan yang sama dua kali. Ini pilihan sadar —
+  pesan ganda lebih ringan daripada pesan yang hilang diam-diam — dan bisa
+  dimatikan dengan `TELEGRAM_RETRY_TIMES=1`.
 - **Berkas staging bisa menumpuk di disk VPS.** Selama pekerjaan unggah belum
   berhasil, videonya tersimpan dua kali: di `storage/app/upload-queue` dan
   (nanti) di bucket. Berkas milik pekerjaan **Gagal** sengaja dipertahankan
@@ -476,6 +549,8 @@ ditempelkan setiap kali:
 - `php artisan db:seed --class='Database\Seeders\StorageProviderSeeder' --force`
   → di **VPS**, hanya bila ada data referensi baru
 - `php artisan storage:test` → di **VPS**, setiap kali storage disentuh
+- `php artisan telegram:test` → di **VPS**, setiap kali lapisan Telegram atau
+  `TELEGRAM_*` di `.env` disentuh
 - `supervisorctl restart dramaverse-worker:*` → di **VPS**, setiap kali job
   atau konfigurasi antrean berubah. Worker memuat kode saat dinyalakan, jadi
   yang lama akan terus menjalankan versi sebelumnya sampai direstart
@@ -494,6 +569,7 @@ python tools/check-blade-directives.py resources/views/**/*.blade.php
 python tools/check-css-coverage.py
 python tools/check-php-structure.py app/**/*.php config/*.php database/**/*.php
 python tools/audit-sprint-7-8.py         # 143 pemeriksaan khusus Sprint 7.8-7.9
+python tools/audit-sprint-8-1.py         # 81 pemeriksaan khusus Sprint 8.1
 ```
 
 `audit-sprint-7-8.py` khusus sprint itu, tetapi tetap disimpan: sebagian
@@ -501,12 +577,20 @@ pemeriksaannya berlaku terus — nol `Storage::` di controller dan service,
 satu jalur pembuatan baris antrean, dan tidak ada method kontrak engine yang
 hilang dari implementasinya.
 
+`audit-sprint-8-1.py` sama: sebagian berlaku terus — nol `Http::` dan nol
+`api.telegram.org` di luar `TelegramClient`, nol controller yang memanggil
+Telegram API langsung, paritas ketiga kontrak Telegram dengan implementasinya,
+token tidak bisa masuk konteks log, dan **setiap kunci `config/telegram.php`
+benar-benar dibaca kode**. Pemeriksaan terakhir itu ada khusus karena
+`STORAGE_TIMEOUT` membuktikan kunci config bisa hidup berbulan-bulan tanpa ada
+yang membacanya, dan tidak ada satu pun alat yang menyadarinya.
+
 `verify-consistency.py` memeriksa: route mati di Blade dan PHP, controller,
 view, komponen, layout, `$fillable` vs migration, urutan foreign key,
 binding repository, PSR-4, import CSS, kolom tanggal, form + CSRF, href
 buntu, emoji, kelengkapan `match` enum, dan route di menu sidebar admin.
 
-**Alat verifikasinya sendiri sudah lima kali terbukti salah.** Perlakukan
+**Alat verifikasinya sendiri sudah enam kali terbukti salah.** Perlakukan
 seperti kode lain: bisa keliru, dan perlu diaudit.
 
 - **7.1** — pembatas blok migration di `cols_of()` tidak pernah bekerja,
@@ -527,9 +611,21 @@ seperti kode lain: bisa keliru, dan perlu diaudit.
   berisi 6 route dengan 6 middleware. Diperbaiki dengan mencocokkan kurung.
   Ini kegagalan palsu kedua yang disebabkan penghitungan blok yang naif,
   setelah `routeparse.py` di 7.6.
+- **8.1** — versi pertama `audit-sprint-8-1.py` menghasilkan dua GAGAL palsu
+  karena mencari `api.telegram.org` dan kata `previous` **di dalam komentar dan
+  string**. Prosa yang menjelaskan aturan justru dituduh melanggarnya: docblock
+  yang berbunyi "tidak ada `Http::` ke api.telegram.org di luar TelegramClient"
+  terhitung sebagai pelanggaran. Sebab yang sama untuk keempat kalinya.
+  Diperbaiki dengan `code_only()` yang membuang komentar dan isi string literal
+  sebelum apa pun dicocokkan, dipakai di setiap pemeriksaan.
 
 Pelajarannya: kalau alat melaporkan GAGAL pada kode yang menurut Anda benar,
 periksa alatnya juga — jangan langsung menganggap kodenya yang salah.
+
+Pelajaran keduanya lebih sempit dan sudah terbukti empat kali: **skrip audit
+yang mencari token kode wajib membuang komentar dan isi string lebih dulu.**
+Setiap kegagalan palsu di daftar di atas, kecuali dua yang pertama, sebabnya
+persis itu.
 
 **Penting:** semua pemeriksaan ini **statis**. Tidak menjalankan PHP.
 Beberapa kesalahan hanya muncul saat dieksekusi — rekam jejak sprint
@@ -566,6 +662,10 @@ pengguna sungguhan.
 - `composer dump-autoload` setelah menambah helper di `autoload.files`
 - `php artisan storage:link` supaya gambar unggahan tampil
 - Worker antrean harus jalan agar broadcast Telegram terkirim
+- **`TELEGRAM_*` yang baru di `.env` tidak berlaku sampai `config:cache`
+  dijalankan ulang** — dan bila `.env` produksi belum memuatnya sama sekali,
+  yang berlaku adalah bawaan di `config/telegram.php`, bukan nol. Itu memang
+  disengaja; lihat penjagaan nilai kosong di berkas itu
 - **Worker antrean juga harus mendengarkan `uploads`** sejak Sprint 7.7, kalau
   tidak setiap unggahan video menggantung di status Menunggu tanpa galat
 - `php artisan upload:prune` sesekali, supaya berkas staging milik unggahan

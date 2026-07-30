@@ -3,13 +3,13 @@
 namespace App\Telegram\Handlers;
 
 use App\Services\DramaService;
-use App\Services\TelegramService;
+use App\Services\Telegram\Contracts\TelegramServiceInterface;
 use App\Services\UserSessionService;
 
 class SearchHandler
 {
     public function __construct(
-        protected TelegramService $telegram,
+        protected TelegramServiceInterface $telegram,
         protected UserSessionService $session,
         protected DramaService $dramas
     ) {

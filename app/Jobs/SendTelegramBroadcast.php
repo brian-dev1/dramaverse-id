@@ -2,8 +2,9 @@
 
 namespace App\Jobs;
 
-use App\Models\User;
-use App\Telegram\Services\TelegramService;
+use App\Repositories\Contracts\TelegramRepositoryInterface;
+use App\Services\Telegram\Contracts\TelegramServiceInterface;
+use App\Services\Telegram\Exceptions\TelegramException;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
@@ -30,27 +31,54 @@ class SendTelegramBroadcast implements ShouldQueue
     ) {
     }
 
-    public function handle(TelegramService $telegram): void
-    {
-        $result = $telegram->sendMessage($this->telegramId, $this->message);
+    public function handle(
+        TelegramServiceInterface $telegram,
+        TelegramRepositoryInterface $repository
+    ): void {
 
-        if (($result['ok'] ?? false) === true) {
-            return;
-        }
-
-        $description = $result['description'] ?? 'tidak diketahui';
-
-        // Pengguna memblokir bot atau menghapus akun — tandai nonaktif
-        // supaya tidak terus dicoba di broadcast berikutnya.
-        if (str_contains($description, 'blocked') || str_contains($description, 'user is deactivated')) {
-            User::where('telegram_id', $this->telegramId)->update(['is_active' => false]);
+        try {
+            $telegram->sendMessage($this->telegramId, $this->message);
 
             return;
-        }
+        } catch (TelegramException $e) {
 
-        Log::warning('Broadcast Telegram gagal', [
-            'telegram_id' => $this->telegramId,
-            'alasan'      => $description,
-        ]);
+            /*
+            |------------------------------------------------------------------
+            | Pengguna memblokir bot atau menghapus akunnya
+            |------------------------------------------------------------------
+            |
+            | Ditandai nonaktif supaya tidak terus dicoba di broadcast
+            | berikutnya. Sebelum Sprint 8.1 keadaan ini dikenali dengan
+            | mencocokkan potongan kata di dalam kalimat galat Telegram —
+            | cara yang ikut salah begitu Telegram mengubah kalimatnya, dan
+            | akibatnya pengguna yang sudah pergi terus dikirimi selamanya.
+            |
+            */
+
+            if ($e->isBlockedByUser()) {
+                $repository->deactivateByTelegramId($this->telegramId);
+
+                return;
+            }
+
+            // Chat tidak ada: tidak ada yang bisa diperbaiki dengan mengulang.
+            if ($e->isChatNotFound()) {
+
+                Log::info('Broadcast Telegram dilewati', $e->logContext() + [
+                    'telegram_id' => $this->telegramId,
+                ]);
+
+                return;
+            }
+
+            // Sisanya — batas laju, gangguan jaringan, 5xx — memang pantas
+            // diulang. Dilempar lagi supaya antrean yang menjadwalkannya,
+            // dengan backoff yang sudah diatur di atas.
+            Log::warning('Broadcast Telegram gagal', $e->logContext() + [
+                'telegram_id' => $this->telegramId,
+            ]);
+
+            throw $e;
+        }
     }
 }

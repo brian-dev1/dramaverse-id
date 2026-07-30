@@ -59,6 +59,10 @@ use App\Services\Storage\Contracts\StorageEngineInterface;
 use App\Services\Storage\Contracts\StorageManagerInterface;
 use App\Services\Storage\StorageEngine;
 use App\Services\Storage\StorageManager;
+use App\Services\Telegram\Contracts\TelegramClientInterface;
+use App\Services\Telegram\Contracts\TelegramServiceInterface;
+use App\Services\Telegram\TelegramClient;
+use App\Services\Telegram\TelegramService;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\Paginator;
@@ -119,6 +123,31 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(
             StorageEngineInterface::class,
             StorageEngine::class
+        );
+
+        /*
+        |----------------------------------------------------------------------
+        | Telegram
+        |----------------------------------------------------------------------
+        |
+        | Client dan service dipasang terpisah supaya client bisa diganti
+        | tiruan saat pengujian tanpa menyentuh service — pemisahan itulah
+        | yang membuat lapisan ini bisa diuji tanpa jaringan sama sekali.
+        |
+        | Keduanya singleton karena tidak menyimpan keadaan per-permintaan.
+        | withTimeout() dan withRetries() mengembalikan salinan, jadi
+        | penyetelan sesaat tidak pernah bocor ke pemanggil berikutnya.
+        |
+        */
+
+        $this->app->singleton(
+            TelegramClientInterface::class,
+            TelegramClient::class
+        );
+
+        $this->app->singleton(
+            TelegramServiceInterface::class,
+            TelegramService::class
         );
     }
 

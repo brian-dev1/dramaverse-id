@@ -33,11 +33,17 @@ return [
     |--------------------------------------------------------------------------
     | Telegram
     |--------------------------------------------------------------------------
+    |
+    | Sengaja TIDAK ada di sini. Seluruh konfigurasi Telegram ada di
+    | config/telegram.php, satu tempat saja.
+    |
+    | Sebelum Sprint 8.1 kunci ini ada di dua berkas sekaligus, dan
+    | TelegramRepository membaca `services.telegram.bot_token` sementara
+    | seluruh kode lain membaca `telegram.bot_token`. Keduanya kebetulan
+    | menunjuk env yang sama, jadi tidak pernah terlihat salah — sampai ada
+    | yang mengganti sumber token di satu berkas saja, dan sebagian jalur
+    | pengiriman diam-diam memakai token kosong.
+    |
     */
-
-    'telegram' => [
-        'bot_token' => env('TELEGRAM_BOT_TOKEN'),
-        'bot_username' => env('TELEGRAM_BOT_USERNAME'),
-    ],
 
 ];

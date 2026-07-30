@@ -2,12 +2,12 @@
 
 namespace App\Telegram\Handlers;
 
-use App\Telegram\Services\TelegramService;
+use App\Services\Telegram\Contracts\TelegramServiceInterface;
 
 class HelpHandler
 {
     public function __construct(
-        protected TelegramService $telegram
+        protected TelegramServiceInterface $telegram
     ) {
     }
 

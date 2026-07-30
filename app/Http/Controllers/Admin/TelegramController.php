@@ -4,59 +4,70 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\SendTelegramBroadcast;
-use App\Models\User;
+use App\Repositories\Contracts\TelegramRepositoryInterface;
 use App\Services\Admin\ActivityLogger;
+use App\Services\Telegram\Contracts\TelegramServiceInterface;
+use App\Services\Telegram\Exceptions\TelegramException;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
 
+/**
+ * Halaman Telegram di panel admin.
+ *
+ * Controller ini TIDAK memanggil Telegram API sendiri. Sebelum Sprint 8.1 ia
+ * punya method `call()` berisi `Http::timeout(6)` dengan URL yang dirakit
+ * dari token — jalur ketiga ke Telegram di dalam proyek ini, dengan timeout
+ * dan penanganan galat yang tidak sama dengan dua jalur lainnya.
+ */
 class TelegramController extends Controller
 {
-    /** Segmen penerima broadcast. */
-    private const AUDIENCES = [
-        'all'      => 'Semua pengguna Telegram',
-        'active'   => 'Aktif dalam 30 hari terakhir',
-        'vip'      => 'Anggota berlangganan aktif',
-        'inactive' => 'Belum aktif lebih dari 30 hari',
-    ];
+    /**
+     * Batas waktu untuk pembacaan yang menahan halaman admin, dalam detik.
+     *
+     * Lebih pendek daripada bawaan karena ada orang yang sedang menunggu
+     * halaman terbuka, bukan job di antrean.
+     */
+    private const PROBE_TIMEOUT = 6;
+
+    public function __construct(
+        protected TelegramServiceInterface $telegram,
+        protected TelegramRepositoryInterface $repository
+    ) {
+    }
 
     public function index(): View
     {
         return view('web.pages.admin.telegram', [
-            'bot'        => $this->botInfo(),
-            'webhook'    => $this->webhookInfo(),
-            'audiences'  => self::AUDIENCES,
-            'counts'     => collect(self::AUDIENCES)
-                ->mapWithKeys(fn ($label, $key) => [$key => $this->audience($key)->count()])
-                ->all(),
-            'stats' => [
-                'total'    => User::whereNotNull('telegram_id')->count(),
-                'active'   => User::whereNotNull('telegram_id')->where('is_active', true)->count(),
-                'banned'   => User::whereNotNull('telegram_id')->where('is_banned', true)->count(),
-                'today'    => User::whereNotNull('telegram_id')->whereDate('created_at', today())->count(),
-            ],
+            'bot'       => $this->probe('getMe'),
+            'webhook'   => $this->probe('getWebhookInfo'),
+            'audiences' => $this->repository->audiences(),
+            'counts'    => $this->repository->counts(),
+            'stats'     => $this->repository->stats(),
         ]);
     }
 
     public function broadcast(Request $request): RedirectResponse
     {
+        $segmen = array_keys($this->repository->audiences());
+
         $data = $request->validate([
-            'audience' => ['required', 'string', 'in:'.implode(',', array_keys(self::AUDIENCES))],
+            'audience' => ['required', 'string', 'in:'.implode(',', $segmen)],
             'message'  => ['required', 'string', 'min:3', 'max:4000'],
         ]);
 
-        if (blank(config('telegram.bot_token'))) {
-            return back()->withErrors(['message' => 'Token bot belum diisi di .env.'])->withInput();
+        if (! $this->telegram->isConfigured()) {
+            return back()
+                ->withErrors(['message' => 'Token bot belum diisi di .env.'])
+                ->withInput();
         }
 
-        $recipients = $this->audience($data['audience'])
-            ->whereNotNull('telegram_id')
-            ->where('is_banned', false)
-            ->pluck('telegram_id', 'id');
+        $recipients = $this->repository->recipients($data['audience']);
 
         if ($recipients->isEmpty()) {
-            return back()->withErrors(['audience' => 'Tidak ada penerima pada segmen ini.'])->withInput();
+            return back()
+                ->withErrors(['audience' => 'Tidak ada penerima pada segmen ini.'])
+                ->withInput();
         }
 
         // Disebar ke antrean supaya permintaan HTTP tidak menunggu ribuan
@@ -66,8 +77,8 @@ class TelegramController extends Controller
         }
 
         app(ActivityLogger::class)->log('broadcast', 'telegram', null, [
-            'segmen'  => $data['audience'],
-            'jumlah'  => $recipients->count(),
+            'segmen' => $data['audience'],
+            'jumlah' => $recipients->count(),
         ]);
 
         return back()->with(
@@ -82,48 +93,35 @@ class TelegramController extends Controller
     |--------------------------------------------------------------------------
     */
 
-    private function audience(string $key)
+    /**
+     * Baca satu method Bot API untuk ditampilkan, atau null bila gagal.
+     *
+     * Halaman ini bersifat informasi. Token yang belum diisi, jaringan VPS
+     * yang bermasalah, atau Telegram yang sedang tumbang tidak boleh membuat
+     * seluruh halaman admin mati — semua kartu lain di halaman ini datang
+     * dari database dan tetap benar tanpa Telegram.
+     *
+     * Pengulangan dimatikan di sini. Untuk pekerjaan di antrean, mengulang
+     * itu benar; untuk halaman yang sedang ditunggu orang, mengulang hanya
+     * melipatgandakan waktu tunggu sebelum kegagalan yang sama muncul.
+     *
+     * Kegagalannya sudah dicatat TelegramClient beserta sebabnya, jadi
+     * menelannya di sini tidak menghilangkan jejak apa pun.
+     */
+    private function probe(string $method): ?array
     {
-        $query = User::query()->where('is_admin', false)->whereNotNull('telegram_id');
-
-        return match ($key) {
-            'active'   => $query->where('last_seen_at', '>=', now()->subDays(30)),
-            'inactive' => $query->where(fn ($q) => $q
-                ->whereNull('last_seen_at')
-                ->orWhere('last_seen_at', '<', now()->subDays(30))),
-            'vip'      => $query->whereHas('subscriptions', fn ($q) => $q
-                ->where('status', 'active')
-                ->where(fn ($w) => $w->whereNull('expired_at')->orWhere('expired_at', '>', now()))),
-            default    => $query,
-        };
-    }
-
-    /** Informasi bot dari Telegram. Null bila token belum diisi atau API gagal. */
-    private function botInfo(): ?array
-    {
-        return $this->call('getMe');
-    }
-
-    private function webhookInfo(): ?array
-    {
-        return $this->call('getWebhookInfo');
-    }
-
-    private function call(string $method): ?array
-    {
-        $token = config('telegram.bot_token');
-
-        if (blank($token)) {
+        if (! $this->telegram->isConfigured()) {
             return null;
         }
 
         try {
-            $response = Http::timeout(6)
-                ->get(config('telegram.api_url').'/bot'.$token.'/'.$method);
+            return $this->telegram
+                ->withTimeout(self::PROBE_TIMEOUT)
+                ->withRetries(1)
+                ->query($method)
+                ->array() ?: null;
 
-            return $response->json('result') ?: null;
-        } catch (\Throwable) {
-            // Jaringan bermasalah tidak boleh membuat halaman admin error.
+        } catch (TelegramException) {
             return null;
         }
     }

@@ -4,12 +4,12 @@ namespace App\Telegram\Handlers;
 
 use App\Repositories\UserRepository;
 use App\Services\LoginService;
-use App\Telegram\Services\TelegramService;
+use App\Services\Telegram\Contracts\TelegramServiceInterface;
 
 class WebsiteHandler
 {
     public function __construct(
-        protected TelegramService $telegram,
+        protected TelegramServiceInterface $telegram,
         protected UserRepository $users,
         protected LoginService $login
     ) {

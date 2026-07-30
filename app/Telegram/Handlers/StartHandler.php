@@ -2,14 +2,14 @@
 
 namespace App\Telegram\Handlers;
 
+use App\Services\Telegram\Contracts\TelegramServiceInterface;
 use App\Services\UserService;
 use App\Telegram\Keyboards\HomeKeyboard;
-use App\Telegram\Services\TelegramService;
 
 class StartHandler
 {
     public function __construct(
-        protected TelegramService $telegram,
+        protected TelegramServiceInterface $telegram,
         protected UserService $userService
     ) {
     }
