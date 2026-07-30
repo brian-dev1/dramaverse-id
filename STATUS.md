@@ -83,7 +83,15 @@ Izin `storage.view` baru. Halaman tetap terbuka tanpa langkah ini karena
 route dan menunya juga menerima `setting.manage`; seeder hanya diperlukan
 bila ingin memberi peran lain akses storage tanpa akses Pengaturan.
 
-**Angka saat ini:** 128 route, 18 controller admin, 18 view admin,
+### Sprint 7.2B — Create Storage Provider
+Form tambah provider, validasi sadar-driver (field wajib diturunkan dari
+`StorageDriver::requiredFields()`), simpan lewat `StorageProviderService`,
+redirect, toast. Provider baru selalu dibuat **nonaktif** dan tidak jadi
+default — aktivasi menunggu Test Connection di sprint berikutnya.
+Kredensial ditambahkan ke `dontFlash` supaya tidak bocor ke session dan HTML
+saat validasi gagal. Detail: `SPRINT-7-2B-SELESAI.md`.
+
+**Angka saat ini:** 130 route, 18 controller admin, 19 view admin,
 30 migration, 11 middleware, 197 kelas CSS, 26 interface repository.
 
 ---
@@ -110,7 +118,7 @@ beberapa masih dangkal:
   otomatis melanjutkan
 
 ### Lanjutan Multi Storage (Sprint 7.2B dan seterusnya)
-- **CRUD provider** — tambah, ubah, hapus (daftar baca-saja sudah ada)
+- **Ubah dan hapus provider** — daftar dan tambah sudah ada
 - **Enable, Disable, Set Default, Update Priority** — service-nya sudah siap
   di `StorageProviderService`, tinggal route, form, dan tombolnya
 - **Test Connection dari panel** — sudah ada di `php artisan storage:test`

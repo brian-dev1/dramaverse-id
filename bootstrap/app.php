@@ -37,5 +37,22 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // Input yang TIDAK boleh ikut di-flash ke session saat validasi gagal.
         //
+        // Laravel mem-flash seluruh input agar form bisa diisi ulang lewat
+        // old(). Untuk kredensial storage itu berarti dua hal sekaligus:
+        // secret key tersimpan sebagai teks polos di penyimpanan session, dan
+        // dirender kembali ke dalam atribut value pada HTML. Padahal di
+        // database nilai yang sama disimpan terenkripsi — melindunginya di
+        // satu tempat lalu membocorkannya di tempat lain tidak ada gunanya.
+        //
+        // Konsekuensi yang disengaja: setelah validasi gagal, kolom kunci
+        // kembali kosong dan harus diisi ulang.
+        $exceptions->dontFlash([
+            'current_password',
+            'password',
+            'password_confirmation',
+            'access_key',
+            'secret_key',
+        ]);
     })->create();

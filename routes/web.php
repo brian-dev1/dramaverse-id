@@ -229,20 +229,39 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/logs', [Admin\LogController::class, 'index'])
             ->name('logs.index')->middleware('permission:log.view');
 
-        // --- Storage Manager: daftar baca-saja (Sprint 7.2A) ---
-        //
-        // Hanya `index`. Route tulis sengaja tidak didaftarkan, dan itu yang
-        // membuat crud/index.blade.php tidak merender tombol Tambah, Ubah,
-        // maupun Hapus — view memeriksa Route::has() sebelum menampilkannya.
-        //
-        // Dua izin diterima. `storage.view` baru ditambahkan ke daftar izin,
-        // sehingga barisnya belum ada di database sampai RoleSeeder dijalankan
-        // ulang. Tanpa `setting.manage` sebagai alternatif, menu ini akan
-        // tersembunyi dan halamannya 403 di server yang belum di-seed — gejala
-        // yang mudah disalahartikan sebagai bug.
-        Route::get('/storage', [Admin\StorageController::class, 'index'])
-            ->name('storage.index')
-            ->middleware('permission:storage.view,setting.manage');
+        /*
+        |----------------------------------------------------------------------
+        | Storage Manager
+        |
+        | 7.2A: daftar baca-saja. 7.2B: tambah provider.
+        |
+        | `edit`, `update`, `destroy`, `restore`, dan `bulk` sengaja BELUM
+        | didaftarkan. Itu bukan sekadar catatan: crud/index.blade.php
+        | memeriksa Route::has() sebelum merender tombol Ubah dan Hapus, jadi
+        | selama route-nya tidak ada, tombolnya tidak pernah muncul. Tombol
+        | Tambah kini muncul dengan sendirinya karena `create` sudah ada.
+        |
+        | Dua izin diterima di tiap baris. `storage.view` dan `storage.manage`
+        | baru ditambahkan ke daftar izin, sehingga barisnya belum ada di
+        | database sampai RoleSeeder dijalankan ulang. Tanpa `setting.manage`
+        | sebagai alternatif, menu akan tersembunyi dan halamannya 403 di
+        | server yang belum di-seed — gejala yang mudah disalahartikan
+        | sebagai bug.
+        |----------------------------------------------------------------------
+        */
+        Route::controller(Admin\StorageController::class)
+            ->prefix('storage')->name('storage.')
+            ->group(function () {
+
+                Route::get('/', 'index')->name('index')
+                    ->middleware('permission:storage.view,setting.manage');
+
+                Route::get('/create', 'create')->name('create')
+                    ->middleware('permission:storage.manage,setting.manage');
+
+                Route::post('/', 'store')->name('store')
+                    ->middleware('permission:storage.manage,setting.manage');
+            });
 
         Route::get('/analytics', [Admin\AnalyticsController::class, 'index'])
             ->name('analytics')->middleware('permission:report.view');
