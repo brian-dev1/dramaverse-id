@@ -182,13 +182,62 @@ class StorageProvider extends Model
     }
 
     /**
-     * Siap menerima lalu lintas: aktif, lengkap, dan adapternya ada.
+     * Field yang masih memuat nilai contoh.
+     *
+     * @return array<string, string>  nama field => penanda yang tertangkap
+     */
+    public function placeholderFields(): array
+    {
+        $tokens = (array) config('storage.placeholder_tokens', []);
+
+        if ($tokens === []) {
+            return [];
+        }
+
+        $fields = [
+            'bucket', 'endpoint', 'region', 'root', 'public_url',
+            'access_key', 'secret_key',
+        ];
+
+        $found = [];
+
+        foreach ($fields as $field) {
+            $value = (string) ($this->{$field} ?? '');
+
+            if ($value === '') {
+                continue;
+            }
+
+            foreach ($tokens as $token) {
+                if (stripos($value, (string) $token) !== false) {
+                    // Yang dicatat hanya penandanya, bukan nilai lengkapnya.
+                    // access_key dan secret_key terdekripsi saat dibaca, dan
+                    // isinya tidak boleh ikut masuk pesan galat atau log.
+                    $found[$field] = (string) $token;
+
+                    break;
+                }
+            }
+        }
+
+        return $found;
+    }
+
+    public function hasPlaceholders(): bool
+    {
+        return $this->placeholderFields() !== [];
+    }
+
+    /**
+     * Siap menerima lalu lintas: aktif, lengkap, adapternya ada, dan tidak
+     * ada nilai contoh yang tertinggal.
      */
     public function isUsable(): bool
     {
         return $this->isActive()
             && $this->isConfigured()
-            && $this->hasAdapterInstalled();
+            && $this->hasAdapterInstalled()
+            && ! $this->hasPlaceholders();
     }
 
     /*

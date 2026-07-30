@@ -83,6 +83,41 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Penanda nilai contoh
+    |--------------------------------------------------------------------------
+    |
+    | Provider yang masih memuat nilai contoh ditolak sebelum satu pun
+    | permintaan jaringan dikirim.
+    |
+    | Alasannya dari kejadian sungguhan: endpoint `ACCOUNT_ID.r2.cloudflare
+    | storage.com` yang belum diganti menghasilkan galat "SSL routines::
+    | sslv3 alert handshake failure". Pesan itu membuat orang mengejar
+    | sertifikat dan firewall selama berjam-jam, padahal host-nya memang
+    | tidak pernah ada. Lebih baik ditolak lebih awal dengan pesan yang
+    | menyebut field mana yang belum diisi.
+    |
+    | Pencocokan tidak peka huruf besar-kecil dan bersifat "mengandung".
+    | Kalau nilai sungguhan Anda kebetulan tertangkap, buang penandanya
+    | dari daftar ini.
+    |
+    */
+
+    'placeholder_tokens' => [
+        'ACCOUNT_ID',
+        'YOUR_',
+        'YOUR-',
+        'ISI_',
+        'GANTI_',
+        'CHANGEME',
+        'CHANGE_ME',
+        'TODO',
+        'nama-bucket-anda',
+        'domain-anda',
+        'xxxxx',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Batas
     |--------------------------------------------------------------------------
     |

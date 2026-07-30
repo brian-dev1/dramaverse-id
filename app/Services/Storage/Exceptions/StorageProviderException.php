@@ -73,6 +73,23 @@ class StorageProviderException extends RuntimeException
         );
     }
 
+    /**
+     * Nilai contoh masih tertinggal.
+     */
+    public static function hasPlaceholders(StorageProvider $provider): self
+    {
+        $parts = [];
+
+        foreach ($provider->placeholderFields() as $field => $token) {
+            $parts[] = "{$field} (masih memuat \"{$token}\")";
+        }
+
+        return new self(
+            "Storage provider `{$provider->slug}` masih memuat nilai contoh: "
+            .implode(', ', $parts).'. Ganti dengan nilai sungguhan dulu.'
+        );
+    }
+
     public static function unsupportedDriver(string $driver): self
     {
         return new self(

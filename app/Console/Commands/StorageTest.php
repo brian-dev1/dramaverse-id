@@ -44,6 +44,8 @@ class StorageTest extends Command
 
         $rows = [];
 
+        $hints = [];
+
         $failures = 0;
 
         foreach ($providers as $provider) {
@@ -57,7 +59,7 @@ class StorageTest extends Command
 
             $this->components->task(
                 "Menguji {$provider->slug}",
-                function () use ($provider, &$rows, &$failures) {
+                function () use ($provider, &$rows, &$hints, &$failures) {
 
                     $result = $this->service->test($provider);
 
@@ -71,6 +73,10 @@ class StorageTest extends Command
 
                     if ($result->failed()) {
                         $failures++;
+
+                        if ($hint = $result->hint()) {
+                            $hints[$provider->slug] = $hint;
+                        }
                     }
 
                     return $result->success;
@@ -81,6 +87,16 @@ class StorageTest extends Command
         $this->newLine();
 
         $this->table(['Slug', 'Driver', 'Hasil', 'Durasi', 'Pesan'], $rows);
+
+        // Pesan asli dari SDK sering menunjuk ke tempat yang salah. Petunjuk
+        // ini ditampilkan terpisah, bukan menggantikannya.
+        if ($hints !== []) {
+            $this->newLine();
+
+            foreach ($hints as $slug => $hint) {
+                $this->components->bulletList(["{$slug}: {$hint}"]);
+            }
+        }
 
         if ($failures > 0) {
             $this->components->error("{$failures} provider gagal diuji.");
@@ -127,6 +143,11 @@ class StorageTest extends Command
 
         if (! $provider->hasAdapterInstalled()) {
             return 'Perlu: composer require '.$provider->driver->composerPackage();
+        }
+
+        if ($provider->hasPlaceholders()) {
+            return 'Nilai contoh belum diganti: '
+                .implode(', ', array_keys($provider->placeholderFields()));
         }
 
         return null;

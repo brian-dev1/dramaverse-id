@@ -211,6 +211,10 @@ class StorageProviderService
             throw StorageProviderException::adapterMissing($provider);
         }
 
+        if ($provider->hasPlaceholders()) {
+            throw StorageProviderException::hasPlaceholders($provider);
+        }
+
         $updated = $this->repository->update($provider, [
             'status' => StorageStatus::ACTIVE->value,
         ]);

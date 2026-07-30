@@ -142,6 +142,22 @@ class StorageManager implements StorageManagerInterface
      */
     public function test(StorageProvider $provider): StorageTestResult
     {
+        // Ditolak sebelum jaringan disentuh. Nilai contoh yang belum diganti
+        // menghasilkan galat TLS atau DNS yang menyesatkan, dan menelusurinya
+        // jauh lebih mahal daripada memeriksanya di sini.
+        if ($provider->hasPlaceholders()) {
+            $parts = [];
+
+            foreach ($provider->placeholderFields() as $field => $token) {
+                $parts[] = "{$field} (masih memuat \"{$token}\")";
+            }
+
+            return StorageTestResult::fail(
+                'Masih ada nilai contoh yang belum diganti: '
+                .implode(', ', $parts).'.'
+            );
+        }
+
         $path = $this->probePath();
 
         $payload = 'dramaverse-storage-test '.now()->toIso8601String();
