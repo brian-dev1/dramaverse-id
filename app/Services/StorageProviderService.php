@@ -82,6 +82,13 @@ class StorageProviderService
 
         return DB::transaction(function () use ($data) {
 
+            // Dikunci lebih dulu supaya pemeriksaan "belum ada provider" di
+            // bawah tidak bisa dilangkahi permintaan lain yang berjalan
+            // bersamaan. Tanpa ini, dua penambahan provider pertama yang tiba
+            // berbarengan bisa sama-sama menyimpulkan dirinya yang pertama dan
+            // sama-sama menandai diri default.
+            $this->repository->lockAll();
+
             // Provider pertama otomatis jadi default: tanpa ini, sistem
             // berdiri dengan nol tujuan penyimpanan dan admin harus menebak
             // bahwa ada satu langkah lagi yang belum dilakukan.
@@ -112,6 +119,8 @@ class StorageProviderService
         return DB::transaction(function () use ($provider, $data) {
 
             if (! empty($data['is_default'])) {
+                $this->repository->lockAll();
+
                 $this->repository->clearDefaultFlag($provider->id);
             }
 
@@ -172,13 +181,23 @@ class StorageProviderService
         return $data;
     }
 
+    /**
+     * Hapus provider (soft delete).
+     *
+     * Penjagaannya dipindahkan ke dalam transaction dengan alasan yang sama
+     * seperti `disable()`: memeriksa `is_default` di luar kunci memungkinkan
+     * penghapusan berbarengan dengan pemindahan default, sehingga provider
+     * yang baru saja dijadikan default justru ikut terhapus.
+     */
     public function delete(StorageProvider $provider): void
     {
-        if ($provider->is_default) {
-            throw StorageProviderException::cannotDeleteDefault($provider);
-        }
-
         DB::transaction(function () use ($provider) {
+
+            $this->repository->lockAll();
+
+            if ($provider->refresh()->is_default) {
+                throw StorageProviderException::cannotDeleteDefault($provider);
+            }
 
             $this->logger->log('dihapus', 'storage', $provider);
 
@@ -224,21 +243,41 @@ class StorageProviderService
         return $updated;
     }
 
+    /**
+     * Nonaktifkan provider.
+     *
+     * Penjagaan "default tidak boleh dinonaktifkan" dijalankan DI DALAM
+     * transaction dengan baris terkunci, bukan di luarnya. Kalau diperiksa di
+     * luar, ada celah: `disable(B)` membaca B belum default, sementara
+     * `makeDefault(B)` yang berjalan bersamaan menjadikannya default. Keduanya
+     * lolos, dan hasil akhirnya provider default yang nonaktif — melanggar
+     * syarat bahwa default harus selalu bisa dipakai.
+     *
+     * Celahnya sempit, tapi akibatnya tidak: seluruh unggahan berikutnya gagal,
+     * dan penyebabnya tidak terlihat dari gejalanya.
+     */
     public function disable(StorageProvider $provider): StorageProvider
     {
-        if ($provider->is_default) {
-            throw StorageProviderException::cannotDisableDefault($provider);
-        }
+        return DB::transaction(function () use ($provider) {
 
-        $updated = $this->repository->update($provider, [
-            'status' => StorageStatus::INACTIVE->value,
-        ]);
+            $this->repository->lockAll();
 
-        $this->manager->forget($updated->slug);
+            // Dibaca ulang setelah terkunci: nilai di objek $provider berasal
+            // dari sebelum kunci didapat dan bisa sudah kedaluwarsa.
+            if ($provider->refresh()->is_default) {
+                throw StorageProviderException::cannotDisableDefault($provider);
+            }
 
-        $this->logger->log('diubah', 'storage', $updated, ['status' => 'inactive']);
+            $updated = $this->repository->update($provider, [
+                'status' => StorageStatus::INACTIVE->value,
+            ]);
 
-        return $updated;
+            $this->manager->forget($updated->slug);
+
+            $this->logger->log('diubah', 'storage', $updated, ['status' => 'inactive']);
+
+            return $updated;
+        });
     }
 
     public function toggle(StorageProvider $provider): StorageProvider
@@ -248,17 +287,43 @@ class StorageProviderService
             : $this->enable($provider);
     }
 
+    /**
+     * Pindahkan tanda default ke provider ini.
+     *
+     * Invarian yang dijaga: TEPAT SATU baris hidup boleh bertanda default.
+     *
+     * Tiga hal bekerja bersama untuk itu, dan ketiganya diperlukan:
+     *
+     * 1. Transaction — membersihkan flag lama dan memasang yang baru harus
+     *    menjadi satu satuan. Kalau yang pertama berhasil dan yang kedua
+     *    gagal, situs kehilangan default sepenuhnya.
+     * 2. `lockAll()` — transaction saja TIDAK cukup. Dua permintaan bersamaan
+     *    bisa sama-sama membersihkan flag sebelum salah satunya commit,
+     *    sehingga masing-masing tidak melihat perubahan yang lain dan keduanya
+     *    berakhir bertanda default.
+     * 3. Urutan bersih-dulu-baru-pasang — dibalik pun hasil akhirnya sama di
+     *    dalam transaction, tapi urutan ini yang membuat keadaan "dua default"
+     *    tidak pernah ada bahkan sesaat di tengah transaksi.
+     */
     public function makeDefault(StorageProvider $provider): StorageProvider
     {
-        if (! $provider->isActive()) {
-            throw StorageProviderException::cannotDefaultInactive($provider);
-        }
-
-        if (! $provider->isUsable()) {
-            throw StorageProviderException::incomplete($provider);
-        }
-
         return DB::transaction(function () use ($provider) {
+
+            $this->repository->lockAll();
+
+            // Penjagaan dijalankan SETELAH kunci didapat dan baris dibaca
+            // ulang. Diperiksa di luar kunci, `disable()` yang berjalan
+            // bersamaan bisa menonaktifkan provider ini tepat setelah
+            // pemeriksaan lolos — meninggalkan default yang tidak aktif.
+            $provider->refresh();
+
+            if (! $provider->isActive()) {
+                throw StorageProviderException::cannotDefaultInactive($provider);
+            }
+
+            if (! $provider->isUsable()) {
+                throw StorageProviderException::incomplete($provider);
+            }
 
             $this->repository->clearDefaultFlag($provider->id);
 
@@ -273,19 +338,45 @@ class StorageProviderService
     }
 
     /**
+     * Terapkan prioritas baru untuk beberapa provider sekaligus.
+     *
+     * Transaction diperlukan karena ini banyak UPDATE terpisah. Kalau
+     * separuhnya masuk lalu sisanya gagal, urutan yang tersimpan bukan urutan
+     * lama maupun urutan baru — melainkan campuran yang tidak pernah diminta
+     * siapa pun, dan tidak ada yang tahu bahwa itu yang terjadi.
+     *
      * @param  array<int, int>  $priorities  id => priority
+     * @return int  jumlah provider yang berubah
      */
-    public function reorder(array $priorities): void
+    public function reorder(array $priorities): int
     {
-        DB::transaction(function () use ($priorities) {
+        if ($priorities === []) {
+            return 0;
+        }
 
-            $this->repository->applyPriorities($priorities);
+        return DB::transaction(function () use ($priorities) {
 
+            // Hanya yang nilainya benar-benar berbeda yang ditulis. Menyimpan
+            // formulir tanpa mengubah apa pun seharusnya tidak meninggalkan
+            // catatan aktivitas yang berbunyi seolah ada perubahan.
+            $berubah = $this->repository->changedPriorities($priorities);
+
+            if ($berubah === []) {
+                return 0;
+            }
+
+            $this->repository->applyPriorities($berubah);
+
+            // Prioritas menentukan urutan rantai fallback, jadi disk yang
+            // sudah dibangun di permintaan ini tidak lagi mencerminkan urutan
+            // yang benar.
             $this->manager->forget();
 
             $this->logger->log('massal', 'storage', null, [
-                'priority' => $priorities,
+                'priority' => $berubah,
             ]);
+
+            return count($berubah);
         });
     }
 

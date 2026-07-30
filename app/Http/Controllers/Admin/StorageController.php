@@ -554,4 +554,133 @@ class StorageController extends AdminCrudController
             $provider->status->label()
         ));
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Enable, Disable, Set Default, Update Priority (Sprint 7.2D)
+    |--------------------------------------------------------------------------
+    |
+    | Keempatnya mengarah ke StorageProviderService dan tidak menyentuh model
+    | langsung. Seluruh penjagaan invarian ada di sana: provider setengah jadi
+    | tidak boleh aktif, provider default tidak boleh dinonaktifkan, dan hanya
+    | tepat satu baris boleh bertanda default.
+    |
+    | Setiap penolakan ditangkap dan ditampilkan sebagai pesan. Penjagaan yang
+    | muncul sebagai halaman 500 akan dilaporkan sebagai bug, bukan dibaca
+    | sebagai peringatan.
+    */
+
+    /**
+     * Aktifkan provider.
+     *
+     * Service menolak bila field wajibnya kosong, adapter composer-nya belum
+     * terpasang, atau masih ada nilai contoh yang belum diganti.
+     */
+    public function enable(int $id): RedirectResponse
+    {
+        /** @var StorageProvider $provider */
+        $provider = $this->findOrFail($id);
+
+        try {
+            $this->service->enable($provider);
+        } catch (StorageProviderException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        return back()->with('status', sprintf(
+            'Storage provider "%s" diaktifkan. Uji koneksinya dengan: '
+            .'php artisan storage:test %s',
+            $provider->name,
+            $provider->slug
+        ));
+    }
+
+    /**
+     * Nonaktifkan provider.
+     *
+     * Service menolak menonaktifkan provider default. Itu bukan kehati-hatian
+     * berlebihan: provider default wajib aktif, jadi menonaktifkannya berarti
+     * situs kehilangan tujuan penyimpanan yang bisa dipakai, dan kegagalannya
+     * baru muncul saat ada berkas sungguhan yang hendak disimpan.
+     */
+    public function disable(int $id): RedirectResponse
+    {
+        /** @var StorageProvider $provider */
+        $provider = $this->findOrFail($id);
+
+        try {
+            $this->service->disable($provider);
+        } catch (StorageProviderException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        return back()->with('status', sprintf(
+            'Storage provider "%s" dinonaktifkan dan keluar dari rantai '
+            .'penyimpanan. Berkas yang sudah ada di sana tidak terhapus.',
+            $provider->name
+        ));
+    }
+
+    /**
+     * Jadikan provider ini tujuan penyimpanan bawaan.
+     *
+     * Service mengerjakannya di dalam transaction dengan seluruh baris
+     * terkunci, sehingga tanda default berpindah — tidak bertambah.
+     */
+    public function makeDefault(int $id): RedirectResponse
+    {
+        /** @var StorageProvider $provider */
+        $provider = $this->findOrFail($id);
+
+        if ($provider->is_default) {
+            return back()->with('status', sprintf(
+                'Storage provider "%s" memang sudah menjadi default.',
+                $provider->name
+            ));
+        }
+
+        try {
+            $this->service->makeDefault($provider);
+        } catch (StorageProviderException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        return back()->with('status', sprintf(
+            'Storage provider "%s" kini menjadi default. Unggahan baru masuk '
+            .'ke sini; berkas yang sudah ada TIDAK dipindahkan.',
+            $provider->name
+        ));
+    }
+
+    /**
+     * Perbarui prioritas beberapa provider sekaligus.
+     *
+     * Angka lebih kecil dicoba lebih dulu. Nilai dibatasi 0..65535 karena
+     * kolomnya `unsignedSmallInteger` — tanpa batas atas, MySQL dalam mode
+     * non-strict akan memotong nilainya diam-diam menjadi 65535, dan urutan
+     * yang tersimpan berbeda dari yang diminta tanpa ada yang tahu.
+     */
+    public function updatePriority(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'priority'   => ['required', 'array', 'min:1'],
+            'priority.*' => ['required', 'integer', 'min:0', 'max:65535'],
+        ], [
+            'priority.*.integer' => 'Priority harus berupa angka bulat.',
+            'priority.*.min'     => 'Priority paling kecil 0.',
+            'priority.*.max'     => 'Priority paling besar 65535.',
+        ]);
+
+        $jumlah = $this->service->reorder($data['priority']);
+
+        if ($jumlah === 0) {
+            return back()->with('status', 'Tidak ada prioritas yang berubah.');
+        }
+
+        return back()->with('status', sprintf(
+            'Prioritas %d storage provider diperbarui. Angka lebih kecil '
+            .'dicoba lebih dulu.',
+            $jumlah
+        ));
+    }
 }

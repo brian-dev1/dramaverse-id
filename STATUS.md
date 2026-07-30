@@ -101,7 +101,19 @@ Toast `session('error')` baru untuk penolakan yang bukan kesalahan isian.
 Belum ada Enable/Disable/Set Default/Priority/Test Connection/force delete.
 Detail: `SPRINT-7-2C-SELESAI.md`.
 
-**Angka saat ini:** 134 route, 18 controller admin, 19 view admin,
+### Sprint 7.2D — Enable, Disable, Set Default, Update Priority
+Empat aksi di Storage Manager. Invarian **tepat satu default** dijaga dengan
+transaction *plus* `lockAll()` (`SELECT ... FOR UPDATE` seluruh baris):
+transaction sendirian tidak cukup, karena dua permintaan bersamaan bisa
+sama-sama membersihkan flag sebelum salah satunya commit. Penjagaan di
+`disable()`, `delete()`, dan `makeDefault()` dipindah ke DALAM kunci —
+diperiksa di luar kunci, hasilnya bisa kedaluwarsa dan meninggalkan provider
+default yang nonaktif atau terhapus. Update Priority: satu formulir untuk
+semua baris, hanya nilai yang benar-benar berubah yang ditulis.
+Belum ada Test Connection dari panel dan hapus permanen.
+Detail: `SPRINT-7-2D-SELESAI.md`.
+
+**Angka saat ini:** 138 route, 18 controller admin, 19 view admin,
 31 migration, 11 middleware, 197 kelas CSS, 26 interface repository.
 
 ---
@@ -127,9 +139,23 @@ beberapa masih dangkal:
 - **Continue watching di pemutar** — progres tersimpan, tapi belum
   otomatis melanjutkan
 
-### Lanjutan Multi Storage (Sprint 7.2D dan seterusnya)
-- **Enable, Disable, Set Default, Update Priority** — service-nya sudah siap
-  di `StorageProviderService`, tinggal route, tombol, dan penjagaannya
+### Bug diketahui, belum diperbaiki
+- **Form bersarang di `crud/index.blade.php`.** Saat sebuah modul punya aksi
+  massal, form bulk membungkus tabel — sehingga form tombol Hapus di dalam
+  baris jadi bersarang. Parser HTML membuang tag `<form>` bersarang, jadi
+  tombol Hapus mengirim ke `admin.<modul>.bulk`, bukan `.destroy`.
+  Terdampak: drama, episode, genre, country, banner, membership, subscription,
+  user. Tidak terdampak: storage, logs, role (aksi massalnya kosong).
+  Perbaikannya mekanis — beri form bulk sebuah `id`, tutup tanpa melingkupi
+  tabel, tambahkan `form="bulk-form"` pada kotak centang. Teknik yang sama
+  sudah dipakai editor prioritas di 7.2D. **Uji di browser sebelum dan
+  sesudah.**
+
+### Lanjutan Multi Storage (Sprint 7.2E dan seterusnya)
+- **Jaminan satu-default di tingkat database** — kolom generated + unique
+  index. Kandidat pertama, tapi harus dijalankan di server yang bisa langsung
+  diuji: sintaks kolom generated berbeda antar versi MySQL, dan migration yang
+  gagal menghentikan `deploy.sh` di langkah migrate.
 - **Hapus permanen** — baris terhapus kini hanya bisa dipulihkan atau dibiarkan
 - **Test Connection dari panel** — sudah ada di `php artisan storage:test`
 - **Kolom hasil test terakhir** di tabel (`last_tested_at`, `last_test_status`)
@@ -158,6 +184,48 @@ beberapa masih dangkal:
 4. **Tidak ada dead link.** Setiap route punya controller dan view.
    Tombol yang route-nya tidak ada tidak boleh dirender.
 5. **Jalankan alat verifikasi sebelum menyatakan selesai.**
+6. **Selalu akhiri dengan perintah yang harus dijalankan**, dipisah jelas
+   antara PowerShell di PC dan SSH di VPS. Lihat bagian di bawah.
+
+---
+
+## Perintah penutup setiap pekerjaan
+
+Asisten WAJIB mengakhiri setiap sprint dengan dua blok ini, diisi sesuai
+pekerjaan yang baru selesai. Jangan digabung — perintah yang dijalankan di
+mesin yang salah sudah pernah menimbulkan commit liar di VPS.
+
+| Mesin | Tempat | Perannya |
+|---|---|---|
+| **PC** | PowerShell di `C:\ProjectDrama\dramaverse-id` | menulis kode, commit, push |
+| **VPS** | SSH `root@203.194.112.10`, `/var/www/dramaverse` | hanya menarik kode. **Jangan pernah commit di sini** |
+
+**Blok 1 — di PC (PowerShell):**
+```powershell
+git add -A
+git commit -m "<pesan sprint>"
+git push origin main
+```
+
+**Blok 2 — di VPS (SSH):**
+```bash
+cd /var/www/dramaverse
+bash deploy.sh
+```
+
+Lalu sebutkan **langkah tambahan hanya bila memang perlu**, jangan
+ditempelkan setiap kali:
+
+- `composer require <paket>` → di **PC**, supaya `composer.lock` ikut
+  terbarui dan `composer install` di `deploy.sh` tidak berhenti
+- `php artisan db:seed --class='Database\Seeders\RoleSeeder' --force` → di
+  **VPS**, hanya bila ada izin baru di `AuthServiceProvider`
+- `php artisan db:seed --class='Database\Seeders\StorageProviderSeeder' --force`
+  → di **VPS**, hanya bila ada data referensi baru
+- `php artisan storage:test` → di **VPS**, setiap kali storage disentuh
+
+Tutup dengan daftar singkat **apa yang harus dilihat di browser**, karena
+seluruh alat verifikasi proyek ini statis dan tidak pernah merender apa pun.
 
 ---
 

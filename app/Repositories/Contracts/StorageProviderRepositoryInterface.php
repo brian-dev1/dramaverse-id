@@ -47,6 +47,17 @@ interface StorageProviderRepositoryInterface
     public function clearDefaultFlag(?int $exceptId = null): void;
 
     /**
+     * Kunci seluruh baris sampai transaksi berjalan selesai.
+     *
+     * Wajib dipanggil sebelum memindahkan tanda default. Transaction sendirian
+     * tidak menjamin hanya ada satu default: dua permintaan bersamaan bisa
+     * sama-sama membersihkan flag sebelum salah satunya commit, sehingga
+     * keduanya tidak melihat perubahan yang lain dan berakhir dengan dua baris
+     * bertanda default.
+     */
+    public function lockAll(): void;
+
+    /**
      * Simpan hasil Test Connection terakhir.
      */
     public function recordTest(
@@ -61,6 +72,15 @@ interface StorageProviderRepositoryInterface
      * @param  array<int, int>  $priorities  id => priority
      */
     public function applyPriorities(array $priorities): void;
+
+    /**
+     * Saring $priorities, sisakan yang nilainya benar-benar berbeda dari
+     * yang tersimpan. Id yang tidak ada di database ikut dibuang.
+     *
+     * @param  array<int, int>  $priorities  id => priority
+     * @return array<int, int>
+     */
+    public function changedPriorities(array $priorities): array;
 
     public function countActive(): int;
 }

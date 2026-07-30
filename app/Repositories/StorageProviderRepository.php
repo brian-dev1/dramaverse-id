@@ -92,6 +92,32 @@ class StorageProviderRepository implements StorageProviderRepositoryInterface
             ->update(['is_default' => false]);
     }
 
+    /**
+     * Kunci seluruh baris sampai transaksi berjalan selesai.
+     *
+     * Sengaja mengunci SEMUA baris, bukan hanya yang sedang bertanda default.
+     * Kalau yang dikunci hanya baris ber-`is_default = true`, dua permintaan
+     * bersamaan pada tabel yang belum punya default tidak akan mengunci apa
+     * pun — tidak ada baris yang cocok — lalu keduanya lolos dan menghasilkan
+     * dua default. Mengunci semua baris menghilangkan celah itu, dan tabel ini
+     * memang kecil (jumlah provider dihitung dengan jari), jadi biayanya
+     * tidak berarti.
+     *
+     * `withTrashed()` disertakan supaya baris terhapus ikut terkunci: baris
+     * terhapus masih bisa dipulihkan, dan pemulihan tidak boleh berbarengan
+     * dengan pemindahan default.
+     *
+     * Di SQLite (dipakai pengujian) `lockForUpdate()` tidak melakukan apa-apa,
+     * dan itu tidak jadi masalah: SQLite hanya mengizinkan satu penulis pada
+     * satu waktu, jadi serialisasinya sudah dijamin mesinnya.
+     */
+    public function lockAll(): void
+    {
+        StorageProvider::withTrashed()
+            ->lockForUpdate()
+            ->get(['id']);
+    }
+
     public function recordTest(
         StorageProvider $provider,
         string $status,
@@ -119,6 +145,37 @@ class StorageProviderRepository implements StorageProviderRepositoryInterface
             StorageProvider::where('id', (int) $id)
                 ->update(['priority' => (int) $priority]);
         }
+    }
+
+    public function changedPriorities(array $priorities): array
+    {
+        if ($priorities === []) {
+            return [];
+        }
+
+        // Satu query untuk seluruh id, bukan satu query per baris.
+        $tersimpan = StorageProvider::withTrashed()
+            ->whereIn('id', array_map('intval', array_keys($priorities)))
+            ->pluck('priority', 'id');
+
+        $berubah = [];
+
+        foreach ($priorities as $id => $priority) {
+            $id = (int) $id;
+
+            // Id yang tidak ada di database dibuang tanpa suara. Ini bisa
+            // terjadi wajar: admin membuka daftar, provider dihapus di tab
+            // lain, lalu formulir lama tetap dikirim.
+            if (! $tersimpan->has($id)) {
+                continue;
+            }
+
+            if ((int) $tersimpan[$id] !== (int) $priority) {
+                $berubah[$id] = (int) $priority;
+            }
+        }
+
+        return $berubah;
     }
 
     public function countActive(): int
