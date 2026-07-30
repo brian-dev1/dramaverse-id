@@ -25,8 +25,8 @@ Yang WAJIB dilakukan asisten sebelum menulis satu baris kode:
 1. Baca `STATUS.md` **sampai habis** — termasuk "Bug diketahui" dan
    "Batasan asisten" di bagian bawah.
 2. Baca berkas `SPRINT-*-SELESAI.md` yang relevan dengan pekerjaan berikutnya.
-   Sprint terakhir yang selesai adalah **8.1** (`SPRINT-8-1-SELESAI.md`).
-   **Phase 7 selesai.** Phase 8 — Telegram Integration — sedang berjalan.
+   Sprint terakhir yang selesai adalah **8.6** (`SPRINT-8-2-SELESAI.md`).
+   **Phase 7 dan Phase 8 selesai.**
 3. Jalankan kelima alat verifikasi lebih dulu, untuk tahu keadaan awal yang
    bersih. Kalau ada yang GAGAL sejak awal, laporkan sebelum menambah apa pun.
    **Cocokkan angkanya dengan "Angka saat ini" di bawah.** Angka yang lebih
@@ -350,9 +350,48 @@ yang dilihat pengguna adalah tombol yang ditekan lalu tidak terjadi apa-apa.
 Bug yang sama versi diam ada di `TelegramRouter`, membuat state `SEARCH` tidak
 pernah terbaca. Keduanya diperbaiki lewat `findByTelegramId()`.
 
-**Angka saat ini:** 176 route, 25 controller admin, 26 view admin,
-38 migration, 11 middleware, 256 kelas CSS, 26 interface repository,
-8 job antrean, 372 berkas PHP, 71 blade, 7 perintah artisan.
+### Sprint 8.2–8.6 — Telegram Integration
+Website, Storage, Database, dan Bot saling terhubung. Core Service (8.1),
+Storage Engine (7.4), modul unggah (7.5–7.6), dan Queue (7.7) tidak diubah satu
+baris pun. Detail: `SPRINT-8-2-SELESAI.md`.
+
+**Gagasan yang menentukan seluruh rancangannya: video tidak pernah dikirim dua
+kali ke Telegram.** Sekali per berkas, admin menyinkronkannya dari storage
+provider dan `file_id`-nya disimpan. Sesudah itu setiap pengiriman ke pengguna
+hanya menyebut file_id — nol byte keluar dari server, nol bandwidth bucket,
+selesai dalam milidetik. Bot TIDAK pernah mengunggah video saat pengguna
+memintanya.
+
+- **Sinkron** — `/admin/telegram/sync`. Sync, Retry Sync, Sinkronkan semua
+  (batas 25 sekali tekan). Status Pending, Processing, Synced, Failed. Tujuh
+  kolom baru di `episode_videos` termasuk `telegram_file_id`,
+  `telegram_unique_file_id`, `last_error`, `retry_count`.
+- **Deep link** — `t.me/<bot>?start=watch_<id>` dan `drama_<id>`. Tombol
+  "Tonton di Telegram" di halaman episode, hanya dirender bila videonya memang
+  sudah ada di Telegram.
+- **Playback** — inline keyboard Sebelumnya / Daftar Episode / Berikutnya /
+  Favorit / Website, dengan daftar episode berhalaman.
+- **Membership** — ditanyakan ke `EpisodeAccessService`, service yang sama
+  dengan pemutar website. Free, Premium, dan Expired dibedakan; yang ditolak
+  mendapat tombol Upgrade.
+- **Continue Watching, Riwayat, Favorit** — lewat `WatchHistoryService` dan
+  `FavoriteService`. Tidak ada mekanisme sinkronisasi antara website dan bot,
+  karena tidak ada dua salinan data: ada satu data dan dua tampilan.
+
+**Langkah wajib setelah deploy:**
+```
+php artisan migrate
+php artisan config:cache
+```
+Plus `TELEGRAM_STORAGE_CHAT_ID` di `.env` — channel PRIVAT tempat bot jadi
+admin. Tanpa itu tombol Sync menolak dengan alasan yang disebutkan di panel.
+Channel itu tidak boleh publik: isinya seluruh katalog video termasuk yang
+berbayar, dan siapa pun yang bisa membukanya menonton tanpa lewat pemeriksaan
+membership.
+
+**Angka saat ini:** 180 route, 26 controller admin, 27 view admin,
+39 migration, 11 middleware, 256 kelas CSS, 26 interface repository,
+9 job antrean, 382 berkas PHP, 72 blade, 7 perintah artisan.
 
 Empat angka terakhir ditambahkan sebagai pembanding untuk poin 3 di bagian
 "Memulai sesi baru": alat verifikasi yang melaporkan angka lebih kecil berarti
@@ -388,6 +427,28 @@ beberapa masih dangkal:
   otomatis melanjutkan
 
 ### Bug diketahui, belum diperbaiki
+- **Bot API menolak berkas di atas 50 MB, dan itu batas Telegram.** Video
+  episode drama umumnya jauh lebih besar, jadi dalam keadaan bawaan sebagian
+  besar katalog **tidak akan bisa disinkronkan ke Telegram**. Tidak ada
+  rancangan di sisi kita yang bisa melewatinya. Jalan keluarnya satu:
+  menjalankan Local Bot API Server sendiri lalu mengarahkan
+  `TELEGRAM_API_URL` ke sana — batasnya naik jadi 2000 MB. Jalurnya sudah siap
+  sejak 8.1 (`api_url` dan `upload_max_mb` keduanya dari config, nol URL yang
+  dipatok di kode), tetapi **belum pernah diuji**.
+- **Progres tontonan dari bot tidak tercatat per detik.** Telegram tidak
+  memberi tahu detik ke berapa pengguna berhenti — tidak ada callback untuk
+  itu. Yang tercatat dari bot adalah "episode ini ditonton", bukan posisinya.
+  Progres per detik tetap hanya dari pemutar website.
+- **Video baru tidak otomatis disinkronkan.** Statusnya PENDING dan menunggu
+  admin menekan Sync. Sengaja: mengantrekannya otomatis berarti setiap unggahan
+  langsung memakan kuota Telegram sebelum ada yang memutuskan berkas itu memang
+  akan disajikan lewat bot.
+- **Menghapus baris `episode_videos` tidak menghapus pesannya di chat
+  penyimpanan Telegram.** `telegram_message_id` sudah disimpan supaya bisa
+  dikerjakan nanti, tapi belum ada yang memakainya.
+- **`telegram_file_id` belum pernah diverifikasi masih berlaku.** Telegram bisa
+  membuang berkas lama. Sama seperti checksum bucket yang juga belum pernah
+  diperiksa ulang, nilainya baru berguna kalau ada yang memeriksanya.
 - **`QueueService::telegram()` mengantrekan job yang tidak melakukan apa pun.**
   `SendTelegramNotificationJob::handle()` isinya hanya komentar `TODO`, tapi
   `QueueService::telegram($message)` tetap mengantrekannya — notifikasinya
@@ -611,7 +672,15 @@ python tools/check-css-coverage.py
 python tools/check-php-structure.py app/**/*.php config/*.php database/**/*.php
 python tools/audit-sprint-7-8.py         # 143 pemeriksaan khusus Sprint 7.8-7.9
 python tools/audit-sprint-8-1.py         # 81 pemeriksaan khusus Sprint 8.1
+python tools/audit-sprint-8-2.py         # 125 pemeriksaan khusus Sprint 8.2-8.6
 ```
+
+`audit-sprint-8-2.py` memeriksa **integrasi**, bukan keberadaan berkas:
+pengiriman ke pengguna tidak boleh menyentuh storage sama sekali, aturan premium
+tidak boleh ditulis ulang di lapisan Telegram, handler tidak boleh menembus
+service untuk membaca tabel sendiri, `answerCallbackQuery` hanya boleh dipanggil
+dari satu tempat, dan setiap awalan `callback_data` yang dibuat keyboard harus
+punya cabang di router.
 
 `audit-sprint-7-8.py` khusus sprint itu, tetapi tetap disimpan: sebagian
 pemeriksaannya berlaku terus — nol `Storage::` di controller dan service,

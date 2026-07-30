@@ -15,10 +15,6 @@ class LatestHandler
     {
         $chatId = $callback['message']['chat']['id'];
 
-        $this->telegram->answerCallbackQuery(
-            $callback['id']
-        );
-
         $this->telegram->sendMessage(
             $chatId,
             "🆕 <b>Drama Baru</b>\n\nFitur ini sedang dalam pengembangan."

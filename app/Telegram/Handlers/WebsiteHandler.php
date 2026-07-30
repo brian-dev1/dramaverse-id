@@ -24,9 +24,13 @@ class WebsiteHandler
 
         if (!$user) {
 
-            $this->telegram->answerCallbackQuery(
-                $callback['id'],
-                'Silakan kirim /start terlebih dahulu.'
+            // Dikirim sebagai pesan, bukan sebagai jawaban callback.
+            // CallbackHandler sudah menjawab callback-nya lebih dulu, dan
+            // Telegram hanya menerima satu jawaban per penekanan tombol —
+            // yang kedua ditolak, dan pemberitahuannya tidak sampai.
+            $this->telegram->sendMessage(
+                $chatId,
+                'Kirim /start dulu supaya akun Anda dikenali.'
             );
 
             return;
@@ -37,10 +41,6 @@ class WebsiteHandler
         $minutes = (int) config('telegram.login_token_ttl', 10);
 
         $url = url('/auth/telegram/' . $token);
-
-        $this->telegram->answerCallbackQuery(
-            $callback['id']
-        );
 
         $this->telegram->sendMessage(
             $chatId,

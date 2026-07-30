@@ -15,10 +15,6 @@ class HelpHandler
     {
         $chatId = $callback['message']['chat']['id'];
 
-        $this->telegram->answerCallbackQuery(
-            $callback['id']
-        );
-
         $this->telegram->sendMessage(
             $chatId,
             <<<HTML

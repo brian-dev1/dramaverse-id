@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\TelegramSyncStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -36,6 +37,13 @@ class EpisodeVideo extends Model
         'checksum',
         'public_url',
         'uploaded_at',
+        'telegram_file_id',
+        'telegram_unique_file_id',
+        'telegram_message_id',
+        'sync_status',
+        'synced_at',
+        'last_error',
+        'retry_count',
     ];
 
     protected $casts = [
@@ -44,6 +52,10 @@ class EpisodeVideo extends Model
         'uploaded_by'         => 'integer',
         'size'                => 'integer',
         'uploaded_at'         => 'datetime',
+        'telegram_message_id' => 'integer',
+        'sync_status'         => TelegramSyncStatus::class,
+        'synced_at'           => 'datetime',
+        'retry_count'         => 'integer',
     ];
 
     /*
@@ -111,5 +123,18 @@ class EpisodeVideo extends Model
     public function isReachable(): bool
     {
         return $this->provider !== null && $this->provider->isUsable();
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Telegram
+    |--------------------------------------------------------------------------
+    */
+
+    /** Sudah punya file_id yang bisa dipakai mengirim ulang tanpa mengunggah. */
+    public function isSyncedToTelegram(): bool
+    {
+        return $this->sync_status === TelegramSyncStatus::SYNCED
+            && filled($this->telegram_file_id);
     }
 }

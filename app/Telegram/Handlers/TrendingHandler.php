@@ -15,10 +15,6 @@ class TrendingHandler
     {
         $chatId = $callback['message']['chat']['id'];
 
-        $this->telegram->answerCallbackQuery(
-            $callback['id']
-        );
-
         $this->telegram->sendMessage(
             $chatId,
             "🔥 <b>Trending Drama</b>\n\nFitur ini sedang dalam pengembangan."

@@ -221,4 +221,61 @@ return [
 
     'upload_max_mb' => $angka('TELEGRAM_UPLOAD_MAX_MB', 50, 1),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Chat penyimpanan
+    |--------------------------------------------------------------------------
+    |
+    | Video episode dikirim SEKALI ke chat ini untuk mendapatkan `file_id`,
+    | lalu setiap pengiriman ke pengguna memakai file_id itu. Sesudah sinkron
+    | pertama, tidak ada byte video yang keluar dari server kita lagi.
+    |
+    | Isinya id channel atau grup privat tempat bot menjadi admin. Bentuknya
+    | angka negatif berawalan -100 untuk supergroup dan channel.
+    |
+    | Chat ini TIDAK boleh publik: isinya seluruh katalog video, termasuk yang
+    | berbayar, dan siapa pun yang bisa membukanya bisa menontonnya tanpa
+    | melewati pemeriksaan membership.
+    |
+    */
+
+    'storage_chat_id' => env('TELEGRAM_STORAGE_CHAT_ID'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Sinkronisasi video
+    |--------------------------------------------------------------------------
+    |
+    | timeout — pengiriman berkas ratusan megabyte jelas tidak selesai dalam
+    | 15 detik seperti sendMessage. Angka ini hanya dipakai job sinkronisasi,
+    | lewat TelegramService::withTimeout().
+    |
+    | max_retry — batas percobaan otomatis. Sesudah ini video tetap bisa
+    | diulang manual dari panel; batasnya ada supaya berkas yang memang
+    | terlalu besar tidak dicoba selamanya.
+    |
+    */
+
+    'sync' => [
+
+        'timeout' => $angka('TELEGRAM_SYNC_TIMEOUT', 1800, 60),
+
+        'max_retry' => $angka('TELEGRAM_SYNC_MAX_RETRY', 3, 1),
+
+        'queue' => env('TELEGRAM_SYNC_QUEUE') ?: 'default',
+
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Daftar episode di bot
+    |--------------------------------------------------------------------------
+    |
+    | Telegram membatasi tinggi inline keyboard, dan daftar 200 episode dalam
+    | satu pesan tidak bisa dibaca siapa pun. Dipecah per halaman.
+    |
+    */
+
+    'episode_page_size' => $angka('TELEGRAM_EPISODE_PAGE_SIZE', 20, 4),
+
 ];

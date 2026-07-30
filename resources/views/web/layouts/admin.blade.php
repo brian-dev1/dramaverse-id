@@ -42,6 +42,7 @@
             ['route' => 'admin.user.index',        'icon' => 'users', 'label' => 'Pengguna',   'can' => 'user.view'],
             ['route' => 'admin.telegram',          'icon' => 'send',  'label' => 'Telegram',   'can' => 'telegram.manage'],
             ['route' => 'admin.telegram-menu.index', 'icon' => 'list', 'label' => 'Menu Telegram', 'can' => 'telegram.manage'],
+            ['route' => 'admin.telegram-sync.index', 'icon' => 'film', 'label' => 'Sinkron Telegram', 'can' => 'telegram.manage'],
         ]],
         ['group' => 'Sistem', 'items' => [
             ['route' => 'admin.analytics',   'icon' => 'chart',    'label' => 'Analytics',    'can' => 'report.view'],

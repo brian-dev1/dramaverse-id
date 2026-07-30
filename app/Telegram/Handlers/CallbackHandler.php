@@ -3,17 +3,32 @@
 namespace App\Telegram\Handlers;
 
 use App\Enums\TelegramMenuAction;
+use App\Models\User;
 use App\Repositories\Contracts\TelegramRepositoryInterface;
 use App\Services\Telegram\Contracts\TelegramServiceInterface;
+use App\Services\Telegram\Exceptions\TelegramException;
+use App\Telegram\Keyboards\EpisodeKeyboard;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * Meneruskan penekanan tombol inline ke handler yang sesuai.
  *
- * Pemetaannya tidak lagi ditulis di sini: `TelegramMenuAction` yang tahu
- * handler mana milik perbuatan mana. Sebelumnya daftar ini dan daftar tombol
- * di `HomeKeyboard` ditulis terpisah, dan keduanya sempat tidak sinkron —
- * tombol Cari tidak ada di menu, dan cabang `search` tidak ada di sini, jadi
- * seluruh alur pencarian tidak bisa dijangkau siapa pun.
+ * ## Dua jenis callback
+ *
+ * 1. **Menu** — nilai `TelegramMenuAction` apa adanya (`search`, `help`).
+ *    Susunannya diatur admin dari panel; pemetaan ke handler ada di enum-nya.
+ * 2. **Berparameter** — `w:12`, `el:3:2`, `fv:3`, `up`. Awalannya dipisah
+ *    titik dua, dan nilai enum tidak pernah memuat titik dua, jadi keduanya
+ *    tidak bisa bentrok.
+ *
+ * ## Kenapa penggunanya dicari di sini
+ *
+ * Hampir semua handler butuh tahu siapa yang menekan tombol — untuk
+ * membership, favorit, dan riwayat. Mencarinya di masing-masing handler
+ * berarti sepuluh tempat yang harus ingat menerjemahkan `telegram_id` ke
+ * `users.id`, dan yang lupa akan gagal dengan cara yang sudah pernah
+ * terjadi: melanggar foreign key, atau diam-diam tidak menemukan apa pun.
  */
 class CallbackHandler
 {
@@ -25,15 +40,99 @@ class CallbackHandler
 
     public function handle(array $callback): void
     {
-        // Konfirmasi ke Telegram SEGERA agar tombol tidak terus berputar
-        // menunggu proses handler di bawah selesai.
-        $this->telegram->answerCallbackQuery($callback['id']);
+        // Hentikan animasi tunggu SEGERA, sebelum pekerjaan yang lama.
+        // Telegram menyerah setelah beberapa detik dan tombolnya akan
+        // terlihat menggantung.
+        $this->acknowledge($callback);
 
-        $action = TelegramMenuAction::tryFrom($callback['data'] ?? '');
+        $data = (string) ($callback['data'] ?? '');
 
-        // Tombol yang tidak dikenal: tampilkan menu utama. Ini juga yang
-        // terjadi pada tombol lama yang masih menempel di pesan yang sudah
-        // terkirim setelah menunya diubah dari panel.
+        $chatId = $callback['message']['chat']['id'] ?? null;
+
+        if ($chatId === null) {
+            return;
+        }
+
+        $user = $this->repository->findByTelegramId($callback['from']['id'] ?? 0);
+
+        try {
+            $this->route($callback, $data, $chatId, $user);
+        } catch (TelegramException $e) {
+
+            // Diteruskan, bukan ditangani di sini. Cabang ini ada justru
+            // supaya `catch (Throwable)` di bawah tidak menelannya lebih
+            // dulu: kegagalan Telegram sudah dicatat lengkap oleh client, dan
+            // yang menahannya adalah TelegramWebhookController — di sanalah
+            // keputusan "tetap jawab 200 supaya update tidak dikirim ulang"
+            // dibuat, satu tempat untuk semua jalur.
+            throw $e;
+
+        } catch (Throwable $e) {
+
+            Log::error('telegram.callback.error', [
+                'data'    => $data,
+                'user_id' => $user?->id,
+                'sebab'   => $e->getMessage(),
+                'kelas'   => $e::class,
+            ]);
+
+            $this->telegram->sendMessage(
+                $chatId,
+                'Maaf, ada yang bermasalah saat memproses permintaan itu. '
+                .'Coba lagi, atau tekan /start untuk kembali ke menu.'
+            );
+        }
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Penerusan
+    |--------------------------------------------------------------------------
+    */
+
+    private function route(array $callback, string $data, int|string $chatId, ?User $user): void
+    {
+        [$awalan, $argumen] = $this->parse($data);
+
+        switch ($awalan) {
+
+            case EpisodeKeyboard::WATCH:
+                app(WatchHandler::class)->handle($chatId, $user, (int) ($argumen[0] ?? 0));
+
+                return;
+
+            case EpisodeKeyboard::LIST:
+                app(EpisodeListHandler::class)->handle(
+                    $chatId,
+                    (int) ($argumen[0] ?? 0),
+                    (int) ($argumen[1] ?? 1)
+                );
+
+                return;
+
+            case EpisodeKeyboard::FAVORITE:
+                app(FavoriteHandler::class)->toggle($callback, $user, (int) ($argumen[0] ?? 0));
+
+                return;
+
+            case EpisodeKeyboard::UPGRADE:
+                app(PremiumHandler::class)->handle($callback, $user);
+
+                return;
+        }
+
+        /*
+        |----------------------------------------------------------------------
+        | Menu
+        |----------------------------------------------------------------------
+        */
+
+        $action = TelegramMenuAction::tryFrom($data);
+
+        // Tombol yang tidak dikenal: tampilkan menu utama. Ini bukan sekadar
+        // penjagaan — tombol lama tetap menempel di pesan yang sudah terkirim
+        // setelah menunya diubah dari panel, dan yang menekannya harus
+        // mendapat sesuatu.
         if ($action === null || $action->isLink()) {
             $this->home($callback);
 
@@ -41,7 +140,7 @@ class CallbackHandler
         }
 
         if ($action->startsConversation()) {
-            $this->startSearch($callback);
+            $this->startSearch($chatId, $user, $callback);
 
             return;
         }
@@ -54,7 +153,23 @@ class CallbackHandler
             return;
         }
 
-        app($handler)->handle($callback);
+        // Handler yang butuh tahu penggunanya menerimanya sebagai argumen
+        // kedua. Yang tidak butuh mengabaikannya — tanda tangannya opsional,
+        // jadi keduanya bisa dipanggil dengan cara yang sama.
+        app($handler)->handle($callback, $user);
+    }
+
+    /**
+     * Pecah `el:3:2` jadi ['el', ['3','2']].
+     *
+     * Data tanpa titik dua dikembalikan apa adanya sebagai awalan, sehingga
+     * nilai menu tetap lewat jalur yang sama.
+     */
+    private function parse(string $data): array
+    {
+        $bagian = explode(':', $data);
+
+        return [array_shift($bagian), $bagian];
     }
 
     /*
@@ -64,35 +179,35 @@ class CallbackHandler
     */
 
     /**
-     * Mulai percakapan pencarian.
+     * Konfirmasi ke Telegram bahwa tombolnya diterima.
      *
-     * SearchHandler menerima chat dan pengguna terpisah: balasannya dikirim
-     * ke CHAT, sedangkan state percakapan disimpan per PENGGUNA.
-     *
-     * Yang disimpan adalah **id pengguna di basis data kita**, bukan
-     * `telegram_id`. Tabel `user_sessions.user_id` adalah foreign key ke
-     * `users.id`; memasukkan telegram_id ke sana melanggar constraint dan
-     * melempar QueryException — yang muncul ke pengguna sebagai tombol yang
-     * ditekan lalu tidak terjadi apa-apa sama sekali.
+     * Kegagalannya ditelan dengan sengaja: `callback_query_id` kedaluwarsa
+     * setelah beberapa detik, dan tombol yang ditekan pada pesan lama akan
+     * selalu ditolak Telegram di sini. Membiarkannya melempar akan
+     * membatalkan seluruh permintaan hanya karena konfirmasi kosmetik gagal.
      */
-    private function startSearch(array $callback): void
+    private function acknowledge(array $callback): void
     {
-        $user = $this->repository->findByTelegramId($callback['from']['id'] ?? 0);
+        try {
+            $this->telegram->answerCallbackQuery($callback['id'] ?? '');
+        } catch (TelegramException) {
+            // Sudah tercatat di log oleh client.
+        }
+    }
 
+    /**
+     * State percakapan disimpan dengan id pengguna di basis data kita, BUKAN
+     * telegram_id — `user_sessions.user_id` adalah foreign key ke `users.id`.
+     */
+    private function startSearch(int|string $chatId, ?User $user, array $callback): void
+    {
         if ($user === null) {
-
-            // Belum tersinkron: bisa terjadi kalau pengguna menekan tombol
-            // pada pesan lama sementara akunnya sudah dihapus. Menu utama
-            // memanggil StartHandler, yang menyinkronkan akunnya lagi.
             $this->home($callback);
 
             return;
         }
 
-        app(SearchHandler::class)->start(
-            (int) $callback['message']['chat']['id'],
-            (int) $user->id,
-        );
+        app(SearchHandler::class)->start((int) $chatId, (int) $user->id);
     }
 
     private function home(array $callback): void

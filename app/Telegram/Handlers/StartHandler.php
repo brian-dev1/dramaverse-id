@@ -2,15 +2,28 @@
 
 namespace App\Telegram\Handlers;
 
+use App\Repositories\Contracts\TelegramRepositoryInterface;
 use App\Services\Telegram\Contracts\TelegramServiceInterface;
 use App\Services\UserService;
+use App\Support\TelegramDeepLink;
 use App\Telegram\Keyboards\HomeKeyboard;
 
+/**
+ * `/start`, dengan atau tanpa deep link.
+ *
+ * Urutannya penting: akun disinkronkan LEBIH DULU, sebelum parameter deep
+ * link diproses. Tautan menonton yang dibuka orang yang belum pernah membuka
+ * bot akan sampai di sini sebagai pengguna yang belum ada di basis data kita,
+ * dan pemeriksaan membership tanpa pengguna selalu menjawab "tidak boleh".
+ * Menyinkronkan belakangan berarti pemilik langganan premium ditolak pada
+ * klik pertamanya.
+ */
 class StartHandler
 {
     public function __construct(
         protected TelegramServiceInterface $telegram,
-        protected UserService $userService
+        protected UserService $userService,
+        protected TelegramRepositoryInterface $users
     ) {
     }
 
@@ -18,92 +31,62 @@ class StartHandler
     {
         $chatId = $message['chat']['id'];
 
-        // Sinkronisasi akun Telegram ke database
         $this->userService->syncTelegramUser($message['from']);
 
-        $text = trim($message['text'] ?? '');
+        $user = $this->users->findByTelegramId($message['from']['id'] ?? 0);
 
-        // Ambil parameter setelah /start
-        $parameter = '';
-
-        if (preg_match('/^\/start(?:\s+(.+))?$/', $text, $matches)) {
-            $parameter = trim($matches[1] ?? '');
-        }
+        $parameter = $this->parameter(trim($message['text'] ?? ''));
 
         /*
-        |--------------------------------------------------------------------------
-        | Deep Link (persiapan Website → Telegram)
-        |--------------------------------------------------------------------------
+        |----------------------------------------------------------------------
+        | Deep Link
+        |----------------------------------------------------------------------
         */
 
         if ($parameter !== '') {
 
-            // Episode
-            if (str_starts_with($parameter, 'episode_')) {
-
-                $episodeId = (int) str_replace('episode_', '', $parameter);
-
-                $this->telegram->sendMessage(
-                    $chatId,
-                    "🎬 <b>Membuka Episode</b>\n\nEpisode ID : <b>{$episodeId}</b>\n\n⏳ Fitur player sedang dalam proses pengembangan."
-                );
+            if ($episodeId = TelegramDeepLink::episodeId($parameter)) {
+                app(WatchHandler::class)->handle($chatId, $user, $episodeId);
 
                 return;
             }
 
-            // Drama
-            if (str_starts_with($parameter, 'drama_')) {
-
-                $dramaId = (int) str_replace('drama_', '', $parameter);
-
-                $this->telegram->sendMessage(
-                    $chatId,
-                    "🎭 <b>Membuka Drama</b>\n\nDrama ID : <b>{$dramaId}</b>\n\n⏳ Detail drama akan segera tersedia."
-                );
+            if ($dramaId = TelegramDeepLink::dramaId($parameter)) {
+                app(EpisodeListHandler::class)->handle($chatId, $dramaId);
 
                 return;
             }
 
-            // Continue Watching
-            if ($parameter === 'continue') {
-
-                $this->telegram->sendMessage(
-                    $chatId,
-                    "▶ <b>Continue Watching</b>\n\nFitur ini sedang dipersiapkan."
-                );
-
-                return;
-            }
-
-            // Favorite
-            if ($parameter === 'favorite') {
-
-                $this->telegram->sendMessage(
-                    $chatId,
-                    "❤️ <b>Favorite</b>\n\nFitur ini sedang dipersiapkan."
-                );
-
-                return;
-            }
-
-            // Premium
-            if ($parameter === 'premium') {
-
-                $this->telegram->sendMessage(
-                    $chatId,
-                    "💎 <b>Premium</b>\n\nFitur ini sedang dipersiapkan."
-                );
-
-                return;
-            }
+            // Parameter yang tidak dikenal TIDAK dibiarkan diam. Tautan lama
+            // atau salah ketik harus dijawab, lalu dilanjutkan ke menu —
+            // bukan berakhir dengan layar kosong.
+            $this->telegram->sendMessage(
+                $chatId,
+                'Tautan yang Anda buka tidak dikenali. Berikut menu utamanya.'
+            );
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Home
-        |--------------------------------------------------------------------------
-        */
+        $this->home($chatId);
+    }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Pembantu
+    |--------------------------------------------------------------------------
+    */
+
+    /** Ambil bagian setelah `/start`, kosong bila tidak ada. */
+    private function parameter(string $text): string
+    {
+        if (preg_match('/^\/start(?:@\w+)?(?:\s+(.+))?$/', $text, $cocok)) {
+            return trim($cocok[1] ?? '');
+        }
+
+        return '';
+    }
+
+    private function home(int|string $chatId): void
+    {
         $welcome = <<<HTML
 🎭 <b>DramaVerse ID</b>
 

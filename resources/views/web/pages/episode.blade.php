@@ -36,6 +36,24 @@
                     Episode {{ $episode->episode_number }}@if ($episode->title) — {{ $episode->title }}@endif
                 </h1>
 
+                {{--
+                    Deep link ke bot. Hanya dirender bila episodenya memang
+                    sudah ada di Telegram — tombol yang menjanjikan tontonan
+                    lalu dijawab "belum siap" oleh bot adalah dead link versi
+                    lintas aplikasi, dan aturan proyek ini melarangnya.
+                --}}
+                @php($telegramLink = $episode->video?->isSyncedToTelegram()
+                    ? \App\Support\TelegramDeepLink::watch($episode)
+                    : null)
+
+                @if ($telegramLink)
+                    <a href="{{ $telegramLink }}" class="btn btn-primary"
+                       target="_blank" rel="noopener">
+                        <x-web.home.icon name="play" :size="14" />
+                        Tonton di Telegram
+                    </a>
+                @endif
+
                 @if ($episode->description)
                     <p class="page-subtitle">{{ $episode->description }}</p>
                 @endif

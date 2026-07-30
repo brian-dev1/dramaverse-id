@@ -415,6 +415,17 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 ->name('telegram-menu.reset');
             Route::delete('/telegram/menu/{id}', [Admin\TelegramMenuController::class, 'destroy'])
                 ->name('telegram-menu.destroy')->whereNumber('id');
+
+            // Sinkronisasi video episode ke Telegram. Berkasnya diambil dari
+            // storage provider, bukan dari komputer siapa pun.
+            Route::get('/telegram/sync', [Admin\TelegramSyncController::class, 'index'])
+                ->name('telegram-sync.index');
+            Route::post('/telegram/sync/all', [Admin\TelegramSyncController::class, 'syncAll'])
+                ->name('telegram-sync.all');
+            Route::post('/telegram/sync/{id}', [Admin\TelegramSyncController::class, 'sync'])
+                ->name('telegram-sync.sync')->whereNumber('id');
+            Route::post('/telegram/sync/{id}/retry', [Admin\TelegramSyncController::class, 'retry'])
+                ->name('telegram-sync.retry')->whereNumber('id');
         });
 
         Route::get('/logs', [Admin\LogController::class, 'index'])

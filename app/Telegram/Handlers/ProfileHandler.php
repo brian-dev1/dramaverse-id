@@ -15,10 +15,6 @@ class ProfileHandler
     {
         $chatId = $callback['message']['chat']['id'];
 
-        $this->telegram->answerCallbackQuery(
-            $callback['id']
-        );
-
         $this->telegram->sendMessage(
             $chatId,
             "👤 <b>Profil</b>\n\nFitur profil akan segera tersedia."
