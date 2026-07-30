@@ -146,12 +146,27 @@ enum StorageDriver: string
     }
 
     /**
-     * MinIO dan sebagian besar S3 gateway swakelola tidak mendukung
-     * bucket sebagai subdomain, jadi path-style harus dipakai.
+     * Provider yang mengharuskan bucket ditulis di path, bukan sebagai
+     * subdomain.
+     *
+     * R2 hanya melayani gaya path pada domain `*.r2.cloudflarestorage.com`.
+     * Tanpa ini, SDK menyusun `bucket.account_id.r2.cloudflarestorage.com` —
+     * host yang tidak pernah ada, sehingga yang muncul adalah kegagalan
+     * handshake TLS. Pesan galatnya menyesatkan: kelihatan seperti masalah
+     * sertifikat atau jaringan, padahal salah bentuk alamat.
+     *
+     * MinIO dan S3 gateway swakelola lain juga umumnya tidak memetakan
+     * bucket ke subdomain.
+     *
+     * B2, Wasabi, dan Spaces mendukung kedua gaya, jadi tidak dipaksa di
+     * sini — admin tetap bisa menyalakannya sendiri lewat `use_path_style`.
      */
     public function prefersPathStyle(): bool
     {
-        return $this === self::MINIO;
+        return match ($this) {
+            self::R2, self::MINIO => true,
+            default => false,
+        };
     }
 
     /**
