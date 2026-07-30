@@ -179,6 +179,408 @@ export default function admin() {
     charts();
     reorderTable();
     videoUpload();
+    assetManager();
+}
+
+/**
+ * Asset Manager drama.
+ *
+ * Satu kartu per jenis aset, masing-masing dengan seret-lepas, pratayang,
+ * progress, dan tombol hapus sendiri. Semuanya berbagi satu pilihan Storage
+ * Mode di atas halaman.
+ *
+ * Memakai XMLHttpRequest dengan alasan yang sama seperti unggah video: fetch()
+ * tidak menyediakan kemajuan PENGIRIMAN, dan galeri berisi dua puluh gambar
+ * membutuhkan waktu yang cukup lama untuk terlihat seperti menggantung.
+ */
+function assetManager() {
+    const root = document.querySelector('[data-asset-manager]');
+    if (!root) return;
+
+    const token = document.querySelector('meta[name="csrf-token"]')?.content;
+    if (!token) return;
+
+    const storeUrl  = root.dataset.storeUrl;
+    const deleteUrl = root.dataset.deleteUrl || '';
+
+    const providerWrap = root.querySelector('[data-provider-wrap]');
+    const providerSel  = root.querySelector('[data-provider]');
+
+    const mb = (bytes) => `${(bytes / 1024 / 1024).toFixed(2)} MB`;
+
+    const currentMode = () =>
+        root.querySelector('[data-mode]:checked')?.value === 'manual' ? 'manual' : 'auto';
+
+    // --- Storage mode ---
+    const syncMode = () => {
+        if (providerWrap) providerWrap.hidden = currentMode() !== 'manual';
+    };
+
+    root.querySelectorAll('[data-mode]').forEach((r) =>
+        r.addEventListener('change', syncMode)
+    );
+
+    syncMode();
+
+    // --- Tiap kartu ---
+    root.querySelectorAll('[data-asset-card]').forEach((card) => {
+        const type     = card.dataset.type;
+        const multiple = card.dataset.multiple === '1';
+        const maxKb    = Number(card.dataset.maxKb || 0);
+
+        const el = {
+            drop:     card.querySelector('[data-drop]'),
+            file:     card.querySelector('[data-file]'),
+            fileName: card.querySelector('[data-file-name]'),
+            preview:  card.querySelector('[data-preview]'),
+            progress: card.querySelector('[data-progress]'),
+            bar:      card.querySelector('[data-progress-bar]'),
+            label:    card.querySelector('[data-progress-label]'),
+            result:   card.querySelector('[data-result]'),
+            submit:   card.querySelector('[data-submit]'),
+            items:    card.querySelector('[data-items]'),
+            count:    card.querySelector('[data-count]'),
+        };
+
+        const say = (text, kind) => {
+            if (!el.result) return;
+            el.result.hidden = false;
+            el.result.className = `upload-result upload-result-${kind}`;
+            el.result.textContent = text;
+        };
+
+        const clearSay = () => { if (el.result) el.result.hidden = true; };
+
+        const refreshCount = () => {
+            if (el.count) {
+                el.count.textContent = String(el.items.querySelectorAll('[data-item]').length);
+            }
+            const empty = el.items.querySelector('[data-empty]');
+            const ada   = el.items.querySelectorAll('[data-item]').length > 0;
+            if (empty) empty.hidden = ada;
+        };
+
+        // --- Pratayang sebelum unggah ---
+        const renderPreview = (files) => {
+            if (!el.preview) return;
+
+            el.preview.innerHTML = '';
+
+            if (!files.length) {
+                el.preview.hidden = true;
+                return;
+            }
+
+            el.preview.hidden = false;
+
+            [...files].forEach((file) => {
+                const box = document.createElement('div');
+                box.className = 'asset-preview-item';
+
+                const isImage = file.type.startsWith('image/');
+
+                // Gambar dapat thumbnail; subtitle hanya nama, ukuran, format —
+                // membaca berkas teks sebagai data URL tidak memberi apa pun
+                // yang berguna untuk dilihat.
+                if (isImage) {
+                    const img = document.createElement('img');
+                    img.alt = file.name;
+
+                    // Objek URL dilepas setelah gambar dimuat. Tanpa itu,
+                    // memilih berkas berkali-kali membocorkan memori peramban.
+                    const url = URL.createObjectURL(file);
+                    img.src = url;
+                    img.onload = () => URL.revokeObjectURL(url);
+
+                    box.appendChild(img);
+                } else {
+                    const ph = document.createElement('span');
+                    ph.className = 'asset-preview-file';
+                    ph.textContent = (file.name.split('.').pop() || '?').toUpperCase();
+                    box.appendChild(ph);
+                }
+
+                const meta = document.createElement('p');
+                meta.className = 'asset-preview-meta';
+                meta.textContent = `${file.name} — ${mb(file.size)}`;
+                box.appendChild(meta);
+
+                el.preview.appendChild(box);
+            });
+        };
+
+        const onPick = () => {
+            const files = el.file.files;
+
+            el.submit.disabled = !files.length;
+
+            if (!files.length) {
+                el.fileName.textContent = 'Seret ke sini, atau pilih lewat tombol.';
+                renderPreview([]);
+                return;
+            }
+
+            el.fileName.textContent = files.length === 1
+                ? files[0].name
+                : `${files.length} berkas dipilih`;
+
+            renderPreview(files);
+
+            // Diperiksa di peramban lebih dulu supaya orang tidak menunggu
+            // pengiriman untuk ditolak di ujung. Server tetap memeriksanya
+            // sendiri — ini kesopanan, bukan penjagaan.
+            const kebesaran = [...files].filter((f) => maxKb > 0 && f.size / 1024 > maxKb);
+
+            if (kebesaran.length) {
+                say(`${kebesaran.length} berkas melewati batas `
+                    + `${(maxKb / 1024).toFixed(1)} MB.`, 'error');
+            } else {
+                clearSay();
+            }
+        };
+
+        el.file?.addEventListener('change', onPick);
+
+        // --- Seret dan lepas ---
+        if (el.drop && el.file) {
+            ['dragenter', 'dragover'].forEach((ev) =>
+                el.drop.addEventListener(ev, (e) => {
+                    e.preventDefault();
+                    el.drop.classList.add('is-dragging');
+                })
+            );
+
+            ['dragleave', 'drop'].forEach((ev) =>
+                el.drop.addEventListener(ev, (e) => {
+                    e.preventDefault();
+                    el.drop.classList.remove('is-dragging');
+                })
+            );
+
+            el.drop.addEventListener('drop', (e) => {
+                if (!e.dataTransfer.files.length) return;
+
+                // DataTransfer dipakai supaya input menerima banyak berkas
+                // sekaligus, dan supaya jenis tunggal hanya mengambil satu.
+                const dt = new DataTransfer();
+                const files = [...e.dataTransfer.files].slice(0, multiple ? 20 : 1);
+                files.forEach((f) => dt.items.add(f));
+
+                el.file.files = dt.files;
+                onPick();
+            });
+        }
+
+        // --- Unggah ---
+        el.submit?.addEventListener('click', () => {
+            const files = el.file?.files;
+            if (!files?.length) return;
+
+            if (currentMode() === 'manual' && !providerSel?.value) {
+                say('Mode Manual dipilih, tapi provider belum ditentukan.', 'error');
+                return;
+            }
+
+            const body = new FormData();
+            body.append('asset_type', type);
+            body.append('storage_mode', currentMode());
+
+            if (currentMode() === 'manual') {
+                body.append('storage_provider_id', providerSel.value);
+            }
+
+            [...files].forEach((f) => body.append('files[]', f));
+
+            const xhr = new XMLHttpRequest();
+
+            el.submit.disabled = true;
+            el.submit.textContent = 'Mengunggah…';
+            if (el.progress) el.progress.hidden = false;
+            clearSay();
+
+            const setProgress = (percent, text) => {
+                if (el.bar) {
+                    el.bar.style.width = `${percent}%`;
+                    el.bar.setAttribute('aria-valuenow', String(Math.round(percent)));
+                }
+                if (el.label) el.label.textContent = text;
+            };
+
+            xhr.upload.addEventListener('progress', (ev) => {
+                if (!ev.lengthComputable) return;
+                const percent = (ev.loaded / ev.total) * 100;
+                setProgress(percent, `${percent.toFixed(0)}% — ${mb(ev.loaded)} dari ${mb(ev.total)}`);
+            });
+
+            // Terkirim bukan berarti selesai: server masih menghitung checksum
+            // dan meneruskan ke provider. Tanpa pesan ini, bar berhenti di 100%
+            // dan terlihat menggantung.
+            xhr.upload.addEventListener('load', () => {
+                setProgress(100, 'Terkirim. Server sedang menyimpan ke storage provider…');
+            });
+
+            const selesai = () => {
+                el.submit.disabled = false;
+                el.submit.textContent = card.querySelector('[data-item]') && !multiple
+                    ? 'Ganti' : 'Unggah';
+            };
+
+            xhr.addEventListener('load', () => {
+                selesai();
+
+                let payload = null;
+                try { payload = JSON.parse(xhr.responseText); } catch { /* bukan JSON */ }
+
+                if (xhr.status >= 200 && xhr.status < 300 && payload?.ok) {
+                    setProgress(100, 'Selesai.');
+
+                    if (!multiple) el.items.innerHTML = '';
+
+                    (payload.data || []).forEach((a) => el.items.appendChild(buildItem(a)));
+
+                    refreshCount();
+
+                    el.file.value = '';
+                    renderPreview([]);
+                    el.fileName.textContent = 'Seret ke sini, atau pilih lewat tombol.';
+                    el.submit.disabled = true;
+
+                    const gagal = payload.gagal || [];
+                    say(payload.message + (gagal.length
+                        ? ' ' + gagal.map((g) => `${g.nama}: ${g.pesan}`).join(' | ')
+                        : ''), gagal.length ? 'warn' : 'success');
+
+                    setTimeout(() => { if (el.progress) el.progress.hidden = true; }, 1200);
+                    return;
+                }
+
+                if (el.progress) el.progress.hidden = true;
+
+                const pesan = payload?.message
+                    || Object.values(payload?.errors || {}).flat().join(' ')
+                    || `Unggahan gagal (HTTP ${xhr.status}).`;
+
+                say(pesan, 'error');
+            });
+
+            xhr.addEventListener('error', () => {
+                selesai();
+                if (el.progress) el.progress.hidden = true;
+                say('Koneksi terputus saat mengunggah. Berkas belum tersimpan — coba lagi.', 'error');
+            });
+
+            xhr.open('POST', storeUrl);
+            xhr.setRequestHeader('X-CSRF-TOKEN', token);
+            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+            xhr.setRequestHeader('Accept', 'application/json');
+            xhr.send(body);
+        });
+
+        // --- Hapus ---
+        el.items?.addEventListener('click', async (e) => {
+            const btn = e.target.closest('[data-delete]');
+            if (!btn) return;
+
+            const item = btn.closest('[data-item]');
+            const id = item?.dataset.id;
+            if (!id) return;
+
+            if (!window.confirm('Hapus aset ini? Berkasnya ikut dihapus dari storage.')) return;
+
+            btn.disabled = true;
+
+            try {
+                // DELETE sungguhan, bukan POST + _method.
+                //
+                // Laravel hanya membaca method spoofing `_method` dari body
+                // ber-form-encoding; pada body JSON nilainya tidak pernah
+                // sampai ke Request, sehingga permintaannya tetap POST dan
+                // route DELETE membalas 405. Mengirim DELETE langsung
+                // menghindari seluruh persoalan itu.
+                const res = await fetch(deleteUrl.replace(/\/0$/, `/${id}`), {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': token,
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json',
+                    },
+                });
+
+                const payload = await res.json().catch(() => null);
+
+                if (!res.ok || !payload?.ok) {
+                    throw new Error(payload?.message || 'gagal');
+                }
+
+                item.remove();
+                refreshCount();
+                say(payload.message, 'success');
+
+                if (!multiple) {
+                    el.submit.textContent = 'Unggah';
+                }
+            } catch (err) {
+                btn.disabled = false;
+                say(err.message || 'Aset gagal dihapus.', 'error');
+            }
+        });
+
+        // --- Membangun satu baris aset dari respons JSON ---
+        function buildItem(a) {
+            const art = document.createElement('article');
+            art.className = 'asset-item';
+            art.dataset.item = '';
+            art.dataset.id = a.id;
+
+            const thumb = document.createElement('div');
+            thumb.className = 'asset-thumb';
+
+            if (a.previewable && a.public_url) {
+                const img = document.createElement('img');
+                img.src = a.public_url;
+                img.alt = a.original_filename;
+                img.loading = 'lazy';
+                thumb.appendChild(img);
+            } else {
+                const ph = document.createElement('span');
+                ph.className = 'asset-thumb-empty';
+                ph.textContent = (a.extension || '?').toUpperCase();
+                thumb.appendChild(ph);
+            }
+
+            const meta = document.createElement('div');
+            meta.className = 'asset-meta';
+
+            const name = document.createElement('p');
+            name.className = 'asset-name';
+            name.title = a.original_filename;
+            name.textContent = a.original_filename;
+
+            const sub = document.createElement('p');
+            sub.className = 'asset-sub';
+            sub.textContent = `${a.size_human} · ${(a.extension || '?').toUpperCase()} · ${a.provider || '—'}`;
+
+            const sub2 = document.createElement('p');
+            sub2.className = 'asset-sub';
+            sub2.textContent = `checksum ${a.checksum_short}…`;
+
+            meta.append(name, sub, sub2);
+
+            const del = document.createElement('button');
+            del.type = 'button';
+            del.className = 'btn-icon btn-danger';
+            del.dataset.delete = '';
+            del.title = 'Hapus';
+            del.setAttribute('aria-label', 'Hapus aset');
+            del.textContent = '×';
+
+            art.append(thumb, meta, del);
+
+            return art;
+        }
+
+        refreshCount();
+    });
 }
 
 /**

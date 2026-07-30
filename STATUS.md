@@ -166,8 +166,19 @@ client_max_body_size 4G;
 Berkas yang melewati `post_max_size` membuat request kosong dan muncul sebagai
 419 tanpa penjelasan, bukan sebagai pesan validasi.
 
-**Angka saat ini:** 142 route, 19 controller admin, 20 view admin,
-33 migration, 11 middleware, 205 kelas CSS, 26 interface repository.
+### Sprint 7.6 — Drama Asset Management
+Halaman `/admin/drama/{id}/asset` plus tombol "Kelola aset" di daftar Drama.
+Sepuluh jenis: poster, cover desktop/mobile, backdrop, banner, thumbnail,
+logo, thumbnail trailer, galeri (multi upload), dan subtitle. Semua lewat
+`StorageEngineInterface` — controller dan service nol `Storage::`. Mode Auto
+dan Manual, tabel `drama_assets` dengan checksum SHA256, drag & drop,
+progress, pratayang, ganti, dan hapus.
+**SVG tidak diterima** — dokumen XML yang boleh memuat `<script>`, disajikan
+dari domain yang sama dengan panel admin.
+Detail: `SPRINT-7-6-SELESAI.md`.
+
+**Angka saat ini:** 145 route, 20 controller admin, 21 view admin,
+34 migration, 11 middleware, 222 kelas CSS, 26 interface repository.
 
 ---
 
@@ -193,6 +204,13 @@ beberapa masih dangkal:
   otomatis melanjutkan
 
 ### Bug diketahui, belum diperbaiki
+- **Galeri belum bisa diurutkan ulang.** Kolom `sort_order` sudah ada dan
+  terisi urut unggah, tapi belum ada UI seret-lepas untuk mengubahnya.
+- **`EpisodeVideoService` dan `DramaAssetService` berbagi pola yang sama**
+  (checksum → engine → metadata → kompensasi) tanpa disatukan. Tidak disatukan
+  di 7.6 karena spesifikasinya melarang menyentuh modul video episode.
+  Kandidat penyatuan jadi satu `StoredFileWriter` di sprint yang boleh
+  mengubah keduanya.
 - **Belum ada cara menghapus video episode dari panel.** Mengunggah ulang
   menggantinya (dan menghapus berkas lama), tapi tidak ada tombol untuk
   melepaskan video tanpa menggantinya.

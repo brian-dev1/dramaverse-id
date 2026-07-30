@@ -21,6 +21,24 @@ def _join_chains(src: str) -> str:
     return re.sub(r'\n\s*->', '->', src)
 
 
+# Isi string di-kosongkan sebelum kurung kurawal dihitung.
+#
+# Tanpa ini, parameter route di dalam prefix ikut terhitung sebagai kedalaman
+# blok: ->prefix('drama/{drama}/asset') menambah satu '{' palsu, sehingga
+# prefix nama didorong ke stack pada kedalaman yang terlalu dalam lalu
+# langsung dibuang pada baris yang sama. Seluruh route di dalam grup itu
+# kehilangan awalan namanya, dan pemeriksaan route mati melaporkannya sebagai
+# route yang tidak terdefinisi -- padahal yang salah parsernya.
+_STRINGS = re.compile(r"'[^']*'|\"[^\"]*\"")
+
+
+def _braces(line: str) -> tuple:
+    """(jumlah '{', jumlah '}') di luar string literal."""
+    code = _STRINGS.sub("''", line)
+
+    return code.count('{'), code.count('}')
+
+
 def extract(src: str) -> set:
     src = _join_chains(src)
 
@@ -43,8 +61,7 @@ def extract(src: str) -> set:
             if m and not m.group(1).endswith('.'):
                 names.add(''.join(p for p, _ in stack) + m.group(1))
 
-        opens = line.count('{')
-        closes = line.count('}')
+        opens, closes = _braces(line)
 
         if pending is not None:
             stack.append((pending, depth + opens))

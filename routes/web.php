@@ -202,6 +202,33 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         /*
         |----------------------------------------------------------------------
+        | Drama: Asset Manager (Sprint 7.6)
+        |
+        | Poster, cover, banner, backdrop, logo, thumbnail trailer, galeri, dan
+        | subtitle tingkat drama. Seluruh unggahan lewat StorageEngineInterface;
+        | controller-nya tidak pernah menyentuh Storage.
+        |
+        | `store` dan `destroy` membalas JSON supaya halaman bekerja tanpa
+        | memuat ulang — mengganti satu poster tidak seharusnya membuang
+        | keadaan seluruh halaman, dan progress bar memerlukan XHR.
+        |
+        | Prefix `drama/{drama}/asset` tidak bertabrakan dengan CRUD drama:
+        | route CRUD berbentuk `/{id}/edit` dan sejenisnya, dibatasi
+        | whereNumber, sehingga pola di bawah tetap terpisah.
+        |----------------------------------------------------------------------
+        */
+        Route::controller(Admin\DramaAssetController::class)
+            ->prefix('drama/{drama}/asset')->name('drama.asset.')
+            ->middleware('permission:drama.manage')
+            ->whereNumber('drama')
+            ->group(function () {
+                Route::get('/', 'index')->name('index');
+                Route::post('/', 'store')->name('store');
+                Route::delete('/{asset}', 'destroy')->name('destroy')->whereNumber('asset');
+            });
+
+        /*
+        |----------------------------------------------------------------------
         | Episode: unggah video (Sprint 7.5)
         |
         | Seluruh unggahan lewat StorageEngineInterface. Controller-nya tidak

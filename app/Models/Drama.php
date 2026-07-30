@@ -83,6 +83,20 @@ class Drama extends Model
         return $this->hasMany(WatchHistory::class);
     }
 
+    /**
+     * Aset berkas: poster, cover, banner, galeri, subtitle, dan lainnya.
+     *
+     * Kolom `poster` dan `cover` yang sudah ada TIDAK digantikan relasi ini.
+     * Keduanya berdampingan: kolom lama menyimpan path di disk `public`
+     * (ditulis Admin\MediaService), relasi ini menyimpan berkas yang benar-benar
+     * diunggah ke storage provider lewat Storage Engine. Pemindahan yang lama
+     * ke yang baru adalah pekerjaan tersendiri, dicatat di STATUS.md.
+     */
+    public function assets(): HasMany
+    {
+        return $this->hasMany(DramaAsset::class)->ordered();
+    }
+
     public function favorites(): HasMany
     {
         return $this->hasMany(Favorite::class);

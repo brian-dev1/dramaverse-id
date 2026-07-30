@@ -323,6 +323,20 @@
                                             </form>
                                         @endif
 
+                                        {{--
+                                            Aset drama. Digerakkan Route::has()
+                                            seperti tombol lain, jadi modul yang
+                                            nanti punya route bernama sama ikut
+                                            mendapatkannya tanpa view ini
+                                            disunting lagi.
+                                        --}}
+                                        @if (Route::has('admin.'.$routeKey.'.asset.index'))
+                                            <a href="{{ route('admin.'.$routeKey.'.asset.index', $record->id) }}"
+                                               class="btn-icon" title="Kelola aset" aria-label="Kelola aset">
+                                                <x-web.home.icon name="image" :size="15" />
+                                            </a>
+                                        @endif
+
                                         @if ($canEdit)
                                             <a href="{{ route('admin.'.$routeKey.'.edit', $record->id) }}"
                                                class="btn-icon" title="Ubah" aria-label="Ubah">

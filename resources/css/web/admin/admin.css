@@ -590,3 +590,108 @@ a.stat-card:hover .stat-icon{ color:var(--gold); }
     .file-facts{ grid-template-columns:1fr; }
     .radio-row{ gap:var(--space-2); }
 }
+
+/* --- Asset Manager drama (Sprint 7.6) --- */
+
+.asset-manager{ display:flex; flex-direction:column; gap:var(--space-4); }
+
+.asset-head{
+    display:flex; align-items:flex-start; justify-content:space-between;
+    gap:var(--space-3); flex-wrap:wrap;
+}
+.asset-head h2{ font-family:var(--font-display); font-size:19px; font-weight:600; }
+
+.asset-storage{ max-width:640px; }
+
+/* Kartu menyesuaikan lebar sendiri. Galeri diberi rentang lebih lebar karena
+   isinya grid, bukan satu berkas. */
+.asset-grid{
+    display:grid; gap:var(--space-4);
+    grid-template-columns:repeat(auto-fill, minmax(330px, 1fr));
+    align-items:start;
+}
+.asset-card{ gap:var(--space-2); }
+.asset-card h2{ display:flex; align-items:center; gap:8px; }
+.asset-card-wide{ grid-column:1 / -1; }
+
+.asset-count{
+    margin-left:auto;
+    padding:2px 9px; border-radius:999px;
+    font-size:11.5px; font-family:var(--font-mono);
+    color:var(--gold-bright);
+    background:rgba(217,175,110,.1);
+    border:1px solid rgba(217,175,110,.3);
+}
+
+.asset-items{ display:flex; flex-direction:column; gap:8px; }
+.asset-items-grid{
+    display:grid; gap:10px;
+    grid-template-columns:repeat(auto-fill, minmax(230px, 1fr));
+}
+
+.asset-item{
+    display:flex; align-items:center; gap:11px;
+    padding:9px; min-width:0;
+    border:1px solid var(--border-soft);
+    border-radius:var(--radius-m);
+    background:var(--bg-secondary);
+}
+
+.asset-thumb{
+    flex:none; width:52px; height:52px; overflow:hidden;
+    display:flex; align-items:center; justify-content:center;
+    border-radius:var(--radius-s);
+    background:var(--bg-primary);
+    border:1px solid var(--border-soft);
+}
+.asset-thumb img{ width:100%; height:100%; object-fit:cover; }
+.asset-thumb-empty{
+    font-size:11px; font-family:var(--font-mono);
+    color:var(--text-muted);
+}
+
+.asset-meta{ min-width:0; flex:1; }
+.asset-name{
+    font-size:13px; color:var(--text-primary);
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.asset-sub{
+    font-size:11.5px; color:var(--text-muted); line-height:1.6;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.asset-warn{ color:var(--crimson); }
+
+.asset-empty{ font-size:12.5px; color:var(--text-muted); padding:4px 0; }
+
+.upload-asset{ flex-direction:column; }
+.upload-asset .upload-body{ width:100%; }
+
+.asset-preview{
+    display:grid; gap:10px;
+    grid-template-columns:repeat(auto-fill, minmax(120px, 1fr));
+}
+.asset-preview-item{ min-width:0; }
+.asset-preview-item img{
+    width:100%; aspect-ratio:16 / 10; object-fit:cover;
+    border-radius:var(--radius-s);
+    border:1px solid var(--border-soft);
+}
+.asset-preview-file{
+    display:flex; align-items:center; justify-content:center;
+    width:100%; aspect-ratio:16 / 10;
+    border-radius:var(--radius-s);
+    border:1px solid var(--border-soft);
+    background:var(--bg-primary);
+    font-family:var(--font-mono); font-size:13px;
+    color:var(--text-secondary);
+}
+.asset-preview-meta{
+    margin-top:5px; font-size:11px; color:var(--text-muted);
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+
+@media (max-width:640px){
+    .asset-grid{ grid-template-columns:1fr; }
+    .asset-items-grid{ grid-template-columns:1fr; }
+    .asset-head{ flex-direction:column; }
+}

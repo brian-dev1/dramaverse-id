@@ -189,7 +189,7 @@ pairs = {'Drama':'dramas','Episode':'episodes','Genre':'genres','Country':'count
          'WatchHistory':'watch_histories','Subscription':'subscriptions','MembershipPlan':'membership_plans',
          'Media':'media','Review':'reviews','Setting':'settings','Notification':'notifications',
          'ActivityLog':'activity_logs','Role':'roles','Permission':'permissions',
-         'StorageProvider':'storage_providers','EpisodeVideo':'episode_videos'}
+         'StorageProvider':'storage_providers','EpisodeVideo':'episode_videos','DramaAsset':'drama_assets'}
 
 bad = []
 for model, table in pairs.items():
