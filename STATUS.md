@@ -329,9 +329,30 @@ php artisan telegram:test --chat=<telegram_id>     # kirim pesan sungguhan
 ke orang. Untuk itu chat id-nya harus disebut, dan pengguna yang bersangkutan
 harus sudah pernah menekan Start di bot.
 
-**Angka saat ini:** 171 route, 24 controller admin, 25 view admin,
-37 migration, 11 middleware, 241 kelas CSS, 26 interface repository,
-8 job antrean, 366 berkas PHP, 70 blade, 7 perintah artisan.
+**Menu bot bisa diatur dari panel** — `/admin/telegram/menu`, izin
+`telegram.manage` (tidak ada izin baru). Tabel `telegram_menus` menyimpan
+label, perbuatan, URL, baris, posisi, dan status aktif. `TelegramMenuAction`
+jadi satu-satunya daftar yang menghubungkan pilihan di panel, `callback_data`,
+dan handler-nya — sebelumnya daftar tombol dan daftar handler ditulis terpisah
+dan memang sempat tidak sinkron. Bawaan tetap dipatok di kode sebagai jaring
+pengaman: tabel kosong tidak boleh membuat bot mengirim sambutan tanpa satu
+tombol pun.
+
+```
+php artisan migrate
+php artisan db:seed --class='Database\Seeders\TelegramMenuSeeder' --force
+```
+
+**Dua bug yang baru ketahuan saat diuji di bot sungguhan:**
+`user_sessions.user_id` adalah foreign key ke `users.id`, tetapi yang dikirim
+ke sana adalah `telegram_id` — melanggar constraint, webhook menjawab 500, dan
+yang dilihat pengguna adalah tombol yang ditekan lalu tidak terjadi apa-apa.
+Bug yang sama versi diam ada di `TelegramRouter`, membuat state `SEARCH` tidak
+pernah terbaca. Keduanya diperbaiki lewat `findByTelegramId()`.
+
+**Angka saat ini:** 176 route, 25 controller admin, 26 view admin,
+38 migration, 11 middleware, 241 kelas CSS, 26 interface repository,
+8 job antrean, 372 berkas PHP, 71 blade, 7 perintah artisan.
 
 Empat angka terakhir ditambahkan sebagai pembanding untuk poin 3 di bagian
 "Memulai sesi baru": alat verifikasi yang melaporkan angka lebih kecil berarti
@@ -377,6 +398,13 @@ beberapa masih dangkal:
   saat ini tidak dipanggil dari mana pun, dan tiga job lain yang didaftarkannya
   (`BroadcastEpisodeJob`, `SendPremiumReminderJob`, `GenerateVideoThumbnailJob`)
   juga masih kosong.
+- **Broadcast Telegram memakai antrean `default`, unggahan memakai `uploads`.**
+  Worker yang hanya mendengarkan `uploads` membuat setiap broadcast menunggu
+  selamanya tanpa satu pun galat — gejalanya persis sama dengan Telegram yang
+  menolak. Halaman `/admin/telegram` sekarang menampilkan nama antrean dan
+  jumlah pekerjaan yang menunggu supaya bisa dibedakan. Pastikan supervisor
+  menjalankan **dua** worker, atau satu worker dengan
+  `--queue=uploads,default`.
 - **Belum ada pembatas laju proaktif ke Telegram.** Telegram membatasi sekitar
   30 pesan per detik. Yang ada sekarang hanya reaksi terhadap 429 — kita
   menunggu selama yang diminta Telegram, lalu mencoba lagi. Pembatas yang

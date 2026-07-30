@@ -479,6 +479,88 @@ dibuktikan di server ada di bagian pengujian.
 
 ---
 
+## Tambahan setelah pengujian di server
+
+Tiga hal muncul saat Anda mencobanya di bot sungguhan. Dua bug, satu
+permintaan fitur.
+
+### Bug 7: tombol Cari ditekan, tidak terjadi apa-apa — foreign key
+
+`user_sessions.user_id` adalah **foreign key ke `users.id`**. Yang dikirim ke
+sana adalah `$callback['from']['id']` — **telegram_id** (11 digit), bukan id
+pengguna di basis data kita.
+
+`UserSession::updateOrCreate(['user_id' => 8947692769])` melanggar constraint,
+melempar `QueryException`, dan webhook menjawab 500. Yang dilihat pengguna:
+tombol ditekan, tidak ada apa pun yang terjadi.
+
+Bug yang sama, versi diam, ada di `TelegramRouter`: `sessions->current()` juga
+dipanggil dengan telegram_id. Itu tidak melempar apa-apa — mencari baris yang
+tidak ada memang bukan kesalahan — tetapi artinya state `SEARCH` tidak pernah
+ditemukan, jadi teks yang diketik setelahnya tidak pernah diproses. **Dua
+lapisan rusak berurutan**: yang pertama membuat state tidak pernah tersimpan,
+yang kedua membuat state tidak pernah terbaca.
+
+Diperbaiki di kedua tempat dengan `TelegramRepositoryInterface::findByTelegramId()`
+— method yang sudah dibuat di awal sprint ini untuk keperluan lain.
+
+### Bug 8: broadcast tidak sampai — hampir pasti antrean, bukan Telegram
+
+`php artisan telegram:test --chat=` membuktikan pengiriman berfungsi. Broadcast
+berbeda: ia hanya **mengantrekan** `SendTelegramBroadcast` ke antrean
+`default`, dan sejak 7.7 worker di server disetel mendengarkan `uploads`.
+Worker yang tidak mendengarkan `default` membuat setiap broadcast menunggu
+selamanya, tanpa satu pun galat di mana pun — gejala yang persis sama dengan
+"Telegram menolak".
+
+Tidak bisa saya pastikan dari sini karena konfigurasi supervisor tidak ada di
+repo. Yang saya kerjakan: halaman `/admin/telegram` sekarang menampilkan
+**koneksi antrean, nama antreannya, jumlah pekerjaan yang menunggu, dan jumlah
+yang gagal**, plus perintah yang harus dijalankan bila angkanya tidak turun.
+Sebelumnya satu-satunya cara mengetahuinya adalah masuk ke server dan membaca
+tabel `jobs` sendiri.
+
+### Menu bot bisa diatur dari panel admin
+
+Halaman baru `/admin/telegram/menu`, izin `telegram.manage` (tidak ada izin
+baru, jadi RoleSeeder tidak perlu dijalankan).
+
+Susunan tombol pindah ke tabel `telegram_menus`: label, perbuatan, URL, baris,
+posisi, aktif. Satu form untuk seluruh susunan, karena memindahkan satu tombol
+hampir selalu berarti menggeser tetangganya — menyimpan satu per satu membuat
+keadaan setengah jadi terlihat pengguna bot di antara dua penyimpanan.
+
+**`TelegramMenuAction` jadi satu-satunya daftar** yang menghubungkan tiga hal:
+pilihan di panel, `callback_data` yang dikirim Telegram, dan handler yang
+menjalankannya. Sebelumnya daftar tombol ada di `HomeKeyboard` dan daftar
+handler ada di `CallbackHandler`, ditulis terpisah — dan keduanya memang sempat
+tidak sinkron. Itulah sebabnya tombol Cari tidak ada di menu **dan** cabang
+`search` tidak ada di router: dua daftar, tidak ada yang mencocokkan.
+
+Keputusan yang perlu disebut:
+
+- **Bawaan tetap dipatok di kode.** Menu adalah satu-satunya cara memakai bot
+  ini. Tabel kosong, seeder belum jalan, atau semua baris dinonaktifkan akan
+  membuat pengguna menerima sambutan tanpa satu tombol pun. `TelegramMenuService`
+  jatuh ke `DEFAULTS` dalam keadaan itu — termasuk bila basis datanya gagal
+  dibaca, karena yang memanggilnya adalah bot yang sedang membalas orang.
+- **Seeder memakai `firstOrCreate`, bukan `updateOrCreate`.** Label dan posisi
+  yang sudah diubah admin tidak dikembalikan ke bawaan. Seeder yang menimpa
+  hasil kerja orang adalah seeder yang tidak berani dijalankan lagi.
+- **Tombol tautan tanpa URL ditolak di panel.** Telegram menolak **seluruh**
+  keyboard bila ada satu tombol `url` beralamat kosong — bukan hanya tombol itu
+  yang hilang, tetapi seluruh menunya. Diperiksa dua kali: saat disimpan, dan
+  sekali lagi saat keyboard dibangun.
+- **Form hapus berada di luar tabel**, dihubungkan dengan atribut `form`.
+  Teknik yang sama dengan editor prioritas 7.2D, menghindari bug form bersarang
+  yang masih tercatat untuk modul CRUD lain.
+- **Callback yang tidak dikenal menampilkan menu utama.** Ini bukan sekadar
+  penjagaan: tombol lama tetap menempel di pesan yang sudah terkirim setelah
+  menunya diubah dari panel, dan pengguna yang menekannya harus mendapat
+  sesuatu.
+
+---
+
 ## Belum dikerjakan (sengaja)
 
 - **Upload video ke Telegram, `telegram_file_id`, deep link, episode

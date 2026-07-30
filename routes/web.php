@@ -401,6 +401,20 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('/telegram', [Admin\TelegramController::class, 'index'])->name('telegram');
             Route::post('/telegram/broadcast', [Admin\TelegramController::class, 'broadcast'])
                 ->name('telegram.broadcast')->middleware('throttle:broadcast');
+
+            // Menu tombol bot. Nama route-nya `admin.telegram-menu.*`, bukan
+            // `admin.telegram.menu.*`, supaya penanda aktif menu Telegram di
+            // sidebar tidak ikut menyala untuk halaman ini.
+            Route::get('/telegram/menu', [Admin\TelegramMenuController::class, 'index'])
+                ->name('telegram-menu.index');
+            Route::put('/telegram/menu', [Admin\TelegramMenuController::class, 'update'])
+                ->name('telegram-menu.update');
+            Route::post('/telegram/menu', [Admin\TelegramMenuController::class, 'store'])
+                ->name('telegram-menu.store');
+            Route::post('/telegram/menu/reset', [Admin\TelegramMenuController::class, 'reset'])
+                ->name('telegram-menu.reset');
+            Route::delete('/telegram/menu/{id}', [Admin\TelegramMenuController::class, 'destroy'])
+                ->name('telegram-menu.destroy')->whereNumber('id');
         });
 
         Route::get('/logs', [Admin\LogController::class, 'index'])

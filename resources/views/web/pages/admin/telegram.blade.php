@@ -68,6 +68,45 @@
 
     <section class="panel">
         <div class="panel-head">
+            <h2>Antrean broadcast</h2>
+            <span class="panel-meta">Broadcast tidak dikirim langsung — worker yang mengirimkannya</span>
+        </div>
+
+        <div class="detail-body-admin">
+            <dl class="settings-meta">
+                <dt>Koneksi</dt>
+                <dd>{{ $queue['connection'] }}</dd>
+
+                <dt>Nama antrean</dt>
+                <dd><code>{{ $queue['queue'] }}</code></dd>
+
+                <dt>Menunggu dikirim</dt>
+                <dd>
+                    @if ($queue['pending'] === null)
+                        <span class="badge">tidak terbaca dari driver ini</span>
+                    @elseif ($queue['pending'] > 0)
+                        <span class="badge badge-off">{{ number_format($queue['pending']) }} tertahan</span>
+                    @else
+                        <span class="badge badge-on">0</span>
+                    @endif
+                </dd>
+
+                <dt>Gagal</dt>
+                <dd>{{ $queue['failed'] === null ? '—' : number_format($queue['failed']) }}</dd>
+            </dl>
+
+            @if (($queue['pending'] ?? 0) > 0)
+                <p class="page-subtitle">
+                    Ada pekerjaan yang menunggu. Kalau angkanya tidak turun, worker belum
+                    mendengarkan antrean <code>{{ $queue['queue'] }}</code>. Jalankan di server:
+                    <code>php artisan queue:work --queue={{ $queue['queue'] }}</code>
+                </p>
+            @endif
+        </div>
+    </section>
+
+    <section class="panel">
+        <div class="panel-head">
             <h2>Kirim broadcast</h2>
             <span class="panel-meta">Dikirim lewat antrean — pastikan worker berjalan</span>
         </div>

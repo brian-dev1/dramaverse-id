@@ -41,6 +41,7 @@
             ['route' => 'admin.subscription.index','icon' => 'card',  'label' => 'Langganan',  'can' => 'membership.manage'],
             ['route' => 'admin.user.index',        'icon' => 'users', 'label' => 'Pengguna',   'can' => 'user.view'],
             ['route' => 'admin.telegram',          'icon' => 'send',  'label' => 'Telegram',   'can' => 'telegram.manage'],
+            ['route' => 'admin.telegram-menu.index', 'icon' => 'list', 'label' => 'Menu Telegram', 'can' => 'telegram.manage'],
         ]],
         ['group' => 'Sistem', 'items' => [
             ['route' => 'admin.analytics',   'icon' => 'chart',    'label' => 'Analytics',    'can' => 'report.view'],

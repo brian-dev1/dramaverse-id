@@ -6,6 +6,8 @@ use App\Models\User;
 use App\Repositories\Contracts\TelegramRepositoryInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Throwable;
 
 /**
  * Lihat TelegramRepositoryInterface untuk alasan bentuknya.
@@ -99,6 +101,39 @@ class TelegramRepository implements TelegramRepositoryInterface
         return User::query()
             ->where('telegram_id', $telegramId)
             ->first();
+    }
+
+    public function queueHealth(): array
+    {
+        $connection = (string) config('queue.default');
+
+        $queue = (string) config("queue.connections.{$connection}.queue", 'default');
+
+        $pending = null;
+
+        $failed = null;
+
+        // Hanya driver database yang jumlahnya bisa dibaca dari sini. Redis
+        // dan SQS punya cara sendiri, dan menebaknya lebih buruk daripada
+        // menampilkan tanda hubung.
+        if ($connection === 'database') {
+
+            try {
+                $pending = DB::table('jobs')->where('queue', $queue)->count();
+
+                $failed = DB::table('failed_jobs')->count();
+            } catch (Throwable) {
+                // Tabel antrean belum dibuat. Halaman admin tidak boleh mati
+                // karena panel keterangan tambahan.
+            }
+        }
+
+        return [
+            'connection' => $connection,
+            'queue'      => $queue,
+            'pending'    => $pending,
+            'failed'     => $failed,
+        ];
     }
 
     public function deactivateByTelegramId(int|string $telegramId): int

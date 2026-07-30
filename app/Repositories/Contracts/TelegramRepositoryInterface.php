@@ -71,6 +71,22 @@ interface TelegramRepositoryInterface
     public function findByTelegramId(int|string $telegramId): ?User;
 
     /**
+     * Keadaan antrean yang dipakai broadcast: koneksi, nama antrean, dan
+     * jumlah pekerjaan yang masih menunggu.
+     *
+     * Ada di sini karena broadcast yang "tidak terjadi apa-apa" hampir selalu
+     * berarti worker tidak mendengarkan antrean yang benar — bukan berarti
+     * Telegram menolak. Tanpa angka ini, satu-satunya cara mengetahuinya
+     * adalah masuk ke server dan membaca tabel `jobs` sendiri.
+     *
+     * `pending` bernilai null bila koneksi antreannya bukan `database`,
+     * karena jumlahnya tidak bisa dibaca dari sini.
+     *
+     * @return array{connection:string, queue:string, pending:int|null, failed:int|null}
+     */
+    public function queueHealth(): array;
+
+    /**
      * Tandai pengguna nonaktif karena Telegram menolak pengiriman kepadanya —
      * bot diblokir atau akunnya dihapus.
      *

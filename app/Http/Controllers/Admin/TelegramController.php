@@ -44,6 +44,7 @@ class TelegramController extends Controller
             'audiences' => $this->repository->audiences(),
             'counts'    => $this->repository->counts(),
             'stats'     => $this->repository->stats(),
+            'queue'     => $this->repository->queueHealth(),
         ]);
     }
 

@@ -2,6 +2,7 @@
 
 namespace App\Telegram\Router;
 
+use App\Repositories\Contracts\TelegramRepositoryInterface;
 use App\Services\UserSessionService;
 use App\Telegram\Handlers\CallbackHandler;
 use App\Telegram\Handlers\SearchHandler;
@@ -10,7 +11,8 @@ use App\Telegram\Handlers\StartHandler;
 class TelegramRouter
 {
     public function __construct(
-        protected UserSessionService $sessions
+        protected UserSessionService $sessions,
+        protected TelegramRepositoryInterface $users
     ) {
     }
 
@@ -44,8 +46,6 @@ class TelegramRouter
 
         $chatId = $message['chat']['id'];
 
-        $userId = $message['from']['id'];
-
         $text = trim($message['text'] ?? '');
 
         /*
@@ -66,16 +66,29 @@ class TelegramRouter
         |--------------------------------------------------------------------------
         | Conversation State
         |--------------------------------------------------------------------------
+        |
+        | State disimpan dengan id pengguna di basis data kita, BUKAN
+        | telegram_id. Sebelum ini `$message['from']['id']` dipakai apa adanya,
+        | sehingga pencarian state selalu meleset dan balasan pencarian tidak
+        | pernah datang — tanpa satu pun galat, karena mencari baris yang tidak
+        | ada memang bukan kesalahan.
+        |
         */
 
-        $state = $this->sessions->current($userId);
+        $user = $this->users->findByTelegramId($message['from']['id'] ?? 0);
+
+        if ($user === null) {
+            return;
+        }
+
+        $state = $this->sessions->current((int) $user->id);
 
         match ($state) {
 
             'SEARCH' => app(SearchHandler::class)
                 ->handle(
                     $chatId,
-                    $userId,
+                    (int) $user->id,
                     $text
                 ),
 

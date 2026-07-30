@@ -2,68 +2,19 @@
 
 namespace App\Telegram\Keyboards;
 
+use App\Services\TelegramMenuService;
+
+/**
+ * Menu utama bot.
+ *
+ * Susunannya tidak lagi ditulis di sini. Sejak menu bisa diatur dari panel
+ * admin, kelas ini hanya jalan pintas ke TelegramMenuService — dipertahankan
+ * supaya pemanggil lama (`HomeKeyboard::make()`) tidak perlu diubah.
+ */
 class HomeKeyboard
 {
     public static function make(): array
     {
-        return [
-            'inline_keyboard' => [
-
-                // Cari ditaruh paling atas: SearchHandler sudah ada sejak awal
-                // dan TelegramRouter sudah menangani state SEARCH, tapi tidak
-                // pernah ada tombol yang memulainya — jadi seluruh alur
-                // pencarian tidak bisa dijangkau pengguna sama sekali.
-                [
-                    [
-                        'text' => '🔎 Cari Drama',
-                        'callback_data' => 'search'
-                    ]
-                ],
-
-                [
-                    [
-                        'text' => '▶️ Continue Watching',
-                        'callback_data' => 'continue'
-                    ]
-                ],
-
-                [
-                    [
-                        'text' => '❤️ Favorit',
-                        'callback_data' => 'favorite'
-                    ],
-                    [
-                        'text' => '🕒 Riwayat',
-                        'callback_data' => 'history'
-                    ]
-                ],
-
-                [
-                    [
-                        'text' => '🌐 Buka Website',
-                        'callback_data' => 'website'
-                    ]
-                ],
-
-                [
-                    [
-                        'text' => '💎 Premium',
-                        'callback_data' => 'premium'
-                    ],
-                    [
-                        'text' => '👤 Profil',
-                        'callback_data' => 'profile'
-                    ]
-                ],
-
-                [
-                    [
-                        'text' => '⚙️ Bantuan',
-                        'callback_data' => 'help'
-                    ]
-                ],
-
-            ],
-        ];
+        return app(TelegramMenuService::class)->keyboard();
     }
 }
