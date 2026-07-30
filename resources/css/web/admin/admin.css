@@ -953,3 +953,59 @@ a.stat-card:hover .stat-icon{ color:var(--gold); }
 
     .fm-key{ max-width:100%; white-space:normal; }
 }
+
+/* ---------------------------------------------------------------------------
+   Menu Telegram
+
+   Tabelnya berisi tujuh kolom yang semuanya berupa isian, dan tanpa lebar
+   yang ditentukan, kolom angka ikut melebar sementara kolom label terjepit.
+   Lebarnya dipatok per kolom, bukan diserahkan ke perhitungan otomatis.
+--------------------------------------------------------------------------- */
+
+.tm-table{ table-layout:fixed; }
+.tm-table th, .tm-table td{ vertical-align:middle; }
+
+.tm-col-num{ width:88px; text-align:center; }
+.tm-col-switch{ width:110px; text-align:center; }
+
+.tm-table .col-actions{ width:72px; text-align:center; }
+
+.tm-label, .tm-url, .tm-select{ width:100%; }
+.tm-num{ width:100%; text-align:center; }
+
+.tm-fixed{
+    display:block;
+    font-size:13px;
+    color:var(--text-secondary);
+    line-height:1.5;
+}
+
+.tm-muted{ color:var(--text-muted); font-size:12px; }
+
+.tm-lock{ margin-top:5px; display:inline-block; }
+
+/* Sakelar di dalam sel tabel tidak punya label teks, jadi dipusatkan. */
+.tm-switch{ justify-content:center; gap:0; }
+
+.tm-save{ padding-top:16px; }
+
+/* Pratayang: menirukan susunan tombol Telegram, bukan daftar biasa. */
+.tm-preview{ display:flex; flex-direction:column; gap:7px; max-width:420px; }
+
+.tm-preview-row{ display:flex; gap:7px; }
+
+.tm-preview-btn{
+    flex:1;
+    text-align:center;
+    padding:9px 12px;
+    border-radius:8px;
+    background:var(--bg-secondary);
+    border:1px solid var(--border);
+    font-size:13px;
+    color:var(--text-primary);
+}
+
+@media (max-width:900px){
+    .tm-table{ table-layout:auto; }
+    .tm-preview{ max-width:100%; }
+}

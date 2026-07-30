@@ -11,15 +11,19 @@
         </div>
 
         <div class="detail-body-admin">
-            @forelse ($preview as $baris)
-                <div class="radio-row">
-                    @foreach ($baris as $tombol)
-                        <span class="badge badge-on">{{ $tombol['text'] }}</span>
-                    @endforeach
-                </div>
-            @empty
-                <p class="page-subtitle">Belum ada tombol aktif. Bot akan memakai susunan bawaan.</p>
-            @endforelse
+            <div class="tm-preview">
+                @forelse ($preview as $baris)
+                    <div class="tm-preview-row">
+                        @foreach ($baris as $tombol)
+                            <span class="tm-preview-btn">{{ $tombol['text'] }}</span>
+                        @endforeach
+                    </div>
+                @empty
+                    <p class="page-subtitle">
+                        Belum ada tombol aktif. Bot akan memakai susunan bawaan.
+                    </p>
+                @endforelse
+            </div>
         </div>
     </section>
 
@@ -27,8 +31,7 @@
         <div class="panel-head">
             <h2>Susunan tombol</h2>
             <span class="panel-meta">
-                Baris menentukan urutan ke bawah, posisi menentukan urutan di dalam baris.
-                Dua tombol dengan baris yang sama akan berdampingan.
+                Baris menentukan urutan ke bawah, posisi menentukan urutan di dalam baris
             </span>
         </div>
 
@@ -41,69 +44,104 @@
             </div>
         @else
             <div class="table-wrap">
-                <table class="data-table">
+                <table class="data-table tm-table">
                     <thead>
                         <tr>
                             <th>Label</th>
                             <th>Perbuatan</th>
                             <th>URL</th>
-                            <th>Baris</th>
-                            <th>Posisi</th>
-                            <th>Aktif</th>
-                            <th class="col-actions">Aksi</th>
+                            <th class="tm-col-num">Baris</th>
+                            <th class="tm-col-num">Posisi</th>
+                            <th class="tm-col-switch">Aktif</th>
+                            <th class="col-actions">Hapus</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach ($menus as $menu)
+                            @php $terkunci = $menu->action->isLocked(); @endphp
+
                             <tr>
                                 <td>
-                                    <input type="text" class="control control-sm" form="menu-form"
+                                    <input type="text" class="control control-sm tm-label" form="menu-form"
                                            name="menus[{{ $menu->id }}][label]"
                                            value="{{ old("menus.{$menu->id}.label", $menu->label) }}"
                                            maxlength="64" required>
                                 </td>
+
                                 <td>
-                                    <select class="control control-sm" form="menu-form"
-                                            name="menus[{{ $menu->id }}][action]" required>
-                                        @foreach ($actions as $nilai => $label)
-                                            <option value="{{ $nilai }}"
-                                                @selected(old("menus.{$menu->id}.action", $menu->action->value) === $nilai)>
-                                                {{ $label }}
-                                            </option>
-                                        @endforeach
-                                    </select>
+                                    @if ($terkunci)
+                                        <input type="hidden" form="menu-form"
+                                               name="menus[{{ $menu->id }}][action]"
+                                               value="{{ $menu->action->value }}">
+
+                                        <span class="tm-fixed">{{ $menu->action->label() }}</span>
+                                        <span class="badge tm-lock">Permanen</span>
+                                    @else
+                                        <select class="control control-sm tm-select" form="menu-form"
+                                                name="menus[{{ $menu->id }}][action]" required
+                                                data-tm-action>
+                                            @foreach ($actions as $nilai => $label)
+                                                <option value="{{ $nilai }}"
+                                                    @selected(old("menus.{$menu->id}.action", $menu->action->value) === $nilai)>
+                                                    {{ $label }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    @endif
                                 </td>
+
                                 <td>
-                                    <input type="url" class="control control-sm" form="menu-form"
-                                           name="menus[{{ $menu->id }}][url]"
-                                           value="{{ old("menus.{$menu->id}.url", $menu->url) }}"
-                                           placeholder="hanya untuk Tautan bebas">
+                                    @if ($terkunci)
+                                        <span class="tm-fixed tm-muted">dibuat otomatis per pengguna</span>
+                                    @else
+                                        <input type="url" class="control control-sm tm-url" form="menu-form"
+                                               name="menus[{{ $menu->id }}][url]"
+                                               value="{{ old("menus.{$menu->id}.url", $menu->url) }}"
+                                               placeholder="hanya untuk Tautan bebas">
+                                    @endif
                                 </td>
-                                <td>
-                                    <input type="number" class="control control-sm" form="menu-form"
+
+                                <td class="tm-col-num">
+                                    <input type="number" class="control control-sm tm-num" form="menu-form"
                                            name="menus[{{ $menu->id }}][row]"
                                            value="{{ old("menus.{$menu->id}.row", $menu->row) }}"
                                            min="1" max="20" required>
                                 </td>
-                                <td>
-                                    <input type="number" class="control control-sm" form="menu-form"
+
+                                <td class="tm-col-num">
+                                    <input type="number" class="control control-sm tm-num" form="menu-form"
                                            name="menus[{{ $menu->id }}][position]"
                                            value="{{ old("menus.{$menu->id}.position", $menu->position) }}"
                                            min="1" max="8" required>
                                 </td>
-                                <td>
-                                    <input type="hidden" form="menu-form"
-                                           name="menus[{{ $menu->id }}][is_active]" value="0">
-                                    <input type="checkbox" form="menu-form"
-                                           name="menus[{{ $menu->id }}][is_active]" value="1"
-                                           @checked(old("menus.{$menu->id}.is_active", $menu->is_active))>
+
+                                <td class="tm-col-switch">
+                                    @if ($terkunci)
+                                        <span class="badge badge-on">Selalu aktif</span>
+                                    @else
+                                        <input type="hidden" form="menu-form"
+                                               name="menus[{{ $menu->id }}][is_active]" value="0">
+
+                                        <label class="switch tm-switch">
+                                            <input type="checkbox" form="menu-form"
+                                                   name="menus[{{ $menu->id }}][is_active]" value="1"
+                                                   @checked(old("menus.{$menu->id}.is_active", $menu->is_active))>
+                                            <span class="switch-track"><span class="switch-thumb"></span></span>
+                                        </label>
+                                    @endif
                                 </td>
+
                                 <td class="col-actions">
-                                    <button type="submit" class="btn btn-danger btn-icon"
-                                            form="hapus-{{ $menu->id }}"
-                                            onclick="return confirm('Hapus tombol {{ $menu->label }}?')">
-                                        <x-web.home.icon name="trash" :size="14" />
-                                    </button>
+                                    @if ($terkunci)
+                                        <span class="tm-muted">—</span>
+                                    @else
+                                        <button type="submit" class="btn btn-danger btn-icon"
+                                                form="hapus-{{ $menu->id }}"
+                                                title="Hapus tombol {{ $menu->label }}"
+                                                onclick="return confirm('Hapus tombol {{ $menu->label }}?')">
+                                            <x-web.home.icon name="close" :size="14" />
+                                        </button>
+                                    @endif
                                 </td>
                             </tr>
                         @endforeach
@@ -118,7 +156,7 @@
             mengirim ke action yang salah. Penghubungnya atribut `form`.
         --}}
         <form method="POST" action="{{ route('admin.telegram-menu.update') }}"
-              id="menu-form" class="admin-form">
+              id="menu-form" class="admin-form tm-save">
             @csrf
             @method('PUT')
 
@@ -131,11 +169,13 @@
         </form>
 
         @foreach ($menus as $menu)
-            <form method="POST" action="{{ route('admin.telegram-menu.destroy', $menu->id) }}"
-                  id="hapus-{{ $menu->id }}" class="inline-form">
-                @csrf
-                @method('DELETE')
-            </form>
+            @unless ($menu->action->isLocked())
+                <form method="POST" action="{{ route('admin.telegram-menu.destroy', $menu->id) }}"
+                      id="hapus-{{ $menu->id }}" class="inline-form">
+                    @csrf
+                    @method('DELETE')
+                </form>
+            @endunless
         @endforeach
     </section>
 
@@ -156,11 +196,13 @@
                 <x-admin.field name="url" label="URL" :value="old('url')"
                                hint="Hanya diisi bila perbuatannya Tautan bebas." />
 
-                <x-admin.field name="row" label="Baris" type="number" required
-                               :value="old('row', ($menus->max('row') ?? 0) + 1)" />
+                <div class="form-grid-narrow">
+                    <x-admin.field name="row" label="Baris" type="number" required
+                                   :value="old('row', ($menus->max('row') ?? 0) + 1)" />
 
-                <x-admin.field name="position" label="Posisi" type="number" required
-                               :value="old('position', 1)" />
+                    <x-admin.field name="position" label="Posisi" type="number" required
+                                   :value="old('position', 1)" />
+                </div>
 
                 <div class="form-actions">
                     <button type="submit" class="btn btn-primary">

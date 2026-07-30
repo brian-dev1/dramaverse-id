@@ -554,6 +554,22 @@ Keputusan yang perlu disebut:
 - **Form hapus berada di luar tabel**, dihubungkan dengan atribut `form`.
   Teknik yang sama dengan editor prioritas 7.2D, menghindari bug form bersarang
   yang masih tercatat untuk modul CRUD lain.
+- **Tombol "Buka Website" dikunci permanen.** Tidak bisa dihapus, tidak bisa
+  dinonaktifkan, perbuatannya tidak bisa diganti, dan kolom URL-nya tidak bisa
+  diisi. Alasannya bukan kehati-hatian berlebihan: `WebsiteHandler` membuat
+  token sekali pakai per pengguna lalu mengirim tautan masuknya, dan tidak ada
+  login email untuk pengguna biasa. Menghapus tombol ini mengunci **seluruh
+  pengguna** di luar situs, dan yang menghapusnya tidak akan langsung tahu
+  karena bot-nya sendiri tetap berjalan normal.
+
+  Alamatnya juga tidak boleh diisi tangan. Tautan itu berlaku sekali pakai dan
+  berbeda untuk tiap orang; URL tetap yang ditempel di panel akan sama untuk
+  semua dan tidak akan pernah memasukkan siapa pun.
+
+  Penjagaannya ada di **controller**, bukan hanya di tampilan — field yang
+  disembunyikan tidak ikut terkirim, tetapi permintaan yang dirakit tangan
+  tetap bisa membawa nilai apa saja. Perbuatan ini juga dikeluarkan dari
+  dropdown "Tambah tombol", supaya tidak ada yang membuat duplikat.
 - **Callback yang tidak dikenal menampilkan menu utama.** Ini bukan sekadar
   penjagaan: tombol lama tetap menempel di pesan yang sudah terkirim setelah
   menunya diubah dari panel, dan pengguna yang menekannya harus mendapat

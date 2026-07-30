@@ -50,7 +50,7 @@ enum TelegramMenuAction: string
             self::HISTORY  => 'Riwayat tontonan',
             self::LATEST   => 'Episode terbaru',
             self::TRENDING => 'Sedang populer',
-            self::WEBSITE  => 'Buka website (tautan masuk)',
+            self::WEBSITE  => 'Buka website (tautan masuk sekali pakai)',
             self::PREMIUM  => 'Premium',
             self::PROFILE  => 'Profil',
             self::HELP     => 'Bantuan',
@@ -94,6 +94,25 @@ enum TelegramMenuAction: string
     }
 
     /**
+     * Tombol yang tidak boleh diubah, dinonaktifkan, atau dihapus.
+     *
+     * "Buka Website" adalah satu-satunya jalan pengguna masuk ke situs:
+     * `WebsiteHandler` membuat token sekali pakai lalu mengirim tautan
+     * masuknya. Tidak ada login email untuk pengguna biasa, jadi menghapus
+     * tombol ini dari panel akan mengunci seluruh pengguna di luar situs —
+     * dan yang menghapusnya tidak akan langsung tahu, karena bot-nya sendiri
+     * tetap berjalan normal.
+     *
+     * Alamatnya juga tidak bisa diisi tangan. Tautan itu dibuat per pengguna
+     * dan berlaku sekali pakai; URL tetap yang ditempel di sini akan sama
+     * untuk semua orang dan tidak akan pernah bisa memasukkan siapa pun.
+     */
+    public function isLocked(): bool
+    {
+        return $this === self::WEBSITE;
+    }
+
+    /**
      * SearchHandler dipanggil berbeda dari yang lain: ia memulai percakapan
      * dan menerima chat serta pengguna secara terpisah, bukan seluruh array
      * callback. Ditandai di sini supaya CallbackHandler tidak perlu
@@ -104,12 +123,25 @@ enum TelegramMenuAction: string
         return $this === self::SEARCH;
     }
 
-    /** @return array<string,string> untuk dropdown di panel admin */
+    /**
+     * Pilihan untuk dropdown di panel admin.
+     *
+     * Yang terkunci tidak ikut: ia sudah punya tombolnya sendiri yang tidak
+     * bisa dihapus, dan menawarkannya lagi hanya membuat orang membuat
+     * duplikat yang tidak berguna.
+     *
+     * @return array<string,string>
+     */
     public static function options(): array
     {
         $hasil = [];
 
         foreach (self::cases() as $case) {
+
+            if ($case->isLocked()) {
+                continue;
+            }
+
             $hasil[$case->value] = $case->label();
         }
 

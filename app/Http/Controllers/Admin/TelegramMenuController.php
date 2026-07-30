@@ -69,13 +69,29 @@ class TelegramMenuController extends Controller
                 return back()->with('error', $gagal)->withInput();
             }
 
+            /*
+            |------------------------------------------------------------------
+            | Tombol terkunci
+            |------------------------------------------------------------------
+            |
+            | Perbuatan dan status aktifnya dipaksa tetap, apa pun yang datang
+            | dari formulir. Penjagaannya ada di sini, bukan hanya di tampilan:
+            | field yang di-disable tidak ikut terkirim, tetapi permintaan yang
+            | dirakit tangan tetap bisa membawa nilai apa saja.
+            |
+            */
+
+            $terkunci = $menu->action->isLocked();
+
+            $action = $terkunci ? $menu->action->value : $isi['action'];
+
             $menu->fill([
                 'label'     => $isi['label'],
-                'action'    => $isi['action'],
-                'url'       => $isi['action'] === TelegramMenuAction::URL->value ? $isi['url'] : null,
+                'action'    => $action,
+                'url'       => $action === TelegramMenuAction::URL->value ? $isi['url'] : null,
                 'row'       => $isi['row'],
                 'position'  => $isi['position'],
-                'is_active' => (bool) ($isi['is_active'] ?? false),
+                'is_active' => $terkunci ? true : (bool) ($isi['is_active'] ?? false),
             ]);
 
             // Hanya yang benar-benar berubah yang ditulis, supaya
@@ -129,6 +145,15 @@ class TelegramMenuController extends Controller
     public function destroy(int $id): RedirectResponse
     {
         $menu = TelegramMenu::findOrFail($id);
+
+        if ($menu->action->isLocked()) {
+            return back()->with(
+                'error',
+                'Tombol "'.$menu->label.'" tidak bisa dihapus. Itu satu-satunya '
+                .'jalan pengguna masuk ke situs — tidak ada login email untuk '
+                .'pengguna biasa. Labelnya boleh diganti, letaknya boleh dipindah.'
+            );
+        }
 
         $label = $menu->label;
 

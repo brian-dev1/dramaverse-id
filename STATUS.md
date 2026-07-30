@@ -351,7 +351,7 @@ Bug yang sama versi diam ada di `TelegramRouter`, membuat state `SEARCH` tidak
 pernah terbaca. Keduanya diperbaiki lewat `findByTelegramId()`.
 
 **Angka saat ini:** 176 route, 25 controller admin, 26 view admin,
-38 migration, 11 middleware, 241 kelas CSS, 26 interface repository,
+38 migration, 11 middleware, 256 kelas CSS, 26 interface repository,
 8 job antrean, 372 berkas PHP, 71 blade, 7 perintah artisan.
 
 Empat angka terakhir ditambahkan sebagai pembanding untuk poin 3 di bagian
@@ -398,13 +398,26 @@ beberapa masih dangkal:
   saat ini tidak dipanggil dari mana pun, dan tiga job lain yang didaftarkannya
   (`BroadcastEpisodeJob`, `SendPremiumReminderJob`, `GenerateVideoThumbnailJob`)
   juga masih kosong.
-- **Broadcast Telegram memakai antrean `default`, unggahan memakai `uploads`.**
-  Worker yang hanya mendengarkan `uploads` membuat setiap broadcast menunggu
-  selamanya tanpa satu pun galat — gejalanya persis sama dengan Telegram yang
-  menolak. Halaman `/admin/telegram` sekarang menampilkan nama antrean dan
-  jumlah pekerjaan yang menunggu supaya bisa dibedakan. Pastikan supervisor
-  menjalankan **dua** worker, atau satu worker dengan
-  `--queue=uploads,default`.
+- **Worker broadcast bisa mendengarkan KONEKSI yang salah, bukan cuma antrean
+  yang salah.** Ditemukan 31 Juli 2026 di server: `dramaverse-worker.conf`
+  berisi `queue:work redis`, sedangkan `QUEUE_CONNECTION` di `.env` adalah
+  `database`. Job masuk ke tabel `jobs`, worker menunggui Redis, dan keduanya
+  tidak pernah bertemu — tanpa satu pun galat di mana pun, karena masing-masing
+  bekerja normal. Gejalanya persis sama dengan Telegram yang menolak.
+
+  Argumen pertama `queue:work` adalah **nama koneksi**, bukan nama antrean.
+  `queue:work redis` berarti "ambil dari koneksi redis", bukan "antrean redis".
+  Ini mudah terbaca terbalik.
+
+  Perbaikannya: hilangkan nama koneksi supaya worker mengikuti `.env` —
+  `queue:work --queue=default`. Dengan begitu `.env` jadi satu-satunya sumber
+  kebenaran, dan mengganti driver antrean tidak lagi perlu menyunting
+  supervisor. Worker unggahan tetap menyebut `uploads` secara eksplisit karena
+  memang harus berbeda dari yang lain.
+
+  Halaman `/admin/telegram` sekarang menampilkan koneksi, nama antrean, dan
+  jumlah pekerjaan yang menunggu supaya ketidakcocokan seperti ini terlihat
+  tanpa harus masuk ke server.
 - **Belum ada pembatas laju proaktif ke Telegram.** Telegram membatasi sekitar
   30 pesan per detik. Yang ada sekarang hanya reaksi terhadap 429 — kita
   menunggu selama yang diminta Telegram, lalu mencoba lagi. Pembatas yang
