@@ -44,6 +44,8 @@
             ['route' => 'admin.telegram-menu.index', 'icon' => 'list', 'label' => 'Menu Telegram', 'can' => 'telegram.manage'],
             ['route' => 'admin.telegram-sync.index', 'icon' => 'film', 'label' => 'Sinkron Telegram', 'can' => 'telegram.manage'],
             ['route' => 'admin.telegram-log.index',  'icon' => 'file', 'label' => 'Log Telegram',    'can' => 'telegram.manage'],
+            ['route' => 'admin.monitoring.index',    'icon' => 'activity', 'label' => 'Monitoring',  'can' => 'setting.manage'],
+            ['route' => 'admin.system-log.index',    'icon' => 'file', 'label' => 'Log Sistem',      'can' => 'log.view'],
         ]],
         ['group' => 'Sistem', 'items' => [
             ['route' => 'admin.analytics',   'icon' => 'chart',    'label' => 'Analytics',    'can' => 'report.view'],

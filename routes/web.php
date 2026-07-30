@@ -441,6 +441,39 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         /*
         |----------------------------------------------------------------------
+        | Monitoring & Backup (Phase 9)
+        |----------------------------------------------------------------------
+        |
+        | Memakai izin `setting.manage`, bukan izin baru. Yang boleh melihat
+        | kesehatan sistem dan mengunduh cadangan adalah orang yang sama dengan
+        | yang boleh mengubah pengaturan — dan menambah izin baru berarti
+        | RoleSeeder harus dijalankan ulang di server sebelum halamannya bisa
+        | dibuka sama sekali.
+        |
+        */
+        Route::middleware('permission:setting.manage')->group(function () {
+
+            Route::get('/monitoring', [Admin\MonitoringController::class, 'index'])
+                ->name('monitoring.index');
+
+            Route::post('/monitoring/backup', [Admin\MonitoringController::class, 'backupNow'])
+                ->name('monitoring.backup');
+
+            Route::post('/monitoring/backup/verify', [Admin\MonitoringController::class, 'verify'])
+                ->name('monitoring.verify');
+
+            Route::get('/monitoring/backup/download', [Admin\MonitoringController::class, 'download'])
+                ->name('monitoring.download');
+
+            Route::post('/monitoring/backup/prune', [Admin\MonitoringController::class, 'prune'])
+                ->name('monitoring.prune');
+        });
+
+        Route::get('/system/log', [Admin\SystemLogController::class, 'index'])
+            ->name('system-log.index')->middleware('permission:log.view');
+
+        /*
+        |----------------------------------------------------------------------
         | Storage Manager
         |
         | 7.2A: daftar baca-saja. 7.2B: tambah provider. 7.2C: ubah, hapus

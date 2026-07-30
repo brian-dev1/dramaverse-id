@@ -103,8 +103,16 @@ check(view.index('</table>') < view.index('id="bulk-form"'),
       "form massal berada SETELAH tabel, bukan melingkupinya")
 
 log = read(LOGCTRL)
+READER = 'app/Support/LogFileReader.php'
+
 check('telegram.' in log, "log viewer menyaring baris telegram")
-check('fseek' in log, "log dibaca dari ujung berkas, bukan dimuat seluruhnya")
+
+# Sejak Phase 9 pembacaan ekor berkas diangkat ke LogFileReader supaya Log
+# Sistem tidak menyalin parser kedua. Yang diperiksa tetap invariannya:
+# berkas dibaca dari ujung, bukan dimuat seluruhnya -- bukan di berkas mana
+# tepatnya kodenya berada.
+check(os.path.exists(READER) and 'fseek' in read(READER) and 'LogFileReader' in log,
+      "log dibaca dari ujung berkas lewat pembaca bersama")
 
 
 # -------------------------------------------------------------- 3. bulk
@@ -172,14 +180,23 @@ check('schedule:run' in console, "cara memasang cron ditulis di berkasnya")
 print("\n== NOTIFIKASI ==")
 
 alert = read(ALERT)
+GENERIC = 'app/Services/Monitoring/AlertService.php'
+
 for jenis in ['syncFailed', 'queueFailed', 'apiError', 'botOffline', 'schedulerError']:
     check(f'function {jenis}(' in alert, f"peringatan {jenis} ada")
 
-check('Cache::add' in alert, "peringatan ditahan supaya tidak membanjiri")
-check('throttle_minutes' in alert, "penahan dibaca dari config")
-check('catch (Throwable)' in alert,
+# Sejak Phase 9 penahan dan pengirimannya diangkat ke AlertService, supaya
+# peringatan backup dan basis data tidak menyalin aturan yang sama. Yang
+# diperiksa tetap invariannya, di tempatnya yang sekarang.
+generic = read(GENERIC) if os.path.exists(GENERIC) else ''
+
+check('Cache::add' in generic, "peringatan ditahan supaya tidak membanjiri")
+check('throttle_minutes' in generic, "penahan dibaca dari config")
+check('catch (Throwable)' in generic,
       "kegagalan mengirim peringatan tidak menggagalkan pekerjaan yang melaporkannya")
-check('Log::channel' in alert, "peringatan selalu masuk log, tidak hanya Telegram")
+check('Log::channel' in generic, "peringatan selalu masuk log, tidak hanya Telegram")
+check('AlertService' in alert,
+      "TelegramAlertService meneruskan, bukan menyalin logika penahan")
 
 check('alerts->syncFailed' in read(SYNCSVC), "sinkronisasi gagal memicu peringatan")
 check('queueFailed' in read('app/Jobs/SyncEpisodeVideoToTelegram.php'),

@@ -1,12 +1,35 @@
 <?php
 
+use App\Services\Monitoring\SystemHealthService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schedule;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
+
+/*
+|--------------------------------------------------------------------------
+| Detak scheduler
+|--------------------------------------------------------------------------
+|
+| Menandai bahwa cron benar-benar memanggil `schedule:run`.
+|
+| Tanpa penanda ini, scheduler yang TIDAK PERNAH berjalan sama sekali
+| terlihat persis sama dengan scheduler yang berjalan normal: tidak ada
+| galat, tidak ada log, tidak ada apa pun. Seluruh otomatisasi Telegram dan
+| seluruh cadangan bergantung padanya, dan tidak satu pun akan mengeluh bila
+| baris cron-nya lupa dipasang.
+|
+| Dashboard monitoring membaca nilai ini dan menandai merah bila umurnya
+| lebih dari sepuluh menit.
+|
+*/
+Schedule::call(function () {
+    Cache::put(SystemHealthService::HEARTBEAT, now(), 3600);
+})->everyMinute()->name('scheduler-heartbeat')->withoutOverlapping();
 
 /*
 |--------------------------------------------------------------------------
@@ -50,5 +73,28 @@ Schedule::command('telegram:auto health')
 // disk VPS bisa penuh sebelum ada yang membersihkannya.
 Schedule::command('telegram:auto cleanup')
     ->hourly()
+    ->withoutOverlapping()
+    ->runInBackground();
+
+/*
+|--------------------------------------------------------------------------
+| Cadangan
+|--------------------------------------------------------------------------
+|
+| Harian pukul 02:30, jam yang paling sepi. `mysqldump --single-transaction`
+| tidak mengunci tabel InnoDB, tetapi tetap membebani disk, dan itu tidak
+| perlu bertabrakan dengan jam tonton.
+|
+| Verifikasi dan pemangkasan ikut di dalam `backup:run` — cadangan yang tidak
+| diverifikasi tidak bisa dipercaya, dan yang tidak dipangkas akan memenuhi
+| disk sampai aplikasinya sendiri berhenti bekerja.
+|
+| Kegagalannya mengirim peringatan KRITIS yang melewati penahan: cadangan
+| yang gagal diam-diam adalah cadangan yang dikira ada sampai hari ia
+| dibutuhkan.
+|
+*/
+Schedule::command('backup:run')
+    ->dailyAt('02:30')
     ->withoutOverlapping()
     ->runInBackground();

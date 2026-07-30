@@ -25,8 +25,8 @@ Yang WAJIB dilakukan asisten sebelum menulis satu baris kode:
 1. Baca `STATUS.md` **sampai habis** — termasuk "Bug diketahui" dan
    "Batasan asisten" di bagian bawah.
 2. Baca berkas `SPRINT-*-SELESAI.md` yang relevan dengan pekerjaan berikutnya.
-   Sprint terakhir yang selesai adalah **8.9** (`SPRINT-8-7-SELESAI.md`).
-   **Phase 7 dan Phase 8 selesai.**
+   Sprint terakhir yang selesai adalah **9.5** (`SPRINT-9-1-SELESAI.md`).
+   **Phase 7, 8, dan 9 selesai.**
 3. Jalankan kelima alat verifikasi lebih dulu, untuk tahu keadaan awal yang
    bersih. Kalau ada yang GAGAL sejak awal, laporkan sebelum menambah apa pun.
    **Cocokkan angkanya dengan "Angka saat ini" di bawah.** Angka yang lebih
@@ -420,9 +420,39 @@ crontab -e
 ```
 Tidak akan ada satu pun galat yang memberitahukan kalau baris ini lupa dipasang.
 
-**Angka saat ini:** 182 route, 27 controller admin, 28 view admin,
-39 migration, 11 middleware, 257 kelas CSS, 26 interface repository,
-10 job antrean, 394 berkas PHP, 73 blade, 8 perintah artisan.
+### Phase 9 - Production Ready (9.1-9.5)
+Lapisan operasional di atas seluruh arsitektur sebelumnya, tanpa mengubah satu
+pun alur bisnis. Detail: `SPRINT-9-1-SELESAI.md`.
+
+- **Monitoring** - `/admin/monitoring`. Sembilan pemeriksaan: basis data,
+  cache, antrean, scheduler, cadangan, server, Telegram, storage, galat.
+  Storage dan Telegram DIPANGGIL dari service yang sudah ada (7.8 dan 8.9),
+  bukan diperiksa ulang - kalau ditulis ulang, dua halaman bisa memberi
+  jawaban berbeda tentang sistem yang sama.
+- **Cadangan** - `php artisan backup:run`, harian 02:30, plus tombol di panel
+  (lewat antrean). Basis data + `.env`, diverifikasi tepat setelah dibuat,
+  dipangkas otomatis. **Video tidak ikut** - yang dicadangkan petanya.
+- **Log Sistem** - `/admin/system/log`, membaca berkas log (apa yang rusak).
+  Melengkapi `/admin/logs` yang membaca `activity_logs` (siapa melakukan apa).
+- **Jejak audit autentikasi** - masuk, keluar, gagal masuk, dan terkunci.
+  Kata sandi tidak pernah dicatat.
+- **Indeks basis data** - enam indeks, seluruhnya aditif dan dibungkus
+  pemeriksaan keberadaan.
+
+**Detak scheduler.** `Schedule::call()` tiap menit menulis penanda ke cache.
+Tanpa itu, scheduler yang tidak pernah berjalan sama sekali terlihat persis
+sama dengan yang berjalan normal - dan seluruh otomatisasi Telegram serta
+seluruh cadangan bergantung padanya.
+
+**Langkah wajib setelah deploy:**
+```
+php artisan migrate
+php artisan config:cache
+```
+
+**Angka saat ini:** 188 route, 29 controller admin, 30 view admin,
+40 migration, 11 middleware, 257 kelas CSS, 26 interface repository,
+11 job antrean, 405 berkas PHP, 75 blade, 9 perintah artisan.
 
 Empat angka terakhir ditambahkan sebagai pembanding untuk poin 3 di bagian
 "Memulai sesi baru": alat verifikasi yang melaporkan angka lebih kecil berarti
@@ -720,7 +750,8 @@ python tools/check-php-structure.py app/**/*.php config/*.php database/**/*.php
 python tools/audit-sprint-7-8.py         # 143 pemeriksaan khusus Sprint 7.8-7.9
 python tools/audit-sprint-8-1.py         # 81 pemeriksaan khusus Sprint 8.1
 python tools/audit-sprint-8-2.py         # 125 pemeriksaan khusus Sprint 8.2-8.6
-python tools/audit-sprint-8-7.py         # 132 pemeriksaan khusus Sprint 8.7-8.9
+python tools/audit-sprint-8-7.py         # 133 pemeriksaan khusus Sprint 8.7-8.9
+python tools/audit-sprint-9-1.py         # 117 pemeriksaan khusus Phase 9
 ```
 
 `audit-sprint-8-2.py` memeriksa **integrasi**, bukan keberadaan berkas:
@@ -748,7 +779,7 @@ view, komponen, layout, `$fillable` vs migration, urutan foreign key,
 binding repository, PSR-4, import CSS, kolom tanggal, form + CSRF, href
 buntu, emoji, kelengkapan `match` enum, dan route di menu sidebar admin.
 
-**Alat verifikasinya sendiri sudah tujuh kali terbukti salah.** Perlakukan
+**Alat verifikasinya sendiri sudah delapan kali terbukti salah.** Perlakukan
 seperti kode lain: bisa keliru, dan perlu diaudit.
 
 - **7.1** — pembatas blok migration di `cols_of()` tidak pernah bekerja,

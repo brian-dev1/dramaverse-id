@@ -59,8 +59,14 @@ use App\Services\Storage\Contracts\StorageEngineInterface;
 use App\Services\Storage\Contracts\StorageManagerInterface;
 use App\Services\Storage\StorageEngine;
 use App\Services\Storage\StorageManager;
+use App\Listeners\LogAuthenticationEvents;
 use App\Models\EpisodeVideo;
 use App\Observers\EpisodeVideoObserver;
+use Illuminate\Auth\Events\Failed;
+use Illuminate\Auth\Events\Lockout;
+use Illuminate\Auth\Events\Login;
+use Illuminate\Auth\Events\Logout;
+use Illuminate\Support\Facades\Event;
 use App\Services\Telegram\Contracts\TelegramClientInterface;
 use App\Services\Telegram\Contracts\TelegramServiceInterface;
 use App\Services\Telegram\TelegramClient;
@@ -174,6 +180,21 @@ class AppServiceProvider extends ServiceProvider
         |
         */
         EpisodeVideo::observe(EpisodeVideoObserver::class);
+
+        /*
+        |----------------------------------------------------------------------
+        | Jejak audit autentikasi
+        |----------------------------------------------------------------------
+        |
+        | Masuk, keluar, percobaan gagal, dan terkunci. Empat-empatnya lewat
+        | satu listener karena penulisannya identik dan hanya nama aksinya
+        | yang berbeda.
+        |
+        */
+        Event::listen(Login::class, [LogAuthenticationEvents::class, 'handleLogin']);
+        Event::listen(Logout::class, [LogAuthenticationEvents::class, 'handleLogout']);
+        Event::listen(Failed::class, [LogAuthenticationEvents::class, 'handleFailed']);
+        Event::listen(Lockout::class, [LogAuthenticationEvents::class, 'handleLockout']);
 
         // Pagination memakai markup Tailwind agar seragam dengan tema.
         Paginator::useTailwind();
