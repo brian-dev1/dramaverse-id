@@ -282,16 +282,24 @@ python tools/check-blade-directives.py    63 blade, 0 bermasalah
 
 Binding repository: 26/26 interface ter-bind.
 
-**Semua pemeriksaan di atas statis. Tidak ada PHP yang dijalankan.** Yang
-belum terbukti dan hanya bisa dibuktikan di server:
+**Semua pemeriksaan di atas statis. Tidak ada PHP yang dijalankan** di
+lingkungan tempat sprint ini ditulis.
 
-- `php artisan migrate` benar-benar membuat tabelnya
-- cast `encrypted` bekerja bolak-balik pada kolom `TEXT`
-- `Storage::build()` menghasilkan disk yang berfungsi untuk tiap driver
-- `php artisan storage:test` berhasil menghubungi provider sungguhan
+Terbukti di server pada 30 Juli 2026, setelah deploy:
 
-Jalankan `php artisan storage:test` setelah deploy, dan kirim pesan galat apa
-adanya kalau ada yang gagal.
+- `php artisan migrate` membuat tabel `storage_providers`
+- `StorageProviderSeeder` memasang provider `local`
+- `php artisan storage:test` melaporkan provider lokal OK — artinya
+  `Storage::build()` menghasilkan disk yang berfungsi, dan siklus tulis, baca,
+  hapus di Test Connection berjalan utuh
+
+**Masih belum terbukti**, karena belum ada provider awan yang ditambahkan:
+
+- cast `encrypted` bolak-balik pada kolom `TEXT` (belum ada kredensial tersimpan)
+- konfigurasi disk untuk driver S3, GCS, dan Azure
+- rantai fallback `chain()` dengan lebih dari satu provider
+
+Uji ulang `php artisan storage:test` setelah provider awan pertama ditambahkan.
 
 ---
 
