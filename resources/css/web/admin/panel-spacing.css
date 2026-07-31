@@ -11,6 +11,28 @@
     gap:clamp(18px, 2.1vw, 28px);
 }
 
+.admin-topbar{
+    min-width:0;
+}
+
+.admin-topbar h1{
+    line-height:1.35;
+}
+
+.admin-topbar-right{
+    flex-wrap:wrap;
+    justify-content:flex-end;
+}
+
+.admin-nav a,
+.admin-logout button{
+    line-height:1.35;
+}
+
+.panel{
+    min-width:0;
+}
+
 .panel-head{
     align-items:flex-start;
     flex-wrap:wrap;
@@ -18,12 +40,33 @@
     padding:clamp(16px, 2vw, 22px) clamp(18px, 2.5vw, 28px);
 }
 
+.panel-head > *{
+    min-width:0;
+}
+
 .panel-head h2{
     line-height:1.35;
+    margin:0;
 }
 
 .panel-meta{
-    line-height:1.6;
+    display:block;
+    max-width:100%;
+    line-height:1.65;
+    overflow-wrap:anywhere;
+}
+
+.panel-meta code,
+.page-subtitle code,
+.detail-body-admin code,
+.field-hint code,
+.data-table code{
+    display:inline;
+    max-width:100%;
+    white-space:normal;
+    overflow-wrap:anywhere;
+    word-break:break-word;
+    line-height:1.55;
 }
 
 .panel > .admin-form,
@@ -32,14 +75,96 @@
     padding:clamp(18px, 2.4vw, 28px);
 }
 
+.detail-body-admin{
+    line-height:1.7;
+}
+
+.detail-body-admin p,
+.detail-body-admin li,
+.page-subtitle{
+    line-height:1.7;
+}
+
+.detail-body-admin ol,
+.detail-body-admin ul{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    margin:0;
+    padding-left:1.25rem;
+}
+
+.table-wrap{
+    max-width:100%;
+}
+
+.panel > .table-wrap .data-table{
+    width:100%;
+}
+
 .panel > .table-wrap .data-table th,
 .panel > .table-wrap .data-table td{
     padding:13px 16px;
     vertical-align:top;
+    line-height:1.55;
+}
+
+.data-table th{
+    white-space:nowrap;
+}
+
+.data-table td{
+    overflow-wrap:anywhere;
+}
+
+.data-table td br + span,
+.data-table td br + code,
+.data-table td br + .badge,
+.data-table td br + .queue-error{
+    display:inline-block;
+    margin-top:6px;
+}
+
+.badge,
+.queue-error,
+.cell-empty{
+    line-height:1.45;
+}
+
+.col-actions{
+    min-width:156px;
+}
+
+.col-actions .btn,
+.col-actions button{
+    margin:2px;
+    vertical-align:middle;
+    white-space:nowrap;
+}
+
+.admin-toolbar,
+.bulk-bar{
+    align-items:flex-start;
+    flex-wrap:wrap;
+    line-height:1.5;
 }
 
 .admin-form{
     gap:18px;
+}
+
+.form-grid{
+    grid-template-columns:repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+}
+
+.form-grid-narrow{
+    grid-template-columns:repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+}
+
+.form-card,
+.field,
+.upload-body{
+    min-width:0;
 }
 
 .field{
@@ -48,17 +173,27 @@
 
 .field-hint,
 .field-error,
-.page-subtitle{
+.page-subtitle,
+.checkbox-item,
+.switch-label{
     line-height:1.65;
+}
+
+.control{
+    min-height:42px;
+    line-height:1.45;
 }
 
 .form-actions{
     flex-wrap:wrap;
+    gap:10px 12px;
     margin-top:4px;
     padding-top:18px;
 }
 
 .detail-actions{
+    flex-wrap:wrap;
+    gap:10px 12px;
     margin-top:18px;
     padding-top:18px;
 }
@@ -67,6 +202,15 @@
     .admin-content{
         padding:16px 12px;
         gap:16px;
+    }
+
+    .admin-topbar{
+        flex-wrap:wrap;
+        gap:10px;
+    }
+
+    .admin-topbar h1{
+        white-space:normal;
     }
 
     .panel-head,
@@ -79,6 +223,10 @@
     .panel > .table-wrap .data-table th,
     .panel > .table-wrap .data-table td{
         padding:11px 12px;
+    }
+
+    .col-actions{
+        min-width:132px;
     }
 
     .form-actions,
