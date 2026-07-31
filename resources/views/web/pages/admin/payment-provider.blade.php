@@ -99,6 +99,10 @@
                                     @endif
                                 </td>
                                 <td class="col-actions">
+                                    <a href="#edit-provider-{{ $p->id }}" class="btn btn-sm">
+                                        Edit
+                                    </a>
+
                                     @if ($p->is_active)
                                         <button type="submit" class="btn btn-sm" form="disable-{{ $p->id }}">
                                             Nonaktifkan
@@ -140,7 +144,7 @@
     </section>
 
     @foreach ($providers as $p)
-        <section class="panel">
+        <section class="panel" id="edit-provider-{{ $p->id }}">
             <div class="panel-head">
                 <h2>{{ $p->name }}</h2>
                 <span class="panel-meta">
