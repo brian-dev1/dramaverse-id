@@ -34,7 +34,7 @@ class PaymentProviderController extends Controller
                 ->get(),
             'drivers' => PaymentDriver::options(),
             'fields'  => collect(PaymentDriver::cases())
-                ->mapWithKeys(fn (PaymentDriver $d) => [$d->value => $d->requiredFields()])
+                ->mapWithKeys(fn (PaymentDriver $d) => [$d->value => $d->credentialFields()])
                 ->all(),
         ]);
     }
@@ -98,7 +98,10 @@ class PaymentProviderController extends Controller
 
         foreach ($data['credentials'] ?? [] as $field => $nilai) {
 
-            if (! array_key_exists($field, $provider->driver->requiredFields())) {
+            // credentialFields(), bukan requiredFields(): field opsional harus
+            // ikut tersimpan. Yang wajib tetap dipisah karena ia menentukan
+            // apakah provider bisa dipakai, bukan apakah boleh diisi.
+            if (! array_key_exists($field, $provider->driver->credentialFields())) {
                 continue;
             }
 

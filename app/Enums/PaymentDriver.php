@@ -101,8 +101,6 @@ enum PaymentDriver: string
             self::TRAKTEER => [
                 'webhook_token' => 'Webhook token dari dashboard Trakteer',
                 'page_url'      => 'URL halaman Trakteer, misalnya https://trakteer.id/namaanda',
-                'unit_price'    => 'Harga satu unit di Trakteer, dalam rupiah. Misalnya 5000',
-                'unit_name'     => 'Nama unitnya, misalnya Cendol atau Kopi',
             ],
 
             self::MIDTRANS => [
@@ -121,6 +119,54 @@ enum PaymentDriver: string
                 'merchant_code' => 'Merchant Code',
             ],
         };
+    }
+
+    /**
+     * Field kredensial yang BOLEH kosong.
+     *
+     * Dipisahkan dari `requiredFields()` karena keduanya menjawab pertanyaan
+     * berbeda: yang wajib menentukan apakah provider bisa dipakai, yang
+     * opsional hanya memperbaiki tampilan.
+     *
+     * `units` masuk ke sini, bukan ke yang wajib. Trakteer mengizinkan
+     * kreator membuat beberapa unit dengan harga berbeda -- Cendol Rp 5.000,
+     * Kopi Rp 2.000, dan seterusnya -- dan daftar ini hanya dipakai untuk
+     * MENYARANKAN berapa unit yang perlu dikirim.
+     *
+     * Pencocokan pembayaran TIDAK bergantung padanya sama sekali: nominal
+     * dibaca dari payload webhook, apa pun unit yang dipakai pendukung. Itu
+     * disengaja -- daftar yang basi karena harga di Trakteer berubah tidak
+     * boleh membuat pembayaran yang sah jadi ditolak.
+     *
+     * @return array<string,string>
+     */
+    public function optionalFields(): array
+    {
+        return match ($this) {
+
+            self::TRAKTEER => [
+                'units' => 'Daftar unit dan harganya, satu per baris. '
+                    ."Contoh:\nCendol=5000\nKopi=2000\nBoba=10000\n"
+                    .'Boleh dikosongkan; hanya dipakai menyarankan jumlah unit '
+                    .'ke pengguna, tidak memengaruhi pencocokan pembayaran.',
+            ],
+
+            default => [],
+        };
+    }
+
+    /**
+     * Seluruh field kredensial, wajib dan opsional.
+     *
+     * Inilah yang dipakai formulir panel admin dan penyimpanannya — kalau
+     * yang dipakai hanya `requiredFields()`, field opsional tidak akan pernah
+     * bisa diisi.
+     *
+     * @return array<string,string>
+     */
+    public function credentialFields(): array
+    {
+        return $this->requiredFields() + $this->optionalFields();
     }
 
     /**
@@ -153,14 +199,10 @@ enum PaymentDriver: string
         return $this === self::TRAKTEER;
     }
 
-    /**
-     * Harga satu unit, untuk driver yang menjual per satuan.
-     *
-     * Null berarti driver ini tidak memakai satuan.
-     */
-    public function unitField(): ?string
+    /** Driver ini menjual per satuan, bukan per nominal. */
+    public function usesUnits(): bool
     {
-        return $this === self::TRAKTEER ? 'unit_price' : null;
+        return $this === self::TRAKTEER;
     }
 
     /** Mendukung pengembalian dana lewat API. */

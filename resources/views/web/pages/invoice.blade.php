@@ -103,13 +103,16 @@
                         --}}
                         @if ($provider?->driver->value === 'trakteer')
                             @php
-                                // Trakteer menjual per satuan. Jumlah unit
-                                // dibulatkan KE ATAS: mengirim kurang satu unit
-                                // berarti tagihan tidak pernah lunas.
-                                $hargaUnit = (float) ($provider->credential('unit_price') ?? 0);
-                                $namaUnit  = $provider->credential('unit_name') ?: 'unit';
-                                $sisa      = $invoice->outstanding();
-                                $unit      = $hargaUnit > 0 ? (int) ceil($sisa / $hargaUnit) : null;
+                                // Saran jumlah unit. Trakteer mengizinkan
+                                // beberapa unit dengan harga berbeda, jadi
+                                // yang ditampilkan daftar pilihan -- bukan
+                                // satu angka.
+                                //
+                                // Ini SARAN, bukan syarat. Pembayaran
+                                // dicocokkan dari nominal di webhook, apa pun
+                                // unit yang dipakai pendukung.
+                                $sisa  = $invoice->outstanding();
+                                $saran = $provider->unitSuggestions($sisa);
                             @endphp
 
                             <div class="detail-body-admin">
@@ -125,16 +128,6 @@
                                     <dt>Tulis di kolom pesan</dt>
                                     <dd><strong>{{ $invoice->number }}</strong></dd>
 
-                                    @if ($unit)
-                                        <dt>Kirim sebanyak</dt>
-                                        <dd>
-                                            <strong>{{ $unit }} {{ $namaUnit }}</strong>
-                                            <span class="cell-empty">
-                                                (Rp {{ number_format($hargaUnit, 0, ',', '.') }} per {{ $namaUnit }})
-                                            </span>
-                                        </dd>
-                                    @endif
-
                                     <dt>{{ (float) $invoice->paid_amount > 0 ? 'Sisa yang harus dibayar' : 'Nominal' }}</dt>
                                     <dd><strong>Rp {{ number_format($sisa, 0, ',', '.') }}</strong></dd>
 
@@ -147,8 +140,52 @@
                                     @endif
                                 </dl>
 
+                                @if ($saran)
+                                    <p class="page-subtitle">
+                                        Pilih salah satu — semuanya sama-sama diterima:
+                                    </p>
+
+                                    <div class="table-wrap">
+                                        <table class="data-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Kirim</th>
+                                                    <th>Harga satuan</th>
+                                                    <th>Total</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach ($saran as $u)
+                                                    <tr>
+                                                        <td>
+                                                            <strong>{{ $u['jumlah'] }} {{ $u['nama'] }}</strong>
+                                                            @if ($u['pas'])
+                                                                <span class="badge badge-on">pas</span>
+                                                            @endif
+                                                        </td>
+                                                        <td>Rp {{ number_format($u['harga'], 0, ',', '.') }}</td>
+                                                        <td>
+                                                            Rp {{ number_format($u['total'], 0, ',', '.') }}
+                                                            @if (! $u['pas'])
+                                                                <span class="cell-empty">
+                                                                    (lebih Rp {{ number_format($u['total'] - $sisa, 0, ',', '.') }})
+                                                                </span>
+                                                            @endif
+                                                        </td>
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <p class="page-subtitle">
+                                        Kelebihan tidak otomatis diproses — kalau memilih yang
+                                        bukan "pas", hubungi admin setelah membayar.
+                                    </p>
+                                @endif
+
                                 <p class="page-subtitle">
-                                    Boleh dicicil. Setiap {{ $namaUnit }} yang masuk dijumlahkan,
+                                    Boleh dicicil. Setiap pembayaran yang masuk dijumlahkan,
                                     dan membership aktif sendiri begitu totalnya cukup —
                                     asalkan nomor tagihan selalu ikut di kolom pesan.
                                 </p>

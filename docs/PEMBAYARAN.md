@@ -171,19 +171,52 @@ kali harga satuannya — paket Rp 25.000 dengan cendol Rp 5.000 berarti
 Di `/admin/payment/provider`, kredensial Trakteer sekarang punya dua field
 tambahan:
 
-| Field | Isi |
-|---|---|
-| `unit_price` | Harga satu unit di Trakteer, misalnya `5000` |
-| `unit_name` | Nama unitnya, misalnya `Cendol` atau `Kopi` |
+Trakteer mengizinkan kreator membuat **beberapa unit dengan harga berbeda**.
+Karena itu kredensialnya satu field bebas, bukan sepasang nama-harga:
 
-Jumlah unit dihitung sendiri dari harga paket dan ditampilkan di halaman
-tagihan: *"Kirim 5 Cendol (Rp 5.000 per Cendol)"*. Mengubah harga paket di
-**Membership** otomatis mengubah jumlah unitnya — tidak ada angka yang perlu
-disetel dua kali.
+| Field | Wajib? | Isi |
+|---|---|---|
+| `webhook_token` | ya | Token dari dashboard Trakteer |
+| `page_url` | ya | `https://trakteer.id/namaanda` |
+| `units` | **tidak** | Daftar unit, satu per baris |
+
+Isi `units` begini:
+
+```
+Cendol=5000
+Kopi=2000
+Boba=10000
+```
+
+Titik dan koma sebagai pemisah ribuan boleh dipakai (`5.000` sama dengan
+`5000`). Baris yang bentuknya salah dilewati, tidak menggagalkan seluruh
+daftar.
+
+Halaman tagihan lalu menampilkan **semua pilihan**, yang membagi habis lebih
+dulu:
+
+| Kirim | Harga satuan | Total |
+|---|---|---|
+| 5 Cendol **pas** | Rp 5.000 | Rp 25.000 |
+| 13 Kopi | Rp 2.000 | Rp 26.000 *(lebih Rp 1.000)* |
+| 3 Boba | Rp 10.000 | Rp 30.000 *(lebih Rp 5.000)* |
 
 Pembulatannya **ke atas**. Mengirim kurang satu unit berarti tagihan tidak
-pernah lunas, dan itu jauh lebih menjengkelkan daripada kelebihan beberapa
-ratus rupiah.
+pernah lunas, dan itu jauh lebih menjengkelkan daripada kelebihan sedikit.
+
+### `units` hanya untuk tampilan
+
+Ini yang paling penting: **pencocokan pembayaran tidak bergantung pada daftar
+itu sama sekali.** Nominal dibaca dari payload webhook, apa pun unit yang
+dipakai pendukung.
+
+Artinya daftar yang basi — karena Anda mengubah harga di Trakteer dan lupa
+memperbaruinya di panel — tidak pernah membuat pembayaran yang sah jadi
+ditolak. Yang terjadi hanya saran jumlahnya meleset. Itu pemisahan yang
+disengaja: konfigurasi yang salah tidak boleh menghalangi uang masuk.
+
+Field ini juga **boleh dikosongkan**. Provider tetap bisa dipakai; halaman
+tagihan hanya menampilkan nominal rupiahnya saja.
 
 ### Boleh dicicil
 

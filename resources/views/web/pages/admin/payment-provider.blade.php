@@ -132,7 +132,7 @@
                                :options="['sandbox' => 'Sandbox (uji coba)', 'live' => 'Live (sungguhan)']"
                                hint="Provider sandbox yang tidak sengaja dijadikan utama berarti pembayaran sungguhan tidak pernah masuk." />
 
-                @foreach ($p->driver->requiredFields() as $field => $label)
+                @foreach ($p->driver->credentialFields() as $field => $label)
                     <x-admin.field :name="'credentials['.$field.']'" :label="$label"
                                    :hint="$p->credential($field) ? 'Sudah terisi. Kosongkan untuk membiarkannya.' : 'Belum diisi.'" />
                 @endforeach
