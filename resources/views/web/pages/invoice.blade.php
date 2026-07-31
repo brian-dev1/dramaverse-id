@@ -89,6 +89,38 @@
                             pembayaran diverifikasi.
                         </p>
                     @elseif ($transaction?->checkout_url)
+
+                        {{--
+                            Trakteer menyambungkan pembayaran ke tagihan lewat
+                            PESAN yang diketik pendukung — tidak ada tempat lain
+                            untuk menaruh referensi. Nomornya sudah diisikan ke
+                            tautan, tetapi pengguna bisa menghapusnya tanpa
+                            sengaja, dan pembayaran tanpa nomor tidak
+                            tersambung ke tagihan mana pun.
+
+                            Karena itu nomornya ditampilkan besar-besar di sini
+                            dengan peringatan yang jelas.
+                        --}}
+                        @if ($provider?->driver->value === 'trakteer')
+                            <div class="detail-body-admin">
+                                <p class="page-subtitle">
+                                    <strong>Jangan hapus pesan otomatisnya.</strong>
+                                    Kolom pesan di Trakteer sudah terisi nomor tagihan
+                                    di bawah ini. Nomor itulah yang menyambungkan
+                                    pembayaran Anda ke tagihan ini — tanpa nomor itu,
+                                    membership tidak aktif otomatis.
+                                </p>
+
+                                <dl class="settings-meta">
+                                    <dt>Tulis di kolom pesan</dt>
+                                    <dd><strong>{{ $invoice->number }}</strong></dd>
+
+                                    <dt>Nominal</dt>
+                                    <dd><strong>Rp {{ number_format((float) $invoice->total, 0, ',', '.') }}</strong></dd>
+                                </dl>
+                            </div>
+                        @endif
+
                         <a href="{{ $transaction->checkout_url }}" class="btn btn-primary"
                            target="_blank" rel="noopener">
                             Lanjutkan pembayaran

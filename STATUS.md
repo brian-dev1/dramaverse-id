@@ -586,6 +586,12 @@ beberapa masih dangkal:
   otomatis melanjutkan
 
 ### Bug diketahui, belum diperbaiki
+- ~~**Callback pembayaran selalu dijawab 419.**~~ **SELESAI** — `payment/callback/*`
+  tidak ada di daftar pengecualian CSRF, hanya `telegram/webhook`. Akibatnya
+  SETIAP callback gateway ditolak sebelum satu baris kode pun berjalan;
+  gateway mengirim ulang, ditolak lagi, dan pembayaran yang sah tidak pernah
+  mengaktifkan membership. Tidak ada galat aplikasi karena kodenya memang
+  tidak pernah dijalankan. Ditemukan saat audit webhook Trakteer.
 - **`StatsService::summary()['revenue']` masih menjumlahkan
   `subscriptions.price`.** Angka yang sama salahnya dengan yang sudah
   diperbaiki di laporan Phase 11: langganan pemberian admin ikut terhitung

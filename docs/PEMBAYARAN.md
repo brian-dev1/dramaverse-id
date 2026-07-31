@@ -100,3 +100,60 @@ Keduanya dijadwalkan. Lihat [ANTREAN.md](ANTREAN.md).
 - **Perpanjangan otomatis.** `auto_renew` tersimpan, tetapi tidak ada yang
   menagih ulang saat jatuh tempo.
 - **Pembayaran dari dalam bot.** Tombol Upgrade mengantar ke website.
+
+---
+
+## Menguji webhook tanpa membayar sungguhan
+
+```bash
+php artisan payment:webhook-test INV-20260801-AB12CD
+```
+
+Payload tiruan diserahkan ke `PaymentCallbackService` **yang sama persis**
+dengan yang dipakai callback sungguhan — verifikasi tanda tangan, penjagaan
+nominal, penjagaan perpindahan status, idempotensi, dan aktivasi membership
+semuanya berjalan.
+
+| Opsi | Untuk apa |
+|---|---|
+| `--amount=50000` | Uji penolakan nominal yang tidak cocok |
+| `--bad-signature` | Uji penolakan tanda tangan. **Harus ditolak** |
+| `--message="tanpa nomor"` | Uji pembayaran yang tidak tersambung ke tagihan |
+| `--dry` | Hanya tampilkan payloadnya |
+| `--provider=<slug>` | Paksa provider tertentu |
+
+Yang **tidak** diuji perintah ini: routing, CSRF, dan rate limit. Ketiganya di
+lapisan HTTP. Perintah `curl` untuk mengujinya dicetak di akhir keluaran —
+pakai itu, karena CSRF pernah menolak seluruh callback pembayaran dengan 419
+sebelum satu baris kode pun berjalan.
+
+## Memasang webhook Trakteer
+
+1. Buka dashboard Trakteer, bagian **Integrasi / Webhook**.
+2. Isi URL: `https://dracinverse.cloud/payment/callback/<slug-provider>`
+   — slug-nya ada di `/admin/payment/provider`.
+3. Salin **Webhook Token** dari Trakteer ke kolom kredensial provider di
+   panel admin.
+4. Aktifkan providernya, tandai sebagai default bila perlu.
+5. Uji: `php artisan payment:webhook-test <nomor-invoice>`
+
+### Cara Trakteer menyambungkan pembayaran ke tagihan
+
+Trakteer **tidak** menyediakan field referensi. Satu-satunya tempat adalah
+**pesan pendukung**, dan itu diketik manusia.
+
+Nomor tagihan sudah diisikan otomatis ke tautan checkout, dan halaman tagihan
+menampilkannya besar-besar dengan peringatan supaya tidak dihapus. Pembacaannya
+toleran: huruf kecil, spasi, dan tanda hubung yang hilang tetap dikenali.
+
+Pembayaran yang tetap tidak tersambung dicatat sebagai
+`payment.callback.unmatched` di `/admin/payment/log` beserta nama pendukung,
+nominal, dan seluruh payloadnya — supaya bisa dicocokkan manual. **Tidak ada
+uang yang hilang tanpa jejak**, tetapi ada yang butuh dicocokkan tangan.
+
+### Nominal yang dibaca
+
+Yang dipakai nominal **kotor** (`amount`, atau `price` dikali `quantity`),
+bukan `net_amount`. `net_amount` adalah yang diterima setelah potongan
+Trakteer — memakainya membuat setiap pembayaran tampak kurang bayar dan
+ditolak penjagaan nominal.

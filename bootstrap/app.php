@@ -31,9 +31,30 @@ return Application::configure(basePath: dirname(__DIR__))
             'permission' => EnsureHasPermission::class,
         ]);
 
-        // Webhook Telegram datang dari luar, tidak membawa token CSRF.
+        /*
+        |----------------------------------------------------------------------
+        | Pengecualian CSRF
+        |----------------------------------------------------------------------
+        |
+        | Keduanya datang dari server luar yang tidak pernah memuat halaman
+        | kita, jadi tidak mungkin membawa token CSRF.
+        |
+        | `payment/callback/*` SEMPAT TERLEWAT. Akibatnya setiap callback
+        | pembayaran dijawab 419 sebelum satu baris kode pun berjalan —
+        | gateway menganggapnya gagal, mengirim ulang, dan ditolak lagi.
+        | Pembayaran yang sah tidak pernah mengaktifkan membership, dan tidak
+        | ada satu pun galat aplikasi yang muncul karena kodenya memang tidak
+        | pernah dijalankan.
+        |
+        | Keduanya tetap dijaga: webhook Telegram oleh middleware
+        | `telegram.webhook`, callback pembayaran oleh verifikasi tanda tangan
+        | di dalam driver masing-masing. Dikecualikan dari CSRF bukan berarti
+        | terbuka.
+        |
+        */
         $middleware->validateCsrfTokens(except: [
             'telegram/webhook',
+            'payment/callback/*',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
