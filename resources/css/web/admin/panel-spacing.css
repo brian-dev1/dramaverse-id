@@ -1,0 +1,88 @@
+/* ============================================================================
+   Admin panel spacing
+   ============================================================================
+
+   Hanya mengatur jarak visual panel admin. Tidak mengubah alur, state,
+   route, form action, atau perilaku JavaScript apa pun.
+*/
+
+.admin-content{
+    padding:clamp(18px, 2.6vw, 34px);
+    gap:clamp(18px, 2.1vw, 28px);
+}
+
+.panel-head{
+    align-items:flex-start;
+    flex-wrap:wrap;
+    gap:10px 16px;
+    padding:clamp(16px, 2vw, 22px) clamp(18px, 2.5vw, 28px);
+}
+
+.panel-head h2{
+    line-height:1.35;
+}
+
+.panel-meta{
+    line-height:1.6;
+}
+
+.panel > .admin-form,
+.panel > .broadcast-form,
+.panel > .detail-body-admin{
+    padding:clamp(18px, 2.4vw, 28px);
+}
+
+.panel > .table-wrap .data-table th,
+.panel > .table-wrap .data-table td{
+    padding:13px 16px;
+    vertical-align:top;
+}
+
+.admin-form{
+    gap:18px;
+}
+
+.field{
+    gap:9px;
+}
+
+.field-hint,
+.field-error,
+.page-subtitle{
+    line-height:1.65;
+}
+
+.form-actions{
+    flex-wrap:wrap;
+    margin-top:4px;
+    padding-top:18px;
+}
+
+.detail-actions{
+    margin-top:18px;
+    padding-top:18px;
+}
+
+@media (max-width: 640px){
+    .admin-content{
+        padding:16px 12px;
+        gap:16px;
+    }
+
+    .panel-head,
+    .panel > .admin-form,
+    .panel > .broadcast-form,
+    .panel > .detail-body-admin{
+        padding:16px;
+    }
+
+    .panel > .table-wrap .data-table th,
+    .panel > .table-wrap .data-table td{
+        padding:11px 12px;
+    }
+
+    .form-actions,
+    .detail-actions{
+        justify-content:flex-start;
+    }
+}

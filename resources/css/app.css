@@ -27,6 +27,7 @@
 @import "./web/detail/episode.css";
 @import "./web/player/player.css";
 @import "./web/admin/admin.css";
+@import "./web/admin/panel-spacing.css";
 
 /* --- Responsif (terakhir agar dapat menimpa) --- */
 @import "./web/home/responsive.css";
@@ -66,3 +67,4 @@
 
     --radius-xl: 28px;
 }
+
