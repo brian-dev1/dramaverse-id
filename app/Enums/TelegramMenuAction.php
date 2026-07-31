@@ -106,10 +106,16 @@ enum TelegramMenuAction: string
      * Alamatnya juga tidak bisa diisi tangan. Tautan itu dibuat per pengguna
      * dan berlaku sekali pakai; URL tetap yang ditempel di sini akan sama
      * untuk semua orang dan tidak akan pernah bisa memasukkan siapa pun.
+     *
+     * "Profil" ikut dikunci sejak halaman profilnya berisi data sungguhan:
+     * status langganan, sisa masa aktif, dan riwayat tontonan. Itu
+     * satu-satunya tempat pengguna bisa memeriksa apakah pembayarannya sudah
+     * masuk — menghapusnya dari menu berarti setiap pertanyaan "sudah aktif
+     * belum?" berakhir di admin.
      */
     public function isLocked(): bool
     {
-        return $this === self::WEBSITE;
+        return in_array($this, [self::WEBSITE, self::PROFILE], true);
     }
 
     /**

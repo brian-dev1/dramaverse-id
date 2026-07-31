@@ -157,3 +157,73 @@ Yang dipakai nominal **kotor** (`amount`, atau `price` dikali `quantity`),
 bukan `net_amount`. `net_amount` adalah yang diterima setelah potongan
 Trakteer — memakainya membuat setiap pembayaran tampak kurang bayar dan
 ditolak penjagaan nominal.
+
+---
+
+## Pembayaran bertahap dengan satuan (Trakteer)
+
+Trakteer menjual per satuan, bukan per nominal. Satu paket berharga beberapa
+kali harga satuannya — paket Rp 25.000 dengan cendol Rp 5.000 berarti
+**5 cendol**.
+
+### Cara mengaturnya
+
+Di `/admin/payment/provider`, kredensial Trakteer sekarang punya dua field
+tambahan:
+
+| Field | Isi |
+|---|---|
+| `unit_price` | Harga satu unit di Trakteer, misalnya `5000` |
+| `unit_name` | Nama unitnya, misalnya `Cendol` atau `Kopi` |
+
+Jumlah unit dihitung sendiri dari harga paket dan ditampilkan di halaman
+tagihan: *"Kirim 5 Cendol (Rp 5.000 per Cendol)"*. Mengubah harga paket di
+**Membership** otomatis mengubah jumlah unitnya — tidak ada angka yang perlu
+disetel dua kali.
+
+Pembulatannya **ke atas**. Mengirim kurang satu unit berarti tagihan tidak
+pernah lunas, dan itu jauh lebih menjengkelkan daripada kelebihan beberapa
+ratus rupiah.
+
+### Boleh dicicil
+
+Pengguna bisa mengirim 3 cendol sekarang dan 2 lagi nanti. Setiap webhook
+menambah `invoices.paid_amount`, dan membership aktif **otomatis** begitu
+jumlahnya cukup — tanpa admin menyentuh apa pun.
+
+Selama belum cukup:
+
+- Tagihan tetap berstatus Menunggu.
+- Halaman tagihan menampilkan sudah masuk berapa, persen, dan sisanya.
+- **Menu Profil di bot** menampilkan hal yang sama, sehingga pengguna bisa
+  memeriksanya tanpa membuka website.
+- Log mencatat `payment.callback.partial` setiap kali ada cicilan masuk.
+
+Syaratnya satu: **nomor tagihan harus selalu ikut di kolom pesan**, di setiap
+cicilan. Tanpa nomor itu, pembayarannya tidak tersambung ke tagihan mana pun.
+
+### Yang tetap ditolak
+
+| Keadaan | Diterima? |
+|---|---|
+| Kurang bayar, driver bertahap (Trakteer) | Ya, dijumlahkan |
+| Kurang bayar, gateway biasa | **Tidak** — mereka menagih nominal pasti |
+| **Lebih bayar**, driver mana pun | **Tidak** |
+
+Lebih bayar ditolak termasuk untuk Trakteer. Uang yang masuk lebih banyak dari
+yang ditagih perlu diputuskan manusia — dikembalikan, atau dianggap dukungan
+tambahan. Menerimanya diam-diam menghilangkan kesempatan itu. Transaksinya
+ditandai perlu diperiksa manual, dengan sebabnya tertulis di panel.
+
+### Mengujinya
+
+```bash
+# cicilan pertama: setengahnya
+php artisan payment:webhook-test INV-xxxx --amount=12500
+
+# cek: tagihan masih Menunggu, paid_amount terisi
+# cicilan kedua: sisanya
+php artisan payment:webhook-test INV-xxxx --amount=12500
+
+# sekarang harus lunas dan langganan aktif
+```

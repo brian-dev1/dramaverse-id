@@ -102,6 +102,16 @@
                             dengan peringatan yang jelas.
                         --}}
                         @if ($provider?->driver->value === 'trakteer')
+                            @php
+                                // Trakteer menjual per satuan. Jumlah unit
+                                // dibulatkan KE ATAS: mengirim kurang satu unit
+                                // berarti tagihan tidak pernah lunas.
+                                $hargaUnit = (float) ($provider->credential('unit_price') ?? 0);
+                                $namaUnit  = $provider->credential('unit_name') ?: 'unit';
+                                $sisa      = $invoice->outstanding();
+                                $unit      = $hargaUnit > 0 ? (int) ceil($sisa / $hargaUnit) : null;
+                            @endphp
+
                             <div class="detail-body-admin">
                                 <p class="page-subtitle">
                                     <strong>Jangan hapus pesan otomatisnya.</strong>
@@ -115,9 +125,33 @@
                                     <dt>Tulis di kolom pesan</dt>
                                     <dd><strong>{{ $invoice->number }}</strong></dd>
 
-                                    <dt>Nominal</dt>
-                                    <dd><strong>Rp {{ number_format((float) $invoice->total, 0, ',', '.') }}</strong></dd>
+                                    @if ($unit)
+                                        <dt>Kirim sebanyak</dt>
+                                        <dd>
+                                            <strong>{{ $unit }} {{ $namaUnit }}</strong>
+                                            <span class="cell-empty">
+                                                (Rp {{ number_format($hargaUnit, 0, ',', '.') }} per {{ $namaUnit }})
+                                            </span>
+                                        </dd>
+                                    @endif
+
+                                    <dt>{{ (float) $invoice->paid_amount > 0 ? 'Sisa yang harus dibayar' : 'Nominal' }}</dt>
+                                    <dd><strong>Rp {{ number_format($sisa, 0, ',', '.') }}</strong></dd>
+
+                                    @if ((float) $invoice->paid_amount > 0)
+                                        <dt>Sudah masuk</dt>
+                                        <dd>
+                                            Rp {{ number_format((float) $invoice->paid_amount, 0, ',', '.') }}
+                                            <span class="badge badge-pending">{{ $invoice->paidPercent() }}%</span>
+                                        </dd>
+                                    @endif
                                 </dl>
+
+                                <p class="page-subtitle">
+                                    Boleh dicicil. Setiap {{ $namaUnit }} yang masuk dijumlahkan,
+                                    dan membership aktif sendiri begitu totalnya cukup —
+                                    asalkan nomor tagihan selalu ikut di kolom pesan.
+                                </p>
                             </div>
                         @endif
 

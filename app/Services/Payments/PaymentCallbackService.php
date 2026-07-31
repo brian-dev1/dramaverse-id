@@ -140,25 +140,45 @@ class PaymentCallbackService
             |
             */
 
+            $bertahap = $tx->provider?->driver->allowsPartial() ?? false;
+
             if ($hasil->isPaid() && $hasil->amount !== null) {
 
-                if (abs($hasil->amount - (float) $tx->amount) > 1) {
+                $selisih = $hasil->amount - (float) $tx->amount;
 
-                    $tx->forceFill([
-                        'last_error' => 'Nominal tidak cocok: dibayar '
-                            .number_format($hasil->amount, 2)
-                            .', ditagih '.number_format((float) $tx->amount, 2)
-                            .'. Perlu diperiksa manual.',
-                        'response_payload' => $hasil->raw,
-                    ])->save();
+                /*
+                |--------------------------------------------------------------
+                | Lebih bayar selalu ditolak
+                |--------------------------------------------------------------
+                |
+                | Termasuk untuk driver bertahap. Uang yang masuk lebih banyak
+                | dari yang ditagih perlu diputuskan manusia -- dikembalikan,
+                | atau dianggap dukungan tambahan. Menerimanya diam-diam
+                | menghilangkan kesempatan itu.
+                |
+                */
 
-                    $this->log('error', 'callback.amount_mismatch', [
-                        'reference' => $tx->reference,
-                        'dibayar'   => $hasil->amount,
-                        'ditagih'   => (float) $tx->amount,
-                    ]);
+                if ($selisih > 1) {
+                    $this->tolakNominal($tx, $hasil, 'lebih bayar');
+                }
 
-                    throw PaymentException::amountMismatch((float) $tx->amount, $hasil->amount);
+                /*
+                |--------------------------------------------------------------
+                | Kurang bayar: tergantung drivernya
+                |--------------------------------------------------------------
+                |
+                | Gateway biasa menagih nominal pasti, jadi kurang bayar
+                | berarti ada yang salah dan ditolak.
+                |
+                | Trakteer menjual per satuan: pengguna bisa mengirim lima unit
+                | sekarang dan lima lagi nanti, dan keduanya datang sebagai
+                | webhook terpisah. Menolak yang pertama karena "kurang" berarti
+                | pembayaran bertahap tidak pernah bisa bekerja.
+                |
+                */
+
+                if ($selisih < -1 && ! $bertahap) {
+                    $this->tolakNominal($tx, $hasil, 'kurang bayar');
                 }
             }
 
@@ -185,6 +205,42 @@ class PaymentCallbackService
             }
 
             if ($hasil->isPaid()) {
+
+                /*
+                |--------------------------------------------------------------
+                | Akumulasi
+                |--------------------------------------------------------------
+                |
+                | Setiap pembayaran yang diterima ditambahkan, bukan menimpa.
+                | Untuk gateway biasa ini hanya dilalui sekali dan hasilnya
+                | sama dengan total; untuk Trakteer inilah yang membuat lima
+                | unit sekarang dan lima lagi nanti akhirnya berjumlah cukup.
+                |
+                | Idempotensi dijaga di atas: callback dengan status yang sama
+                | sudah dikembalikan sebelum sampai ke sini, jadi satu
+                | pembayaran tidak pernah dihitung dua kali.
+                |
+                */
+
+                $invoice->forceFill([
+                    'paid_amount' => (float) $invoice->paid_amount
+                        + ($hasil->amount ?? (float) $tx->amount),
+                ])->save();
+
+                if (! $invoice->isSettled()) {
+
+                    // Belum cukup. Transaksinya lunas, tagihannya belum —
+                    // dan membership belum aktif. Pengguna melihat sisanya di
+                    // halaman tagihan dan di menu Profil bot.
+                    $this->log('info', 'callback.partial', [
+                        'invoice'   => $invoice->number,
+                        'terkumpul' => (float) $invoice->paid_amount,
+                        'total'     => (float) $invoice->total,
+                        'sisa'      => $invoice->outstanding(),
+                    ]);
+
+                    return $tx->refresh();
+                }
 
                 $this->invoices->markPaid($invoice);
 
@@ -261,4 +317,32 @@ class PaymentCallbackService
         );
     }
 
+
+    /**
+     * Tolak callback yang nominalnya tidak sesuai.
+     *
+     * Sebabnya dicatat di baris transaksinya, bukan hanya dilempar — supaya
+     * admin melihatnya di panel tanpa harus membuka log.
+     *
+     * @throws PaymentException
+     */
+    private function tolakNominal(PaymentTransaction $tx, PaymentResult $hasil, string $jenis): never
+    {
+        $tx->forceFill([
+            'last_error' => ucfirst($jenis).': dibayar '
+                .number_format((float) $hasil->amount, 2)
+                .', ditagih '.number_format((float) $tx->amount, 2)
+                .'. Perlu diperiksa manual.',
+            'response_payload' => $hasil->raw,
+        ])->save();
+
+        $this->log('error', 'callback.amount_mismatch', [
+            'reference' => $tx->reference,
+            'jenis'     => $jenis,
+            'dibayar'   => $hasil->amount,
+            'ditagih'   => (float) $tx->amount,
+        ]);
+
+        throw PaymentException::amountMismatch((float) $tx->amount, (float) $hasil->amount);
+    }
 }

@@ -101,6 +101,8 @@ enum PaymentDriver: string
             self::TRAKTEER => [
                 'webhook_token' => 'Webhook token dari dashboard Trakteer',
                 'page_url'      => 'URL halaman Trakteer, misalnya https://trakteer.id/namaanda',
+                'unit_price'    => 'Harga satu unit di Trakteer, dalam rupiah. Misalnya 5000',
+                'unit_name'     => 'Nama unitnya, misalnya Cendol atau Kopi',
             ],
 
             self::MIDTRANS => [
@@ -130,6 +132,35 @@ enum PaymentDriver: string
     public function isManual(): bool
     {
         return $this === self::MANUAL;
+    }
+
+    /**
+     * Pembayarannya bisa datang bertahap.
+     *
+     * Trakteer bekerja dengan satuan: pengguna mengirim sejumlah unit, dan
+     * satu paket berharga beberapa kali harga satuannya. Lima unit sekarang
+     * dan lima lagi nanti datang sebagai dua webhook terpisah.
+     *
+     * Untuk driver ini, callback yang nominalnya kurang dari total TIDAK
+     * ditolak — ia dijumlahkan ke `invoices.paid_amount`, dan membership
+     * aktif begitu jumlahnya cukup.
+     *
+     * Untuk gateway biasa, kurang bayar tetap ditolak: mereka menagih nominal
+     * pasti, dan selisihnya berarti ada yang salah.
+     */
+    public function allowsPartial(): bool
+    {
+        return $this === self::TRAKTEER;
+    }
+
+    /**
+     * Harga satu unit, untuk driver yang menjual per satuan.
+     *
+     * Null berarti driver ini tidak memakai satuan.
+     */
+    public function unitField(): ?string
+    {
+        return $this === self::TRAKTEER ? 'unit_price' : null;
     }
 
     /** Mendukung pengembalian dana lewat API. */

@@ -27,6 +27,7 @@ class Invoice extends Model
         'subtotal',
         'fee',
         'total',
+        'paid_amount',
         'currency',
         'status',
         'due_at',
@@ -40,6 +41,7 @@ class Invoice extends Model
         'subtotal'      => 'decimal:2',
         'fee'           => 'decimal:2',
         'total'         => 'decimal:2',
+        'paid_amount'   => 'decimal:2',
         'status'        => PaymentStatus::class,
         'due_at'        => 'datetime',
         'paid_at'       => 'datetime',
@@ -93,5 +95,36 @@ class Invoice extends Model
     public function isPayable(): bool
     {
         return $this->status === PaymentStatus::PENDING && ! $this->isOverdue();
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Pembayaran bertahap
+    |--------------------------------------------------------------------------
+    */
+
+    /** Sisa yang masih harus dibayar. Nol berarti sudah cukup. */
+    public function outstanding(): float
+    {
+        return max(0, round((float) $this->total - (float) $this->paid_amount, 2));
+    }
+
+    /**
+     * Sudah terkumpul cukup untuk dianggap lunas.
+     *
+     * Toleransi satu rupiah untuk pembulatan biaya layanan di sisi provider —
+     * angka yang sama dipakai penjagaan nominal di PaymentCallbackService.
+     */
+    public function isSettled(): bool
+    {
+        return (float) $this->paid_amount + 1 >= (float) $this->total;
+    }
+
+    /** Berapa persen sudah terbayar, untuk ditampilkan. */
+    public function paidPercent(): int
+    {
+        $total = (float) $this->total;
+
+        return $total <= 0 ? 100 : min(100, (int) floor((float) $this->paid_amount / $total * 100));
     }
 }

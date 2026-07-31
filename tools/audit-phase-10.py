@@ -84,9 +84,17 @@ for f in ['app/Services/PaymentService.php', 'app/Services/MembershipService.php
           'app/Enums/PaymentGateway.php']:
     check(not os.path.exists(f), f"kelas lama dihapus: {f}")
 
-for nama in ['payment_providers', 'invoices', 'payment_transactions',
-             'billing_to_subscriptions', 'premium_columns_to_users']:
-    check(len(glob.glob(f'database/migrations/*{nama}*.php')) == 1,
+# Pola dipersempit ke nama migration yang UTUH.
+#
+# Versi pertama memakai `*invoices*`, dan itu ikut mencocokkan migration
+# lanjutan seperti `add_partial_payment_to_invoices_table` -- hitungannya jadi
+# dua dan dilaporkan GAGAL, padahal migration aslinya baik-baik saja. Alat
+# yang menghalangi penambahan migration yang sah adalah alat yang salah.
+for nama in ['create_payment_providers_table', 'create_invoices_table',
+             'create_payment_transactions_table',
+             'add_billing_to_subscriptions_table',
+             'add_premium_columns_to_users_table']:
+    check(len(glob.glob(f'database/migrations/*{nama}.php')) == 1,
           f"migration {nama} ada")
 
 
