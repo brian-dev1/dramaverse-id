@@ -42,7 +42,8 @@ class PaymentCallbackService
     public function __construct(
         protected PaymentGatewayManager $gateways,
         protected InvoiceService $invoices,
-        protected MembershipService $membership
+        protected MembershipService $membership,
+        protected PaymentNotifier $notifier
     ) {
     }
 
@@ -84,7 +85,20 @@ class PaymentCallbackService
      */
     public function apply(PaymentTransaction $transaction, PaymentResult $hasil, string $sumber): PaymentTransaction
     {
-        return DB::transaction(function () use ($transaction, $hasil, $sumber) {
+        /*
+        |----------------------------------------------------------------------
+        | Kabar dikumpulkan di dalam, dikirim di LUAR transaction
+        |----------------------------------------------------------------------
+        |
+        | Mengirim HTTP ke Telegram di dalam transaction menahan kunci baris
+        | selama permintaan jaringan berlangsung. Kalau Telegram lambat,
+        | tagihan yang sedang dilunasi ikut terkunci selama itu -- dan callback
+        | berikutnya untuk tagihan yang sama akan menunggu di belakangnya.
+        |
+        */
+        $kabar = null;
+
+        $hasilTx = DB::transaction(function () use ($transaction, $hasil, $sumber, &$kabar) {
 
             // Kunci barisnya. Dua callback yang tiba bersamaan akan
             // berbaris di sini, bukan sama-sama lolos.
@@ -239,6 +253,8 @@ class PaymentCallbackService
                         'sisa'      => $invoice->outstanding(),
                     ]);
 
+                    $kabar = ['partial', $invoice->refresh(), $hasil->amount ?? (float) $tx->amount];
+
                     return $tx->refresh();
                 }
 
@@ -251,11 +267,15 @@ class PaymentCallbackService
                 // sama-sama memutuskan masa aktif.
                 $this->membership->activateFromInvoice($invoice);
 
+                $kabar = ['paid', $invoice->refresh(), 0.0];
+
             } elseif ($hasil->status !== PaymentStatus::PENDING) {
 
                 $invoice->forceFill(['status' => $hasil->status])->save();
 
                 $this->membership->cancelPendingFor($invoice);
+
+                $kabar = ['failed', $invoice->refresh(), 0.0];
             }
 
             $this->log('info', 'callback.applied', [
@@ -267,6 +287,31 @@ class PaymentCallbackService
 
             return $tx->refresh();
         });
+
+        /*
+        |----------------------------------------------------------------------
+        | Baru kirim kabarnya
+        |----------------------------------------------------------------------
+        |
+        | Transaction sudah commit. Kegagalan mengirim di sini tidak bisa
+        | membatalkan pembayaran yang sudah diterima -- dan memang tidak boleh.
+        |
+        */
+        if ($kabar !== null) {
+
+            [$jenis, $invoice, $nominal] = $kabar;
+
+            match ($jenis) {
+                'paid'    => $this->notifier->paid($invoice),
+                'partial' => $this->notifier->partial($invoice, $nominal),
+                'failed'  => $this->notifier->failed(
+                    $invoice,
+                    'Pembayaran tidak dapat diselesaikan.'
+                ),
+            };
+        }
+
+        return $hasilTx;
     }
 
     /**

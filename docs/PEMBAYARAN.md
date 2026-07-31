@@ -260,3 +260,45 @@ php artisan payment:webhook-test INV-xxxx --amount=12500
 
 # sekarang harus lunas dan langganan aktif
 ```
+
+---
+
+## Pemberitahuan otomatis di bot
+
+Sejak pembayaran dipindahkan ke Telegram, bot mengirim kabar sendiri:
+
+| Kejadian | Yang dikirim |
+|---|---|
+| Lunas | ✅ Pembayaran berhasil, paket, berlaku sampai kapan, tombol Cari Drama |
+| Cicilan masuk tapi belum cukup | 💰 Terkumpul berapa, kurang berapa, tombol Bayar sisanya |
+| Gagal / kedaluwarsa / dibatalkan | ⚠️ Status dan ajakan memilih paket lagi |
+
+Dikirim **setelah** transaksi basis data commit, bukan di dalamnya —
+mengirim HTTP di dalam transaction menahan kunci baris selama permintaan
+jaringan berlangsung.
+
+Kegagalan mengirimnya **tidak pernah** membatalkan pembayaran. Uangnya sudah
+diterima dan membership sudah aktif sebelum pemberitahuan dicoba; gagal
+mengirim kabar adalah persoalan yang jauh lebih kecil daripada membatalkan
+sesuatu yang sudah benar. Yang gagal dicatat sebagai `payment.notify.*.failed`.
+
+## Menelusuri "sudah bayar tapi belum aktif"
+
+```bash
+php artisan payment:diagnose INV-20260801-AB12CD
+php artisan payment:diagnose --last
+```
+
+Membaca tagihan, seluruh percobaan pembayaran, provider yang aktif, jejak log,
+lalu menyimpulkan penyebabnya beserta langkah berikutnya.
+
+Lima penyebab yang gejalanya identik dari luar, dan bagaimana perintah ini
+membedakannya:
+
+| Penyebab | Tanda di keluaran |
+|---|---|
+| Webhook tidak pernah sampai | "Belum ada satu pun callback yang pernah diterima" |
+| Token tidak cocok | `payment.callback.invalid_signature` |
+| Nomor tagihan tidak terbaca | `payment.callback.unmatched` + payload lengkapnya |
+| Nominal tidak cocok | `payment.callback.amount_mismatch` |
+| Baru sebagian dibayar | "Pembayaran masuk tetapi belum cukup" + sisanya |
