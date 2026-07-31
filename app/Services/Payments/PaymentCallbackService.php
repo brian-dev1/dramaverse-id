@@ -4,11 +4,13 @@ namespace App\Services\Payments;
 
 use App\Support\Concerns\LogsPaymentEvents;
 use App\Enums\PaymentStatus;
+use App\Models\Invoice;
 use App\Models\PaymentProvider;
 use App\Models\PaymentTransaction;
 use App\Services\Membership\MembershipService;
 use App\Services\Payments\Exceptions\PaymentException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * Satu-satunya jalan sebuah pembayaran boleh berubah status.
@@ -172,7 +174,7 @@ class PaymentCallbackService
                 |
                 */
 
-                if ($selisih > 1) {
+                if ($selisih > 1 && ! $bertahap) {
                     $this->tolakNominal($tx, $hasil, 'lebih bayar');
                 }
 
@@ -196,6 +198,10 @@ class PaymentCallbackService
                 }
             }
 
+            if ($hasil->isPaid() && $bertahap && ($hasil->amount ?? 0) <= 0) {
+                $this->tolakNominal($tx, $hasil, 'nominal tidak terbaca');
+            }
+
             /*
             |------------------------------------------------------------------
             | Simpan
@@ -203,6 +209,9 @@ class PaymentCallbackService
             */
 
             $tx->forceFill([
+                'amount'           => $bertahap && $hasil->amount !== null
+                    ? $hasil->amount
+                    : $tx->amount,
                 'status'           => $hasil->status,
                 'external_id'      => $hasil->externalId ?? $tx->external_id,
                 'method'           => $hasil->method ?? $tx->method,
@@ -327,27 +336,81 @@ class PaymentCallbackService
     {
         $query = PaymentTransaction::query()->where('payment_provider_id', $provider->id);
 
-        if (filled($hasil->reference)) {
-
-            // Referensi bisa berupa referensi transaksi ATAU nomor invoice —
-            // Trakteer hanya bisa membawa nomor invoice di pesan bebas.
-            $tx = (clone $query)->where('reference', $hasil->reference)->first()
-                ?? (clone $query)
-                    ->whereHas('invoice', fn ($q) => $q->where('number', $hasil->reference))
-                    ->latest('id')
-                    ->first();
-
-            if ($tx !== null) {
-                return $tx;
-            }
-        }
-
         if (filled($hasil->externalId)) {
 
             $tx = (clone $query)->where('external_id', $hasil->externalId)->first();
 
             if ($tx !== null) {
                 return $tx;
+            }
+        }
+
+        if (filled($hasil->reference)) {
+
+            // Referensi bisa berupa referensi transaksi ATAU nomor invoice —
+            // Trakteer hanya bisa membawa nomor invoice di pesan bebas.
+            $tx = (clone $query)->where('reference', $hasil->reference)->first();
+
+            if ($tx !== null) {
+                return $tx;
+            }
+
+            $invoice = Invoice::query()
+                ->where('number', $hasil->reference)
+                ->first();
+
+            if ($invoice !== null) {
+
+                $tx = (clone $query)
+                    ->where('invoice_id', $invoice->id)
+                    ->where('status', PaymentStatus::PENDING->value)
+                    ->latest('id')
+                    ->first();
+
+                if ($tx !== null) {
+                    return $tx;
+                }
+
+                /*
+                |--------------------------------------------------------------
+                | Trakteer: satu invoice bisa dibayar beberapa kali
+                |--------------------------------------------------------------
+                |
+                | Setelah pembayaran pertama diterima, transaksi awal berubah
+                | jadi PAID. Callback kedua untuk invoice yang sama tidak boleh
+                | memakai transaksi PAID itu, karena `apply()` akan menganggapnya
+                | callback duplicate dan tidak menambah `paid_amount`.
+                |
+                | Untuk driver bertahap, callback baru yang membawa external id
+                | baru dibuatkan baris transaksi baru. External id tetap disimpan
+                | supaya retry dari Trakteer untuk callback yang sama berhenti di
+                | cabang duplicate di atas.
+                */
+                if (($provider->driver->allowsPartial() ?? false)
+                    && $invoice->status === PaymentStatus::PENDING
+                ) {
+                    return PaymentTransaction::create([
+                        'invoice_id'          => $invoice->id,
+                        'payment_provider_id' => $provider->id,
+                        'reference'           => $this->callbackReference($invoice->number),
+                        'external_id'         => $hasil->externalId,
+                        'amount'              => $hasil->amount ?? $invoice->outstanding(),
+                        'currency'            => $invoice->currency,
+                        'status'              => PaymentStatus::PENDING,
+                        'method'              => $hasil->method,
+                        'response_payload'    => $hasil->raw,
+                        'expires_at'          => $invoice->due_at,
+                    ]);
+                }
+
+                $tx = (clone $query)
+                    ->where('invoice_id', $invoice->id)
+                    ->latest('id')
+                    ->first();
+
+                if ($tx !== null) {
+                    return $tx;
+                }
             }
         }
 
@@ -389,5 +452,14 @@ class PaymentCallbackService
         ]);
 
         throw PaymentException::amountMismatch((float) $tx->amount, (float) $hasil->amount);
+    }
+
+    private function callbackReference(string $invoiceNumber): string
+    {
+        do {
+            $reference = $invoiceNumber.'-CB-'.Str::upper(Str::random(6));
+        } while (PaymentTransaction::where('reference', $reference)->exists());
+
+        return $reference;
     }
 }

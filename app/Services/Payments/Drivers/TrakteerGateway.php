@@ -219,6 +219,19 @@ class TrakteerGateway extends AbstractGateway
 
         $jumlah = $this->amountFrom($payload);
 
+        if ($jumlah <= 0) {
+
+            $this->log('warning', 'callback.amount_unreadable', [
+                'provider' => $provider->slug,
+                'invoice'  => $nomor,
+                'payload'  => $payload,
+            ]);
+
+            throw new PaymentException(
+                'Nominal webhook Trakteer tidak terbaca. Pembayaran tidak diproses otomatis.'
+            );
+        }
+
         $this->log('info', 'callback.trakteer', [
             'provider' => $provider->slug,
             'invoice'  => $nomor,
@@ -229,7 +242,7 @@ class TrakteerGateway extends AbstractGateway
             status: PaymentStatus::PAID,
             reference: $nomor,
             externalId: $this->externalIdFrom($payload),
-            amount: $jumlah > 0 ? $jumlah : null,
+            amount: $jumlah,
             method: 'trakteer',
             raw: $payload,
         );
@@ -309,17 +322,17 @@ class TrakteerGateway extends AbstractGateway
     {
         foreach (['amount', 'gross_amount', 'total_amount'] as $key) {
 
-            if (isset($payload[$key]) && is_numeric($payload[$key])) {
-                return (float) $payload[$key];
+            $nilai = $this->money($payload[$key] ?? null);
+
+            if ($nilai > 0) {
+                return $nilai;
             }
         }
 
-        $harga = isset($payload['price']) && is_numeric($payload['price'])
-            ? (float) $payload['price']
-            : 0.0;
+        $harga = $this->money($payload['price'] ?? null);
 
-        $jumlah = isset($payload['quantity']) && is_numeric($payload['quantity'])
-            ? (int) $payload['quantity']
+        $jumlah = ($payload['quantity'] ?? null) !== null
+            ? (int) $this->money($payload['quantity'])
             : 0;
 
         return $harga > 0 && $jumlah > 0 ? $harga * $jumlah : 0.0;
@@ -344,7 +357,20 @@ class TrakteerGateway extends AbstractGateway
             }
         }
 
-        return null;
+        /*
+        |----------------------------------------------------------------------
+        | Fallback idempotensi
+        |----------------------------------------------------------------------
+        |
+        | Bila Trakteer/proxy tidak mengirim id transaksi, callback retry dengan
+        | payload yang sama tetap harus dikenali sebagai duplikat. Hash payload
+        | bukan identitas bisnis yang sempurna, tetapi jauh lebih aman daripada
+        | menghitung payload retry sebagai pembayaran baru.
+        |
+        */
+        $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+        return $json === false ? null : 'trakteer-'.substr(hash('sha256', $json), 0, 40);
     }
 
     /**
@@ -396,5 +422,64 @@ class TrakteerGateway extends AbstractGateway
         $id = strtolower((string) ($payload['transaction_id'] ?? ''));
 
         return $id !== '' && str_starts_with($id, 'test');
+    }
+
+    /**
+     * Ubah nominal dari bentuk Trakteer/manusia menjadi float.
+     *
+     * Payload nyata sering mengirim angka sebagai `5000`, `5.000`,
+     * `Rp 5.000`, atau `5000.00`. `is_numeric()` hanya aman untuk bentuk
+     * pertama, jadi parsing dibuat eksplisit.
+     */
+    private function money(mixed $nilai): float
+    {
+        if (is_int($nilai) || is_float($nilai)) {
+            return (float) $nilai;
+        }
+
+        if (! is_string($nilai)) {
+            return 0.0;
+        }
+
+        $angka = trim(str_ireplace(['rp', 'idr', ' '], '', $nilai));
+
+        if ($angka === '') {
+            return 0.0;
+        }
+
+        $angka = preg_replace('/[^0-9,.\-]/', '', $angka) ?? '';
+
+        if ($angka === '' || $angka === '-' || $angka === ',' || $angka === '.') {
+            return 0.0;
+        }
+
+        if (str_contains($angka, ',') && str_contains($angka, '.')) {
+            $angka = str_replace('.', '', $angka);
+            $angka = str_replace(',', '.', $angka);
+
+            return is_numeric($angka) ? (float) $angka : 0.0;
+        }
+
+        if (str_contains($angka, ',')) {
+            $bagian = explode(',', $angka);
+            $akhir = end($bagian);
+
+            $angka = strlen((string) $akhir) === 3
+                ? str_replace(',', '', $angka)
+                : str_replace(',', '.', $angka);
+
+            return is_numeric($angka) ? (float) $angka : 0.0;
+        }
+
+        if (str_contains($angka, '.')) {
+            $bagian = explode('.', $angka);
+            $akhir = end($bagian);
+
+            $angka = strlen((string) $akhir) === 3
+                ? str_replace('.', '', $angka)
+                : $angka;
+        }
+
+        return is_numeric($angka) ? (float) $angka : 0.0;
     }
 }

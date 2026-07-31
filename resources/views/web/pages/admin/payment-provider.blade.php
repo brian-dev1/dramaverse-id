@@ -6,6 +6,22 @@
 
     <section class="panel">
         <div class="panel-head">
+            <h2>Setup cepat Trakteer</h2>
+            <span class="panel-meta">Yang penting untuk pembayaran VIP otomatis</span>
+        </div>
+
+        <div class="detail-body-admin">
+            <ol class="page-subtitle">
+                <li>Pastikan provider Trakteer berstatus <strong>Aktif</strong> dan <strong>utama</strong>.</li>
+                <li>Salin URL callback Trakteer dari kartu provider di bawah ke dashboard Trakteer.</li>
+                <li>Token webhook di Trakteer harus sama dengan field <code>webhook_token</code> di sini.</li>
+                <li>Uji setelah bayar dengan command: <code>php artisan payment:diagnose --last</code>.</li>
+            </ol>
+        </div>
+    </section>
+
+    <section class="panel">
+        <div class="panel-head">
             <h2>Metode pembayaran</h2>
             <span class="panel-meta">
                 Provider tidak dipatok di kode. Menambah, mengganti, atau mematikan
@@ -31,6 +47,7 @@
                             <th>Mode</th>
                             <th>Biaya</th>
                             <th>Transaksi</th>
+                            <th>Callback</th>
                             <th>Status</th>
                             <th class="col-actions">Aksi</th>
                         </tr>
@@ -62,6 +79,14 @@
                                     @endif
                                 </td>
                                 <td>{{ number_format($p->transactions_count) }}</td>
+                                <td>
+                                    <code>{{ url('/payment/callback/'.$p->slug) }}</code>
+                                    @if ($p->driver->usesUnits())
+                                        <br><span class="cell-empty">
+                                            Unit opsional; nominal webhook tetap jadi patokan.
+                                        </span>
+                                    @endif
+                                </td>
                                 <td>
                                     <span class="badge {{ $p->is_active ? 'badge-on' : 'badge-off' }}">
                                         {{ $p->is_active ? 'Aktif' : 'Nonaktif' }}
@@ -118,7 +143,10 @@
         <section class="panel">
             <div class="panel-head">
                 <h2>{{ $p->name }}</h2>
-                <span class="panel-meta">{{ $p->driver->label() }}</span>
+                <span class="panel-meta">
+                    {{ $p->driver->label() }} · callback:
+                    <code>{{ url('/payment/callback/'.$p->slug) }}</code>
+                </span>
             </div>
 
             <form method="POST" action="{{ route('admin.payment-provider.update', $p->id) }}"

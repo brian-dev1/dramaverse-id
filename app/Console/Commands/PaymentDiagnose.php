@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Enums\PaymentStatus;
+use App\Enums\SubscriptionStatus;
 use App\Models\Invoice;
 use App\Services\Payments\PaymentGatewayManager;
 use App\Support\LogFileReader;
@@ -236,7 +237,26 @@ class PaymentDiagnose extends Command
         $this->components->info('Kesimpulan');
 
         if ($invoice->status === PaymentStatus::PAID) {
-            $this->components->twoColumnDetail('Keadaan', '<fg=green>Lunas dan aktif</>');
+
+            $langganan = $invoice->subscription()->first();
+
+            if ($langganan?->status === SubscriptionStatus::ACTIVE->value
+                && $invoice->user?->is_premium
+            ) {
+                $this->components->twoColumnDetail('Keadaan', '<fg=green>Lunas dan aktif</>');
+
+                return;
+            }
+
+            $this->components->error(
+                'Tagihan lunas, tetapi membership/user belum aktif.'
+            );
+
+            $this->components->bulletList([
+                'Jalankan: php artisan payment:activate '.$invoice->number.' --force',
+                'Setelah itu cek bot Profil lagi.',
+                'Kalau masih belum berubah, jalankan: php artisan optimize:clear',
+            ]);
 
             return;
         }

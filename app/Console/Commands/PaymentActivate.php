@@ -4,9 +4,12 @@ namespace App\Console\Commands;
 
 use App\Enums\PaymentStatus;
 use App\Models\Invoice;
+use App\Models\PaymentTransaction;
+use App\Services\Membership\MembershipService;
 use App\Services\Payments\PaymentCallbackService;
 use App\Services\Payments\PaymentResult;
 use Illuminate\Console\Command;
+use Illuminate\Support\Str;
 use Throwable;
 
 /**
@@ -46,7 +49,8 @@ class PaymentActivate extends Command
     protected $description = 'Aktifkan membership dari tagihan yang pembayarannya sudah masuk';
 
     public function __construct(
-        protected PaymentCallbackService $callbacks
+        protected PaymentCallbackService $callbacks,
+        protected MembershipService $membership
     ) {
         parent::__construct();
     }
@@ -65,12 +69,39 @@ class PaymentActivate extends Command
         }
 
         if ($invoice->status === PaymentStatus::PAID) {
-            $this->components->info('Tagihan ini sudah lunas. Tidak ada yang perlu dikerjakan.');
+
+            $langganan = $invoice->subscription()->first();
+
+            if ($langganan?->status === \App\Enums\SubscriptionStatus::ACTIVE->value
+                && $invoice->user?->is_premium
+            ) {
+                $this->components->info('Tagihan ini sudah lunas dan membership sudah aktif.');
+
+                return self::SUCCESS;
+            }
+
+            $this->components->warn(
+                'Tagihan sudah lunas, tetapi membership/user belum aktif. Menyinkronkan ulang...'
+            );
+
+            $langganan = $this->membership->activateFromInvoice($invoice);
+
+            if ($langganan === null) {
+                $this->components->error('Gagal: langganan untuk invoice ini tidak bisa dibuat/ditemukan.');
+
+                return self::FAILURE;
+            }
+
+            $this->components->info('Membership sudah disinkronkan.');
 
             return self::SUCCESS;
         }
 
-        $transaction = $invoice->transactions->sortByDesc('id')->first();
+        $transaction = $invoice->transactions
+            ->where('status', PaymentStatus::PENDING)
+            ->sortByDesc('id')
+            ->first()
+            ?? $invoice->transactions->sortByDesc('id')->first();
 
         if ($transaction === null) {
             $this->components->error(
@@ -84,6 +115,19 @@ class PaymentActivate extends Command
         $nominal = $this->option('amount') !== null
             ? (float) $this->option('amount')
             : (float) $invoice->total;
+
+        if ($transaction->status !== PaymentStatus::PENDING) {
+            $transaction = PaymentTransaction::create([
+                'invoice_id'          => $invoice->id,
+                'payment_provider_id' => $transaction->payment_provider_id,
+                'reference'           => $invoice->number.'-CMD-'.Str::upper(Str::random(6)),
+                'amount'              => $nominal,
+                'currency'            => $invoice->currency,
+                'status'              => PaymentStatus::PENDING,
+                'method'              => 'manual',
+                'expires_at'          => $invoice->due_at,
+            ]);
+        }
 
         $this->components->twoColumnDetail('Tagihan', $invoice->number);
         $this->components->twoColumnDetail('Pengguna', $invoice->user?->name ?? '-');

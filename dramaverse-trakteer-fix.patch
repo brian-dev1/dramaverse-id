@@ -1,0 +1,638 @@
+diff --git a/app/Console/Commands/PaymentActivate.php b/app/Console/Commands/PaymentActivate.php
+index 2dc9f73..e1af0ce 100644
+--- a/app/Console/Commands/PaymentActivate.php
++++ b/app/Console/Commands/PaymentActivate.php
+@@ -4,9 +4,12 @@
+ 
+ use App\Enums\PaymentStatus;
+ use App\Models\Invoice;
++use App\Models\PaymentTransaction;
++use App\Services\Membership\MembershipService;
+ use App\Services\Payments\PaymentCallbackService;
+ use App\Services\Payments\PaymentResult;
+ use Illuminate\Console\Command;
++use Illuminate\Support\Str;
+ use Throwable;
+ 
+ /**
+@@ -46,7 +49,8 @@ class PaymentActivate extends Command
+     protected $description = 'Aktifkan membership dari tagihan yang pembayarannya sudah masuk';
+ 
+     public function __construct(
+-        protected PaymentCallbackService $callbacks
++        protected PaymentCallbackService $callbacks,
++        protected MembershipService $membership
+     ) {
+         parent::__construct();
+     }
+@@ -65,12 +69,39 @@ public function handle(): int
+         }
+ 
+         if ($invoice->status === PaymentStatus::PAID) {
+-            $this->components->info('Tagihan ini sudah lunas. Tidak ada yang perlu dikerjakan.');
++
++            $langganan = $invoice->subscription()->first();
++
++            if ($langganan?->status === \App\Enums\SubscriptionStatus::ACTIVE->value
++                && $invoice->user?->is_premium
++            ) {
++                $this->components->info('Tagihan ini sudah lunas dan membership sudah aktif.');
++
++                return self::SUCCESS;
++            }
++
++            $this->components->warn(
++                'Tagihan sudah lunas, tetapi membership/user belum aktif. Menyinkronkan ulang...'
++            );
++
++            $langganan = $this->membership->activateFromInvoice($invoice);
++
++            if ($langganan === null) {
++                $this->components->error('Gagal: langganan untuk invoice ini tidak bisa dibuat/ditemukan.');
++
++                return self::FAILURE;
++            }
++
++            $this->components->info('Membership sudah disinkronkan.');
+ 
+             return self::SUCCESS;
+         }
+ 
+-        $transaction = $invoice->transactions->sortByDesc('id')->first();
++        $transaction = $invoice->transactions
++            ->where('status', PaymentStatus::PENDING)
++            ->sortByDesc('id')
++            ->first()
++            ?? $invoice->transactions->sortByDesc('id')->first();
+ 
+         if ($transaction === null) {
+             $this->components->error(
+@@ -85,6 +116,19 @@ public function handle(): int
+             ? (float) $this->option('amount')
+             : (float) $invoice->total;
+ 
++        if ($transaction->status !== PaymentStatus::PENDING) {
++            $transaction = PaymentTransaction::create([
++                'invoice_id'          => $invoice->id,
++                'payment_provider_id' => $transaction->payment_provider_id,
++                'reference'           => $invoice->number.'-CMD-'.Str::upper(Str::random(6)),
++                'amount'              => $nominal,
++                'currency'            => $invoice->currency,
++                'status'              => PaymentStatus::PENDING,
++                'method'              => 'manual',
++                'expires_at'          => $invoice->due_at,
++            ]);
++        }
++
+         $this->components->twoColumnDetail('Tagihan', $invoice->number);
+         $this->components->twoColumnDetail('Pengguna', $invoice->user?->name ?? '-');
+         $this->components->twoColumnDetail('Paket', $invoice->plan_name);
+diff --git a/app/Console/Commands/PaymentDiagnose.php b/app/Console/Commands/PaymentDiagnose.php
+index 116f996..af02ed6 100644
+--- a/app/Console/Commands/PaymentDiagnose.php
++++ b/app/Console/Commands/PaymentDiagnose.php
+@@ -3,6 +3,7 @@
+ namespace App\Console\Commands;
+ 
+ use App\Enums\PaymentStatus;
++use App\Enums\SubscriptionStatus;
+ use App\Models\Invoice;
+ use App\Services\Payments\PaymentGatewayManager;
+ use App\Support\LogFileReader;
+@@ -236,7 +237,26 @@ private function simpulkan(Invoice $invoice): void
+         $this->components->info('Kesimpulan');
+ 
+         if ($invoice->status === PaymentStatus::PAID) {
+-            $this->components->twoColumnDetail('Keadaan', '<fg=green>Lunas dan aktif</>');
++
++            $langganan = $invoice->subscription()->first();
++
++            if ($langganan?->status === SubscriptionStatus::ACTIVE->value
++                && $invoice->user?->is_premium
++            ) {
++                $this->components->twoColumnDetail('Keadaan', '<fg=green>Lunas dan aktif</>');
++
++                return;
++            }
++
++            $this->components->error(
++                'Tagihan lunas, tetapi membership/user belum aktif.'
++            );
++
++            $this->components->bulletList([
++                'Jalankan: php artisan payment:activate '.$invoice->number.' --force',
++                'Setelah itu cek bot Profil lagi.',
++                'Kalau masih belum berubah, jalankan: php artisan optimize:clear',
++            ]);
+ 
+             return;
+         }
+diff --git a/app/Models/Subscription.php b/app/Models/Subscription.php
+index 6d3e49f..f923849 100644
+--- a/app/Models/Subscription.php
++++ b/app/Models/Subscription.php
+@@ -3,31 +3,43 @@
+ namespace App\Models;
+ 
+ use Illuminate\Database\Eloquent\Model;
++use Illuminate\Database\Eloquent\Relations\BelongsTo;
+ 
+ class Subscription extends Model
+ {
+     protected $fillable = [
+         'user_id',
+         'membership_plan_id',
++        'invoice_id',
+         'price',
+         'started_at',
+         'expired_at',
+         'status',
+-        'payment_reference'
++        'payment_reference',
++        'auto_renew',
++        'cancelled_at',
++        'source',
+     ];
+ 
+     protected $casts = [
+-        'started_at' => 'datetime',
+-        'expired_at' => 'datetime',
++        'started_at'   => 'datetime',
++        'expired_at'   => 'datetime',
++        'cancelled_at' => 'datetime',
++        'auto_renew'   => 'boolean',
+     ];
+ 
+-    public function user()
++    public function user(): BelongsTo
+     {
+         return $this->belongsTo(User::class);
+     }
+ 
+-    public function plan()
++    public function plan(): BelongsTo
+     {
+         return $this->belongsTo(MembershipPlan::class, 'membership_plan_id');
+     }
+-}
+\ No newline at end of file
++
++    public function invoice(): BelongsTo
++    {
++        return $this->belongsTo(Invoice::class);
++    }
++}
+diff --git a/app/Services/Membership/MembershipService.php b/app/Services/Membership/MembershipService.php
+index b551d70..1bbe3c1 100644
+--- a/app/Services/Membership/MembershipService.php
++++ b/app/Services/Membership/MembershipService.php
+@@ -140,7 +140,7 @@ public function history(User $user, int $limit = 50): Collection
+      */
+     public function activateFromInvoice(Invoice $invoice): ?Subscription
+     {
+-        $langganan = $invoice->subscription()->first();
++        $langganan = $this->subscriptionForInvoice($invoice);
+ 
+         if ($langganan === null) {
+             return null;
+@@ -332,4 +332,79 @@ private function syncUserFlags(int $userId): void
+         $this->forget($userId);
+     }
+ 
++    /**
++     * Ambil langganan milik invoice, termasuk memperbaiki data lama.
++     *
++     * Beberapa checkout lama membuat `subscriptions` tanpa `invoice_id`
++     * karena model belum memasukkan kolom itu ke `$fillable`. Akibatnya
++     * invoice bisa lunas tetapi aktivasi tidak menemukan baris langganannya.
++     * Di sini baris pending yang yatim disambungkan lagi. Kalau memang tidak
++     * ada, dibuatkan langganan dari salinan paket di invoice supaya uang yang
++     * sudah masuk tetap memberi akses.
++     */
++    private function subscriptionForInvoice(Invoice $invoice): ?Subscription
++    {
++        $langganan = $invoice->subscription()->first();
++
++        if ($langganan !== null) {
++            return $langganan;
++        }
++
++        $query = Subscription::query()
++            ->where('user_id', $invoice->user_id)
++            ->whereNull('invoice_id')
++            ->where('status', SubscriptionStatus::PENDING->value);
++
++        if ($invoice->membership_plan_id !== null) {
++            $query->where('membership_plan_id', $invoice->membership_plan_id);
++        }
++
++        $langganan = $query->latest('id')->first();
++
++        if ($langganan !== null) {
++
++            $langganan->forceFill([
++                'invoice_id'         => $invoice->id,
++                'payment_reference' => $langganan->payment_reference ?: $invoice->number,
++                'source'            => $langganan->source ?: 'checkout',
++            ])->save();
++
++            $this->log('warning', 'membership.subscription_relinked', [
++                'invoice'      => $invoice->number,
++                'subscription' => $langganan->id,
++                'user_id'      => $invoice->user_id,
++            ]);
++
++            return $langganan;
++        }
++
++        if ($invoice->membership_plan_id === null) {
++            $this->log('error', 'membership.subscription_missing', [
++                'invoice' => $invoice->number,
++                'user_id' => $invoice->user_id,
++                'sebab'   => 'invoice tidak punya membership_plan_id',
++            ]);
++
++            return null;
++        }
++
++        $langganan = Subscription::create([
++            'user_id'            => $invoice->user_id,
++            'membership_plan_id' => $invoice->membership_plan_id,
++            'invoice_id'         => $invoice->id,
++            'price'              => $invoice->subtotal,
++            'status'             => SubscriptionStatus::PENDING->value,
++            'payment_reference'  => $invoice->number,
++            'source'             => 'checkout',
++        ]);
++
++        $this->log('warning', 'membership.subscription_recreated', [
++            'invoice'      => $invoice->number,
++            'subscription' => $langganan->id,
++            'user_id'      => $invoice->user_id,
++        ]);
++
++        return $langganan;
++    }
++
+ }
+diff --git a/app/Services/Payments/Drivers/TrakteerGateway.php b/app/Services/Payments/Drivers/TrakteerGateway.php
+index 7ce7b26..497f5be 100644
+--- a/app/Services/Payments/Drivers/TrakteerGateway.php
++++ b/app/Services/Payments/Drivers/TrakteerGateway.php
+@@ -219,6 +219,19 @@ public function parseCallback(
+ 
+         $jumlah = $this->amountFrom($payload);
+ 
++        if ($jumlah <= 0) {
++
++            $this->log('warning', 'callback.amount_unreadable', [
++                'provider' => $provider->slug,
++                'invoice'  => $nomor,
++                'payload'  => $payload,
++            ]);
++
++            throw new PaymentException(
++                'Nominal webhook Trakteer tidak terbaca. Pembayaran tidak diproses otomatis.'
++            );
++        }
++
+         $this->log('info', 'callback.trakteer', [
+             'provider' => $provider->slug,
+             'invoice'  => $nomor,
+@@ -229,7 +242,7 @@ public function parseCallback(
+             status: PaymentStatus::PAID,
+             reference: $nomor,
+             externalId: $this->externalIdFrom($payload),
+-            amount: $jumlah > 0 ? $jumlah : null,
++            amount: $jumlah,
+             method: 'trakteer',
+             raw: $payload,
+         );
+@@ -309,17 +322,17 @@ private function amountFrom(array $payload): float
+     {
+         foreach (['amount', 'gross_amount', 'total_amount'] as $key) {
+ 
+-            if (isset($payload[$key]) && is_numeric($payload[$key])) {
+-                return (float) $payload[$key];
++            $nilai = $this->money($payload[$key] ?? null);
++
++            if ($nilai > 0) {
++                return $nilai;
+             }
+         }
+ 
+-        $harga = isset($payload['price']) && is_numeric($payload['price'])
+-            ? (float) $payload['price']
+-            : 0.0;
++        $harga = $this->money($payload['price'] ?? null);
+ 
+-        $jumlah = isset($payload['quantity']) && is_numeric($payload['quantity'])
+-            ? (int) $payload['quantity']
++        $jumlah = ($payload['quantity'] ?? null) !== null
++            ? (int) $this->money($payload['quantity'])
+             : 0;
+ 
+         return $harga > 0 && $jumlah > 0 ? $harga * $jumlah : 0.0;
+@@ -344,7 +357,20 @@ private function externalIdFrom(array $payload): ?string
+             }
+         }
+ 
+-        return null;
++        /*
++        |----------------------------------------------------------------------
++        | Fallback idempotensi
++        |----------------------------------------------------------------------
++        |
++        | Bila Trakteer/proxy tidak mengirim id transaksi, callback retry dengan
++        | payload yang sama tetap harus dikenali sebagai duplikat. Hash payload
++        | bukan identitas bisnis yang sempurna, tetapi jauh lebih aman daripada
++        | menghitung payload retry sebagai pembayaran baru.
++        |
++        */
++        $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
++
++        return $json === false ? null : 'trakteer-'.substr(hash('sha256', $json), 0, 40);
+     }
+ 
+     /**
+@@ -397,4 +423,63 @@ private function looksLikeTest(string $jenis, array $payload): bool
+ 
+         return $id !== '' && str_starts_with($id, 'test');
+     }
++
++    /**
++     * Ubah nominal dari bentuk Trakteer/manusia menjadi float.
++     *
++     * Payload nyata sering mengirim angka sebagai `5000`, `5.000`,
++     * `Rp 5.000`, atau `5000.00`. `is_numeric()` hanya aman untuk bentuk
++     * pertama, jadi parsing dibuat eksplisit.
++     */
++    private function money(mixed $nilai): float
++    {
++        if (is_int($nilai) || is_float($nilai)) {
++            return (float) $nilai;
++        }
++
++        if (! is_string($nilai)) {
++            return 0.0;
++        }
++
++        $angka = trim(str_ireplace(['rp', 'idr', ' '], '', $nilai));
++
++        if ($angka === '') {
++            return 0.0;
++        }
++
++        $angka = preg_replace('/[^0-9,.\-]/', '', $angka) ?? '';
++
++        if ($angka === '' || $angka === '-' || $angka === ',' || $angka === '.') {
++            return 0.0;
++        }
++
++        if (str_contains($angka, ',') && str_contains($angka, '.')) {
++            $angka = str_replace('.', '', $angka);
++            $angka = str_replace(',', '.', $angka);
++
++            return is_numeric($angka) ? (float) $angka : 0.0;
++        }
++
++        if (str_contains($angka, ',')) {
++            $bagian = explode(',', $angka);
++            $akhir = end($bagian);
++
++            $angka = strlen((string) $akhir) === 3
++                ? str_replace(',', '', $angka)
++                : str_replace(',', '.', $angka);
++
++            return is_numeric($angka) ? (float) $angka : 0.0;
++        }
++
++        if (str_contains($angka, '.')) {
++            $bagian = explode('.', $angka);
++            $akhir = end($bagian);
++
++            $angka = strlen((string) $akhir) === 3
++                ? str_replace('.', '', $angka)
++                : $angka;
++        }
++
++        return is_numeric($angka) ? (float) $angka : 0.0;
++    }
+ }
+diff --git a/app/Services/Payments/PaymentCallbackService.php b/app/Services/Payments/PaymentCallbackService.php
+index 8196f97..5a55499 100644
+--- a/app/Services/Payments/PaymentCallbackService.php
++++ b/app/Services/Payments/PaymentCallbackService.php
+@@ -4,11 +4,13 @@
+ 
+ use App\Support\Concerns\LogsPaymentEvents;
+ use App\Enums\PaymentStatus;
++use App\Models\Invoice;
+ use App\Models\PaymentProvider;
+ use App\Models\PaymentTransaction;
+ use App\Services\Membership\MembershipService;
+ use App\Services\Payments\Exceptions\PaymentException;
+ use Illuminate\Support\Facades\DB;
++use Illuminate\Support\Str;
+ 
+ /**
+  * Satu-satunya jalan sebuah pembayaran boleh berubah status.
+@@ -172,7 +174,7 @@ public function apply(PaymentTransaction $transaction, PaymentResult $hasil, str
+                 |
+                 */
+ 
+-                if ($selisih > 1) {
++                if ($selisih > 1 && ! $bertahap) {
+                     $this->tolakNominal($tx, $hasil, 'lebih bayar');
+                 }
+ 
+@@ -196,6 +198,10 @@ public function apply(PaymentTransaction $transaction, PaymentResult $hasil, str
+                 }
+             }
+ 
++            if ($hasil->isPaid() && $bertahap && ($hasil->amount ?? 0) <= 0) {
++                $this->tolakNominal($tx, $hasil, 'nominal tidak terbaca');
++            }
++
+             /*
+             |------------------------------------------------------------------
+             | Simpan
+@@ -203,6 +209,9 @@ public function apply(PaymentTransaction $transaction, PaymentResult $hasil, str
+             */
+ 
+             $tx->forceFill([
++                'amount'           => $bertahap && $hasil->amount !== null
++                    ? $hasil->amount
++                    : $tx->amount,
+                 'status'           => $hasil->status,
+                 'external_id'      => $hasil->externalId ?? $tx->external_id,
+                 'method'           => $hasil->method ?? $tx->method,
+@@ -327,28 +336,82 @@ private function locate(PaymentProvider $provider, PaymentResult $hasil): Paymen
+     {
+         $query = PaymentTransaction::query()->where('payment_provider_id', $provider->id);
+ 
+-        if (filled($hasil->reference)) {
++        if (filled($hasil->externalId)) {
+ 
+-            // Referensi bisa berupa referensi transaksi ATAU nomor invoice —
+-            // Trakteer hanya bisa membawa nomor invoice di pesan bebas.
+-            $tx = (clone $query)->where('reference', $hasil->reference)->first()
+-                ?? (clone $query)
+-                    ->whereHas('invoice', fn ($q) => $q->where('number', $hasil->reference))
+-                    ->latest('id')
+-                    ->first();
++            $tx = (clone $query)->where('external_id', $hasil->externalId)->first();
+ 
+             if ($tx !== null) {
+                 return $tx;
+             }
+         }
+ 
+-        if (filled($hasil->externalId)) {
++        if (filled($hasil->reference)) {
+ 
+-            $tx = (clone $query)->where('external_id', $hasil->externalId)->first();
++            // Referensi bisa berupa referensi transaksi ATAU nomor invoice —
++            // Trakteer hanya bisa membawa nomor invoice di pesan bebas.
++            $tx = (clone $query)->where('reference', $hasil->reference)->first();
+ 
+             if ($tx !== null) {
+                 return $tx;
+             }
++
++            $invoice = Invoice::query()
++                ->where('number', $hasil->reference)
++                ->first();
++
++            if ($invoice !== null) {
++
++                $tx = (clone $query)
++                    ->where('invoice_id', $invoice->id)
++                    ->where('status', PaymentStatus::PENDING->value)
++                    ->latest('id')
++                    ->first();
++
++                if ($tx !== null) {
++                    return $tx;
++                }
++
++                /*
++                |--------------------------------------------------------------
++                | Trakteer: satu invoice bisa dibayar beberapa kali
++                |--------------------------------------------------------------
++                |
++                | Setelah pembayaran pertama diterima, transaksi awal berubah
++                | jadi PAID. Callback kedua untuk invoice yang sama tidak boleh
++                | memakai transaksi PAID itu, karena `apply()` akan menganggapnya
++                | callback duplicate dan tidak menambah `paid_amount`.
++                |
++                | Untuk driver bertahap, callback baru yang membawa external id
++                | baru dibuatkan baris transaksi baru. External id tetap disimpan
++                | supaya retry dari Trakteer untuk callback yang sama berhenti di
++                | cabang duplicate di atas.
++                */
++                if (($provider->driver->allowsPartial() ?? false)
++                    && $invoice->status === PaymentStatus::PENDING
++                ) {
++                    return PaymentTransaction::create([
++                        'invoice_id'          => $invoice->id,
++                        'payment_provider_id' => $provider->id,
++                        'reference'           => $this->callbackReference($invoice->number),
++                        'external_id'         => $hasil->externalId,
++                        'amount'              => $hasil->amount ?? $invoice->outstanding(),
++                        'currency'            => $invoice->currency,
++                        'status'              => PaymentStatus::PENDING,
++                        'method'              => $hasil->method,
++                        'response_payload'    => $hasil->raw,
++                        'expires_at'          => $invoice->due_at,
++                    ]);
++                }
++
++                $tx = (clone $query)
++                    ->where('invoice_id', $invoice->id)
++                    ->latest('id')
++                    ->first();
++
++                if ($tx !== null) {
++                    return $tx;
++                }
++            }
+         }
+ 
+         $this->log('warning', 'callback.unknown_reference', [
+@@ -390,4 +453,13 @@ private function tolakNominal(PaymentTransaction $tx, PaymentResult $hasil, stri
+ 
+         throw PaymentException::amountMismatch((float) $tx->amount, (float) $hasil->amount);
+     }
++
++    private function callbackReference(string $invoiceNumber): string
++    {
++        do {
++            $reference = $invoiceNumber.'-CB-'.Str::upper(Str::random(6));
++        } while (PaymentTransaction::where('reference', $reference)->exists());
++
++        return $reference;
++    }
+ }
+diff --git a/resources/views/web/pages/admin/payment-provider.blade.php b/resources/views/web/pages/admin/payment-provider.blade.php
+index 639dd77..2f6d1e6 100644
+--- a/resources/views/web/pages/admin/payment-provider.blade.php
++++ b/resources/views/web/pages/admin/payment-provider.blade.php
+@@ -4,6 +4,22 @@
+ 
+ @section('content')
+ 
++    <section class="panel">
++        <div class="panel-head">
++            <h2>Setup cepat Trakteer</h2>
++            <span class="panel-meta">Yang penting untuk pembayaran VIP otomatis</span>
++        </div>
++
++        <div class="detail-body-admin">
++            <ol class="page-subtitle">
++                <li>Pastikan provider Trakteer berstatus <strong>Aktif</strong> dan <strong>utama</strong>.</li>
++                <li>Salin URL callback Trakteer dari kartu provider di bawah ke dashboard Trakteer.</li>
++                <li>Token webhook di Trakteer harus sama dengan field <code>webhook_token</code> di sini.</li>
++                <li>Uji setelah bayar dengan command: <code>php artisan payment:diagnose --last</code>.</li>
++            </ol>
++        </div>
++    </section>
++
+     <section class="panel">
+         <div class="panel-head">
+             <h2>Metode pembayaran</h2>
+@@ -31,6 +47,7 @@
+                             <th>Mode</th>
+                             <th>Biaya</th>
+                             <th>Transaksi</th>
++                            <th>Callback</th>
+                             <th>Status</th>
+                             <th class="col-actions">Aksi</th>
+                         </tr>
+@@ -62,6 +79,14 @@
+                                     @endif
+                                 </td>
+                                 <td>{{ number_format($p->transactions_count) }}</td>
++                                <td>
++                                    <code>{{ url('/payment/callback/'.$p->slug) }}</code>
++                                    @if ($p->driver->usesUnits())
++                                        <br><span class="cell-empty">
++                                            Unit opsional; nominal webhook tetap jadi patokan.
++                                        </span>
++                                    @endif
++                                </td>
+                                 <td>
+                                     <span class="badge {{ $p->is_active ? 'badge-on' : 'badge-off' }}">
+                                         {{ $p->is_active ? 'Aktif' : 'Nonaktif' }}
+@@ -118,7 +143,10 @@
+         <section class="panel">
+             <div class="panel-head">
+                 <h2>{{ $p->name }}</h2>
+-                <span class="panel-meta">{{ $p->driver->label() }}</span>
++                <span class="panel-meta">
++                    {{ $p->driver->label() }} · callback:
++                    <code>{{ url('/payment/callback/'.$p->slug) }}</code>
++                </span>
+             </div>
+ 
+             <form method="POST" action="{{ route('admin.payment-provider.update', $p->id) }}"

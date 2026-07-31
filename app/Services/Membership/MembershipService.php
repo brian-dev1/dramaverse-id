@@ -140,7 +140,7 @@ class MembershipService
      */
     public function activateFromInvoice(Invoice $invoice): ?Subscription
     {
-        $langganan = $invoice->subscription()->first();
+        $langganan = $this->subscriptionForInvoice($invoice);
 
         if ($langganan === null) {
             return null;
@@ -330,6 +330,81 @@ class MembershipService
         ]);
 
         $this->forget($userId);
+    }
+
+    /**
+     * Ambil langganan milik invoice, termasuk memperbaiki data lama.
+     *
+     * Beberapa checkout lama membuat `subscriptions` tanpa `invoice_id`
+     * karena model belum memasukkan kolom itu ke `$fillable`. Akibatnya
+     * invoice bisa lunas tetapi aktivasi tidak menemukan baris langganannya.
+     * Di sini baris pending yang yatim disambungkan lagi. Kalau memang tidak
+     * ada, dibuatkan langganan dari salinan paket di invoice supaya uang yang
+     * sudah masuk tetap memberi akses.
+     */
+    private function subscriptionForInvoice(Invoice $invoice): ?Subscription
+    {
+        $langganan = $invoice->subscription()->first();
+
+        if ($langganan !== null) {
+            return $langganan;
+        }
+
+        $query = Subscription::query()
+            ->where('user_id', $invoice->user_id)
+            ->whereNull('invoice_id')
+            ->where('status', SubscriptionStatus::PENDING->value);
+
+        if ($invoice->membership_plan_id !== null) {
+            $query->where('membership_plan_id', $invoice->membership_plan_id);
+        }
+
+        $langganan = $query->latest('id')->first();
+
+        if ($langganan !== null) {
+
+            $langganan->forceFill([
+                'invoice_id'         => $invoice->id,
+                'payment_reference' => $langganan->payment_reference ?: $invoice->number,
+                'source'            => $langganan->source ?: 'checkout',
+            ])->save();
+
+            $this->log('warning', 'membership.subscription_relinked', [
+                'invoice'      => $invoice->number,
+                'subscription' => $langganan->id,
+                'user_id'      => $invoice->user_id,
+            ]);
+
+            return $langganan;
+        }
+
+        if ($invoice->membership_plan_id === null) {
+            $this->log('error', 'membership.subscription_missing', [
+                'invoice' => $invoice->number,
+                'user_id' => $invoice->user_id,
+                'sebab'   => 'invoice tidak punya membership_plan_id',
+            ]);
+
+            return null;
+        }
+
+        $langganan = Subscription::create([
+            'user_id'            => $invoice->user_id,
+            'membership_plan_id' => $invoice->membership_plan_id,
+            'invoice_id'         => $invoice->id,
+            'price'              => $invoice->subtotal,
+            'status'             => SubscriptionStatus::PENDING->value,
+            'payment_reference'  => $invoice->number,
+            'source'             => 'checkout',
+        ]);
+
+        $this->log('warning', 'membership.subscription_recreated', [
+            'invoice'      => $invoice->number,
+            'subscription' => $langganan->id,
+            'user_id'      => $invoice->user_id,
+        ]);
+
+        return $langganan;
     }
 
 }
