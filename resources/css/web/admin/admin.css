@@ -1009,3 +1009,61 @@ a.stat-card:hover .stat-icon{ color:var(--gold); }
     .tm-table{ table-layout:auto; }
     .tm-preview{ max-width:100%; }
 }
+ 
+/* ===============================
+   FIX LAYOUT AKSI ADMIN
+   =============================== */
+
+.col-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+}
+
+.col-actions .btn,
+.toolbar-actions .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+
+    padding: 6px 12px;
+    font-size: 12px;
+
+    border-radius: 999px;
+    border: 1px solid var(--border);
+
+    background: transparent;
+    color: var(--text-secondary);
+
+    transition: all .15s ease;
+}
+
+.col-actions .btn:hover,
+.toolbar-actions .btn:hover {
+    border-color: var(--gold);
+    color: var(--gold);
+    background: rgba(217,175,110,0.08);
+}
+
+.btn-primary {
+    background: var(--gold);
+    color: #000;
+    border: 0;
+}
+
+.btn-danger {
+    border-color: rgba(200,60,70,.4);
+    color: var(--crimson);
+}
+
+.btn-danger:hover {
+    background: rgba(200,60,70,.1);
+}
+
+.toolbar-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}

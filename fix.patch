@@ -1,0 +1,232 @@
+diff --git a/resources/css/web/admin/admin.css b/resources/css/web/admin/admin.css
+index 62ebc0b..0000000 100644
+--- a/resources/css/web/admin/admin.css
++++ b/resources/css/web/admin/admin.css
+@@ -125,6 +125,13 @@
+ }
+ .toolbar-search .control:focus{ outline:none; }
+ .toolbar-add{ margin-left:auto; }
++.toolbar-actions{
++    display:flex; align-items:center; justify-content:flex-end;
++    gap:8px; flex-wrap:wrap;
++    margin-left:auto;
++}
++.toolbar-actions .inline-form{ display:inline-flex; }
++.toolbar-actions .btn{ white-space:nowrap; }
+ 
+ /* --- Aksi massal --- */
+ .bulk-bar{
+@@ -144,7 +151,47 @@
+ .table-wrap{ overflow-x:auto; border-radius:var(--radius-m); }
+ 
+ .col-check{ width:38px; }
+-.col-actions{ width:96px; text-align:right; }
++.col-actions{
++    width:1%;
++    min-width:142px;
++    text-align:right;
++    white-space:nowrap;
++    vertical-align:middle;
++}
++.table-actions{
++    display:flex;
++    align-items:center;
++    justify-content:flex-end;
++    gap:8px;
++    flex-wrap:wrap;
++}
++.table-actions .inline-form{ display:contents; }
++.table-actions .btn{
++    min-height:32px;
++    display:inline-flex;
++    align-items:center;
++    justify-content:center;
++    gap:6px;
++    padding:7px 10px;
++    border:1px solid var(--border);
++    border-radius:999px;
++    background:rgba(255,255,255,.025);
++    color:var(--text-secondary);
++    line-height:1;
++    white-space:nowrap;
++}
++.table-actions .btn:hover{
++    border-color:rgba(217,175,110,.42);
++    background:rgba(217,175,110,.08);
++    color:var(--gold-bright);
++}
++.table-actions .btn-primary{
++    color:var(--ink);
++    border-color:transparent;
++    background:var(--gold);
++}
++.table-actions .btn.btn-danger{
++    color:#E88B9E;
++    border-color:rgba(193,66,91,.35);
++    background:rgba(193,66,91,.08);
++}
++.table-actions .btn.btn-danger:hover{ color:#fff; background:var(--crimson); }
+ 
+ .th-sort{
+     display:inline-flex; align-items:center; gap:5px;
+@@ -395,6 +442,9 @@ input[type="color"].control{ height:42px; padding:4px; cursor:pointer; }
+     .admin-topbar{ padding:var(--space-2) var(--space-3); }
+     .admin-topbar h1{ font-size:17px; }
+     .toolbar-add{ margin-left:0; width:100%; justify-content:center; }
++    .toolbar-actions{ width:100%; margin-left:0; justify-content:flex-start; }
++    .toolbar-search{ width:100%; padding:8px; }
++    .toolbar-search .control-sm{ flex:1 1 100%; }
+     .form-card{ padding:var(--space-3); }
+     .toast{ margin:var(--space-2) var(--space-3) 0; }
+ }
+diff --git a/resources/views/web/pages/admin/monitoring.blade.php b/resources/views/web/pages/admin/monitoring.blade.php
+index 515c416..0000000 100644
+--- a/resources/views/web/pages/admin/monitoring.blade.php
++++ b/resources/views/web/pages/admin/monitoring.blade.php
+@@ -114,7 +114,10 @@
+                     </button>
+                 </form>
+ 
+-                <form method="POST" action="{{ route('admin.monitoring.prune') }}" class="inline-form">
++                <form method="POST" action="{{ route('admin.monitoring.prune') }}" class="inline-form"
++                      data-confirm
++                      data-confirm-title="Pangkas cadangan lama"
++                      data-confirm-message="Cadangan lama akan dihapus sesuai aturan retensi. Lanjutkan?">
+                     @csrf
+                     <button type="submit" class="btn btn-sm">
+                         <x-web.home.icon name="trash" :size="14" />
+@@ -157,25 +160,27 @@
+                                     <br><span class="cell-empty">{{ $b['waktu']->diffForHumans() }}</span>
+                                 </td>
+                                 <td class="col-actions">
+-                                    <form method="POST" action="{{ route('admin.monitoring.verify') }}"
+-                                          class="inline-form">
+-                                        @csrf
+-                                        <input type="hidden" name="nama" value="{{ $b['nama'] }}">
+-                                        <button type="submit" class="btn btn-sm">
+-                                            <x-web.home.icon name="check" :size="14" />
+-                                            Verifikasi
+-                                        </button>
+-                                    </form>
+-
+-                                    <a href="{{ route('admin.monitoring.download', ['nama' => $b['nama']]) }}"
+-                                       class="btn btn-sm">
+-                                        <x-web.home.icon name="file" :size="14" />
+-                                        Unduh
+-                                    </a>
++                                    <div class="table-actions">
++                                        <form method="POST" action="{{ route('admin.monitoring.verify') }}"
++                                              class="inline-form">
++                                            @csrf
++                                            <input type="hidden" name="nama" value="{{ $b['nama'] }}">
++                                            <button type="submit" class="btn btn-sm">
++                                                <x-web.home.icon name="check" :size="14" />
++                                                Verifikasi
++                                            </button>
++                                        </form>
++
++                                        <a href="{{ route('admin.monitoring.download', ['nama' => $b['nama']]) }}"
++                                           class="btn btn-sm">
++                                            <x-web.home.icon name="file" :size="14" />
++                                            Unduh
++                                        </a>
++                                    </div>
+                                 </td>
+                             </tr>
+                         @endforeach
+diff --git a/resources/views/web/pages/admin/invoice.blade.php b/resources/views/web/pages/admin/invoice.blade.php
+index 5e9b759..0000000 100644
+--- a/resources/views/web/pages/admin/invoice.blade.php
++++ b/resources/views/web/pages/admin/invoice.blade.php
+@@ -129,9 +129,12 @@
+                                 </td>
+                                 <td>{{ $invoice->created_at?->format('d M Y H:i') }}</td>
+                                 <td class="col-actions">
+-                                    <a href="{{ route('admin.invoice.show', $invoice->number) }}" class="btn btn-sm">
+-                                        Detail
+-                                    </a>
++                                    <div class="table-actions">
++                                        <a href="{{ route('admin.invoice.show', $invoice->number) }}" class="btn btn-sm">
++                                            <x-web.home.icon name="file" :size="14" />
++                                            Detail
++                                        </a>
++                                    </div>
+                                 </td>
+                             </tr>
+                         @endforeach
+diff --git a/resources/views/web/pages/admin/payment-provider.blade.php b/resources/views/web/pages/admin/payment-provider.blade.php
+index c6cc7c6..0000000 100644
+--- a/resources/views/web/pages/admin/payment-provider.blade.php
++++ b/resources/views/web/pages/admin/payment-provider.blade.php
+@@ -95,35 +95,37 @@
+                                     @endif
+                                 </td>
+                                 <td class="col-actions">
+-                                    <a href="{{ request()->fullUrlWithQuery(['edit' => $p->id]) }}#edit-provider"
+-                                       class="btn btn-sm {{ $editingProvider?->id === $p->id ? 'btn-primary' : '' }}">
+-                                        Edit
+-                                    </a>
+-
+-                                    @if ($p->is_active)
+-                                        <button type="submit" class="btn btn-sm" form="disable-{{ $p->id }}">
+-                                            Nonaktifkan
+-                                        </button>
+-                                    @else
+-                                        <button type="submit" class="btn btn-sm" form="enable-{{ $p->id }}">
+-                                            Aktifkan
+-                                        </button>
+-                                    @endif
+-
+-                                    @unless ($p->is_default)
+-                                        <button type="submit" class="btn btn-sm" form="default-{{ $p->id }}">
+-                                            Jadikan utama
+-                                        </button>
+-                                        <button type="submit" class="btn btn-sm btn-danger" form="hapus-{{ $p->id }}"
+-                                                onclick="return confirm('Hapus {{ $p->name }}?')">
+-                                            <x-web.home.icon name="trash" :size="14" />
+-                                        </button>
+-                                    @endunless
++                                    <div class="table-actions">
++                                        <a href="{{ request()->fullUrlWithQuery(['edit' => $p->id]) }}#edit-provider"
++                                           class="btn btn-sm {{ $editingProvider?->id === $p->id ? 'btn-primary' : '' }}">
++                                            <x-web.home.icon name="edit" :size="14" />
++                                            Edit
++                                        </a>
++
++                                        @if ($p->is_active)
++                                            <button type="submit" class="btn btn-sm" form="disable-{{ $p->id }}">
++                                                Nonaktifkan
++                                            </button>
++                                        @else
++                                            <button type="submit" class="btn btn-sm" form="enable-{{ $p->id }}">
++                                                Aktifkan
++                                            </button>
++                                        @endif
++
++                                        @unless ($p->is_default)
++                                            <button type="submit" class="btn btn-sm" form="default-{{ $p->id }}">
++                                                Jadikan utama
++                                            </button>
++                                            <button type="submit" class="btn btn-sm btn-danger" form="hapus-{{ $p->id }}">
++                                                <x-web.home.icon name="trash" :size="14" />
++                                                Hapus
++                                            </button>
++                                        @endunless
++                                    </div>
+                                 </td>
+                             </tr>
+                         @endforeach
+@@ -141,7 +143,12 @@
+                 <form method="POST" action="{{ route('admin.payment-provider.default', $p->id) }}"
+                       id="default-{{ $p->id }}" class="inline-form">@csrf</form>
+                 <form method="POST" action="{{ route('admin.payment-provider.destroy', $p->id) }}"
+-                      id="hapus-{{ $p->id }}" class="inline-form">@csrf @method('DELETE')</form>
++                      id="hapus-{{ $p->id }}" class="inline-form"
++                      data-confirm
++                      data-confirm-title="Hapus metode pembayaran"
++                      data-confirm-message="Hapus {{ $p->name }}? Tindakan ini tidak bisa dilakukan bila provider masih menjadi utama.">
++                    @csrf @method('DELETE')
++                </form>
+             @endforeach
+         @endif
+     </section>
