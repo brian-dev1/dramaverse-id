@@ -9,6 +9,7 @@ use App\Services\Payments\PaymentCallbackService;
 use App\Services\Payments\PaymentGatewayManager;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
@@ -46,6 +47,25 @@ class PaymentCallbackController extends Controller
 
     public function __invoke(Request $request, string $provider): JsonResponse
     {
+        /*
+        |----------------------------------------------------------------------
+        | Catat SEBELUM apa pun diperiksa
+        |----------------------------------------------------------------------
+        |
+        | Ini baris pertama yang berjalan, sebelum provider dicari dan sebelum
+        | tanda tangan diverifikasi. Alasannya: "webhook tidak pernah sampai"
+        | dan "webhook sampai lalu ditolak" adalah dua masalah yang sama sekali
+        | berbeda, dengan gejala yang identik dari luar — dan tanpa baris ini
+        | keduanya tidak bisa dibedakan sama sekali.
+        |
+        | Yang dicatat: alamat pengirim, nama header (BUKAN nilainya), dan isi
+        | body. Nilai header sengaja tidak ikut karena di situlah tokennya
+        | berada; nama-namanya saja sudah cukup untuk membedakan "header salah
+        | nama" dari "token salah isi".
+        |
+        */
+        $this->logRaw($request, $provider);
+
         try {
             $model = $this->gateways->find($provider);
 
@@ -99,6 +119,28 @@ class PaymentCallbackController extends Controller
     | Pembantu
     |--------------------------------------------------------------------------
     */
+
+    /**
+     * Catat permintaan masuk apa adanya.
+     *
+     * Body ikut seluruhnya. Payload Trakteer memuat nama pendukung dan
+     * pesannya — itu memang data pribadi, tetapi tanpa payload lengkapnya
+     * pembayaran yang nomor tagihannya salah ketik tidak bisa dicocokkan
+     * manual, dan uang orang menggantung tanpa jejak. Log-nya berputar
+     * sendiri lewat channel `daily`.
+     */
+    private function logRaw(Request $request, string $provider): void
+    {
+        Log::channel(config('payment.logging.channel') ?: config('logging.default'))
+            ->info('payment.callback.raw', [
+                'provider' => $provider,
+                'ip'       => $request->ip(),
+                'ua'       => substr((string) $request->userAgent(), 0, 120),
+                // Nama header saja. Nilainya memuat token.
+                'headers'  => array_keys($this->headers($request)),
+                'body'     => $request->all(),
+            ]);
+    }
 
     /**
      * Header dalam huruf kecil semua.

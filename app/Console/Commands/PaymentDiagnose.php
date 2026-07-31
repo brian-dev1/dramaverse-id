@@ -179,6 +179,7 @@ class PaymentDiagnose extends Command
             fn (array $b) => str_contains($b['pesan'], $invoice->number)
                 || str_contains($b['event'] ?? '', 'unmatched')
                 || str_contains($b['event'] ?? '', 'invalid_signature')
+                || str_contains($b['event'] ?? '', 'callback.raw')
         ));
 
         if ($terkait === []) {
@@ -220,19 +221,54 @@ class PaymentDiagnose extends Command
 
         $adaLog = $this->log->tail('payment.', 8000);
 
+        // `raw` dicatat sebagai baris PERTAMA di controller, sebelum apa pun
+        // diperiksa. Kalau ia tidak ada, permintaannya memang tidak pernah
+        // sampai ke aplikasi -- dan itu masalah di Trakteer atau di nginx,
+        // bukan di kode ini.
+        $adaRaw = collect($adaLog)->contains(
+            fn (array $b) => str_contains($b['pesan'], 'callback.raw')
+        );
+
+        if (! $adaRaw) {
+
+            $this->components->error(
+                'TIDAK ADA satu pun permintaan yang pernah sampai ke endpoint callback.'
+            );
+
+            $slug = $this->gateways->usable()->first()?->slug ?? 'trakteer';
+
+            $this->components->bulletList([
+                'Toggle Webhook di dashboard Trakteer harus AKTIF — kalau masih '
+                    .'"Tidak Aktif", Trakteer tidak mengirim apa pun.',
+                'URL-nya: '.url('/payment/callback/'.$slug),
+                'Tekan "Send Webhook Test" di Trakteer, lalu jalankan perintah ini lagi.',
+                'Uji dari luar: curl -i -X POST '.url('/payment/callback/'.$slug)
+                    ." -H 'Content-Type: application/json' -d '{}'",
+                'Jawaban 419 berarti CSRF: php artisan route:clear',
+                'Jawaban 404 berarti slug providernya berbeda.',
+                'Tidak ada jawaban sama sekali berarti firewall atau DNS.',
+            ]);
+
+            return;
+        }
+
         $adaCallback = collect($adaLog)->contains(
             fn (array $b) => str_contains($b['pesan'], 'callback.received')
         );
 
         if (! $adaCallback) {
 
-            $this->components->error('Belum ada satu pun callback yang pernah diterima.');
+            $this->components->error(
+                'Permintaan SAMPAI, tetapi ditolak sebelum diproses.'
+            );
 
             $this->components->bulletList([
-                'Pastikan toggle Webhook di dashboard Trakteer sudah AKTIF.',
-                'Pastikan URL-nya persis: '.url('/payment/callback/<slug-provider>'),
-                'Tekan "Send Webhook Test" di Trakteer — jawabannya harus ok:true.',
-                'Kalau jawabannya 419, jalankan: php artisan route:clear',
+                'Cek baris `callback.raw` di atas — di situ ada nama header yang '
+                    .'benar-benar dikirim Trakteer.',
+                'Kalau tidak ada header bernama x-webhook-token, tokennya tidak '
+                    .'terkirim; periksa lagi pengaturan webhook di Trakteer.',
+                'Kalau ada tapi tetap ditolak, token di panel admin tidak sama '
+                    .'dengan yang di dashboard Trakteer.',
             ]);
 
             return;
