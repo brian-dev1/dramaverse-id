@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin;
 use App\Http\Controllers\Auth\TelegramAuthController;
+use App\Http\Controllers\PaymentCallbackController;
 use App\Http\Controllers\TelegramWebhookController;
 use App\Http\Controllers\Web;
 use Illuminate\Support\Facades\Route;
@@ -80,6 +81,24 @@ Route::controller(Web\PageController::class)->group(function () {
 */
 
 Route::get('/auth/telegram/{token}', TelegramAuthController::class)->name('web.telegram.login');
+/*
+|--------------------------------------------------------------------------
+| Callback pembayaran
+|--------------------------------------------------------------------------
+|
+| Satu route untuk SEMUA provider; slug-nya menentukan yang mana. Menambah
+| Stripe tidak menambah route.
+|
+| Dikecualikan dari CSRF di bootstrap/app.php -- provider tidak punya token
+| kita. Yang menggantikannya: verifikasi tanda tangan di dalam driver, plus
+| pembatas laju di bawah, karena endpoint ini terbuka ke internet tanpa
+| autentikasi apa pun.
+|
+*/
+Route::post('/payment/callback/{provider}', PaymentCallbackController::class)
+    ->middleware('throttle:payment-callback')
+    ->name('payment.callback');
+
 Route::post('/telegram/webhook', TelegramWebhookController::class)
     ->middleware('telegram.webhook')
     ->name('telegram.webhook');
@@ -113,6 +132,29 @@ Route::middleware(['auth', 'active'])->group(function () {
 
     Route::get('/settings', [Web\SettingController::class, 'index'])->name('web.settings');
     Route::put('/settings', [Web\SettingController::class, 'update'])->name('web.settings.update');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Checkout & tagihan
+    |--------------------------------------------------------------------------
+    |
+    | `throttle:checkout` membatasi pembuatan tagihan. Tanpa itu, satu skrip
+    | bisa membuat ribuan tagihan dalam semenit -- batas jumlah tagihan
+    | menggantung di CheckoutController adalah penjagaan kedua, bukan
+    | satu-satunya.
+    |
+    */
+    Route::post('/checkout', [Web\CheckoutController::class, 'store'])
+        ->name('web.checkout')->middleware('throttle:checkout');
+
+    Route::get('/invoice/{number}', [Web\CheckoutController::class, 'show'])
+        ->name('web.invoice.show');
+
+    Route::post('/invoice/{number}/retry', [Web\CheckoutController::class, 'retry'])
+        ->name('web.invoice.retry')->middleware('throttle:checkout');
+
+    Route::post('/invoice/{number}/cancel', [Web\CheckoutController::class, 'cancel'])
+        ->name('web.invoice.cancel');
 
     Route::post('/logout', [Web\ProfileController::class, 'logout'])->name('web.logout');
 });
@@ -434,6 +476,47 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
             Route::get('/telegram/log', [Admin\TelegramLogController::class, 'index'])
                 ->name('telegram-log.index');
+        });
+
+        /*
+        |----------------------------------------------------------------------
+        | Pembayaran (Phase 10)
+        |
+        | Memakai izin `membership.manage` yang sudah ada -- pembayaran dan
+        | membership dikelola orang yang sama, dan izin baru berarti RoleSeeder
+        | wajib dijalankan ulang di setiap pemasangan.
+        |----------------------------------------------------------------------
+        */
+        Route::middleware('permission:membership.manage')->group(function () {
+
+            Route::get('/payment/provider', [Admin\PaymentProviderController::class, 'index'])
+                ->name('payment-provider.index');
+            Route::post('/payment/provider', [Admin\PaymentProviderController::class, 'store'])
+                ->name('payment-provider.store');
+            Route::put('/payment/provider/{id}', [Admin\PaymentProviderController::class, 'update'])
+                ->name('payment-provider.update')->whereNumber('id');
+            Route::post('/payment/provider/{id}/enable', [Admin\PaymentProviderController::class, 'enable'])
+                ->name('payment-provider.enable')->whereNumber('id');
+            Route::post('/payment/provider/{id}/disable', [Admin\PaymentProviderController::class, 'disable'])
+                ->name('payment-provider.disable')->whereNumber('id');
+            Route::post('/payment/provider/{id}/default', [Admin\PaymentProviderController::class, 'makeDefault'])
+                ->name('payment-provider.default')->whereNumber('id');
+            Route::delete('/payment/provider/{id}', [Admin\PaymentProviderController::class, 'destroy'])
+                ->name('payment-provider.destroy')->whereNumber('id');
+
+            Route::get('/payment/invoice', [Admin\InvoiceController::class, 'index'])
+                ->name('invoice.index');
+            Route::get('/payment/invoice/export', [Admin\InvoiceController::class, 'export'])
+                ->name('invoice.export');
+            Route::get('/payment/invoice/{number}', [Admin\InvoiceController::class, 'show'])
+                ->name('invoice.show');
+            Route::post('/payment/invoice/{number}/cancel', [Admin\InvoiceController::class, 'cancel'])
+                ->name('invoice.cancel');
+            Route::post('/payment/transaction/{id}/verify', [Admin\InvoiceController::class, 'verify'])
+                ->name('invoice.verify')->whereNumber('id');
+
+            Route::get('/payment/log', [Admin\PaymentLogController::class, 'index'])
+                ->name('payment-log.index');
         });
 
         Route::get('/logs', [Admin\LogController::class, 'index'])

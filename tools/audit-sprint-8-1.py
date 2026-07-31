@@ -94,8 +94,16 @@ for f in ['app/Services/TelegramService.php',
 # ------------------------------------------------- 2. satu jalur HTTP saja
 print("\n== SATU JALUR HTTP ==")
 
-bad = [f for f in APP if norm(f) != CLIENT and 'Http::' in code_only(f)]
-check(not bad, "Http:: hanya ada di TelegramClient")
+# Sejak Phase 10 ada pemakai HTTP kedua yang sah: driver pembayaran.
+# Invarian yang dijaga bukan "tidak ada HTTP di mana pun", melainkan "tidak
+# ada HTTP KE TELEGRAM di luar TelegramClient". Versi sebelumnya melarang
+# `Http::` secara buta dan menghasilkan GAGAL palsu pada AbstractGateway yang
+# tidak menyentuh Telegram sama sekali.
+bad = [f for f in APP
+       if norm(f) != CLIENT
+       and not norm(f).startswith('app/Services/Payments/')
+       and 'Http::' in code_only(f)]
+check(not bad, "Http:: hanya ada di TelegramClient (di luar lapisan pembayaran)")
 for b in bad:
     print("        -", b)
 

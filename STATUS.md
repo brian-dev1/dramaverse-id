@@ -25,8 +25,8 @@ Yang WAJIB dilakukan asisten sebelum menulis satu baris kode:
 1. Baca `STATUS.md` **sampai habis** — termasuk "Bug diketahui" dan
    "Batasan asisten" di bagian bawah.
 2. Baca berkas `SPRINT-*-SELESAI.md` yang relevan dengan pekerjaan berikutnya.
-   Sprint terakhir yang selesai adalah **9.5** (`SPRINT-9-1-SELESAI.md`).
-   **Phase 7, 8, dan 9 selesai.**
+   Sprint terakhir yang selesai adalah **10.5** (`SPRINT-10-SELESAI.md`).
+   **Phase 7, 8, 9, dan 10 selesai.**
 3. Jalankan kelima alat verifikasi lebih dulu, untuk tahu keadaan awal yang
    bersih. Kalau ada yang GAGAL sejak awal, laporkan sebelum menambah apa pun.
    **Cocokkan angkanya dengan "Angka saat ini" di bawah.** Angka yang lebih
@@ -450,9 +450,53 @@ php artisan migrate
 php artisan config:cache
 ```
 
-**Angka saat ini:** 188 route, 29 controller admin, 30 view admin,
-40 migration, 11 middleware, 257 kelas CSS, 26 interface repository,
-11 job antrean, 405 berkas PHP, 75 blade, 9 perintah artisan.
+### Phase 10 - Payment & Membership System
+Sistem membership dan pembayaran yang modular. **Provider tidak dipatok di
+kode**: menambah Stripe atau PayPal cukup satu kelas driver + satu case enum,
+tanpa menyentuh Business Logic Membership, controller, route, maupun view.
+Detail: `SPRINT-10-SELESAI.md`.
+
+- **Membership** - `App\Services\Membership\MembershipService`: paket, status
+  (Free/Premium/Expired), riwayat, aktivasi, perpanjangan yang MENUMPUK pada
+  sisa yang berjalan, pembatalan, kedaluwarsa terjadwal.
+- **Pembayaran** - tabel `invoices` dan `payment_transactions`. Satu invoice
+  boleh punya beberapa percobaan; nomor tagihan tidak pernah dibuat ulang.
+- **Provider** - tabel `payment_providers`, kredensial terenkripsi, sandbox
+  dan live bisa berdampingan. Panel di `/admin/payment/provider`.
+- **Driver** - `manual` dan `trakteer` JALAN PENUH. Midtrans, Xendit, Tripay
+  terdaftar sebagai kerangka yang menolak diaktifkan sampai diuji dengan akun
+  sungguhan.
+- **Callback** - satu route `/payment/callback/{provider}` untuk semua
+  provider. Empat penjagaan: tanda tangan, `lockForUpdate`, perpindahan status,
+  pencocokan nominal.
+- **Admin** - `/admin/payment/invoice` (search, filter, sort, pagination,
+  ekspor CSV, verifikasi manual, pembatalan), `/admin/payment/log`.
+
+**Bug fatal yang ditemukan dan diperbaiki:** `EpisodeAccessRepository` membaca
+`episodes.access_type` dan `users.is_premium` yang **keduanya tidak pernah ada
+di migration mana pun**. Eloquent mengembalikan null tanpa galat, sehingga
+method itu selalu mengembalikan false - **tidak ada satu pun episode yang bisa
+ditonton siapa pun, termasuk yang gratis.** Dipakai pemutar web DAN bot
+Telegram sejak Sprint 8.5.
+
+Bug kedua: `PaymentService` menyuntik `PaymentGatewayInterface` yang tidak
+pernah di-bind. Setiap upaya membangunnya melempar `BindingResolutionException`.
+Tidak pernah terlihat karena tidak ada yang memanggilnya - dead code sejak
+dibuat, bersama tiga gateway yang isinya hanya `TODO`.
+
+**Langkah wajib setelah deploy:**
+```
+php artisan migrate
+php artisan db:seed --class='Database\Seeders\PaymentProviderSeeder' --force
+php artisan config:cache
+```
+Lalu isi nomor rekening di `/admin/payment/provider` dan aktifkan. Sebelum itu
+tombol Berlangganan tidak dirender sama sekali - tombol yang menjanjikan
+pembayaran lalu dijawab "belum ada metode" adalah dead link.
+
+**Angka saat ini:** 194 route, 32 controller admin, 34 view admin,
+45 migration, 11 middleware, 257 kelas CSS, 26 interface repository,
+12 job antrean, 431 berkas PHP, 80 blade, 10 perintah artisan.
 
 Empat angka terakhir ditambahkan sebagai pembanding untuk poin 3 di bagian
 "Memulai sesi baru": alat verifikasi yang melaporkan angka lebih kecil berarti
@@ -488,6 +532,28 @@ beberapa masih dangkal:
   otomatis melanjutkan
 
 ### Bug diketahui, belum diperbaiki
+- **Tiga driver gateway masih kerangka.** Midtrans, Xendit, dan Tripay
+  terdaftar penuh di `PaymentDriver`, punya daftar field kredensialnya sendiri,
+  dan muncul di panel — tetapi `isImplemented()` mengembalikan false dan
+  keduanya menolak diaktifkan. Alur charge, bentuk callback, dan cara
+  menghitung tanda tangannya hanya bisa dipastikan dengan akun sungguhan;
+  menulisnya dari ingatan menghasilkan kode yang lolos seluruh pemeriksaan
+  statis lalu gagal pertama kali ada orang yang benar-benar membayar. Tiga
+  langkah untuk menyelesaikannya ada di docblock masing-masing.
+- **Auto renewal belum berjalan.** Kolom `auto_renew` ada dan bisa diisi; yang
+  memperpanjang otomatis saat jatuh tempo belum ada. Perpanjangan otomatis
+  memerlukan penyimpanan token kartu di sisi provider dan alur pembatalan yang
+  bisa diandalkan — keduanya keputusan yang lebih besar daripada satu kolom.
+- **Pengembalian dana baru struktur data.** `RefundStatus` lengkap, kolomnya
+  ada, panel menampilkannya. Yang belum ada: yang memanggil API pengembalian
+  dana provider. Spesifikasi Phase 10 memang hanya meminta struktur datanya.
+- **Trakteer menyambung lewat pesan bebas.** Trakteer tidak punya API
+  pembuatan transaksi, jadi tagihan dikenali dari pola `INV-YYYYMMDD-XXXXXX`
+  di pesan pendukung. Yang salah ketik tidak akan tersambung ke tagihan mana
+  pun. Itu bukan kegagalan yang bisa dihilangkan kode — yang bisa dilakukan,
+  dan dilakukan: payload lengkapnya dicatat sebagai
+  `payment.callback.unmatched` plus peringatan ke operator, sehingga bisa
+  dicocokkan manual.
 - **Bot API menolak berkas di atas 50 MB, dan itu batas Telegram.** Video
   episode drama umumnya jauh lebih besar, jadi dalam keadaan bawaan sebagian
   besar katalog **tidak akan bisa disinkronkan ke Telegram**. Tidak ada
@@ -752,6 +818,7 @@ python tools/audit-sprint-8-1.py         # 81 pemeriksaan khusus Sprint 8.1
 python tools/audit-sprint-8-2.py         # 125 pemeriksaan khusus Sprint 8.2-8.6
 python tools/audit-sprint-8-7.py         # 133 pemeriksaan khusus Sprint 8.7-8.9
 python tools/audit-sprint-9-1.py         # 117 pemeriksaan khusus Phase 9
+python tools/audit-phase-10.py           # 164 pemeriksaan khusus Phase 10
 ```
 
 `audit-sprint-8-2.py` memeriksa **integrasi**, bukan keberadaan berkas:
@@ -779,7 +846,7 @@ view, komponen, layout, `$fillable` vs migration, urutan foreign key,
 binding repository, PSR-4, import CSS, kolom tanggal, form + CSRF, href
 buntu, emoji, kelengkapan `match` enum, dan route di menu sidebar admin.
 
-**Alat verifikasinya sendiri sudah delapan kali terbukti salah.** Perlakukan
+**Alat verifikasinya sendiri sudah sembilan kali terbukti salah.** Perlakukan
 seperti kode lain: bisa keliru, dan perlu diaudit.
 
 - **7.1** — pembatas blok migration di `cols_of()` tidak pernah bekerja,

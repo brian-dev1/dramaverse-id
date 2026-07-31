@@ -264,8 +264,16 @@ for g in ganda:
 # ------------------------------------------- 12. tidak ada jalur HTTP baru
 print("\n== TETAP SATU PINTU ==")
 
-bad = [f for f in APP if norm(f) != CLIENT and 'Http::' in code_only(read(f))]
-check(not bad, "Http:: masih hanya ada di TelegramClient")
+# Sejak Phase 10 ada pemakai HTTP kedua yang sah: driver pembayaran.
+# Invarian yang dijaga pemeriksaan ini bukan "tidak ada HTTP di mana pun",
+# melainkan "tidak ada HTTP KE TELEGRAM di luar TelegramClient". Versi
+# sebelumnya melarang `Http::` secara buta dan menghasilkan GAGAL palsu pada
+# AbstractGateway yang tidak menyentuh Telegram sama sekali.
+bad = [f for f in APP
+       if norm(f) != CLIENT
+       and not norm(f).startswith('app/Services/Payments/')
+       and 'Http::' in code_only(read(f))]
+check(not bad, "Http:: masih hanya ada di TelegramClient (di luar lapisan pembayaran)")
 for b in bad:
     print("        -", b)
 

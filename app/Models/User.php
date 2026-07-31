@@ -28,6 +28,8 @@ class User extends Authenticatable
         'is_banned',
         'last_login_at',
         'last_seen_at',
+        'is_premium',
+        'premium_expired_at',
     ];
 
     protected $hidden = [
@@ -39,6 +41,8 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'is_premium'         => 'boolean',
+            'premium_expired_at' => 'datetime',
             'password'          => 'hashed',
             'is_admin'          => 'boolean',
             'is_active'         => 'boolean',

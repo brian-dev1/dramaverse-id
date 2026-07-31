@@ -1,0 +1,143 @@
+@extends('web.layouts.app')
+
+@section('title', 'Tagihan '.$invoice->number)
+
+@section('content')
+
+    <section class="section-pad">
+
+        <h1 class="page-title">Tagihan {{ $invoice->number }}</h1>
+
+        <p class="page-subtitle">
+            {{ $invoice->plan_name }} — {{ $invoice->plan_duration }} hari
+        </p>
+
+        <div class="panel">
+            <div class="detail-body-admin">
+                <dl class="settings-meta">
+                    <dt>Subtotal</dt>
+                    <dd>Rp {{ number_format((float) $invoice->subtotal, 0, ',', '.') }}</dd>
+
+                    @if ((float) $invoice->fee > 0)
+                        <dt>Biaya layanan</dt>
+                        <dd>Rp {{ number_format((float) $invoice->fee, 0, ',', '.') }}</dd>
+                    @endif
+
+                    <dt>Total</dt>
+                    <dd><strong>Rp {{ number_format((float) $invoice->total, 0, ',', '.') }}</strong></dd>
+
+                    <dt>Status</dt>
+                    <dd>
+                        <span class="badge {{ $invoice->status->badge() }}">
+                            {{ $invoice->status->label() }}
+                        </span>
+                    </dd>
+
+                    @if ($invoice->due_at && $invoice->status->value === 'pending')
+                        <dt>Bayar sebelum</dt>
+                        <dd>{{ $invoice->due_at->format('d M Y H:i') }}</dd>
+                    @endif
+                </dl>
+            </div>
+        </div>
+
+        @if ($invoice->status->value === 'paid')
+
+            <div class="panel">
+                <div class="detail-body-admin">
+                    <p class="page-subtitle">
+                        Pembayaran diterima. Membership Anda sudah aktif
+                        @if ($invoice->subscription?->expired_at)
+                            sampai {{ $invoice->subscription->expired_at->format('d M Y') }}.
+                        @else
+                            .
+                        @endif
+                    </p>
+
+                    <a href="{{ route('web.profile') }}" class="btn btn-primary">Ke profil saya</a>
+                </div>
+            </div>
+
+        @elseif ($invoice->isPayable())
+
+            <div class="panel">
+                <div class="panel-head"><h2>Cara membayar</h2></div>
+
+                <div class="detail-body-admin">
+                    @if ($provider?->instruction)
+                        <p class="page-subtitle">{!! nl2br(e($provider->instruction)) !!}</p>
+                    @endif
+
+                    @if ($provider && $provider->driver->isManual())
+                        <dl class="settings-meta">
+                            <dt>Bank</dt>
+                            <dd>{{ $provider->credential('bank_name') ?? '—' }}</dd>
+
+                            <dt>Nomor rekening</dt>
+                            <dd><strong>{{ $provider->credential('account_number') ?? '—' }}</strong></dd>
+
+                            <dt>Atas nama</dt>
+                            <dd>{{ $provider->credential('account_name') ?? '—' }}</dd>
+
+                            <dt>Nominal</dt>
+                            <dd><strong>Rp {{ number_format((float) $invoice->total, 0, ',', '.') }}</strong></dd>
+                        </dl>
+
+                        <p class="page-subtitle">
+                            Transfer sesuai nominal di atas, lalu kirim bukti transfernya
+                            ke admin lewat bot Telegram. Membership aktif setelah
+                            pembayaran diverifikasi.
+                        </p>
+                    @elseif ($transaction?->checkout_url)
+                        <a href="{{ $transaction->checkout_url }}" class="btn btn-primary"
+                           target="_blank" rel="noopener">
+                            Lanjutkan pembayaran
+                        </a>
+                    @endif
+                </div>
+            </div>
+
+            @if ($providers->count() > 1)
+                <div class="panel">
+                    <div class="panel-head"><h2>Ganti metode</h2></div>
+
+                    <form method="POST" action="{{ route('web.invoice.retry', $invoice->number) }}"
+                          class="admin-form">
+                        @csrf
+
+                        <x-admin.field name="provider" label="Metode pembayaran" type="select" required
+                                       :options="$providers->pluck('name', 'slug')->all()" />
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">Ganti metode</button>
+                        </div>
+                    </form>
+                </div>
+            @endif
+
+            <form method="POST" action="{{ route('web.invoice.cancel', $invoice->number) }}"
+                  class="inline-form">
+                @csrf
+                <button type="submit" class="btn btn-danger"
+                        onclick="return confirm('Batalkan tagihan ini?')">
+                    Batalkan tagihan
+                </button>
+            </form>
+
+        @else
+
+            <div class="panel">
+                <div class="detail-body-admin">
+                    <p class="page-subtitle">
+                        Tagihan ini sudah tidak bisa dibayar.
+                        <a href="{{ route('web.membership') }}">Pilih paket lagi</a>
+                        untuk membuat tagihan baru.
+                    </p>
+                </div>
+            </div>
+
+        @endif
+
+    </section>
+
+@endsection

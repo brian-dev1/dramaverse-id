@@ -98,3 +98,28 @@ Schedule::command('backup:run')
     ->dailyAt('02:30')
     ->withoutOverlapping()
     ->runInBackground();
+
+/*
+|--------------------------------------------------------------------------
+| Pembayaran & Membership
+|--------------------------------------------------------------------------
+|
+| verify tiap lima menit: callback yang hilang harus tertutup dalam hitungan
+| menit, bukan jam. Pengguna yang sudah membayar dan belum aktif akan
+| menghubungi dukungan jauh sebelum satu jam lewat.
+|
+| expire tiap jam: keterlambatan beberapa menit pada langganan yang habis
+| tidak merugikan siapa pun -- `EpisodeAccessRepository` tetap membandingkan
+| `premium_expired_at` sendiri di setiap pemeriksaan akses, jadi tidak ada
+| yang bisa menonton melewati masa aktifnya meski scheduler terlambat.
+|
+*/
+Schedule::command('payment:auto verify')
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->runInBackground();
+
+Schedule::command('payment:auto expire')
+    ->hourly()
+    ->withoutOverlapping()
+    ->runInBackground();

@@ -67,6 +67,7 @@ use Illuminate\Auth\Events\Lockout;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Support\Facades\Event;
+use App\Services\Payments\PaymentGatewayManager;
 use App\Services\Telegram\Contracts\TelegramClientInterface;
 use App\Services\Telegram\Contracts\TelegramServiceInterface;
 use App\Services\Telegram\TelegramClient;
@@ -157,6 +158,25 @@ class AppServiceProvider extends ServiceProvider
             TelegramServiceInterface::class,
             TelegramService::class
         );
+
+        /*
+        |----------------------------------------------------------------------
+        | Pembayaran
+        |----------------------------------------------------------------------
+        |
+        | Singleton karena ia memoisasi instance gateway per driver. Kalau
+        | tidak singleton, memoisasinya tidak ada gunanya.
+        |
+        | Perhatikan yang TIDAK di-bind: `PaymentGatewayInterface` sengaja
+        | tidak punya binding tunggal. Gateway mana yang dipakai ditentukan
+        | oleh baris `payment_providers`, bukan oleh container -- itulah yang
+        | membuat dua provider dengan driver berbeda bisa hidup berdampingan.
+        | Sebelum Phase 10 kontrak itu di-inject langsung tanpa pernah
+        | di-bind, sehingga `PaymentService` lama tidak pernah bisa dibangun
+        | sama sekali.
+        |
+        */
+        $this->app->singleton(PaymentGatewayManager::class);
     }
 
     public function boot(): void
@@ -230,6 +250,32 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('api', fn (Request $request) =>
             Limit::perMinute(90)->by($request->user()?->id ?: $request->ip())
+        );
+
+        /*
+        |----------------------------------------------------------------------
+        | Pembayaran
+        |----------------------------------------------------------------------
+        |
+        | Callback terbuka ke internet tanpa autentikasi apa pun dan tanpa
+        | CSRF. Verifikasi tanda tangan di dalam driver adalah penjagaan
+        | utamanya; batas ini menahan siapa pun yang mencoba menebak tanda
+        | tangan dengan mengirim ribuan permintaan.
+        |
+        | Dibatasi per IP, dan angkanya dibaca dari config supaya bisa
+        | dinaikkan tanpa deploy bila ada provider yang memang mengirim
+        | callback lebih rapat daripada perkiraan.
+        |
+        */
+        RateLimiter::for('payment-callback', fn (Request $request) =>
+            Limit::perMinute((int) config('payment.guard.callback_rate', 60))->by($request->ip())
+        );
+
+        // Pembuatan tagihan. Batas jumlah tagihan menggantung di
+        // CheckoutController adalah penjagaan kedua, bukan satu-satunya —
+        // yang ini menahan lajunya, yang itu menahan jumlahnya.
+        RateLimiter::for('checkout', fn (Request $request) =>
+            Limit::perMinute(10)->by($request->user()?->id ?: $request->ip())
         );
     }
 }

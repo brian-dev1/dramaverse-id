@@ -28,8 +28,34 @@
                             <p class="plan-desc">{{ $plan->description }}</p>
                         @endif
 
+                        {{--
+                            Sejak Phase 10 tombolnya benar-benar membuat tagihan.
+                            Sebelumnya ia hanya teks yang tidak menuju ke mana pun.
+
+                            Tombol tidak dirender bila tidak ada metode pembayaran
+                            yang siap: tombol yang menjanjikan pembayaran lalu
+                            dijawab "belum ada metode" adalah dead link, dan aturan
+                            nomor 4 proyek ini melarangnya.
+                        --}}
                         @auth
-                            <span class="btn btn-primary">Hubungi Admin via Telegram</span>
+                            @if ($providers->isNotEmpty())
+                                <form method="POST" action="{{ route('web.checkout') }}" class="inline-form">
+                                    @csrf
+                                    <input type="hidden" name="plan" value="{{ $plan->slug }}">
+
+                                    @if ($providers->count() > 1)
+                                        <select name="provider" class="control control-sm">
+                                            @foreach ($providers as $p)
+                                                <option value="{{ $p->slug }}">{{ $p->name }}</option>
+                                            @endforeach
+                                        </select>
+                                    @endif
+
+                                    <button type="submit" class="btn btn-primary">Berlangganan</button>
+                                </form>
+                            @else
+                                <span class="btn btn-ghost">Metode pembayaran belum tersedia</span>
+                            @endif
                         @else
                             <span class="btn btn-ghost">Masuk dulu untuk berlangganan</span>
                         @endauth

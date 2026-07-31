@@ -3,7 +3,7 @@
 namespace App\Telegram\Handlers;
 
 use App\Models\User;
-use App\Services\MembershipService;
+use App\Services\Membership\MembershipService;
 use App\Services\Telegram\Contracts\TelegramServiceInterface;
 
 /**

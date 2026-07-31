@@ -209,8 +209,14 @@ print("\n== TETAP BERSIH ==")
 
 CLIENT = 'app/Services/Telegram/TelegramClient.php'
 
-bad = [f for f in APP if norm(f) != CLIENT and 'Http::' in code_only(read(f))]
-check(not bad, "Http:: masih hanya ada di TelegramClient")
+# Sejak Phase 10 ada pemakai HTTP kedua yang sah: driver pembayaran.
+# Invarian yang dijaga bukan "tidak ada HTTP di mana pun", melainkan "tidak
+# ada HTTP KE TELEGRAM di luar TelegramClient".
+bad = [f for f in APP
+       if norm(f) != CLIENT
+       and not norm(f).startswith('app/Services/Payments/')
+       and 'Http::' in code_only(read(f))]
+check(not bad, "Http:: masih hanya ada di TelegramClient (di luar lapisan pembayaran)")
 for b in bad:
     print("        -", b)
 
