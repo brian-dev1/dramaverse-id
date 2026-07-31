@@ -26,6 +26,9 @@ class TelegramDeepLink
 
     public const DRAMA = 'drama_';
 
+    /** Membuka penawaran paket di bot. */
+    public const SUBSCRIBE = 'subscribe';
+
     /*
     |--------------------------------------------------------------------------
     | Menyusun
@@ -46,6 +49,17 @@ class TelegramDeepLink
         $id = $drama instanceof Drama ? $drama->id : $drama;
 
         return self::build(self::DRAMA.$id);
+    }
+
+    /**
+     * Tautan ke penawaran paket di bot.
+     *
+     * Sejak berlangganan dipindahkan sepenuhnya ke Telegram, inilah satu-satunya
+     * jalan pengguna memulai pembayaran. Website hanya mengantar ke sini.
+     */
+    public static function subscribe(): ?string
+    {
+        return self::build(self::SUBSCRIBE);
     }
 
     /**

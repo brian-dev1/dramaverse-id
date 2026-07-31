@@ -144,14 +144,9 @@ Route::middleware(['auth', 'active'])->group(function () {
     | satu-satunya.
     |
     */
-    Route::post('/checkout', [Web\CheckoutController::class, 'store'])
-        ->name('web.checkout')->middleware('throttle:checkout');
 
     Route::get('/invoice/{number}', [Web\CheckoutController::class, 'show'])
         ->name('web.invoice.show');
-
-    Route::post('/invoice/{number}/retry', [Web\CheckoutController::class, 'retry'])
-        ->name('web.invoice.retry')->middleware('throttle:checkout');
 
     Route::post('/invoice/{number}/cancel', [Web\CheckoutController::class, 'cancel'])
         ->name('web.invoice.cancel');

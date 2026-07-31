@@ -119,6 +119,11 @@ class CallbackHandler
                 app(PremiumHandler::class)->handle($callback, $user);
 
                 return;
+
+            case PremiumHandler::BUY:
+                app(PremiumHandler::class)->buy($callback, $user, (int) ($argumen[0] ?? 0));
+
+                return;
         }
 
         /*

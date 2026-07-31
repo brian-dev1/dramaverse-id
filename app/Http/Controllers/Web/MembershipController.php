@@ -2,18 +2,14 @@
 
 namespace App\Http\Controllers\Web;
 
+use App\Support\TelegramDeepLink;
 use App\Http\Controllers\Controller;
 use App\Models\MembershipPlan;
-use App\Services\Payments\PaymentGatewayManager;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 
 class MembershipController extends Controller
 {
-    public function __construct(
-        protected PaymentGatewayManager $gateways
-    ) {
-    }
 
     /** Daftar paket membership — dapat diakses tanpa login. */
     public function index(): View
@@ -34,11 +30,10 @@ class MembershipController extends Controller
                 ->get();
         }
 
-        // Hanya provider yang benar-benar siap. Menampilkan metode yang
-        // kredensialnya belum lengkap berarti pengguna sampai di checkout
-        // lalu ditolak -- tempat paling buruk untuk gagal.
-        $providers = $this->gateways->usable();
+        // Berlangganan dipindahkan sepenuhnya ke bot. Halaman ini tinggal
+        // etalase yang mengantar ke sana.
+        $botLink = TelegramDeepLink::subscribe();
 
-        return view('web.pages.membership', compact('plans', 'subscriptions', 'providers'));
+        return view('web.pages.membership', compact('plans', 'subscriptions', 'botLink'));
     }
 }

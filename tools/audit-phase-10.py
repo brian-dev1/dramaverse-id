@@ -247,7 +247,8 @@ check("'encrypted:array'" in prov_model, "kredensial gateway terenkripsi di basi
 check('filled($nilai)' in prov_ctrl,
       "field kredensial kosong tidak menimpa yang tersimpan")
 
-check('max_pending_invoices' in read('app/Http/Controllers/Web/CheckoutController.php'),
+# Pembuatan tagihan pindah ke bot Telegram; penjagaannya ikut pindah.
+check('max_pending_invoices' in read('app/Telegram/Handlers/PremiumHandler.php'),
       "jumlah tagihan menggantung per pengguna dibatasi")
 
 check('NotFoundHttpException' in read('app/Http/Controllers/Web/CheckoutController.php'),
@@ -351,12 +352,23 @@ for kelas in ['PaymentGatewayManager', 'CheckoutService', 'InvoiceService',
     check(SEMUA.count(kelas) >= 2, f"{kelas} dipakai, bukan kelas yatim")
 
 routes = read('routes/web.php')
-for nama in ['payment.callback', 'web.checkout', 'web.invoice.show',
+# `web.checkout` sengaja TIDAK ada lagi: pembuatan tagihan pindah ke bot
+# Telegram, dan route web-nya dibuang bersama controllernya. Yang tersisa di
+# web hanya melihat dan membatalkan tagihan.
+for nama in ['payment.callback', 'web.invoice.show',
              'admin.invoice.index', 'admin.payment-provider.index',
              'admin.payment-log.index']:
     short = nama.replace('admin.', '').replace('web.', '')
     check(f"'{short}'" in routes or f"'{nama}'" in routes,
           f"route {nama} terdefinisi")
+
+# Jalur beli pindah ke bot: pastikan ADA dan tersambung.
+premium = read('app/Telegram/Handlers/PremiumHandler.php')
+check('CheckoutService' in premium, "bot membuat tagihan lewat CheckoutService")
+check('PremiumHandler::BUY' in read('app/Telegram/Handlers/CallbackHandler.php'),
+      "tombol beli di bot tersambung ke router callback")
+check("'web.checkout'" not in routes,
+      "route checkout web sudah dibuang, bukan sekadar disembunyikan")
 
 sidebar = read('resources/views/web/layouts/admin.blade.php')
 for r in ['admin.invoice.index', 'admin.payment-provider.index', 'admin.payment-log.index']:

@@ -200,24 +200,6 @@
                 </div>
             </div>
 
-            @if ($providers->count() > 1)
-                <div class="panel">
-                    <div class="panel-head"><h2>Ganti metode</h2></div>
-
-                    <form method="POST" action="{{ route('web.invoice.retry', $invoice->number) }}"
-                          class="admin-form">
-                        @csrf
-
-                        <x-admin.field name="provider" label="Metode pembayaran" type="select" required
-                                       :options="$providers->pluck('name', 'slug')->all()" />
-
-                        <div class="form-actions">
-                            <button type="submit" class="btn btn-primary">Ganti metode</button>
-                        </div>
-                    </form>
-                </div>
-            @endif
-
             <form method="POST" action="{{ route('web.invoice.cancel', $invoice->number) }}"
                   class="inline-form">
                 @csrf
@@ -232,9 +214,8 @@
             <div class="panel">
                 <div class="detail-body-admin">
                     <p class="page-subtitle">
-                        Tagihan ini sudah tidak bisa dibayar.
-                        <a href="{{ route('web.membership') }}">Pilih paket lagi</a>
-                        untuk membuat tagihan baru.
+                        Tagihan ini sudah tidak bisa dibayar. Buat tagihan baru
+                        lewat bot Telegram — tekan menu <strong>Premium</strong>.
                     </p>
                 </div>
             </div>

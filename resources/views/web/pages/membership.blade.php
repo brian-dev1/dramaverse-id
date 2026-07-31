@@ -29,36 +29,29 @@
                         @endif
 
                         {{--
-                            Sejak Phase 10 tombolnya benar-benar membuat tagihan.
-                            Sebelumnya ia hanya teks yang tidak menuju ke mana pun.
+                            Berlangganan dipindahkan sepenuhnya ke bot Telegram.
 
-                            Tombol tidak dirender bila tidak ada metode pembayaran
-                            yang siap: tombol yang menjanjikan pembayaran lalu
-                            dijawab "belum ada metode" adalah dead link, dan aturan
-                            nomor 4 proyek ini melarangnya.
+                            Alasannya bukan penyederhanaan: Trakteer
+                            menyambungkan pembayaran ke tagihan lewat pesan yang
+                            diketik pendukung, dan nomor tagihan itu harus ada di
+                            tangan pengguna tepat sebelum ia menekan tautannya.
+                            Di bot keduanya ada dalam satu percakapan yang bisa
+                            digulir ulang; di web, nomornya tertinggal di tab yang
+                            sudah ditutup.
+
+                            Halaman ini tinggal etalase. Tombolnya tidak dirender
+                            bila TELEGRAM_BOT_USERNAME belum diisi -- tautan t.me
+                            tanpa nama bot tidak menuju ke mana pun, dan aturan
+                            nomor 4 proyek ini melarang tombol semacam itu.
                         --}}
-                        @auth
-                            @if ($providers->isNotEmpty())
-                                <form method="POST" action="{{ route('web.checkout') }}" class="inline-form">
-                                    @csrf
-                                    <input type="hidden" name="plan" value="{{ $plan->slug }}">
-
-                                    @if ($providers->count() > 1)
-                                        <select name="provider" class="control control-sm">
-                                            @foreach ($providers as $p)
-                                                <option value="{{ $p->slug }}">{{ $p->name }}</option>
-                                            @endforeach
-                                        </select>
-                                    @endif
-
-                                    <button type="submit" class="btn btn-primary">Berlangganan</button>
-                                </form>
-                            @else
-                                <span class="btn btn-ghost">Metode pembayaran belum tersedia</span>
-                            @endif
+                        @if ($botLink)
+                            <a href="{{ $botLink }}" class="btn btn-primary"
+                               target="_blank" rel="noopener">
+                                Berlangganan lewat Telegram
+                            </a>
                         @else
-                            <span class="btn btn-ghost">Masuk dulu untuk berlangganan</span>
-                        @endauth
+                            <span class="btn btn-ghost">Berlangganan lewat bot Telegram</span>
+                        @endif
                     </article>
                 @endforeach
             </div>

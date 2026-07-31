@@ -45,6 +45,16 @@ class StartHandler
 
         if ($parameter !== '') {
 
+            if ($parameter === TelegramDeepLink::SUBSCRIBE) {
+
+                app(PremiumHandler::class)->handle(
+                    ['message' => ['chat' => $message['chat']], 'id' => null],
+                    $user
+                );
+
+                return;
+            }
+
             if ($episodeId = TelegramDeepLink::episodeId($parameter)) {
                 app(WatchHandler::class)->handle($chatId, $user, $episodeId);
 

@@ -5,10 +5,8 @@ namespace App\Http\Controllers\Web;
 use App\Enums\PaymentStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Invoice;
-use App\Models\MembershipPlan;
 use App\Services\Membership\MembershipService;
 use App\Services\Payments\CheckoutService;
-use App\Services\Payments\Exceptions\PaymentException;
 use App\Services\Payments\PaymentGatewayManager;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -23,6 +21,17 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
  * aman dibaca pengguna — `PaymentException::forUser()` yang memutuskan mana
  * yang boleh ditampilkan dan mana yang cuma boleh masuk log.
  */
+/**
+ * CATATAN: pembuatan tagihan dipindahkan ke bot Telegram.
+ *
+ * `store()` dan `retry()` dibuang beserta route-nya. Yang tersisa di web
+ * hanyalah MELIHAT tagihan dan membatalkannya — keduanya tidak menyentuh uang.
+ *
+ * Alasannya ada di PremiumHandler: Trakteer menyambungkan pembayaran ke
+ * tagihan lewat pesan yang diketik pendukung, dan nomor tagihan harus ada di
+ * tangan pengguna tepat sebelum ia menekan tautannya. Di bot keduanya dalam
+ * satu percakapan; di web nomornya tertinggal di tab yang sudah ditutup.
+ */
 class CheckoutController extends Controller
 {
     public function __construct(
@@ -32,71 +41,6 @@ class CheckoutController extends Controller
     ) {
     }
 
-    /**
-     * Mulai pembayaran satu paket.
-     */
-    public function store(Request $request): RedirectResponse
-    {
-        $data = $request->validate([
-            'plan'     => ['required', 'string', 'exists:membership_plans,slug'],
-            'provider' => ['nullable', 'string'],
-        ], [
-            'plan.exists' => 'Paket yang Anda pilih sudah tidak tersedia.',
-        ]);
-
-        $user = $request->user();
-
-        /*
-        |----------------------------------------------------------------------
-        | Pencegahan penyalahgunaan
-        |----------------------------------------------------------------------
-        |
-        | Satu pengguna tidak boleh menumpuk tagihan menggantung. Tanpa batas,
-        | satu skrip bisa membuat ribuan tagihan dalam semenit — memenuhi tabel
-        | sekaligus mengacaukan seluruh angka pendapatan.
-        |
-        | Yang lama ditawarkan untuk dilanjutkan, bukan sekadar ditolak: orang
-        | yang menekan tombol dua kali karena halamannya lambat tidak sedang
-        | menyalahgunakan apa pun.
-        |
-        */
-
-        $menggantung = Invoice::query()
-            ->where('user_id', $user->id)
-            ->unpaid()
-            ->where(fn ($q) => $q->whereNull('due_at')->orWhere('due_at', '>', now()))
-            ->latest('id')
-            ->get();
-
-        if ($menggantung->count() >= (int) config('payment.guard.max_pending_invoices', 3)) {
-
-            return redirect()
-                ->route('web.invoice.show', $menggantung->first()->number)
-                ->with('error', 'Anda masih punya tagihan yang belum dibayar. '
-                    .'Selesaikan atau batalkan dulu sebelum membuat yang baru.');
-        }
-
-        $plan = MembershipPlan::where('slug', $data['plan'])->firstOrFail();
-
-        try {
-            $provider = filled($data['provider'] ?? null)
-                ? $this->gateways->find($data['provider'])
-                : $this->gateways->default();
-
-            $transaction = $this->checkout->start($user, $plan, $provider);
-
-        } catch (PaymentException $e) {
-
-            return back()->with('error', $e->forUser());
-        }
-
-        // Provider yang punya halaman sendiri: langsung ke sana. Yang manual
-        // tidak punya, jadi pengguna diantar ke halaman tagihan yang memuat
-        // nomor rekening.
-        return $transaction->checkout_url
-            ? redirect()->away($transaction->checkout_url)
-            : redirect()->route('web.invoice.show', $transaction->invoice->number);
-    }
 
     /**
      * Halaman satu tagihan.
@@ -126,37 +70,10 @@ class CheckoutController extends Controller
             'invoice'     => $invoice,
             'transaction' => $terakhir,
             'provider'    => $terakhir?->provider,
-            'providers'   => $this->gateways->usable(),
             'membership'  => $this->membership->status($request->user()),
         ]);
     }
 
-    /** Bayar ulang tagihan yang sama dengan provider lain. */
-    public function retry(Request $request, string $number): RedirectResponse
-    {
-        $data = $request->validate([
-            'provider' => ['required', 'string'],
-        ]);
-
-        $invoice = Invoice::where('number', $number)
-            ->where('user_id', $request->user()->id)
-            ->firstOrFail();
-
-        try {
-            $transaction = $this->checkout->retry(
-                $invoice,
-                $this->gateways->find($data['provider'])
-            );
-
-        } catch (PaymentException $e) {
-
-            return back()->with('error', $e->forUser());
-        }
-
-        return $transaction->checkout_url
-            ? redirect()->away($transaction->checkout_url)
-            : back()->with('status', 'Metode pembayaran diperbarui.');
-    }
 
     /** Batalkan tagihan sendiri. */
     public function cancel(Request $request, string $number): RedirectResponse
