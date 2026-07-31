@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\Payments\Exceptions\PaymentException;
+use App\Services\Payments\Exceptions\WebhookTestException;
 use App\Services\Payments\PaymentAlertService;
 use App\Services\Payments\PaymentCallbackService;
 use App\Services\Payments\PaymentGatewayManager;
@@ -67,6 +68,15 @@ class PaymentCallbackController extends Controller
                 'reference' => $transaction->reference,
                 'status'    => $transaction->status->value,
             ]);
+
+        } catch (WebhookTestException $e) {
+
+            // Uji coba dari dashboard provider. Tokennya cocok, jadi dari
+            // sudut pandang dashboard ini memang berhasil — 400 di sini
+            // membuat tombol Test selalu tampak gagal meski pemasangannya
+            // sudah benar. Ditangkap SEBELUM PaymentException karena ia
+            // turunannya.
+            return response()->json(['ok' => true, 'message' => $e->getMessage()]);
 
         } catch (PaymentException $e) {
 

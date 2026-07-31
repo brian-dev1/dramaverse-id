@@ -7,6 +7,7 @@ use App\Models\Invoice;
 use App\Models\PaymentProvider;
 use App\Models\PaymentTransaction;
 use App\Services\Payments\Exceptions\PaymentException;
+use App\Services\Payments\Exceptions\WebhookTestException;
 use App\Services\Payments\PaymentCharge;
 use App\Services\Payments\PaymentResult;
 
@@ -155,6 +156,29 @@ class TrakteerGateway extends AbstractGateway
         */
 
         $jenis = strtolower(trim((string) ($payload['type'] ?? '')));
+
+        /*
+        |----------------------------------------------------------------------
+        | Tombol "Send Webhook Test" di dashboard Trakteer
+        |----------------------------------------------------------------------
+        |
+        | Payloadnya bukan pembayaran dan tidak memuat nomor tagihan. Dijawab
+        | berhasil supaya tombolnya bisa dipakai memastikan URL dan token sudah
+        | benar — itu satu-satunya cara memeriksanya tanpa mengeluarkan uang.
+        |
+        | Tandanya diperiksa longgar: Trakteer belum menjamin bentuk payload
+        | ujinya, dan yang penting di sini adalah tidak pernah salah mengira
+        | pembayaran sungguhan sebagai uji coba. Karena itu syaratnya berlapis
+        | — harus bertanda uji DAN tidak memuat nomor tagihan.
+        |
+        */
+
+        if ($this->looksLikeTest($jenis, $payload)) {
+
+            $this->log('info', 'callback.test', ['provider' => $provider->slug]);
+
+            throw WebhookTestException::berhasil($provider->slug);
+        }
 
         if ($jenis !== '' && ! in_array($jenis, self::JENIS_PEMBAYARAN, true)) {
 
@@ -348,5 +372,29 @@ class TrakteerGateway extends AbstractGateway
         }
 
         return null;
+    }
+
+    /**
+     * Payload ini uji coba, bukan pembayaran.
+     *
+     * Berlapis dengan sengaja. Salah mengira pembayaran sungguhan sebagai uji
+     * coba berarti uang masuk tanpa mengaktifkan apa pun — jauh lebih buruk
+     * daripada uji coba yang terlanjur diproses sebagai pembayaran, yang toh
+     * akan ditolak karena tidak memuat nomor tagihan.
+     */
+    private function looksLikeTest(string $jenis, array $payload): bool
+    {
+        // Nomor tagihan yang sah tidak pernah ada di payload uji.
+        if ($this->extractInvoiceNumber($this->messageFrom($payload)) !== null) {
+            return false;
+        }
+
+        if (in_array($jenis, ['test', 'testing', 'webhook_test'], true)) {
+            return true;
+        }
+
+        $id = strtolower((string) ($payload['transaction_id'] ?? ''));
+
+        return $id !== '' && str_starts_with($id, 'test');
     }
 }
