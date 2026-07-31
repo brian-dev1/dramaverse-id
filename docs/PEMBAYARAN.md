@@ -302,3 +302,16 @@ membedakannya:
 | Nomor tagihan tidak terbaca | `payment.callback.unmatched` + payload lengkapnya |
 | Nominal tidak cocok | `payment.callback.amount_mismatch` |
 | Baru sebagian dibayar | "Pembayaran masuk tetapi belum cukup" + sisanya |
+
+## Melihat slug dan URL callback
+
+```bash
+php artisan payment:providers
+```
+
+Menampilkan seluruh provider — termasuk yang nonaktif dan yang kredensialnya
+belum lengkap — beserta slug, URL callback, dan alasan kenapa belum siap.
+
+`404 {"message":"Provider tidak dikenal."}` pada endpoint callback berarti
+slug di URL tidak cocok dengan slug mana pun di basis data. Perintah ini
+menyebutkan slug yang benar.

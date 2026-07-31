@@ -142,22 +142,44 @@ class PaymentDiagnose extends Command
         $this->newLine();
         $this->components->info('Provider');
 
-        $usable = $this->gateways->usable();
+        $semua = \App\Models\PaymentProvider::query()->orderBy('id')->get();
 
-        if ($usable->isEmpty()) {
-            $this->components->error('Tidak ada provider yang siap dipakai.');
+        if ($semua->isEmpty()) {
+
+            $this->components->error(
+                'BELUM ADA satu pun provider pembayaran di basis data.'
+            );
+
+            $this->line('        Callback apa pun akan dijawab 404 "Provider tidak dikenal".');
+            $this->line('        Buat providernya di /admin/payment/provider.');
 
             return;
         }
 
-        foreach ($usable as $p) {
+        // Yang belum siap ikut ditampilkan. Justru itu yang paling sering
+        // jadi penyebabnya, dan menyembunyikannya membuat orang menyimpulkan
+        // providernya belum dibuat padahal sudah.
+        foreach ($semua as $p) {
             $this->components->twoColumnDetail(
-                $p->name.' ('.$p->driver->value.')',
-                $p->mode.($p->is_default ? ' · default' : '')
+                $p->slug.' ('.$p->driver->value.')',
+                $p->isUsable() ? '<fg=green>siap</>' : '<fg=red>belum siap</>'
             );
 
             $this->line('        callback: '.url('/payment/callback/'.$p->slug));
+
+            if ($alasan = $p->blocker()) {
+                $this->line('        <fg=yellow>'.$alasan.'</>');
+            }
         }
+
+        $usable = $this->gateways->usable();
+
+        if ($usable->isEmpty()) {
+            $this->components->warn('Tidak ada yang siap dipakai — lihat alasannya di atas.');
+
+            return;
+        }
+
     }
 
     /**
