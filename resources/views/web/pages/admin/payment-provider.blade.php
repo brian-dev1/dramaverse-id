@@ -4,6 +4,13 @@
 
 @section('content')
 
+    @php
+        $editingId = request()->integer('edit');
+        $editingProvider = $editingId > 0
+            ? $providers->firstWhere('id', $editingId)
+            : null;
+    @endphp
+
     <section class="panel">
         <div class="panel-head">
             <h2>Setup cepat Trakteer</h2>
@@ -99,7 +106,8 @@
                                     @endif
                                 </td>
                                 <td class="col-actions">
-                                    <a href="#edit-provider-{{ $p->id }}" class="btn btn-sm">
+                                    <a href="{{ request()->fullUrlWithQuery(['edit' => $p->id]) }}#edit-provider"
+                                       class="btn btn-sm {{ $editingProvider?->id === $p->id ? 'btn-primary' : '' }}">
                                         Edit
                                     </a>
 
@@ -143,49 +151,53 @@
         @endif
     </section>
 
-    @foreach ($providers as $p)
-        <section class="panel" id="edit-provider-{{ $p->id }}">
+    @if ($editingProvider !== null)
+        <section class="panel" id="edit-provider">
             <div class="panel-head">
-                <h2>{{ $p->name }}</h2>
+                <h2>Edit {{ $editingProvider->name }}</h2>
                 <span class="panel-meta">
-                    {{ $p->driver->label() }} · callback:
-                    <code>{{ url('/payment/callback/'.$p->slug) }}</code>
+                    {{ $editingProvider->driver->label() }} · callback:
+                    <code>{{ url('/payment/callback/'.$editingProvider->slug) }}</code>
                 </span>
             </div>
 
-            <form method="POST" action="{{ route('admin.payment-provider.update', $p->id) }}"
+            <form method="POST" action="{{ route('admin.payment-provider.update', $editingProvider->id) }}"
                   class="admin-form">
                 @csrf
                 @method('PUT')
 
-                <x-admin.field name="name" label="Nama" :value="$p->name" required />
+                <x-admin.field name="name" label="Nama" :value="old('name', $editingProvider->name)" required />
 
-                <x-admin.field name="mode" label="Mode" type="select" required :value="$p->mode"
+                <x-admin.field name="mode" label="Mode" type="select" required
+                               :value="old('mode', $editingProvider->mode)"
                                :options="['sandbox' => 'Sandbox (uji coba)', 'live' => 'Live (sungguhan)']"
                                hint="Provider sandbox yang tidak sengaja dijadikan utama berarti pembayaran sungguhan tidak pernah masuk." />
 
-                @foreach ($p->driver->credentialFields() as $field => $label)
+                @foreach ($editingProvider->driver->credentialFields() as $field => $label)
                     <x-admin.field :name="'credentials['.$field.']'" :label="$label"
-                                   :hint="$p->credential($field) ? 'Sudah terisi. Kosongkan untuk membiarkannya.' : 'Belum diisi.'" />
+                                   :hint="$editingProvider->credential($field) ? 'Sudah terisi. Kosongkan untuk membiarkannya.' : 'Belum diisi.'" />
                 @endforeach
 
                 <x-admin.field name="fee_percent" label="Biaya layanan (%)" type="number"
-                               :value="$p->fee_percent" />
+                               :value="old('fee_percent', $editingProvider->fee_percent)" />
 
                 <x-admin.field name="fee_flat" label="Biaya tetap (Rp)" type="number"
-                               :value="$p->fee_flat" />
+                               :value="old('fee_flat', $editingProvider->fee_flat)" />
 
                 <x-admin.field name="instruction" label="Instruksi untuk pengguna" type="textarea"
-                               :rows="4" :value="$p->instruction" />
+                               :rows="4" :value="old('instruction', $editingProvider->instruction)" />
 
                 <div class="form-actions">
                     <button type="submit" class="btn btn-primary">
                         <x-web.home.icon name="check" :size="14" /> Simpan
                     </button>
+                    <a href="{{ route('admin.payment-provider.index') }}" class="btn">
+                        Batal
+                    </a>
                 </div>
             </form>
         </section>
-    @endforeach
+    @endif
 
     <section class="panel">
         <div class="panel-head"><h2>Tambah metode</h2></div>
