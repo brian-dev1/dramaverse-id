@@ -170,8 +170,13 @@ for f in APP:
     if f in (CALLBACK, INVOICE_SVC) or f.startswith('app/Services/Payments/Drivers/'):
         continue
     src = code_only(read(f))
-    if re.search(r"'status'\s*=>\s*PaymentStatus::PAID", src) \
-       or re.search(r"PaymentStatus::PAID->value", src):
+    # Hanya PENULISAN yang dicari, yaitu bentuk `'status' => PaymentStatus::PAID`.
+    #
+    # Versi sebelumnya juga menandai setiap kemunculan `PaymentStatus::PAID->value`
+    # apa pun konteksnya, sehingga `where('status', PaymentStatus::PAID->value)`
+    # -- pembacaan biasa -- ikut dituduh menulis. Lapisan analitik Phase 11
+    # membaca invoice lunas di beberapa tempat dan langsung memicu GAGAL palsu.
+    if re.search(r"'status'\s*=>\s*PaymentStatus::PAID", src):
         bad.append(f)
 check(not bad, "hanya PaymentCallbackService dan InvoiceService yang MENULIS status lunas")
 for b in bad:

@@ -123,3 +123,23 @@ Schedule::command('payment:auto expire')
     ->hourly()
     ->withoutOverlapping()
     ->runInBackground();
+
+/*
+|--------------------------------------------------------------------------
+| Analytics
+|--------------------------------------------------------------------------
+|
+| Memanaskan cache dashboard tiap sepuluh menit — sedikit lebih rapat
+| daripada TTL cache-nya (lima menit) supaya jarang ada yang menemukannya
+| dalam keadaan dingin. Yang membuka dashboard tepat setelah cache
+| kedaluwarsa harus menunggu belasan query agregat berjalan; memanaskannya
+| di latar memindahkan tunggu itu ke tempat yang tidak ada orangnya.
+|
+| Tidak `runInBackground()`: perintah ini singkat dan idempoten, dan
+| menjalankannya di proses yang sama memastikan kegagalannya terlihat di
+| keluaran `schedule:run`.
+|
+*/
+Schedule::command('analytics:refresh')
+    ->everyTenMinutes()
+    ->withoutOverlapping();

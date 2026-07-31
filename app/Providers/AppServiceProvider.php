@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Repositories\Contracts\ActivityLogRepositoryInterface;
+use App\Repositories\Contracts\AnalyticsRepositoryInterface;
 use App\Repositories\Contracts\AdminCountryRepositoryInterface;
 use App\Repositories\Contracts\AdminDramaRepositoryInterface;
 use App\Repositories\Contracts\AdminEpisodeRepositoryInterface;
@@ -30,6 +31,7 @@ use App\Repositories\Contracts\WatchHistoryRepositoryInterface;
 use App\Repositories\Contracts\WatchlistRepositoryInterface;
 
 use App\Repositories\ActivityLogRepository;
+use App\Repositories\AnalyticsRepository;
 use App\Repositories\AdminCountryRepository;
 use App\Repositories\AdminDramaRepository;
 use App\Repositories\AdminEpisodeRepository;
@@ -88,6 +90,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public array $bindings = [
         ActivityLogRepositoryInterface::class => ActivityLogRepository::class,
+        AnalyticsRepositoryInterface::class => AnalyticsRepository::class,
         AdminCountryRepositoryInterface::class => AdminCountryRepository::class,
         AdminDramaRepositoryInterface::class => AdminDramaRepository::class,
         AdminEpisodeRepositoryInterface::class => AdminEpisodeRepository::class,

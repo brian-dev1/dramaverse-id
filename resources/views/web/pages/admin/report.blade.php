@@ -44,9 +44,6 @@
     </form>
 
     <div class="chart-grid">
-        <x-admin.chart id="rep-watch" title="Tontonan 12 bulan terakhir" type="bar" color="#5B4B8A"
-                       :labels="$watch['labels']" :values="$watch['values']" />
-
         <x-admin.chart id="rep-revenue" title="Pendapatan 12 bulan terakhir" color="#EAC98C" money
                        :labels="$revenue['labels']" :values="$revenue['values']" />
     </div>

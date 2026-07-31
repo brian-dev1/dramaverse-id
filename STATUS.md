@@ -25,7 +25,7 @@ Yang WAJIB dilakukan asisten sebelum menulis satu baris kode:
 1. Baca `STATUS.md` **sampai habis** — termasuk "Bug diketahui" dan
    "Batasan asisten" di bagian bawah.
 2. Baca berkas `SPRINT-*-SELESAI.md` yang relevan dengan pekerjaan berikutnya.
-   Sprint terakhir yang selesai adalah **10.5** (`SPRINT-10-SELESAI.md`).
+   Sprint terakhir yang selesai adalah **11.5** (`SPRINT-11-SELESAI.md`).
    **Phase 7, 8, 9, dan 10 selesai.**
 3. Jalankan kelima alat verifikasi lebih dulu, untuk tahu keadaan awal yang
    bersih. Kalau ada yang GAGAL sejak awal, laporkan sebelum menambah apa pun.
@@ -494,9 +494,32 @@ Lalu isi nomor rekening di `/admin/payment/provider` dan aktifkan. Sebelum itu
 tombol Berlangganan tidak dirender sama sekali - tombol yang menjanjikan
 pembayaran lalu dijawab "belum ada metode" adalah dead link.
 
+### Phase 11 - Analytics & Business Intelligence
+Dashboard analitik lima seksi (bisnis, konten, Telegram, penyimpanan,
+keuangan) dengan periode harian/mingguan/bulanan/tahunan, tujuh jenis laporan,
+dan pemanas cache terjadwal. **Alur utama aplikasi tidak diubah satu baris
+pun** - nol migration, nol tabel, nol CSS baru, nol komponen grafik baru.
+Detail: `SPRINT-11-SELESAI.md`.
+
+**Bug yang ditemukan: laporan pendapatan menghitung dari tabel yang salah.**
+`ReportController` dan `StatsService` sama-sama menjumlahkan
+`subscriptions.price`. Sejak Phase 10 itu keliru dua kali: langganan yang
+DIBERIKAN admin punya harga tetapi tidak ada uang masuk, dan biaya layanan
+provider hanya tercatat di invoice. Keduanya salah dengan cara yang sama,
+sehingga angkanya selalu cocok satu sama lain - dan kecocokan itulah yang
+membuatnya tidak pernah dicurigai. Laporan sudah diperbaiki ke `invoices`
+lunas; `StatsService` BELUM (lihat bug diketahui).
+
+**Cara memakainya:**
+```
+php artisan analytics:refresh
+```
+Memanaskan cache dashboard. Dijadwalkan tiap sepuluh menit; jalankan manual
+setelah impor data besar.
+
 **Angka saat ini:** 194 route, 32 controller admin, 34 view admin,
-45 migration, 11 middleware, 257 kelas CSS, 26 interface repository,
-12 job antrean, 431 berkas PHP, 80 blade, 10 perintah artisan.
+45 migration, 11 middleware, 257 kelas CSS, 27 interface repository,
+12 job antrean, 441 berkas PHP, 80 blade, 11 perintah artisan.
 
 Empat angka terakhir ditambahkan sebagai pembanding untuk poin 3 di bagian
 "Memulai sesi baru": alat verifikasi yang melaporkan angka lebih kecil berarti
@@ -532,6 +555,16 @@ beberapa masih dangkal:
   otomatis melanjutkan
 
 ### Bug diketahui, belum diperbaiki
+- **`StatsService::summary()['revenue']` masih menjumlahkan
+  `subscriptions.price`.** Angka yang sama salahnya dengan yang sudah
+  diperbaiki di laporan Phase 11: langganan pemberian admin ikut terhitung
+  sebagai pendapatan, dan biaya layanan provider tidak pernah muncul. Kartu
+  pendapatan di **dashboard utama** karenanya bisa berbeda dari halaman
+  Analytics dan Laporan, yang keduanya sudah membaca dari `invoices` lunas.
+  Tidak disentuh di Phase 11 karena `StatsService` juga memberi makan
+  dashboard, dan memindahkannya berarti mengubah halaman yang tidak diminta
+  sprint itu. Perbaikannya mekanis: panggil
+  `AnalyticsRepositoryInterface::revenueTotals()`.
 - **Tiga driver gateway masih kerangka.** Midtrans, Xendit, dan Tripay
   terdaftar penuh di `PaymentDriver`, punya daftar field kredensialnya sendiri,
   dan muncul di panel — tetapi `isImplemented()` mengembalikan false dan
@@ -818,6 +851,7 @@ python tools/audit-sprint-8-1.py         # 81 pemeriksaan khusus Sprint 8.1
 python tools/audit-sprint-8-2.py         # 125 pemeriksaan khusus Sprint 8.2-8.6
 python tools/audit-sprint-8-7.py         # 133 pemeriksaan khusus Sprint 8.7-8.9
 python tools/audit-sprint-9-1.py         # 117 pemeriksaan khusus Phase 9
+python tools/audit-phase-11.py         # 84 pemeriksaan khusus Phase 11
 python tools/audit-phase-10.py           # 164 pemeriksaan khusus Phase 10
 ```
 
@@ -846,7 +880,7 @@ view, komponen, layout, `$fillable` vs migration, urutan foreign key,
 binding repository, PSR-4, import CSS, kolom tanggal, form + CSRF, href
 buntu, emoji, kelengkapan `match` enum, dan route di menu sidebar admin.
 
-**Alat verifikasinya sendiri sudah sembilan kali terbukti salah.** Perlakukan
+**Alat verifikasinya sendiri sudah dua belas kali terbukti salah.** Perlakukan
 seperti kode lain: bisa keliru, dan perlu diaudit.
 
 - **7.1** — pembatas blok migration di `cols_of()` tidak pernah bekerja,

@@ -2,31 +2,38 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\AnalyticsPeriod;
 use App\Http\Controllers\Controller;
-use App\Models\Drama;
-use App\Models\Subscription;
-use App\Models\User;
-use App\Models\WatchHistory;
 use App\Services\Admin\CsvExporter;
-use App\Services\Admin\StatsService;
 use App\Services\Admin\XlsxWriter;
+use App\Services\Analytics\AnalyticsService;
+use App\Services\Analytics\ReportService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 
+/**
+ * Laporan: dilihat, diekspor, dicetak.
+ *
+ * ## Yang berubah di Phase 11
+ *
+ * Judul kolom dan query setiap laporan dulu ditulis di controller ini.
+ * Sekarang di `ReportService`, dan controller tinggal menangani HTTP.
+ *
+ * Bukan sekadar pemindahan: tiga jalur di bawah — layar, ekspor, cetak —
+ * memanggil `rows()` dan `headers()` yang sama persis. Selama definisinya ada
+ * di controller, menambah satu laporan berarti menyunting tiga tempat yang
+ * kebetulan bersebelahan, dan itu jenis duplikasi yang paling mudah lolos
+ * karena terlihat rapi.
+ *
+ * Tiga laporan baru ikut masuk tanpa satu baris pun ditambahkan di sini:
+ * tagihan, sinkronisasi Telegram, dan penyimpanan.
+ */
 class ReportController extends Controller
 {
-    /** Jenis laporan yang tersedia. */
-    private const TYPES = [
-        'watch'      => 'Laporan tontonan',
-        'membership' => 'Laporan membership',
-        'revenue'    => 'Laporan pendapatan',
-        'telegram'   => 'Laporan pengguna Telegram',
-    ];
-
     public function __construct(
-        protected StatsService $stats,
+        protected ReportService $reports,
+        protected AnalyticsService $analytics,
         protected CsvExporter $csv,
         protected XlsxWriter $xlsx
     ) {
@@ -34,21 +41,24 @@ class ReportController extends Controller
 
     public function index(Request $request): View
     {
-        [$from, $to] = $this->range($request);
+        [$type, $from, $to] = $this->params($request);
 
-        $type = $request->get('type', 'watch');
-        $type = array_key_exists($type, self::TYPES) ? $type : 'watch';
+        $rows = $this->reports->rows($type, $from, $to);
+
+        // Grafik pendamping dibaca dari AnalyticsService, sumber yang sama
+        // dengan dashboard. Menghitungnya sendiri di sini akan menghasilkan
+        // dua angka pendapatan berbeda di dua halaman.
+        $keuangan = $this->analytics->financial(AnalyticsPeriod::MONTH);
 
         return view('web.pages.admin.report', [
-            'types'   => self::TYPES,
+            'types'   => ReportService::TYPES,
             'type'    => $type,
             'from'    => $from,
             'to'      => $to,
-            'rows'    => $this->rows($type, $from, $to)->take(100),
-            'headers' => $this->headers($type),
-            'total'   => $this->rows($type, $from, $to)->count(),
-            'revenue' => $this->stats->revenuePerMonth(12),
-            'watch'   => $this->stats->watchPerMonth(12),
+            'rows'    => $rows->take((int) config('analytics.report.preview_rows', 100)),
+            'headers' => $this->reports->headers($type),
+            'total'   => $rows->count(),
+            'revenue' => $keuangan['perPeriod'],
         ]);
     }
 
@@ -57,131 +67,68 @@ class ReportController extends Controller
     {
         abort_unless(in_array($format, ['csv', 'xlsx'], true), 404);
 
-        [$from, $to] = $this->range($request);
-
-        $type = $request->get('type', 'watch');
-        abort_unless(array_key_exists($type, self::TYPES), 404);
+        [$type, $from, $to] = $this->params($request);
 
         $name = sprintf('%s-%s-sd-%s', $type, $from->toDateString(), $to->toDateString());
 
-        $headers = $this->headers($type);
-        $rows    = $this->rows($type, $from, $to);
+        $headers = $this->reports->headers($type);
+
+        $rows = $this->reports->rows($type, $from, $to);
 
         return $format === 'xlsx'
-            ? $this->xlsx->download($name, $headers, $rows, self::TYPES[$type])
+            ? $this->xlsx->download($name, $headers, $rows, $this->reports->label($type))
             : $this->csv->stream($name, $headers, $rows);
     }
 
     /**
      * Tampilan siap cetak.
      *
-     * PDF dihasilkan lewat dialog cetak peramban (Simpan sebagai PDF) —
-     * membuat berkas PDF sungguhan dari PHP membutuhkan paket tambahan
-     * yang sengaja tidak dipasang.
+     * PDF dihasilkan lewat dialog cetak peramban (Simpan sebagai PDF).
+     * Membuat berkas PDF dari PHP membutuhkan paket tambahan yang sengaja
+     * tidak dipasang — dan dialog cetak sudah menghasilkan PDF yang sama
+     * baiknya tanpa satu pun dependensi baru.
      */
     public function print(Request $request): View
     {
-        [$from, $to] = $this->range($request);
-
-        $type = $request->get('type', 'watch');
-        abort_unless(array_key_exists($type, self::TYPES), 404);
+        [$type, $from, $to] = $this->params($request);
 
         return view('web.pages.admin.report-print', [
-            'title'   => self::TYPES[$type],
+            'title'   => $this->reports->label($type),
             'from'    => $from,
             'to'      => $to,
-            'headers' => $this->headers($type),
-            'rows'    => $this->rows($type, $from, $to),
+            'headers' => $this->reports->headers($type),
+            'rows'    => $this->reports->rows($type, $from, $to),
         ]);
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Data per jenis laporan
+    | Pembantu
     |--------------------------------------------------------------------------
     */
 
-    private function headers(string $type): array
+    /**
+     * Jenis laporan dan rentang tanggalnya.
+     *
+     * Jenis yang tidak dikenal jatuh ke `watch`, TIDAK abort 404. Tautan lama
+     * yang jenisnya sudah dihapus lebih baik membuka laporan bawaan daripada
+     * memberi halaman galat kepada orang yang cuma membuka bookmark.
+     *
+     * @return array{0:string,1:Carbon,2:Carbon}
+     */
+    private function params(Request $request): array
     {
-        return match ($type) {
-            'watch'      => ['Pengguna', 'Drama', 'Episode', 'Progres (detik)', 'Selesai', 'Terakhir ditonton'],
-            'membership' => ['Pengguna', 'Paket', 'Harga', 'Status', 'Mulai', 'Berakhir'],
-            'revenue'    => ['Tanggal', 'Pengguna', 'Paket', 'Harga', 'Status'],
-            'telegram'   => ['Nama', 'Username Telegram', 'ID Telegram', 'Aktif', 'Terakhir masuk', 'Bergabung'],
-        };
-    }
+        $type = (string) $request->query('type', 'watch');
 
-    private function rows(string $type, Carbon $from, Carbon $to)
-    {
-        return match ($type) {
-            'watch' => WatchHistory::query()
-                ->with(['user:id,name', 'drama:id,title', 'episode:id,episode_number'])
-                ->whereBetween('last_watched_at', [$from, $to])
-                ->latest('last_watched_at')
-                ->get()
-                ->map(fn ($h) => [
-                    $h->user?->name,
-                    $h->drama?->title,
-                    $h->episode?->episode_number,
-                    $h->progress,
-                    $h->completed,
-                    $h->last_watched_at,
-                ]),
-
-            'membership' => Subscription::query()
-                ->with(['user:id,name', 'plan:id,name'])
-                ->whereBetween('created_at', [$from, $to])
-                ->latest()
-                ->get()
-                ->map(fn ($s) => [
-                    $s->user?->name,
-                    $s->plan?->name,
-                    $s->price,
-                    $s->status,
-                    $s->started_at,
-                    $s->expired_at,
-                ]),
-
-            'revenue' => Subscription::query()
-                ->with(['user:id,name', 'plan:id,name'])
-                ->whereIn('status', ['active', 'expired'])
-                ->whereBetween('started_at', [$from, $to])
-                ->latest('started_at')
-                ->get()
-                ->map(fn ($s) => [
-                    $s->started_at,
-                    $s->user?->name,
-                    $s->plan?->name,
-                    $s->price,
-                    $s->status,
-                ]),
-
-            'telegram' => User::query()
-                ->whereNotNull('telegram_id')
-                ->whereBetween('created_at', [$from, $to])
-                ->latest()
-                ->get()
-                ->map(fn ($u) => [
-                    $u->name,
-                    $u->telegram_username,
-                    $u->telegram_id,
-                    $u->is_active,
-                    $u->last_login_at,
-                    $u->created_at,
-                ]),
-        };
-    }
-
-    /** Rentang tanggal, bawaan 30 hari terakhir. */
-    private function range(Request $request): array
-    {
-        $from = $request->date('from') ?: now()->subDays(29);
-        $to   = $request->date('to') ?: now();
-
-        if ($from->gt($to)) {
-            [$from, $to] = [$to, $from];
+        if (! $this->reports->exists($type)) {
+            $type = 'watch';
         }
 
-        return [$from->startOfDay(), $to->endOfDay()];
+        [$from, $to] = $this->reports->range(
+            $request->date('from'),
+            $request->date('to')
+        );
+
+        return [$type, $from, $to];
     }
 }
