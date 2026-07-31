@@ -7,7 +7,6 @@ use App\Enums\StorageStatus;
 use App\Models\StorageProvider;
 use App\Services\Admin\ActivityLogger;
 use App\Services\Storage\Exceptions\StorageProviderException;
-use App\Services\Storage\StorageTestResult;
 use App\Services\StorageProviderService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -739,7 +738,7 @@ class StorageController extends AdminCrudController
         return back()->with('detail', [
             'ok'    => $result->success,
             'title' => sprintf('Test Connection: %s', $provider->name),
-            'meta'  => $this->testMeta($provider, $result),
+            'meta'  => $result->meta($provider),
 
             // Pesan asli dari SDK, apa adanya. Kadang menyesatkan, tapi
             // kadang justru di situ satu-satunya petunjuk yang menentukan.
@@ -751,21 +750,4 @@ class StorageController extends AdminCrudController
         ]);
     }
 
-    /**
-     * Baris keterangan di bawah judul panel hasil.
-     */
-    protected function testMeta(StorageProvider $provider, StorageTestResult $result): string
-    {
-        $bagian = [$provider->driver->label()];
-
-        if ($waktu = $result->durationForHumans()) {
-            $bagian[] = 'waktu respons '.$waktu;
-        }
-
-        $bagian[] = $result->success
-            ? 'tulis, baca, dan hapus berhasil'
-            : 'gagal sebelum siklus tulis-baca-hapus selesai';
-
-        return implode(', ', $bagian).'.';
-    }
 }

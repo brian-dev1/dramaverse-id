@@ -2,6 +2,7 @@
 
 namespace App\Services\Payments\Drivers;
 
+use App\Support\Concerns\LogsPaymentEvents;
 use App\Models\PaymentProvider;
 use App\Models\PaymentTransaction;
 use App\Services\Payments\Contracts\PaymentGatewayInterface;
@@ -9,7 +10,6 @@ use App\Services\Payments\Exceptions\PaymentException;
 use App\Services\Payments\PaymentResult;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Bagian yang sama di setiap gateway.
@@ -25,6 +25,8 @@ use Illuminate\Support\Facades\Log;
  */
 abstract class AbstractGateway implements PaymentGatewayInterface
 {
+    use LogsPaymentEvents;
+
     /** Batas waktu permintaan ke gateway, dalam detik. */
     protected const TIMEOUT = 20;
 
@@ -85,15 +87,6 @@ abstract class AbstractGateway implements PaymentGatewayInterface
         return $diterima !== '' && hash_equals($diharapkan, $diterima);
     }
 
-    protected function log(string $level, string $event, array $context = []): void
-    {
-        if (! config('payment.logging.enabled', true)) {
-            return;
-        }
-
-        Log::channel(config('payment.logging.channel') ?: config('logging.default'))
-            ->log($level, 'payment.'.$event, $context);
-    }
 
     /*
     |--------------------------------------------------------------------------

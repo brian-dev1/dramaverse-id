@@ -2,6 +2,7 @@
 
 namespace App\Services\Payments;
 
+use App\Support\Concerns\LogsPaymentEvents;
 use App\Enums\PaymentStatus;
 use App\Enums\SubscriptionStatus;
 use App\Models\Invoice;
@@ -12,7 +13,6 @@ use App\Models\Subscription;
 use App\Models\User;
 use App\Services\Payments\Exceptions\PaymentException;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -38,6 +38,8 @@ use Throwable;
  */
 class CheckoutService
 {
+    use LogsPaymentEvents;
+
     public function __construct(
         protected PaymentGatewayManager $gateways,
         protected InvoiceService $invoices
@@ -215,13 +217,4 @@ class CheckoutService
         return $invoiceNumber.'-'.strtoupper(Str::random(4));
     }
 
-    private function log(string $level, string $event, array $context): void
-    {
-        if (! config('payment.logging.enabled', true)) {
-            return;
-        }
-
-        Log::channel(config('payment.logging.channel') ?: config('logging.default'))
-            ->log($level, 'payment.'.$event, $context);
-    }
 }

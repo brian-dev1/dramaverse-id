@@ -2,6 +2,7 @@
 
 namespace App\Services\Storage;
 
+use App\Models\StorageProvider;
 use Throwable;
 
 /**
@@ -187,5 +188,28 @@ class StorageTestResult
             'duration_ms' => $this->durationMs,
             'exception'   => $this->exceptionClass,
         ];
+    }
+
+    /**
+     * Baris keterangan di bawah judul panel hasil.
+     *
+     * Diangkat ke sini di Phase 12: `StorageController` dan
+     * `StorageMonitorController` sama-sama menyusun kalimat ini, dan dua
+     * halaman yang menjelaskan hasil uji yang sama dengan kata-kata berbeda
+     * adalah cacat yang baru terlihat saat orang membandingkannya.
+     */
+    public function meta(StorageProvider $provider): string
+    {
+        $bagian = [$provider->driver->label()];
+
+        if ($waktu = $this->durationForHumans()) {
+            $bagian[] = 'waktu respons '.$waktu;
+        }
+
+        $bagian[] = $this->success
+            ? 'tulis, baca, dan hapus berhasil'
+            : 'gagal sebelum siklus tulis-baca-hapus selesai';
+
+        return implode(', ', $bagian).'.';
     }
 }

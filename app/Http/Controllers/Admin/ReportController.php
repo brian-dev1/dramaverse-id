@@ -10,7 +10,6 @@ use App\Services\Analytics\AnalyticsService;
 use App\Services\Analytics\ReportService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 
 /**
  * Laporan: dilihat, diekspor, dicetak.

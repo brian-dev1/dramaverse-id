@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Admin;
 use App\Models\Banner;
 use App\Models\Drama;
 use App\Services\Admin\MediaService;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -115,15 +114,6 @@ class BannerController extends AdminCrudController
         ];
     }
 
-    protected function applyBulk(string $action, Builder $query): int
-    {
-        return match ($action) {
-            'activate'   => $query->update(['is_active' => true]),
-            'deactivate' => $query->update(['is_active' => false]),
-            'delete'     => $query->delete(),
-            default      => 0,
-        };
-    }
 
     /** @return array<string, string> */
     private function positions(): array

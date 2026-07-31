@@ -2,13 +2,13 @@
 
 namespace App\Services\Payments;
 
+use App\Support\Concerns\LogsPaymentEvents;
 use App\Enums\PaymentStatus;
 use App\Models\PaymentProvider;
 use App\Models\PaymentTransaction;
 use App\Services\Membership\MembershipService;
 use App\Services\Payments\Exceptions\PaymentException;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Satu-satunya jalan sebuah pembayaran boleh berubah status.
@@ -37,6 +37,8 @@ use Illuminate\Support\Facades\Log;
  */
 class PaymentCallbackService
 {
+    use LogsPaymentEvents;
+
     public function __construct(
         protected PaymentGatewayManager $gateways,
         protected InvoiceService $invoices,
@@ -259,13 +261,4 @@ class PaymentCallbackService
         );
     }
 
-    private function log(string $level, string $event, array $context): void
-    {
-        if (! config('payment.logging.enabled', true)) {
-            return;
-        }
-
-        Log::channel(config('payment.logging.channel') ?: config('logging.default'))
-            ->log($level, 'payment.'.$event, $context);
-    }
 }

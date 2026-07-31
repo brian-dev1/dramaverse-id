@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Models\Genre;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -96,15 +95,6 @@ class GenreController extends AdminCrudController
         ];
     }
 
-    protected function applyBulk(string $action, Builder $query): int
-    {
-        return match ($action) {
-            'activate'   => $query->update(['is_active' => true]),
-            'deactivate' => $query->update(['is_active' => false]),
-            'delete'     => $query->delete(),
-            default      => 0,
-        };
-    }
 
     protected function withCount(): array
     {

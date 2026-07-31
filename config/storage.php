@@ -290,33 +290,30 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Batas
+    | Batas — DIBUANG DI PHASE 12
     |--------------------------------------------------------------------------
     |
-    | Angka-angka ini belum dipakai di Sprint 7.1 — belum ada satu pun jalur
-    | upload yang dibangun. Nilainya disimpan di sini supaya sprint upload
-    | nanti tidak menaruh angka ajaib di tengah kode.
+    | Blok `limits` berisi `chunk_mb`, `timeout`, dan `max_fallback_attempts`.
+    | Ketiganya ditulis di Sprint 7.1 "supaya sprint upload nanti tidak menaruh
+    | angka ajaib di tengah kode". Sprint upload datang di 7.5, lalu 7.7, lalu
+    | 7.9 — dan tidak satu pun membacanya. Audit Phase 12 menemukan seluruh
+    | blok tidak pernah disentuh kode mana pun.
+    |
+    | `timeout` bahkan sudah tercatat sebagai bug diketahui sejak 7.3: ia
+    | tampak mengatur batas waktu S3 padahal tidak berpengaruh apa-apa.
+    | Konfigurasi yang berbohong lebih berbahaya daripada konfigurasi yang
+    | tidak ada — orang menaikkan angkanya, keadaan tidak berubah, dan mereka
+    | mencari penyebabnya di tempat yang salah.
+    |
+    | Dibuang, bukan disambungkan. Menyambungkan `timeout` ke klien S3 lewat
+    | kunci `http` harus diuji langsung terhadap versi SDK yang terpasang;
+    | kunci yang salah menggagalkan pembuatan klien dan mematikan SELURUH
+    | provider S3 sekaligus. Itu bukan perubahan yang boleh dikirim tanpa
+    | pernah dijalankan.
+    |
+    | `STORAGE_CHUNK_MB`, `STORAGE_TIMEOUT`, dan `STORAGE_MAX_FALLBACK` ikut
+    | dibuang dari `.env.example`.
     |
     */
-
-    'limits' => [
-
-        // Ukuran potongan multipart upload, dalam megabyte.
-        'chunk_mb' => (int) env('STORAGE_CHUNK_MB', 8),
-
-        // Batas waktu satu operasi penyimpanan, dalam detik.
-        //
-        // BELUM BERPENGARUH. Nilai ini belum disambungkan ke klien S3 —
-        // tidak ada kode yang membacanya, sehingga yang berlaku adalah batas
-        // waktu bawaan AWS SDK. Disambungkan lewat kunci `http` pada config
-        // disk, tapi itu perlu diuji langsung di server terhadap versi SDK
-        // yang terpasang; kunci yang salah menggagalkan pembuatan klien dan
-        // mematikan SELURUH provider S3 sekaligus.
-        'timeout' => (int) env('STORAGE_TIMEOUT', 60),
-
-        // Berapa kali provider berikutnya di rantai dicoba saat gagal.
-        'max_fallback_attempts' => (int) env('STORAGE_MAX_FALLBACK', 2),
-
-    ],
 
 ];

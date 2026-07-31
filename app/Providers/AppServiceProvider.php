@@ -2,7 +2,6 @@
 
 namespace App\Providers;
 
-use App\Repositories\Contracts\ActivityLogRepositoryInterface;
 use App\Repositories\Contracts\AnalyticsRepositoryInterface;
 use App\Repositories\Contracts\AdminCountryRepositoryInterface;
 use App\Repositories\Contracts\AdminDramaRepositoryInterface;
@@ -10,27 +9,20 @@ use App\Repositories\Contracts\AdminEpisodeRepositoryInterface;
 use App\Repositories\Contracts\AdminGenreRepositoryInterface;
 use App\Repositories\Contracts\AdminRepositoryInterface;
 use App\Repositories\Contracts\BannerRepositoryInterface;
-use App\Repositories\Contracts\DramaCatalogRepositoryInterface;
 use App\Repositories\Contracts\DramaRepositoryInterface;
 use App\Repositories\Contracts\EpisodeAccessRepositoryInterface;
 use App\Repositories\Contracts\EpisodeRepositoryInterface;
 use App\Repositories\Contracts\EpisodeSchedulerRepositoryInterface;
 use App\Repositories\Contracts\FavoriteRepositoryInterface;
 use App\Repositories\Contracts\HomeRepositoryInterface;
-use App\Repositories\Contracts\MediaRepositoryInterface;
 use App\Repositories\Contracts\MembershipRepositoryInterface;
 use App\Repositories\Contracts\NotificationRepositoryInterface;
 use App\Repositories\Contracts\ProgressRepositoryInterface;
-use App\Repositories\Contracts\RecommendationRepositoryInterface;
-use App\Repositories\Contracts\ReviewRepositoryInterface;
-use App\Repositories\Contracts\SearchRepositoryInterface;
 use App\Repositories\Contracts\SettingRepositoryInterface;
 use App\Repositories\Contracts\StorageProviderRepositoryInterface;
 use App\Repositories\Contracts\TelegramRepositoryInterface;
 use App\Repositories\Contracts\WatchHistoryRepositoryInterface;
-use App\Repositories\Contracts\WatchlistRepositoryInterface;
 
-use App\Repositories\ActivityLogRepository;
 use App\Repositories\AnalyticsRepository;
 use App\Repositories\AdminCountryRepository;
 use App\Repositories\AdminDramaRepository;
@@ -38,25 +30,19 @@ use App\Repositories\AdminEpisodeRepository;
 use App\Repositories\AdminGenreRepository;
 use App\Repositories\AdminRepository;
 use App\Repositories\BannerRepository;
-use App\Repositories\DramaCatalogRepository;
 use App\Repositories\DramaRepository;
 use App\Repositories\EpisodeAccessRepository;
 use App\Repositories\EpisodeRepository;
 use App\Repositories\EpisodeSchedulerRepository;
 use App\Repositories\FavoriteRepository;
 use App\Repositories\HomeRepository;
-use App\Repositories\MediaRepository;
 use App\Repositories\MembershipRepository;
 use App\Repositories\NotificationRepository;
 use App\Repositories\ProgressRepository;
-use App\Repositories\RecommendationRepository;
-use App\Repositories\ReviewRepository;
-use App\Repositories\SearchRepository;
 use App\Repositories\SettingRepository;
 use App\Repositories\StorageProviderRepository;
 use App\Repositories\TelegramRepository;
 use App\Repositories\WatchHistoryRepository;
-use App\Repositories\WatchlistRepository;
 use App\Services\Storage\Contracts\StorageEngineInterface;
 use App\Services\Storage\Contracts\StorageManagerInterface;
 use App\Services\Storage\StorageEngine;
@@ -89,7 +75,6 @@ class AppServiceProvider extends ServiceProvider
      * @var array<class-string, class-string>
      */
     public array $bindings = [
-        ActivityLogRepositoryInterface::class => ActivityLogRepository::class,
         AnalyticsRepositoryInterface::class => AnalyticsRepository::class,
         AdminCountryRepositoryInterface::class => AdminCountryRepository::class,
         AdminDramaRepositoryInterface::class => AdminDramaRepository::class,
@@ -97,25 +82,19 @@ class AppServiceProvider extends ServiceProvider
         AdminGenreRepositoryInterface::class => AdminGenreRepository::class,
         AdminRepositoryInterface::class => AdminRepository::class,
         BannerRepositoryInterface::class => BannerRepository::class,
-        DramaCatalogRepositoryInterface::class => DramaCatalogRepository::class,
         DramaRepositoryInterface::class => DramaRepository::class,
         EpisodeAccessRepositoryInterface::class => EpisodeAccessRepository::class,
         EpisodeRepositoryInterface::class => EpisodeRepository::class,
         EpisodeSchedulerRepositoryInterface::class => EpisodeSchedulerRepository::class,
         FavoriteRepositoryInterface::class => FavoriteRepository::class,
         HomeRepositoryInterface::class => HomeRepository::class,
-        MediaRepositoryInterface::class => MediaRepository::class,
         MembershipRepositoryInterface::class => MembershipRepository::class,
         NotificationRepositoryInterface::class => NotificationRepository::class,
         ProgressRepositoryInterface::class => ProgressRepository::class,
-        RecommendationRepositoryInterface::class => RecommendationRepository::class,
-        ReviewRepositoryInterface::class => ReviewRepository::class,
-        SearchRepositoryInterface::class => SearchRepository::class,
         SettingRepositoryInterface::class => SettingRepository::class,
         StorageProviderRepositoryInterface::class => StorageProviderRepository::class,
         TelegramRepositoryInterface::class => TelegramRepository::class,
         WatchHistoryRepositoryInterface::class => WatchHistoryRepository::class,
-        WatchlistRepositoryInterface::class => WatchlistRepository::class,
     ];
 
     public function register(): void

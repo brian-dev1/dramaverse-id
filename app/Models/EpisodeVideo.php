@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Bytes;
 use App\Enums\TelegramSyncStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -87,18 +88,7 @@ class EpisodeVideo extends Model
 
     public function getSizeForHumansAttribute(): string
     {
-        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
-
-        $size = (float) $this->size;
-
-        $i = 0;
-
-        while ($size >= 1024 && $i < count($units) - 1) {
-            $size /= 1024;
-            $i++;
-        }
-
-        return ($i === 0 ? (string) (int) $size : number_format($size, 2)).' '.$units[$i];
+        return Bytes::forHumans($this->size);
     }
 
     /**

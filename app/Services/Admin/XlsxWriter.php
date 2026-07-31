@@ -2,7 +2,7 @@
 
 namespace App\Services\Admin;
 
-use Illuminate\Support\Carbon;
+use App\Support\Concerns\NormalisesExportValues;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use ZipArchive;
 
@@ -18,6 +18,8 @@ use ZipArchive;
  */
 class XlsxWriter
 {
+    use NormalisesExportValues;
+
     /** Batas kolom yang didukung (A sampai ZZ). */
     private const MAX_COLUMNS = 702;
 
@@ -202,15 +204,6 @@ class XlsxWriter
         return true;
     }
 
-    private function normalise(mixed $value): string
-    {
-        return match (true) {
-            $value instanceof Carbon => $value->format('Y-m-d H:i'),
-            is_bool($value)          => $value ? 'Ya' : 'Tidak',
-            is_null($value)          => '',
-            default                  => (string) $value,
-        };
-    }
 
     /** Perkiraan lebar kolom dari isi terpanjang. */
     private function columnWidths(array $headers, array $rows): array

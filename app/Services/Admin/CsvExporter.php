@@ -2,7 +2,7 @@
 
 namespace App\Services\Admin;
 
-use Illuminate\Support\Carbon;
+use App\Support\Concerns\NormalisesExportValues;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
@@ -13,6 +13,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 class CsvExporter
 {
+    use NormalisesExportValues;
+
     /**
      * @param  array<string>  $headers  Judul kolom
      * @param  iterable       $rows     Baris data, tiap baris berupa array
@@ -45,14 +47,4 @@ class CsvExporter
         );
     }
 
-    /** Menyeragamkan nilai agar aman ditulis ke CSV. */
-    private function normalise(mixed $value): string
-    {
-        return match (true) {
-            $value instanceof Carbon => $value->format('Y-m-d H:i'),
-            is_bool($value)          => $value ? 'Ya' : 'Tidak',
-            is_null($value)          => '',
-            default                  => (string) $value,
-        };
-    }
 }

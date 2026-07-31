@@ -2,13 +2,13 @@
 
 namespace App\Services\Payments;
 
+use App\Support\Concerns\LogsPaymentEvents;
 use App\Enums\PaymentStatus;
 use App\Models\Invoice;
 use App\Models\MembershipPlan;
 use App\Models\PaymentProvider;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 /**
@@ -21,6 +21,8 @@ use Illuminate\Support\Str;
  */
 class InvoiceService
 {
+    use LogsPaymentEvents;
+
     public function __construct(
         protected PaymentGatewayManager $gateways
     ) {
@@ -178,13 +180,4 @@ class InvoiceService
         return $jumlah;
     }
 
-    private function log(string $level, string $event, array $context): void
-    {
-        if (! config('payment.logging.enabled', true)) {
-            return;
-        }
-
-        Log::channel(config('payment.logging.channel') ?: config('logging.default'))
-            ->log($level, 'payment.'.$event, $context);
-    }
 }

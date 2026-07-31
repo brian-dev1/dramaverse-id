@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\Concerns\ComputesFileChecksum;
 use App\Enums\DramaAssetType;
 use App\Models\Drama;
 use App\Models\DramaAsset;
@@ -11,7 +12,6 @@ use App\Services\Storage\Contracts\StorageEngineInterface;
 use App\Services\Storage\Exceptions\StorageEngineException;
 use App\Services\Storage\StoredFile;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -38,6 +38,8 @@ use Throwable;
  */
 class DramaAssetService
 {
+    use ComputesFileChecksum;
+
     public function __construct(
         protected StorageEngineInterface $storage,
         protected ActivityLogger $activity,
@@ -344,26 +346,6 @@ class DramaAssetService
         }
     }
 
-    /**
-     * SHA256 dari berkas sementara.
-     *
-     * `hash_file` membaca bertahap, jadi berkas besar tidak masuk memori
-     * sekaligus.
-     *
-     * @throws StorageEngineException
-     */
-    protected function checksum(UploadedFile $file): string
-    {
-        $hash = @hash_file('sha256', $file->getRealPath());
-
-        if ($hash === false || $hash === null) {
-            throw StorageEngineException::invalidUpload(
-                'checksum tidak bisa dihitung, berkas sementaranya tidak terbaca'
-            );
-        }
-
-        return $hash;
-    }
 
     /**
      * Nama tersimpan yang bermakna bagi manusia.

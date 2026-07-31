@@ -2,6 +2,7 @@
 
 namespace App\Services\Membership;
 
+use App\Support\Concerns\LogsPaymentEvents;
 use App\Enums\SubscriptionStatus;
 use App\Models\Invoice;
 use App\Models\MembershipPlan;
@@ -11,7 +12,6 @@ use App\Repositories\Contracts\MembershipRepositoryInterface;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Aturan membership, terpisah dari cara pembayarannya.
@@ -36,6 +36,8 @@ use Illuminate\Support\Facades\Log;
  */
 class MembershipService
 {
+    use LogsPaymentEvents;
+
     /** Cache status per pengguna. Dibuang eksplisit setiap kali berubah. */
     private const CACHE = 'membership:status:';
 
@@ -330,13 +332,4 @@ class MembershipService
         $this->forget($userId);
     }
 
-    private function log(string $level, string $event, array $context): void
-    {
-        if (! config('payment.logging.enabled', true)) {
-            return;
-        }
-
-        Log::channel(config('payment.logging.channel') ?: config('logging.default'))
-            ->log($level, 'payment.'.$event, $context);
-    }
 }

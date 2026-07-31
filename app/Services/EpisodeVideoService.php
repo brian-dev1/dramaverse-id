@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\Concerns\ComputesFileChecksum;
 use App\Enums\StorageCollection;
 use App\Models\Episode;
 use App\Models\EpisodeVideo;
@@ -30,6 +31,8 @@ use Throwable;
  */
 class EpisodeVideoService
 {
+    use ComputesFileChecksum;
+
     public function __construct(
         protected StorageEngineInterface $storage,
         protected ActivityLogger $activity,
@@ -148,26 +151,6 @@ class EpisodeVideoService
     |--------------------------------------------------------------------------
     */
 
-    /**
-     * SHA256 dari berkas sementara.
-     *
-     * `hash_file` membaca berkas secara bertahap, jadi berkas berukuran
-     * gigabyte tidak perlu masuk memori sekaligus.
-     *
-     * @throws StorageEngineException
-     */
-    protected function checksum(UploadedFile $file): string
-    {
-        $hash = @hash_file('sha256', $file->getRealPath());
-
-        if ($hash === false || $hash === null) {
-            throw StorageEngineException::invalidUpload(
-                'checksum tidak bisa dihitung, berkas sementaranya tidak terbaca'
-            );
-        }
-
-        return $hash;
-    }
 
     /**
      * Nama tersimpan yang bermakna bagi manusia.

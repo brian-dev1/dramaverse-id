@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\StorageProvider;
 use App\Services\Admin\ActivityLogger;
 use App\Services\Storage\StorageMonitorService;
-use App\Services\Storage\StorageTestResult;
 use App\Services\StorageProviderService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
@@ -95,27 +94,10 @@ class StorageMonitorController extends Controller
         return back()->with('detail', [
             'ok'      => $result->success,
             'title'   => sprintf('Test Connection: %s', $provider->name),
-            'meta'    => $this->meta($provider, $result),
+            'meta'    => $result->meta($provider),
             'message' => $result->message,
             'hint'    => $result->hint(),
         ]);
     }
 
-    /**
-     * Baris keterangan di bawah judul panel hasil.
-     */
-    protected function meta(StorageProvider $provider, StorageTestResult $result): string
-    {
-        $bagian = [$provider->driver->label()];
-
-        if ($waktu = $result->durationForHumans()) {
-            $bagian[] = 'waktu respons '.$waktu;
-        }
-
-        $bagian[] = $result->success
-            ? 'tulis, baca, dan hapus berhasil'
-            : 'gagal sebelum siklus tulis-baca-hapus selesai';
-
-        return implode(', ', $bagian).'.';
-    }
 }

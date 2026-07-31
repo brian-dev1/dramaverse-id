@@ -2,6 +2,7 @@
 
 namespace App\Services\Storage;
 
+use App\Support\Bytes;
 use App\Enums\StorageDriver;
 use App\Models\StorageProvider;
 
@@ -76,24 +77,13 @@ class StoredFile
         return $this->visibility === 'public';
     }
 
-    /**
-     * Ukuran yang enak dibaca manusia.
-     */
+
+    /** Ukuran berkas dalam bentuk yang enak dibaca. */
     public function sizeForHumans(): string
     {
-        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
-
-        $size = (float) $this->size;
-
-        $i = 0;
-
-        while ($size >= 1024 && $i < count($units) - 1) {
-            $size /= 1024;
-            $i++;
-        }
-
-        return ($i === 0 ? (string) (int) $size : number_format($size, 2)).' '.$units[$i];
+        return Bytes::forHumans($this->size);
     }
+
 
     /**
      * Bentuk array untuk disimpan ke kolom database.

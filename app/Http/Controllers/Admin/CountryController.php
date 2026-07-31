@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Models\Country;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -94,13 +93,4 @@ class CountryController extends AdminCrudController
         ];
     }
 
-    protected function applyBulk(string $action, Builder $query): int
-    {
-        return match ($action) {
-            'activate'   => $query->update(['is_active' => true]),
-            'deactivate' => $query->update(['is_active' => false]),
-            'delete'     => $query->delete(),
-            default      => 0,
-        };
-    }
 }

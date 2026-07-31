@@ -25,7 +25,8 @@ Yang WAJIB dilakukan asisten sebelum menulis satu baris kode:
 1. Baca `STATUS.md` **sampai habis** — termasuk "Bug diketahui" dan
    "Batasan asisten" di bagian bawah.
 2. Baca berkas `SPRINT-*-SELESAI.md` yang relevan dengan pekerjaan berikutnya.
-   Sprint terakhir yang selesai adalah **11.5** (`SPRINT-11-SELESAI.md`).
+   Sprint terakhir yang selesai adalah **12.5** (`SPRINT-12-SELESAI.md`).
+   **Seluruh fase selesai. Dokumentasi lengkap ada di `docs/`.**
    **Phase 7, 8, 9, dan 10 selesai.**
 3. Jalankan kelima alat verifikasi lebih dulu, untuk tahu keadaan awal yang
    bersih. Kalau ada yang GAGAL sejak awal, laporkan sebelum menambah apa pun.
@@ -517,9 +518,39 @@ php artisan analytics:refresh
 Memanaskan cache dashboard. Dijadwalkan tiap sepuluh menit; jalankan manual
 setelah impor data besar.
 
-**Angka saat ini:** 194 route, 32 controller admin, 34 view admin,
-45 migration, 11 middleware, 257 kelas CSS, 27 interface repository,
-12 job antrean, 441 berkas PHP, 80 blade, 11 perintah artisan.
+### Phase 12 - Final Launch & Optimization
+Pemeriksaan seluruh proyek, pembersihan, pengerasan, dan dokumentasi.
+Detail: `SPRINT-12-SELESAI.md`.
+
+**Alat baru `tools/audit-final.py`** menyisir seluruh pohon untuk MENEMUKAN
+masalah, bukan menegaskan yang sudah diketahui. Jalan pertamanya: 21/43 lolos.
+
+- **Bug ditemukan:** `episodes:publish` ada sejak Sprint 6 tetapi tidak pernah
+  dijadwalkan. Episode berjadwal tidak pernah terbit sendiri, tanpa satu pun
+  galat. Sudah dijadwalkan tiap lima menit.
+- **31 kelas mati dihapus** beserta 6 repository, 4 job stub, dan 31 import
+  yang ikut yatim.
+- **Blok config `storage.limits` dibuang** - tiga kunci yang tidak pernah
+  dibaca siapa pun, salah satunya berpura-pura mengatur batas waktu S3.
+- **Delapan kelompok kode kembar disatukan** jadi `Support\Bytes` dan empat
+  trait di `Support\Concerns`, plus pemakaian `StorageChoiceService` dan
+  `StorageTestResult::meta()` yang sudah ada.
+- **`php artisan env:check`** - menolak peluncuran bila environment belum
+  layak. Memeriksa 20+ hal termasuk detak scheduler, dan keluar dengan kode 1
+  supaya bisa menghentikan skrip deploy.
+- **14 dokumen di `docs/`** plus indeksnya.
+
+**Tiga kali saya merusak kode sendiri di sprint ini**, ketiganya karena regex
+penyunting kode yang mencocok lebih panjang dari yang dimaksud - termasuk
+`config/storage.php` yang kehilangan 315 dari 322 baris. Semuanya tertangkap
+karena `check-php-structure.py` dan `git diff --stat` dijalankan segera
+sesudah setiap jalan. Ditulis lengkap di `SPRINT-12-SELESAI.md`; pelajarannya
+ada di bagian bawah berkas ini.
+
+**Angka saat ini:** 195 route, 32 controller admin, 34 view admin,
+45 migration, 11 middleware, 257 kelas CSS, 20 interface repository,
+8 job antrean, 397 berkas PHP, 80 blade, 12 perintah artisan,
+15 dokumen di `docs/`.
 
 Empat angka terakhir ditambahkan sebagai pembanding untuk poin 3 di bagian
 "Memulai sesi baru": alat verifikasi yang melaporkan angka lebih kecil berarti
@@ -711,7 +742,15 @@ beberapa masih dangkal:
 - **Checksum belum pernah diverifikasi ulang.** Kolomnya terisi setiap
   unggahan, tapi belum ada perintah yang membandingkannya dengan berkas di
   bucket. Nilainya baru berguna kalau ada yang memeriksanya.
-- **`STORAGE_TIMEOUT` tidak berpengaruh.** Ada di `config/storage.php` dan
+- ~~**`STORAGE_TIMEOUT` tidak berpengaruh.**~~ **SELESAI di Phase 12** —
+  seluruh blok `storage.limits` dibuang, bukan disambungkan. Konfigurasi yang
+  berbohong lebih berbahaya daripada yang tidak ada. Menyambungkannya ke klien
+  S3 tetap mungkin nanti, tetapi harus diuji terhadap versi SDK yang
+  benar-benar terpasang.
+- ~~**`EpisodeVideoService` dan `DramaAssetService` berbagi pola yang sama.**~~
+  **SELESAI di Phase 12** — `checksum()` disatukan jadi
+  `Support\Concerns\ComputesFileChecksum`.
+- **Catatan lama tentang `STORAGE_TIMEOUT` (sudah tidak berlaku):** Ada di `config/storage.php` dan
   `.env.example`, tapi tidak ada kode yang membacanya — belum disambungkan ke
   klien S3, jadi yang berlaku batas waktu bawaan AWS SDK. Sudah diberi catatan
   di kedua berkas, dan `hint()` tidak lagi menyuruh menaikkannya. Menyambungkan
@@ -852,6 +891,7 @@ python tools/audit-sprint-8-2.py         # 125 pemeriksaan khusus Sprint 8.2-8.6
 python tools/audit-sprint-8-7.py         # 133 pemeriksaan khusus Sprint 8.7-8.9
 python tools/audit-sprint-9-1.py         # 117 pemeriksaan khusus Phase 9
 python tools/audit-phase-11.py         # 84 pemeriksaan khusus Phase 11
+python tools/audit-final.py            # 43 pemeriksaan seluruh proyek
 python tools/audit-phase-10.py           # 164 pemeriksaan khusus Phase 10
 ```
 
@@ -880,7 +920,7 @@ view, komponen, layout, `$fillable` vs migration, urutan foreign key,
 binding repository, PSR-4, import CSS, kolom tanggal, form + CSRF, href
 buntu, emoji, kelengkapan `match` enum, dan route di menu sidebar admin.
 
-**Alat verifikasinya sendiri sudah dua belas kali terbukti salah.** Perlakukan
+**Alat verifikasinya sendiri sudah lima belas kali terbukti salah.** Perlakukan
 seperti kode lain: bisa keliru, dan perlu diaudit.
 
 - **7.1** — pembatas blok migration di `cols_of()` tidak pernah bekerja,
@@ -908,6 +948,18 @@ seperti kode lain: bisa keliru, dan perlu diaudit.
   terhitung sebagai pelanggaran. Sebab yang sama untuk keempat kalinya.
   Diperbaiki dengan `code_only()` yang membuang komentar dan isi string literal
   sebelum apa pun dicocokkan, dipakai di setiap pemeriksaan.
+
+- **12.1** - tiga skrip penyunting kode di Phase 12 mencocok lebih panjang
+  dari yang dimaksud: `use Log;` dibuang padahal `Log::channel()` masih
+  dipakai, `config/storage.php` kehilangan 315 dari 322 baris, dan tiga berkas
+  kehilangan kurung penutup. Semuanya dikembalikan dari git dan diulang dengan
+  penggantian teks harfiah.
+
+  **Pelajaran terpisah untuk skrip yang MENYUNTING kode, bukan yang membacanya:
+  verifikasi setelah SETIAP jalan, bukan setelah semuanya selesai.**
+  `git diff --stat` adalah pemeriksa paling murah yang ada - "1 file changed,
+  315 deletions" pada penghapusan yang seharusnya membuang 30 baris sudah cukup
+  untuk berhenti.
 
 Pelajarannya: kalau alat melaporkan GAGAL pada kode yang menurut Anda benar,
 periksa alatnya juga — jangan langsung menganggap kodenya yang salah.

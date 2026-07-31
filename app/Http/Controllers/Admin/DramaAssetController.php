@@ -7,10 +7,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreDramaAssetRequest;
 use App\Models\Drama;
 use App\Models\DramaAsset;
-use App\Models\StorageProvider;
 use App\Services\DramaAssetService;
-use App\Services\Storage\Contracts\StorageEngineInterface;
-use App\Services\Storage\Exceptions\StorageEngineException;
+use App\Services\Storage\StorageChoiceService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Throwable;
@@ -30,7 +28,7 @@ class DramaAssetController extends Controller
 {
     public function __construct(
         protected DramaAssetService $service,
-        protected StorageEngineInterface $storage,
+        protected StorageChoiceService $choices,
     ) {
     }
 
@@ -46,8 +44,8 @@ class DramaAssetController extends Controller
             'drama'      => $model,
             'types'      => DramaAssetType::ordered(),
             'assets'     => $this->service->grouped($model),
-            'providers'  => $this->providerOptions(),
-            'autoTarget' => $this->autoTarget(),
+            'providers'  => $this->choices->manualOptions(),
+            'autoTarget' => $this->choices->autoTarget(),
         ]);
     }
 
@@ -178,45 +176,5 @@ class DramaAssetController extends Controller
             'previewable'       => $asset->isPreviewable(),
             'uploaded_at'       => $asset->uploaded_at?->toDateTimeString(),
         ];
-    }
-
-    /**
-     * Provider yang boleh dipilih di mode Manual.
-     *
-     * Syaratnya sama dengan yang ditegakkan `UsableStorageProvider`, jadi tidak
-     * ada pilihan yang tampil lalu ditolak validasi.
-     *
-     * @return array<int, string>
-     */
-    protected function providerOptions(): array
-    {
-        return StorageProvider::query()
-            ->active()
-            ->byPriority()
-            ->get()
-            ->filter(fn (StorageProvider $p) => $p->isUsable() && $p->last_test_status === 'ok')
-            ->mapWithKeys(fn (StorageProvider $p) => [
-                $p->id => sprintf(
-                    '%s — %s%s',
-                    $p->name,
-                    $p->driver->label(),
-                    $p->is_default ? ' (default)' : ''
-                ),
-            ])
-            ->all();
-    }
-
-    /**
-     * Keterangan tujuan mode AUTO, atau null bila belum ada.
-     */
-    protected function autoTarget(): ?string
-    {
-        try {
-            $provider = $this->storage->resolveProvider();
-        } catch (StorageEngineException) {
-            return null;
-        }
-
-        return sprintf('%s — %s', $provider->name, $provider->driver->label());
     }
 }

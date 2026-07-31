@@ -2,10 +2,10 @@
 
 namespace App\Jobs;
 
+use App\Support\Concerns\RunsUploadJob;
 use App\Enums\DramaAssetType;
 use App\Models\Drama;
 use App\Models\UploadJob;
-use App\Models\User;
 use App\Services\DramaAssetService;
 use App\Services\UploadQueueService;
 use Illuminate\Bus\Queueable;
@@ -14,7 +14,6 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Auth;
 use RuntimeException;
 use Throwable;
 
@@ -46,6 +45,8 @@ use Throwable;
  */
 class ProcessDramaAssetUpload implements ShouldQueue
 {
+    use RunsUploadJob;
+
     use Dispatchable;
     use InteractsWithQueue;
     use Queueable;
@@ -168,66 +169,7 @@ class ProcessDramaAssetUpload implements ShouldQueue
         );
     }
 
-    /**
-     * Jalankan sesuatu seolah-olah admin yang mengantrekannya sedang masuk.
-     *
-     * Worker tidak punya sesi, sehingga `Auth::id()` bernilai null di dalam
-     * job — dan dua tempat di jalur unggah membacanya: kolom `uploaded_by` di
-     * `drama_assets` dan `user_id` di `activity_logs`.
-     *
-     * Penggunanya dilupakan lagi di `finally`. Proses worker berumur panjang
-     * dan mengerjakan banyak job berurutan; identitas yang tertinggal akan
-     * menempel pada pekerjaan milik admin lain sesudahnya.
-     */
-    protected function sebagaiPengunggah(?int $userId, callable $tindakan)
-    {
-        $user = $userId === null ? null : User::find($userId);
 
-        if ($user === null) {
-            return $tindakan();
-        }
-
-        $guard = Auth::guard();
-
-        $guard->setUser($user);
-
-        try {
-            return $tindakan();
-        } finally {
-            if (method_exists($guard, 'forgetUser')) {
-                $guard->forgetUser();
-            }
-        }
-    }
-
-    /**
-     * Dipanggil antrean ketika seluruh percobaan habis — termasuk saat job
-     * dihentikan karena melewati batas waktu.
-     *
-     * Kasus batas waktu adalah alasan utama method ini ada: prosesnya dimatikan
-     * dari luar, sehingga blok `catch` di `handle()` tidak pernah berjalan dan
-     * barisnya akan tertinggal berstatus PROCESSING selamanya.
-     */
-    public function failed(?Throwable $e): void
-    {
-        $queue = app(UploadQueueService::class);
-
-        $job = UploadJob::find($this->uploadJobId);
-
-        if ($job === null || $job->status->isFinal()) {
-            return;
-        }
-
-        $queue->markFailed(
-            $job,
-            $e ?: new RuntimeException(
-                'Pekerjaan dihentikan antrean tanpa pesan galat. '
-                .'Penyebab yang paling sering: melewati batas waktu '
-                .'(UPLOAD_QUEUE_TIMEOUT) atau worker yang direstart di tengah jalan.'
-            ),
-            (int) ($job->duration_ms ?: 0)
-        );
-    }
 
     protected function elapsed(float $mulai): int
     {

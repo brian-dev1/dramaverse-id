@@ -3,7 +3,6 @@
 namespace App\Services\Telegram\Contracts;
 
 use App\Services\Telegram\TelegramResponse;
-use SplFileInfo;
 
 /**
  * Lapisan angkut ke Bot API — dan satu-satunya tempat di seluruh proyek

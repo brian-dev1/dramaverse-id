@@ -2,7 +2,6 @@
 
 namespace App\Services\Telegram\Contracts;
 
-use App\Services\Telegram\Exceptions\TelegramException;
 use App\Services\Telegram\TelegramResponse;
 use SplFileInfo;
 

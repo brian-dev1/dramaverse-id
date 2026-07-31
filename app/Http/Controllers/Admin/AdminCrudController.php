@@ -329,12 +329,21 @@ abstract class AdminCrudController extends Controller
         return back()->with('status', "{$count} {$this->label()} diproses.");
     }
 
-    /** Menjalankan satu aksi massal. Turunan menimpa untuk aksi khusus. */
+    /**
+     * Menjalankan satu aksi massal. Turunan menimpa untuk aksi khusus.
+     *
+     * `activate` dan `deactivate` ada di sini sejak Phase 12: tiga turunan
+     * (Banner, Country, Genre) menuliskan implementasi yang sama persis.
+     * Modul tanpa kolom `is_active` tidak terpengaruh — aksi itu hanya
+     * dijalankan bila terdaftar di `bulkActions()` masing-masing.
+     */
     protected function applyBulk(string $action, Builder $query): int
     {
         return match ($action) {
-            'delete' => $query->delete(),
-            default  => 0,
+            'activate'   => $query->update(['is_active' => true]),
+            'deactivate' => $query->update(['is_active' => false]),
+            'delete'     => $query->delete(),
+            default      => 0,
         };
     }
 

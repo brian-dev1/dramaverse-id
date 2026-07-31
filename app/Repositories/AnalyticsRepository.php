@@ -17,7 +17,6 @@ use App\Models\WatchHistory;
 use App\Repositories\Contracts\AnalyticsRepositoryInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Lihat AnalyticsRepositoryInterface untuk aturan dan alasannya.

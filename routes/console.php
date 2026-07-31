@@ -143,3 +143,25 @@ Schedule::command('payment:auto expire')
 Schedule::command('analytics:refresh')
     ->everyTenMinutes()
     ->withoutOverlapping();
+
+/*
+|--------------------------------------------------------------------------
+| Penerbitan episode terjadwal
+|--------------------------------------------------------------------------
+|
+| DITEMUKAN SAAT AUDIT PHASE 12: `episodes:publish` sudah ada sejak Sprint 6
+| tetapi tidak pernah dijadwalkan. Episode yang diberi tanggal tayang tidak
+| pernah terbit dengan sendirinya — admin harus menekan sesuatu, atau tidak
+| terbit sama sekali.
+|
+| Kegagalannya diam total: tidak ada galat, tidak ada log, hanya episode yang
+| tidak muncul pada tanggal yang dijanjikan ke penonton.
+|
+| Tiap lima menit. Ketelitian sampai menit tidak diperlukan untuk jadwal
+| tayang, dan lima menit menjaga beban query tetap kecil.
+|
+*/
+Schedule::command('episodes:publish')
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->runInBackground();
