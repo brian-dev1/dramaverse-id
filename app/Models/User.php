@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 namespace App\Models;
 
@@ -98,6 +98,19 @@ class User extends Authenticatable
     {
         return $this->is_admin === true;
     }
+    /**
+     * Premium hanya dianggap aktif bila flag premium benar DAN tanggal
+     * kedaluwarsanya belum lewat.
+     */
+    public function getIsPremiumAttribute($value): bool
+    {
+        if (! (bool) $value) {
+            return false;
+        }
+
+        return $this->premium_expired_at === null
+            || now()->lt($this->premium_expired_at);
+    }
 
     /*
     |--------------------------------------------------------------------------
@@ -109,7 +122,7 @@ class User extends Authenticatable
      * Apakah pengguna memegang satu izin.
      *
      * Akun dengan penanda `is_admin` tanpa peran apa pun diperlakukan
-     * sebagai super admin — ini mencegah panel terkunci bila peran belum
+     * sebagai super admin â€” ini mencegah panel terkunci bila peran belum
      * sempat dikonfigurasi.
      */
     public function hasPermission(string $slug): bool
@@ -164,3 +177,4 @@ class User extends Authenticatable
         return mb_strtoupper(mb_substr($this->display_name, 0, 1));
     }
 }
+

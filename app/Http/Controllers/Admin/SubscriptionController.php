@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 namespace App\Http\Controllers\Admin;
 
@@ -6,6 +6,7 @@ use App\Models\MembershipPlan;
 use App\Models\Subscription;
 use App\Models\User;
 use App\Services\Admin\ActivityLogger;
+use App\Services\Membership\MembershipService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
@@ -21,6 +22,13 @@ class SubscriptionController extends AdminCrudController
         'expired'   => 'Kedaluwarsa',
         'cancelled' => 'Dibatalkan',
     ];
+    public function index(Request $request): \Illuminate\Contracts\View\View
+    {
+        app(MembershipService::class)->expireDue();
+
+        return parent::index($request);
+    }
+
 
     protected function model(): string
     {
@@ -182,3 +190,4 @@ class SubscriptionController extends AdminCrudController
         return back()->with('status', 'Langganan dibatalkan.');
     }
 }
+

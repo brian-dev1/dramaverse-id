@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 namespace App\Http\Controllers\Web;
 
@@ -31,6 +31,7 @@ class ProfileController extends Controller
         $subscription = $user->subscriptions()
             ->with('plan')
             ->where('status', 'active')
+            ->where(fn ($q) => $q->whereNull('expired_at')->orWhere('expired_at', '>', now()))
             ->latest()
             ->first();
 
@@ -47,3 +48,4 @@ class ProfileController extends Controller
         return redirect()->route('web.home')->with('status', 'Anda telah keluar.');
     }
 }
+
