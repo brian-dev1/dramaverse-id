@@ -71,7 +71,7 @@ class MembershipController extends AdminCrudController
             'name'        => ['required', 'string', 'max:100'],
             'slug'        => ['nullable', 'string', 'max:50', 'alpha_dash',
                               Rule::unique('membership_plans', 'slug')->ignore($model?->getKey())],
-            'price'       => ['required', 'numeric', 'min:0', 'max:99999999'],
+            'price'       => ['required', 'string', 'max:30'],
             'duration'    => ['required', 'integer', 'min:1', 'max:36500'],
             'description' => ['nullable', 'string', 'max:500'],
             'benefits'    => ['nullable', 'string', 'max:1000'],
@@ -87,6 +87,8 @@ class MembershipController extends AdminCrudController
             ? Str::slug($data['slug'])
             : Str::slug($data['name']);
 
+        $data['price'] = $this->normalizeRupiah($data['price'] ?? 0);
+
         $data['is_active'] = $request->boolean('is_active');
 
         // Benefit diisi satu per baris di textarea, disimpan sebagai JSON.
@@ -99,6 +101,23 @@ class MembershipController extends AdminCrudController
         return $data;
     }
 
+
+    /**
+     * Terima harga rupiah bebas dari admin:
+     * 1500, 1.500, 1.234, Rp 1.234 -> 1500 / 1234.
+     */
+    private function normalizeRupiah(mixed $value): int
+    {
+        $raw = trim((string) ($value ?? ''));
+
+        if ($raw === '') {
+            return 0;
+        }
+
+        $digits = preg_replace('/[^\d]/', '', $raw);
+
+        return max(0, (int) ($digits ?: 0));
+    }
     protected function formData(?Model $model = null): array
     {
         return [

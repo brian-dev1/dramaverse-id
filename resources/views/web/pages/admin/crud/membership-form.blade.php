@@ -16,8 +16,11 @@
                 <x-admin.field name="slug" label="Slug" :value="$record->slug"
                                hint="Penanda tetap yang dipakai statistik. Jangan diubah setelah dipakai." />
 
-                <x-admin.field name="price" label="Harga (Rupiah)" type="number" step="1000"
-                               :value="$record->price" min="0" required />
+                <x-admin.field name="price" label="Harga (Rupiah)" type="text"
+                               inputmode="numeric"
+                               :value="$record->exists ? number_format((float) $record->price, 0, ',', '.') : null"
+                               required
+                               hint="Boleh isi bebas seperti 1500, 1.500, 1.234, atau Rp 1.234." />
 
                 <x-admin.field name="duration" label="Durasi (hari)" type="number"
                                :value="$record->duration" min="1" required
