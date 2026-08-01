@@ -90,24 +90,48 @@ class TrakteerGateway extends AbstractGateway
         // webhook pertama datang dan ditolak karena tokennya belum diisi.
         $this->credential($provider, 'webhook_token');
 
+        $saranUnit = $provider->unitSuggestions((float) $invoice->total)[0] ?? null;
+
+        $jumlahUnit = max(1, (int) ($saranUnit['jumlah'] ?? 1));
+
+        // Payment flexible unit quantity: enabled.
         // Nomor invoice ikut sebagai pesan bawaan. Ini satu-satunya jalan
         // menyambungkan pembayaran ke tagihannya di Trakteer.
+        //
+        // Bila admin mengisi kredensial units, contoh:
+        // Cendol=1500
+        //
+        // invoice Rp 3.000 akan membuka Trakteer dengan quantity=2.
+        // Kalau nominal tidak habis dibagi harga unit, jumlah dibulatkan ke atas
+        // supaya tagihan tidak kurang bayar.
         $checkout = $url.'?'.http_build_query([
-            'quantity' => 1,
+            'quantity' => $jumlahUnit,
             'message'  => $invoice->number,
         ]);
 
         $this->log('info', 'charge.trakteer', [
             'invoice'   => $invoice->number,
             'reference' => $transaction->reference,
-            'total'     => (float) $invoice->total,
+            'total'      => (float) $invoice->total,
+            'quantity'   => $jumlahUnit,
+            'unit_name'  => $saranUnit['nama'] ?? null,
+            'unit_price' => $saranUnit['harga'] ?? null,
+            'unit_total' => $saranUnit['total'] ?? null,
+            'unit_exact' => $saranUnit['pas'] ?? null,
         ]);
 
         return new PaymentCharge(
             externalId: null,
             checkoutUrl: $checkout,
             status: PaymentStatus::PENDING,
-            raw: ['page_url' => $url],
+            raw: [
+                'page_url'      => $url,
+                'quantity'      => $jumlahUnit,
+                'unit_name'     => $saranUnit['nama'] ?? null,
+                'unit_price'    => $saranUnit['harga'] ?? null,
+                'unit_total'    => $saranUnit['total'] ?? null,
+                'unit_exact'    => $saranUnit['pas'] ?? null,
+            ],
             expiresAt: $invoice->due_at,
             method: 'trakteer',
         );
