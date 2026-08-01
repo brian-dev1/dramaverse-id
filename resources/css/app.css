@@ -28,6 +28,7 @@
 @import "./web/player/player.css";
 @import "./web/admin/admin.css";
 @import "./web/admin/panel-spacing.css";
+@import "./web/admin/action-layout.css";
 
 /* --- Responsif (terakhir agar dapat menimpa) --- */
 @import "./web/home/responsive.css";
