@@ -45,10 +45,14 @@ class PaymentProviderController extends Controller
             'name'        => ['required', 'string', 'max:60'],
             'driver'      => ['required', Rule::enum(PaymentDriver::class)],
             'mode'        => ['required', 'in:sandbox,live'],
-            'fee_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
-            'fee_flat'    => ['nullable', 'numeric', 'min:0'],
+            'fee_percent' => ['nullable', 'string', 'max:30'],
+            'fee_flat'    => ['nullable', 'string', 'max:30'],
             'instruction' => ['nullable', 'string', 'max:2000'],
         ]);
+
+        // Payment flexible amount normalization: store
+        $data['fee_percent'] = $this->normalizePercent($data['fee_percent'] ?? 0);
+        $data['fee_flat'] = $this->normalizeRupiah($data['fee_flat'] ?? 0);
 
         $provider = PaymentProvider::create([
             'name'        => $data['name'],
@@ -87,12 +91,16 @@ class PaymentProviderController extends Controller
         $data = $request->validate([
             'name'          => ['required', 'string', 'max:60'],
             'mode'          => ['required', 'in:sandbox,live'],
-            'fee_percent'   => ['nullable', 'numeric', 'min:0', 'max:100'],
-            'fee_flat'      => ['nullable', 'numeric', 'min:0'],
+            'fee_percent'   => ['nullable', 'string', 'max:30'],
+            'fee_flat'      => ['nullable', 'string', 'max:30'],
             'instruction'   => ['nullable', 'string', 'max:2000'],
             'credentials'   => ['array'],
             'credentials.*' => ['nullable', 'string', 'max:500'],
         ]);
+
+        // Payment flexible amount normalization: update
+        $data['fee_percent'] = $this->normalizePercent($data['fee_percent'] ?? 0);
+        $data['fee_flat'] = $this->normalizeRupiah($data['fee_flat'] ?? 0);
 
         $kredensial = $provider->credentials ?? [];
 
@@ -218,6 +226,45 @@ class PaymentProviderController extends Controller
         return back()->with('status', "Provider {$provider->name} dihapus.");
     }
 
+
+    /**
+     * Terima nominal rupiah bebas dari admin:
+     * 1500, 1.500, 1.234, Rp 1.234 -> 1500 / 1234.
+     */
+    private function normalizeRupiah(mixed $value): int
+    {
+        $raw = trim((string) ($value ?? ''));
+
+        if ($raw === '') {
+            return 0;
+        }
+
+        $digits = preg_replace('/[^\d]/', '', $raw);
+
+        return max(0, (int) ($digits ?: 0));
+    }
+
+    /**
+     * Terima persen dengan koma/titik:
+     * 1,5 atau 1.5 -> 1.5.
+     */
+    private function normalizePercent(mixed $value): float
+    {
+        $raw = trim((string) ($value ?? ''));
+
+        if ($raw === '') {
+            return 0.0;
+        }
+
+        $raw = str_replace('%', '', $raw);
+        $raw = str_replace(' ', '', $raw);
+        $raw = str_replace(',', '.', $raw);
+        $raw = preg_replace('/[^\d.]/', '', $raw);
+
+        $number = (float) ($raw ?: 0);
+
+        return min(100, max(0, $number));
+    }
     private function uniqueSlug(string $nama): string
     {
         $dasar = Str::slug($nama) ?: 'provider';

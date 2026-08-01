@@ -178,11 +178,15 @@
                                    :hint="$editingProvider->credential($field) ? 'Sudah terisi. Kosongkan untuk membiarkannya.' : 'Belum diisi.'" />
                 @endforeach
 
-                <x-admin.field name="fee_percent" label="Biaya layanan (%)" type="number"
-                               :value="old('fee_percent', $editingProvider->fee_percent)" />
+                <x-admin.field name="fee_percent" label="Biaya layanan (%)" type="text"
+                               inputmode="decimal"
+                               :value="old('fee_percent', rtrim(rtrim(number_format((float) $editingProvider->fee_percent, 2, ',', '.'), '0'), ','))"
+                               hint="Boleh pakai koma/titik, contoh: 1,5 atau 1.5." />
 
-                <x-admin.field name="fee_flat" label="Biaya tetap (Rp)" type="number"
-                               :value="old('fee_flat', $editingProvider->fee_flat)" />
+                <x-admin.field name="fee_flat" label="Biaya tetap (Rp)" type="text"
+                               inputmode="numeric"
+                               :value="old('fee_flat', number_format((float) $editingProvider->fee_flat, 0, ',', '.'))"
+                               hint="Boleh isi bebas seperti 1500, 1.500, 1.234, atau Rp 1.234." />
 
                 <x-admin.field name="instruction" label="Instruksi untuk pengguna" type="textarea"
                                :rows="4" :value="old('instruction', $editingProvider->instruction)" />
@@ -216,9 +220,13 @@
                            :value="old('mode', 'sandbox')"
                            :options="['sandbox' => 'Sandbox (uji coba)', 'live' => 'Live (sungguhan)']" />
 
-            <x-admin.field name="fee_percent" label="Biaya layanan (%)" type="number" :value="old('fee_percent', 0)" />
+            <x-admin.field name="fee_percent" label="Biaya layanan (%)" type="text" inputmode="decimal"
+                           :value="old('fee_percent', 0)"
+                           hint="Boleh pakai koma/titik, contoh: 1,5 atau 1.5." />
 
-            <x-admin.field name="fee_flat" label="Biaya tetap (Rp)" type="number" :value="old('fee_flat', 0)" />
+            <x-admin.field name="fee_flat" label="Biaya tetap (Rp)" type="text" inputmode="numeric"
+                           :value="old('fee_flat', 0)"
+                           hint="Boleh isi bebas seperti 1500, 1.500, 1.234, atau Rp 1.234." />
 
             <div class="form-actions">
                 <button type="submit" class="btn btn-primary">
