@@ -6,6 +6,7 @@ use App\Jobs\VerifyPaymentTransaction;
 use App\Models\PaymentTransaction;
 use App\Services\Membership\MembershipService;
 use App\Services\Payments\InvoiceService;
+use App\Services\Telegram\Contracts\TelegramServiceInterface;
 use App\Services\Telegram\TelegramAlertService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -16,23 +17,25 @@ use Throwable;
  *
  *   php artisan payment:auto verify    tanyakan transaksi yang masih menunggu
  *   php artisan payment:auto expire    kedaluwarsakan tagihan & langganan
- *   php artisan payment:auto all       keduanya
+ *   php artisan payment:auto stale     batalkan tagihan tanpa transaksi 2 jam
+ *   php artisan payment:auto all       ketiganya
  *
  * Digabung dalam satu perintah dengan alasan yang sama seperti
- * `telegram:auto` (8.9): ketiganya berbagi pembacaan config, awalan log, dan
+ * `telegram:auto` (8.9): semuanya berbagi pembacaan config, awalan log, dan
  * penanganan galat yang mengirim peringatan alih-alih mati diam-diam.
  */
 class PaymentAutomation extends Command
 {
     protected $signature = 'payment:auto
-                            {tugas=all : verify, expire, atau all}';
+                            {tugas=all : verify, expire, stale, atau all}';
 
-    protected $description = 'Verifikasi pembayaran tertunda dan kedaluwarsakan langganan';
+    protected $description = 'Verifikasi pembayaran tertunda, kedaluwarsakan langganan, dan buang tagihan basi';
 
     public function __construct(
         protected InvoiceService $invoices,
         protected MembershipService $membership,
-        protected TelegramAlertService $alerts
+        protected TelegramAlertService $alerts,
+        protected TelegramServiceInterface $telegram
     ) {
         parent::__construct();
     }
@@ -41,7 +44,7 @@ class PaymentAutomation extends Command
     {
         $tugas = (string) $this->argument('tugas');
 
-        $daftar = $tugas === 'all' ? ['verify', 'expire'] : [$tugas];
+        $daftar = $tugas === 'all' ? ['verify', 'expire', 'stale'] : [$tugas];
 
         $gagal = 0;
 
@@ -51,6 +54,7 @@ class PaymentAutomation extends Command
                 match ($satu) {
                     'verify' => $this->verify(),
                     'expire' => $this->expire(),
+                    'stale'  => $this->stale(),
                     default  => $this->components->error("Tugas `{$satu}` tidak dikenal."),
                 };
 
@@ -137,6 +141,66 @@ class PaymentAutomation extends Command
             $tagihan,
             $langganan
         ));
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Tagihan basi
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Buang tagihan yang tidak pernah menerima transaksi.
+     *
+     * Tiga hal per tagihan basi, dalam urutan yang tidak saling bergantung:
+     *
+     * 1. `InvoiceService::expireStale()` sudah mengubah statusnya jadi
+     *    CANCELLED — itu yang membuatnya lenyap dari tab "Menunggu" di panel
+     *    admin dan dari `pendingInvoice()` PremiumHandler.
+     * 2. Langganan PENDING yang menunjuk ke tagihan itu ikut dibatalkan, atau
+     *    riwayat pengguna akan menunjukkan "menunggu pembayaran" selamanya
+     *    untuk tagihan yang sudah tidak bisa dibayar.
+     * 3. Pesan bot yang berisi tombol "Bayar sekarang" dihapus dari obrolan
+     *    Telegram, kalau id-nya tersimpan. Tanpa ini, pengguna masih melihat
+     *    tombol yang mengarah ke tagihan yang sudah tidak berlaku.
+     *
+     * Kegagalan menghapus satu pesan (chat sudah diblokir pengguna, pesan
+     * sudah dihapus manual, dll) tidak boleh menggagalkan pembatalan tagihan
+     * lain dalam batch yang sama — karena itu ditangkap per baris, bukan
+     * membiarkan satu galat menghentikan seluruh perintah.
+     */
+    private function stale(): void
+    {
+        $invoices = $this->invoices->expireStale();
+
+        foreach ($invoices as $invoice) {
+
+            $this->membership->cancelPendingFor($invoice);
+
+            if ($invoice->telegram_chat_id === null || $invoice->telegram_message_id === null) {
+                continue;
+            }
+
+            try {
+                $this->telegram->deleteMessage(
+                    (int) $invoice->telegram_chat_id,
+                    (int) $invoice->telegram_message_id
+                );
+
+            } catch (Throwable $e) {
+
+                Log::warning('payment.auto.stale_delete_failed', [
+                    'invoice' => $invoice->number,
+                    'sebab'   => $e->getMessage(),
+                ]);
+            }
+        }
+
+        $this->log('payment.auto.stale', ['jumlah' => $invoices->count()]);
+
+        $this->components->info($invoices->isEmpty()
+            ? 'Tidak ada tagihan basi.'
+            : $invoices->count().' tagihan basi dibatalkan dan dibuang dari panel & bot.');
     }
 
     private function log(string $event, array $context): void

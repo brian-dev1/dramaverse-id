@@ -34,6 +34,8 @@ class Invoice extends Model
         'paid_at',
         'cancelled_at',
         'note',
+        'telegram_chat_id',
+        'telegram_message_id',
     ];
 
     protected $casts = [

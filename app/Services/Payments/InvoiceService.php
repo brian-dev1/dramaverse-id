@@ -180,4 +180,54 @@ class InvoiceService
         return $jumlah;
     }
 
+    /**
+     * Batalkan tagihan yang belum menerima transaksi apa pun sekian lama.
+     *
+     * Beda dengan `expireOverdue()`: itu menunggu `due_at` penuh (bawaannya
+     * 24 jam). Ini menutup tagihan yang jelas-jelas ditinggalkan jauh lebih
+     * cepat — `paid_amount` masih nol berarti tidak sepeser pun pernah masuk,
+     * beda dengan tagihan yang sedang dicicil dan wajar makan waktu.
+     *
+     * Dipanggil dari `payment:auto stale`. Pemanggilnya yang bertanggung jawab
+     * membatalkan langganan PENDING terkait dan menghapus pesan Telegram-nya —
+     * keduanya bukan urusan invoice, sama seperti kenapa kelas ini dipisah
+     * dari `CheckoutService` sejak awal.
+     *
+     * @return \Illuminate\Support\Collection<int,Invoice> tagihan yang baru dibatalkan
+     */
+    public function expireStale(?int $menit = null, int $limit = 500): \Illuminate\Support\Collection
+    {
+        $menit ??= (int) config('payment.guard.stale_after', 120);
+
+        $batas = now()->subMinutes(max(1, $menit));
+
+        $basi = Invoice::query()
+            ->unpaid()
+            ->where('paid_amount', '<=', 0)
+            ->where('created_at', '<=', $batas)
+            ->limit($limit)
+            ->get();
+
+        $basi->each(function (Invoice $invoice) use ($menit) {
+
+            DB::transaction(function () use ($invoice, $menit) {
+
+                $this->cancel(
+                    $invoice,
+                    "Dibatalkan otomatis: tidak ada transaksi dalam {$menit} menit."
+                );
+
+                $invoice->transactions()
+                    ->where('status', PaymentStatus::PENDING->value)
+                    ->update(['status' => PaymentStatus::CANCELLED->value]);
+            });
+        });
+
+        if ($basi->isNotEmpty()) {
+            $this->log('info', 'invoice.stale_cancelled', ['jumlah' => $basi->count()]);
+        }
+
+        return $basi;
+    }
+
 }

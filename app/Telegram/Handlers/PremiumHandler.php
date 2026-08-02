@@ -209,11 +209,24 @@ class PremiumHandler
             return;
         }
 
-        $this->telegram->sendMessage(
+        $respon = $this->telegram->sendMessage(
             $chatId,
             implode("\n", $this->instruksi($transaction->invoice, $provider)),
             ['reply_markup' => ['inline_keyboard' => $this->tombolBayar($transaction->invoice, $transaction->checkout_url)]]
         );
+
+        // Disimpan supaya bisa dihapus lagi kalau tagihannya nanti dibatalkan
+        // otomatis karena basi — lihat `PaymentAutomation::stale()`. Kalau
+        // Telegram tidak mengembalikan message_id (jarang, tapi bukan
+        // keharusan), pesannya sederhana tidak akan pernah dihapus otomatis;
+        // itu lebih aman daripada menyimpan id yang salah.
+        if (($messageId = $respon->messageId()) !== null) {
+
+            $transaction->invoice->forceFill([
+                'telegram_chat_id'    => $chatId,
+                'telegram_message_id' => $messageId,
+            ])->save();
+        }
     }
 
     /*

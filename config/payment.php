@@ -111,21 +111,35 @@ return [
     |--------------------------------------------------------------------------
     |
     | max_pending_invoices — satu pengguna tidak boleh punya lebih banyak
-    | tagihan menggantung daripada ini. Tanpa batas, satu skrip bisa membuat
-    | ribuan tagihan dalam semenit dan memenuhi tabel sekaligus mengacaukan
-    | seluruh angka pendapatan.
+    | tagihan menggantung daripada ini. Bawaannya 1: PremiumHandler membaca
+    | nilai ini untuk memutuskan apakah tagihan lama ditampilkan ulang atau
+    | tagihan baru dibuat (lihat `pendingInvoice()`), dan alur Trakteer cuma
+    | punya satu kolom pesan untuk menyambungkan pembayaran ke tagihan. Kalau
+    | angka ini lebih dari 1, pengguna bisa menekan tombol paket lagi sebelum
+    | tagihan pertamanya kedaluwarsa dan mendapat tagihan kedua yang menumpuk
+    | di atas yang pertama.
     |
     | callback_rate — batas permintaan callback per menit per IP. Endpoint
     | callback terbuka ke internet dan tidak bisa diberi CSRF; ini satu-satunya
     | penahan sebelum verifikasi tanda tangan.
     |
+    | stale_after — dalam menit. Tagihan yang belum menerima satu rupiah pun
+    | (`paid_amount` masih nol) sesudah durasi ini dibatalkan otomatis oleh
+    | `payment:auto stale`, bukan menunggu sampai `invoice_ttl` penuh. Dua jam
+    | dipilih karena pengguna yang benar-benar mau bayar biasanya menyelesaikan
+    | dalam hitungan menit; yang dibiarkan berjam-jam tanpa transaksi masuk
+    | biasanya sudah berubah pikiran, dan tagihannya cuma menumpuk di panel
+    | admin serta menyisakan tombol "Bayar sekarang" basi di obrolan bot.
+    |
     */
 
     'guard' => [
 
-        'max_pending_invoices' => $angka('PAYMENT_MAX_PENDING', 3, 1),
+        'max_pending_invoices' => $angka('PAYMENT_MAX_PENDING', 1, 1),
 
         'callback_rate' => $angka('PAYMENT_CALLBACK_RATE', 60, 1),
+
+        'stale_after' => $angka('PAYMENT_STALE_AFTER', 120, 5),
 
     ],
 

@@ -124,6 +124,16 @@ Schedule::command('payment:auto expire')
     ->withoutOverlapping()
     ->runInBackground();
 
+// stale tiap 15 menit: tagihan tanpa transaksi (payment.guard.stale_after,
+// bawaannya 2 jam) tidak perlu menunggu jadwal per jam untuk hilang dari
+// panel dan dari obrolan bot -- makin lama tombol "Bayar sekarang" yang
+// basi menempel, makin besar peluang pengguna menekannya dan bingung
+// kenapa tagihannya sudah tidak berlaku.
+Schedule::command('payment:auto stale')
+    ->everyFifteenMinutes()
+    ->withoutOverlapping()
+    ->runInBackground();
+
 /*
 |--------------------------------------------------------------------------
 | Analytics
