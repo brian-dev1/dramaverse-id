@@ -4,26 +4,23 @@
 
 @section('content')
 
+    @php($telegramLink = $episode->video?->isSyncedToTelegram()
+        ? \App\Support\TelegramDeepLink::watch($episode)
+        : null)
+
     <section class="player-wrap section-pad">
 
         <div class="player-main">
 
             <div class="player-frame">
-                @if ($episode->embed_url)
-                    <iframe src="{{ $episode->embed_url }}"
-                            allowfullscreen loading="lazy"
-                            title="{{ $drama->title }} Episode {{ $episode->episode_number }}"></iframe>
-                @elseif ($episode->video_url)
-                    <video id="player" controls playsinline preload="metadata"
-                           @if ($episode->thumbnail_url) poster="{{ $episode->thumbnail_url }}" @endif
-                           data-episode="{{ $episode->id }}"
-                           data-progress="{{ $progress ?? 0 }}">
-                        <source src="{{ $episode->video_url }}" type="video/mp4">
-                        Peramban Anda tidak mendukung pemutar video.
-                    </video>
+                @if ($telegramLink)
+                    <div class="player-empty"
+                         @if ($episode->thumbnail_url) style="background-image:url('{{ $episode->thumbnail_url }}')" @endif>
+                        <p>Video tersedia lewat Telegram.</p>
+                    </div>
                 @else
                     <div class="player-empty">
-                        <p>Sumber video belum diunggah untuk episode ini.</p>
+                        <p>Video belum siap ditonton.</p>
                     </div>
                 @endif
             </div>
@@ -42,10 +39,6 @@
                     lalu dijawab "belum siap" oleh bot adalah dead link versi
                     lintas aplikasi, dan aturan proyek ini melarangnya.
                 --}}
-                @php($telegramLink = $episode->video?->isSyncedToTelegram()
-                    ? \App\Support\TelegramDeepLink::watch($episode)
-                    : null)
-
                 @if ($telegramLink)
                     <a href="{{ $telegramLink }}" class="btn btn-primary"
                        target="_blank" rel="noopener">

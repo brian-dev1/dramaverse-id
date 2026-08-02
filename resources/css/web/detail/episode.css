@@ -23,7 +23,16 @@
     height:100%;
     display:flex; align-items:center; justify-content:center;
     color:var(--text-muted); font-size:14px; text-align:center; padding:var(--space-4);
+    background-size:cover;
+    background-position:center;
 }
+.player-empty::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    background:linear-gradient(180deg, rgba(0,0,0,.28), rgba(0,0,0,.72));
+}
+.player-empty p{ position:relative; z-index:1; }
 
 .player-info{ padding-top:var(--space-3); }
 .player-nav{

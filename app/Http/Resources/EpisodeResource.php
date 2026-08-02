@@ -21,8 +21,6 @@ class EpisodeResource extends JsonResource
 
             'thumbnail' => $this->thumbnail,
 
-            'video_url' => $this->video_url,
-
             'drama_id' => $this->drama_id,
 
         ];
