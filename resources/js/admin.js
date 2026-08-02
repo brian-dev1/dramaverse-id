@@ -28,10 +28,14 @@ function bulkSelection() {
     const form = document.querySelector('[data-bulk-form]');
     if (!form) return;
 
+    // Checkbox baris tidak lagi berada di dalam form ini — form ini
+    // sengaja tidak melingkupi tabel (lihat komentar di Blade-nya), dan
+    // checkbox-nya menempel lewat atribut form="bulk-form". Jadi
+    // pencariannya lewat document, bukan lewat form.querySelector.
     const bar   = form.querySelector('[data-bulk-bar]');
     const count = form.querySelector('[data-bulk-count]');
-    const all   = form.querySelector('[data-bulk-all]');
-    const items = () => [...form.querySelectorAll('[data-bulk-item]')];
+    const all   = document.querySelector('[data-bulk-all]');
+    const items = () => [...document.querySelectorAll('[data-bulk-item]')];
 
     const sync = () => {
         const checked = items().filter((i) => i.checked).length;

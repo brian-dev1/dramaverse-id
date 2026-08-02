@@ -110,7 +110,21 @@
     @else
 
         @if ($canBulk)
-            <form method="POST" action="{{ route('admin.'.$routeKey.'.bulk') }}" data-bulk-form>
+            {{--
+                Form ini SENGAJA tidak melingkupi tabel di bawah.
+
+                Tabel berisi form per-baris sendiri (hapus, pulihkan,
+                aktifkan/nonaktifkan) lewat <x-admin.confirm> dan
+                .inline-form. Kalau form ini dibiarkan membungkus tabel,
+                form-form baris itu jadi bersarang di dalamnya — dan parser
+                HTML membuang tag <form> yang bersarang, sehingga tombol
+                Hapus dkk. justru mengirim (atau tidak mengirim apa pun ke)
+                form massal ini. Checkbox baris tetap ikut form ini lewat
+                atribut form="bulk-form", pola yang sama seperti
+                priority-form di bawah.
+            --}}
+            <form method="POST" action="{{ route('admin.'.$routeKey.'.bulk') }}"
+                  id="bulk-form" data-bulk-form>
             @csrf
 
             <div class="bulk-bar" data-bulk-bar hidden>
@@ -125,6 +139,7 @@
 
                 <button type="submit" class="btn btn-ghost btn-sm">Jalankan</button>
             </div>
+            </form>
         @endif
 
         @php
@@ -173,7 +188,7 @@
                     <tr>
                         @if ($canBulk)
                             <th class="col-check">
-                                <input type="checkbox" data-bulk-all aria-label="Pilih semua">
+                                <input type="checkbox" form="bulk-form" data-bulk-all aria-label="Pilih semua">
                             </th>
                         @endif
 
@@ -205,7 +220,7 @@
                         <tr @if ($sortable_dnd) draggable="true" data-id="{{ $record->id }}" @endif>
                             @if ($canBulk)
                                 <td class="col-check">
-                                    <input type="checkbox" name="ids[]" value="{{ $record->id }}"
+                                    <input type="checkbox" form="bulk-form" name="ids[]" value="{{ $record->id }}"
                                            data-bulk-item aria-label="Pilih baris">
                                 </td>
                             @endif
@@ -357,10 +372,6 @@
                 </tbody>
             </table>
         </div>
-
-        @if ($canBulk)
-            </form>
-        @endif
 
         <div class="pagination-wrap">{{ $records->links() }}</div>
 
