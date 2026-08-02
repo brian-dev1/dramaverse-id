@@ -80,7 +80,7 @@ class DramaAssetController extends Controller
                 'ok'      => false,
                 'message' => 'Unggahan gagal karena kesalahan di server. '
                              .'Rinciannya tercatat di log aplikasi.',
-            ], 500);
+            ], 422);
         }
 
         $berhasil = $hasil['berhasil'];
@@ -121,7 +121,7 @@ class DramaAssetController extends Controller
             return response()->json([
                 'ok'      => false,
                 'message' => 'Aset gagal dihapus. Rinciannya tercatat di log aplikasi.',
-            ], 500);
+            ], 422);
         }
 
         return response()->json([

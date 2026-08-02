@@ -121,7 +121,7 @@ class BatchUploadController extends Controller
                 'ok'      => false,
                 'message' => 'Berkas gagal disimpan sementara di server, jadi tidak '
                              .'diantrekan. Rinciannya tercatat di log aplikasi.',
-            ], 500);
+            ], 422);
         }
 
         return response()->json([

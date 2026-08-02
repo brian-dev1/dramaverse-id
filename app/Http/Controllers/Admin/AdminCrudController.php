@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * Basis seluruh CRUD panel admin.
@@ -232,14 +234,18 @@ abstract class AdminCrudController extends Controller
     {
         $data = $request->validate($this->rules($request));
 
-        $record = DB::transaction(function () use ($request, $data) {
-            $model = $this->model();
-            $record = $model::create($this->prepare($request, $data));
+        try {
+            $record = DB::transaction(function () use ($request, $data) {
+                $model = $this->model();
+                $record = $model::create($this->prepare($request, $data));
 
-            $this->afterSave($request, $record, created: true);
+                $this->afterSave($request, $record, created: true);
 
-            return $record;
-        });
+                return $record;
+            });
+        } catch (Throwable $e) {
+            return $this->saveFailed($request, $e, 'menambahkan');
+        }
 
         app(ActivityLogger::class)->log('dibuat', $this->routeKey(), $record);
 
@@ -254,11 +260,15 @@ abstract class AdminCrudController extends Controller
 
         $data = $request->validate($this->rules($request, $record));
 
-        DB::transaction(function () use ($request, $data, $record) {
-            $record->update($this->prepare($request, $data, $record));
+        try {
+            DB::transaction(function () use ($request, $data, $record) {
+                $record->update($this->prepare($request, $data, $record));
 
-            $this->afterSave($request, $record, created: false);
-        });
+                $this->afterSave($request, $record, created: false);
+            });
+        } catch (Throwable $e) {
+            return $this->saveFailed($request, $e, 'memperbarui');
+        }
 
         app(ActivityLogger::class)->log('diubah', $this->routeKey(), $record);
 
@@ -362,5 +372,18 @@ abstract class AdminCrudController extends Controller
             : $model::query();
 
         return $query->findOrFail($id);
+    }
+
+    protected function saveFailed(Request $request, Throwable $e, string $action): RedirectResponse
+    {
+        Log::error('admin.crud.save_failed', [
+            'module' => $this->routeKey(),
+            'action' => $action,
+            'error' => $e->getMessage(),
+        ]);
+
+        return back()
+            ->withInput($request->except(['poster_file', 'cover_file', 'thumbnail_file', 'image_file']))
+            ->with('error', 'Gagal '.$action.' '.$this->label().'. Cek migration/database dan storage, detailnya sudah masuk log.');
     }
 }

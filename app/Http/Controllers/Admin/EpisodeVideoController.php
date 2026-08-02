@@ -197,7 +197,7 @@ class EpisodeVideoController extends Controller
                 'message' => 'Berkas gagal disimpan sementara di server, jadi '
                              .'unggahannya tidak diantrekan. Rinciannya tercatat '
                              .'di log aplikasi.',
-            ], 500);
+            ], 422);
         }
 
         return response()->json([
