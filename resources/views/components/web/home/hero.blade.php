@@ -1,25 +1,15 @@
 @props(['banners' => null, 'dramas' => null])
 
 @php
-    // Utamakan banner yang dikurasi admin; bila kosong, pakai drama unggulan.
+    // Beranda memakai poster drama sebagai gambar utama.
     $slides = collect();
 
-    if ($banners && $banners->isNotEmpty()) {
-        $slides = $banners->map(fn ($b) => (object) [
-            'eyebrow'  => 'Pilihan Redaksi',
-            'title'    => $b->title,
-            'subtitle' => $b->subtitle,
-            'image'    => $b->image_url,
-            'href'     => $b->link ?: route('web.trending'),
-            'cta'      => $b->button_text ?: 'Tonton Sekarang',
-            'meta'     => [],
-        ]);
-    } elseif ($dramas && $dramas->isNotEmpty()) {
+    if ($dramas && $dramas->isNotEmpty()) {
         $slides = $dramas->take(5)->map(fn ($d) => (object) [
             'eyebrow'  => 'Sedang Tayang',
             'title'    => $d->title,
             'subtitle' => $d->synopsis,
-            'image'    => $d->cover_url ?? $d->poster_url,
+            'image'    => $d->poster_url,
             'href'     => route('web.drama.show', $d->slug),
             'cta'      => 'Tonton Sekarang',
             'meta'     => array_filter([
@@ -28,6 +18,16 @@
                 $d->country?->name,
                 $d->total_episode ? $d->total_episode.' Episode' : null,
             ]),
+        ]);
+    } elseif ($banners && $banners->isNotEmpty()) {
+        $slides = $banners->map(fn ($b) => (object) [
+            'eyebrow'  => 'Pilihan Redaksi',
+            'title'    => $b->title,
+            'subtitle' => $b->subtitle,
+            'image'    => $b->image_url,
+            'href'     => $b->link ?: route('web.trending'),
+            'cta'      => $b->button_text ?: 'Tonton Sekarang',
+            'meta'     => [],
         ]);
     }
 

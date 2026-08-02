@@ -115,7 +115,6 @@ class DramaController extends AdminCrudController
             'genre_ids.*'    => ['integer', 'exists:genres,id'],
 
             'poster_file'    => MediaService::rules(),
-            'cover_file'     => MediaService::rules(),
             'gradient'       => ['nullable', 'string', 'max:8'],
             'trailer_url'    => ['nullable', 'url', 'max:255'],
 
@@ -150,11 +149,7 @@ class DramaController extends AdminCrudController
             $data['poster'] = $this->media->store($request->file('poster_file'), 'drama/poster', $model?->poster);
         }
 
-        if ($request->hasFile('cover_file')) {
-            $data['cover'] = $this->media->store($request->file('cover_file'), 'drama/cover', $model?->cover);
-        }
-
-        unset($data['poster_file'], $data['cover_file'], $data['genre_ids']);
+        unset($data['poster_file'], $data['genre_ids']);
 
         return $data;
     }

@@ -24,9 +24,7 @@
                 <h2>Media</h2>
 
                 <x-admin.image-field name="poster_file" label="Poster" :current="$record->poster"
-                                     hint="Rasio 2:3, mis. 600×900. Maksimal 4 MB." />
-                <x-admin.image-field name="cover_file" label="Cover" :current="$record->cover"
-                                     hint="Rasio lebar, mis. 1600×900. Maksimal 4 MB." />
+                                     hint="Poster ini juga dipakai sebagai cover di beranda. Maksimal 4 MB." />
 
                 <x-admin.field name="gradient" label="Gradien cadangan" type="select"
                                :value="$record->gradient ?? 'g1'"
