@@ -9,7 +9,7 @@
             'eyebrow'  => 'Pilihan Redaksi',
             'title'    => $b->title,
             'subtitle' => $b->subtitle,
-            'image'    => $b->image,
+            'image'    => $b->image_url,
             'href'     => $b->link ?: route('web.trending'),
             'cta'      => $b->button_text ?: 'Tonton Sekarang',
             'meta'     => [],

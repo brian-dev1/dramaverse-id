@@ -102,6 +102,17 @@ class Episode extends Model
         return $this->expired_at !== null && $this->expired_at->isPast();
     }
 
+    public function getThumbnailUrlAttribute(): ?string
+    {
+        if (! $this->thumbnail) {
+            return null;
+        }
+
+        return str_starts_with($this->thumbnail, 'http://') || str_starts_with($this->thumbnail, 'https://')
+            ? $this->thumbnail
+            : asset('storage/'.$this->thumbnail);
+    }
+
     /** Episode berikutnya dalam drama yang sama. */
     public function next(): ?self
     {

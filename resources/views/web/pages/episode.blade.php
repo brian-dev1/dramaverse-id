@@ -15,7 +15,7 @@
                             title="{{ $drama->title }} Episode {{ $episode->episode_number }}"></iframe>
                 @elseif ($episode->video_url)
                     <video id="player" controls playsinline preload="metadata"
-                           poster="{{ $episode->thumbnail }}"
+                           @if ($episode->thumbnail_url) poster="{{ $episode->thumbnail_url }}" @endif
                            data-episode="{{ $episode->id }}"
                            data-progress="{{ $progress ?? 0 }}">
                         <source src="{{ $episode->video_url }}" type="video/mp4">

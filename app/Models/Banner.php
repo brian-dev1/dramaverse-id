@@ -27,6 +27,11 @@ class Banner extends Model
         'end_at'     => 'datetime',
     ];
 
+    public function getImageUrlAttribute(): ?string
+    {
+        return $this->image ? $this->imageUrl($this->image) : null;
+    }
+
     /** Banner yang sedang tayang pada posisi tertentu. */
     public function scopeActive(Builder $query, string $position = 'hero'): Builder
     {
@@ -35,5 +40,12 @@ class Banner extends Model
             ->where(fn (Builder $q) => $q->whereNull('start_at')->orWhere('start_at', '<=', now()))
             ->where(fn (Builder $q) => $q->whereNull('end_at')->orWhere('end_at', '>=', now()))
             ->orderBy('sort_order');
+    }
+
+    private function imageUrl(string $path): string
+    {
+        return str_starts_with($path, 'http://') || str_starts_with($path, 'https://')
+            ? $path
+            : asset('storage/'.$path);
     }
 }
