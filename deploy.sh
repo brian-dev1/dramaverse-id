@@ -121,6 +121,10 @@ mkdir -p storage/logs
 chown -R www-data:www-data storage bootstrap/cache
 chmod -R 775 storage bootstrap/cache
 
+echo "==> Link storage publik"
+STEP="storage link"
+php artisan storage:link --force
+
 echo "==> Restart worker antrean"
 STEP="restart worker"
 supervisorctl restart dramaverse-worker:* || true
