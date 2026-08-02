@@ -5,8 +5,10 @@ namespace App\Services\Admin;
 use App\Models\ActivityLog;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Request;
 use Illuminate\Support\Str;
+use Throwable;
 
 /**
  * Mencatat tindakan admin ke tabel activity_logs.
@@ -26,15 +28,24 @@ class ActivityLogger
             ? sprintf('%s %s: %s', ucfirst($module), $action, $this->label($subject))
             : sprintf('%s %s', ucfirst($module), $action);
 
-        ActivityLog::create([
-            'user_id'     => Auth::id(),
-            'action'      => $action,
-            'module'      => $module,
-            'description' => $description,
-            'ip_address'  => Request::ip(),
-            'user_agent'  => Str::limit((string) Request::userAgent(), 500, ''),
-            'payload'     => $payload ?: null,
-        ]);
+        try {
+            ActivityLog::create([
+                'user_id'     => Auth::id(),
+                'action'      => $action,
+                'module'      => $module,
+                'description' => $description,
+                'ip_address'  => Request::ip(),
+                'user_agent'  => Str::limit((string) Request::userAgent(), 500, ''),
+                'payload'     => $payload ?: null,
+            ]);
+        } catch (Throwable $e) {
+            Log::warning('activity-log.failed', [
+                'action' => $action,
+                'module' => $module,
+                'subject' => $subject?->getKey(),
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     /** Label yang bisa dibaca manusia untuk sebuah record. */

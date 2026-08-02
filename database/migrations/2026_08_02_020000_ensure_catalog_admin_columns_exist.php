@@ -4,23 +4,18 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-/**
- * Kolom tambahan yang dibutuhkan panel admin untuk mengelola taksonomi.
- */
 return new class extends Migration
 {
     public function up(): void
     {
         if (! Schema::hasColumn('genres', 'icon')) {
             Schema::table('genres', function (Blueprint $table) {
-                // Nama ikon dari komponen <x-web.home.icon>, bukan emoji.
                 $table->string('icon', 32)->nullable()->after('description');
             });
         }
 
         if (! Schema::hasColumn('genres', 'color')) {
             Schema::table('genres', function (Blueprint $table) {
-                // Warna aksen heksadesimal, mis. #D9AF6E
                 $table->string('color', 7)->nullable()->after('icon');
             });
         }
