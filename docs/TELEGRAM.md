@@ -48,6 +48,17 @@ server, nol bandwidth bucket, selesai dalam milidetik.
 **Bot tidak pernah mengunggah video saat pengguna memintanya.** Kalau belum
 tersinkron, bot mengatakannya terus terang.
 
+Cloudflare R2 masuk di langkah pertama sebagai storage provider. Setelah R2
+dijadikan default, unggahan video baru masuk ke R2. Admin lalu menjalankan
+sinkronisasi Telegram dari `/admin/telegram/sync` atau antrean otomatis; service
+akan membaca video dari R2, mengirimnya sekali ke channel privat
+`TELEGRAM_STORAGE_CHAT_ID`, dan menyimpan `file_id`.
+
+Aturan gratis/berbayar tidak berubah oleh R2. Saat penonton menekan tombol
+episode di bot, `TelegramDeliveryService` tetap bertanya ke
+`EpisodeAccessService`: episode non-VIP boleh ditonton siapa pun, episode VIP
+hanya dikirim ke admin atau pengguna premium yang masih aktif.
+
 ### Batas 50 MB
 
 Bot API menolak berkas di atas 50 MB. Itu batas Telegram, bukan batas

@@ -83,6 +83,33 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Cloudflare R2 bootstrap
+    |--------------------------------------------------------------------------
+    |
+    | Nilai ini dipakai oleh `php artisan storage:r2:setup` untuk membuat atau
+    | memperbarui baris storage_providers. Setelah tersimpan, aplikasi tetap
+    | memakai database sebagai sumber kebenaran provider — bukan membaca nilai
+    | R2 dari config setiap request.
+    |
+    */
+
+    'r2' => [
+        'provider_name' => env('R2_PROVIDER_NAME', 'Cloudflare R2 Produksi'),
+        'provider_slug' => env('R2_PROVIDER_SLUG', 'r2'),
+        'account_id' => env('R2_ACCOUNT_ID'),
+        'endpoint' => env('R2_ENDPOINT'),
+        'bucket' => env('R2_BUCKET'),
+        'access_key' => env('R2_ACCESS_KEY_ID'),
+        'secret_key' => env('R2_SECRET_ACCESS_KEY'),
+        'region' => env('R2_REGION', 'auto'),
+        'root' => env('R2_ROOT'),
+        'public_url' => env('R2_PUBLIC_URL'),
+        'visibility' => env('R2_VISIBILITY', env('STORAGE_DEFAULT_VISIBILITY', 'private')),
+        'priority' => (int) env('R2_PRIORITY', 10),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Storage Engine
     |--------------------------------------------------------------------------
     */

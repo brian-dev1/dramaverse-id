@@ -49,6 +49,48 @@ php artisan storage:smoke local     # provider tertentu
 menghapusnya. Jalankan setelah menambah provider **dan setelah setiap
 deploy**.
 
+## Cloudflare R2
+
+R2 memakai jalur storage provider yang sama dengan provider lain. Bot Telegram
+tidak membaca `.env` R2 secara langsung; video diunggah ke provider default,
+lalu sinkronisasi Telegram membaca berkas itu dari storage provider untuk
+mendapatkan `file_id`.
+
+Isi nilai ini di `.env` lokal atau VPS:
+
+```env
+R2_ACCOUNT_ID=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+R2_BUCKET=nama-bucket
+R2_ACCESS_KEY_ID=...
+R2_SECRET_ACCESS_KEY=...
+R2_ROOT=
+R2_VISIBILITY=private
+```
+
+Endpoint bawaan disusun menjadi
+`https://<R2_ACCOUNT_ID>.r2.cloudflarestorage.com`. Bila bucket memakai
+jurisdiction khusus atau endpoint berbeda, isi `R2_ENDPOINT` dan biarkan
+`R2_ACCOUNT_ID` tetap boleh kosong.
+
+Setelah `.env` terisi, jalankan:
+
+```bash
+php artisan storage:r2:setup --test --activate --default
+```
+
+Yang dilakukan command ini:
+
+- Membuat atau memperbarui provider slug `r2`.
+- Memaksa region `auto` dan path-style endpoint, sesuai kebutuhan R2.
+- Menyimpan access key dan secret key terenkripsi di tabel
+  `storage_providers`.
+- Menjalankan Test Connection bila memakai `--test`.
+- Mengaktifkan dan menjadikannya default bila memakai `--activate --default`.
+
+R2 sebaiknya tetap `private` untuk video episode. Alur berbayar dijaga oleh
+aplikasi dan Telegram: pengguna meminta episode ke bot, bot memeriksa akses
+membership, lalu hanya mengirim `file_id` bila pengguna berhak menonton.
+
 ## Modul yang memakainya
 
 | Modul | Halaman |
