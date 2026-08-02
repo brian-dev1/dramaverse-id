@@ -8,24 +8,23 @@
         ? \App\Support\TelegramDeepLink::watch($episode)
         : null)
 
-    @php($posterImage = $episode->thumbnail_url ?: $drama->cover_url ?: $drama->poster_url)
+    @php($posterImage = $drama->poster_url ?: $drama->cover_url ?: $episode->thumbnail_url)
 
     <section class="player-wrap section-pad">
 
         <div class="player-main">
 
-            <div class="player-frame">
+            <div class="player-poster-card">
                 <div class="player-poster" @if ($posterImage) style="background-image:url('{{ $posterImage }}')" @endif>
                     @if ($telegramLink)
                         <a href="{{ $telegramLink }}" class="player-play-btn"
                            target="_blank" rel="noopener" aria-label="Tonton di Telegram">
-                            <x-web.home.icon name="play" :size="24" />
+                            <x-web.home.icon name="play" :size="20" />
                         </a>
                     @else
                         <div class="player-play-btn player-play-btn-disabled">
-                            <x-web.home.icon name="play" :size="24" />
+                            <x-web.home.icon name="play" :size="20" />
                         </div>
-                        <p class="player-poster-note">Video belum siap ditonton.</p>
                     @endif
                 </div>
             </div>
@@ -50,6 +49,8 @@
                         <x-web.home.icon name="play" :size="14" />
                         Tonton di Telegram
                     </a>
+                @else
+                    <p class="player-poster-note">Video belum siap ditonton.</p>
                 @endif
 
                 @if ($episode->description)

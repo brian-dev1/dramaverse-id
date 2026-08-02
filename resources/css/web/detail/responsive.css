@@ -5,6 +5,11 @@
     .player-sidebar{ max-height:none; }
 }
 
+@media (max-width: 640px){
+    .player-main{ flex-direction:column; }
+    .player-poster-card{ flex-basis:auto; width:150px; margin:0 auto; }
+}
+
 @media (max-width: 900px){
     .admin-shell{ grid-template-columns:1fr; }
     .admin-sidebar{

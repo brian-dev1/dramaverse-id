@@ -5,37 +5,35 @@
     gap:var(--space-4);
     padding-top:var(--space-4);
 }
-.player-main{ min-width:0; }
 
-.player-frame{
-    position:relative;
-    aspect-ratio:16/9;
-    border-radius:var(--radius-l);
-    overflow:hidden;
-    background:#000;
-    border:1px solid var(--border-soft);
+.player-main{
+    display:flex;
+    gap:var(--space-4);
+    min-width:0;
 }
-.player-frame iframe,
-.player-frame video{
-    width:100%; height:100%; border:0; display:block;
+
+.player-poster-card{
+    flex:0 0 220px;
 }
+
 .player-poster{
     position:relative;
-    height:100%;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    justify-content:center;
-    gap:var(--space-2);
-    background-color:#0d0d0d;
+    aspect-ratio:2/3;
+    border-radius:var(--radius-l);
+    overflow:hidden;
+    background:#0d0d0d;
     background-size:cover;
     background-position:center;
+    border:1px solid var(--border-soft);
+    display:flex;
+    align-items:center;
+    justify-content:center;
 }
 .player-poster::before{
     content:"";
     position:absolute;
     inset:0;
-    background:linear-gradient(180deg, rgba(0,0,0,.18), rgba(0,0,0,.55));
+    background:linear-gradient(180deg, rgba(0,0,0,.15), rgba(0,0,0,.5));
 }
 .player-play-btn{
     position:relative;
@@ -43,32 +41,31 @@
     display:flex;
     align-items:center;
     justify-content:center;
-    width:76px;
-    height:76px;
+    width:56px;
+    height:56px;
     border-radius:50%;
     background:var(--gold);
     color:#141414;
-    box-shadow:0 10px 28px rgba(0,0,0,.45);
+    box-shadow:0 8px 22px rgba(0,0,0,.45);
     transition:transform .15s ease, box-shadow .15s ease;
 }
 .player-play-btn:hover{
     transform:scale(1.06);
-    box-shadow:0 12px 32px rgba(0,0,0,.55);
+    box-shadow:0 10px 26px rgba(0,0,0,.55);
 }
 .player-play-btn-disabled{
     background:rgba(255,255,255,.14);
     color:var(--text-muted);
     cursor:not-allowed;
 }
+
+.player-info{ flex:1; min-width:0; padding-top:var(--space-1); }
+.player-info .btn{ margin-top:var(--space-2); }
 .player-poster-note{
-    position:relative;
-    z-index:1;
+    margin-top:var(--space-2);
     color:var(--text-muted);
     font-size:13px;
-    text-align:center;
 }
-
-.player-info{ padding-top:var(--space-3); }
 .player-nav{
     display:flex; gap:12px; flex-wrap:wrap;
     margin-top:var(--space-3);

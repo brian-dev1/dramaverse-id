@@ -3,7 +3,9 @@
 namespace App\Telegram\Router;
 
 use App\Repositories\Contracts\TelegramRepositoryInterface;
+use App\Services\Telegram\Contracts\TelegramServiceInterface;
 use App\Services\UserSessionService;
+use App\Enums\TelegramMenuAction;
 use App\Telegram\Handlers\CallbackHandler;
 use App\Telegram\Handlers\SearchHandler;
 use App\Telegram\Handlers\StartHandler;
@@ -98,6 +100,12 @@ class TelegramRouter
 
         $user = $this->users->findByTelegramId($message['from']['id'] ?? 0);
 
+        if (str_starts_with($text, '/')) {
+            $this->command($message, $text, $user);
+
+            return;
+        }
+
         if ($user === null) {
             return;
         }
@@ -116,6 +124,63 @@ class TelegramRouter
             default => null,
 
         };
+    }
+
+    private function command(array $message, string $text, mixed $user): void
+    {
+        $chatId = $message['chat']['id'];
+        $command = mb_strtolower((string) str($text)->before(' ')->before('@')->ltrim('/'));
+
+        $action = match ($command) {
+            'status', 'profil', 'profile' => TelegramMenuAction::PROFILE,
+            'vip', 'premium' => TelegramMenuAction::PREMIUM,
+            'search', 'cari' => TelegramMenuAction::SEARCH,
+            'lanjut', 'continue' => TelegramMenuAction::CONTINUE,
+            'favorit', 'favorite' => TelegramMenuAction::FAVORITE,
+            'riwayat', 'history' => TelegramMenuAction::HISTORY,
+            'terbaru', 'latest' => TelegramMenuAction::LATEST,
+            'trending', 'populer' => TelegramMenuAction::TRENDING,
+            'website', 'web' => TelegramMenuAction::WEBSITE,
+            'help', 'bantuan' => TelegramMenuAction::HELP,
+            default => null,
+        };
+
+        if ($action === null) {
+            app(TelegramServiceInterface::class)->sendMessage(
+                $chatId,
+                'Command tidak dikenali. Tekan /start untuk membuka menu utama.'
+            );
+
+            return;
+        }
+
+        if ($user === null) {
+            app(TelegramServiceInterface::class)->sendMessage(
+                $chatId,
+                'Kirim /start dulu supaya akun Anda dikenali.'
+            );
+
+            return;
+        }
+
+        if ($action->startsConversation()) {
+            app(SearchHandler::class)->start((int) $chatId, (int) $user->id);
+
+            return;
+        }
+
+        $handler = $action->handler();
+
+        if ($handler === null) {
+            app(StartHandler::class)->handle($message);
+
+            return;
+        }
+
+        app($handler)->handle([
+            'message' => $message,
+            'from' => $message['from'] ?? [],
+        ], $user);
     }
 
     /*
