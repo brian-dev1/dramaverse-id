@@ -236,26 +236,31 @@
                             throw new Error('Gagal mengambil episode.');
                         }
 
-                        const data = await response.json();
+                        const { data } = await response.json();
 
-                        episode.innerHTML =
-                            '<option value="">— pilih episode —</option>';
+episode.innerHTML =
+    '<option value="">— pilih episode —</option>';
 
-                        data.forEach((item) => {
-                            const option = document.createElement('option');
+if (!data.length) {
+    episode.innerHTML =
+        '<option value="">— belum ada episode —</option>';
 
-                            option.value = item.id;
+    episode.disabled = true;
+    return;
+}
 
-                            option.textContent =
-                                'Episode ' +
-                                item.episode_number +
-                                (item.title ? ' — ' + item.title : '');
+data.forEach((item) => {
+    const option = document.createElement('option');
 
-                            episode.appendChild(option);
-                        });
+    option.value = item.id;
+    option.textContent = item.has_video
+        ? `${item.label} (sudah ada video)`
+        : item.label;
 
-                        episode.disabled = false;
+    episode.appendChild(option);
+});
 
+episode.disabled = false;
                     } catch (error) {
                         episode.innerHTML =
                             '<option value="">Gagal memuat episode</option>';
