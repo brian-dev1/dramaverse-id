@@ -105,39 +105,30 @@
                         @csrf
 
                         <div class="field">
-    <label for="inbox-episode-{{ $video->id }}">
-        Episode
-        <span class="field-required" aria-hidden="true">*</span>
-    </label>
+                            <label for="inbox-drama-{{ $video->id }}">
+                                Drama
+                                <span class="field-required" aria-hidden="true">*</span>
+                            </label>
 
-    <select id="inbox-episode-{{ $video->id }}"
-            name="episode_id"
-            class="control"
-            data-inbox-episode
-            required
-            disabled>
+                            <select id="inbox-drama-{{ $video->id }}"
+                                    class="control"
+                                    data-inbox-drama
+                                    required>
 
-        <option value="">
-            — pilih drama dulu —
-        </option>
+                                <option value="">— pilih drama —</option>
 
-    </select>
+                                @foreach ($dramas as $drama)
+                                    <option value="{{ $drama->id }}">
+                                        {{ $drama->title }}
+                                    </option>
+                                @endforeach
 
-    <p class="field-hint">
-        Pilih episode tujuan, atau buat episode baru jika belum tersedia.
-    </p>
+                            </select>
 
-    <a href="{{ route('admin.episode.batch') }}"
-       class="btn btn-ghost btn-sm"
-       data-add-episode
-       data-base-url="{{ route('admin.episode.batch') }}">
-        + Tambah Episode
-    </a>
-
-    @error('episode_id')
-        <p class="field-error">{{ $message }}</p>
-    @enderror
-</div>
+                            <p class="field-hint">
+                                Pilih drama terlebih dahulu.
+                            </p>
+                        </div>
 
                         <div class="field">
                             <label for="inbox-episode-{{ $video->id }}">
@@ -157,6 +148,17 @@
                                 </option>
 
                             </select>
+
+                            <p class="field-hint">
+                                Pilih episode tujuan, atau buat episode baru jika belum tersedia.
+                            </p>
+
+                            <a href="{{ route('admin.episode.batch') }}"
+                               class="btn btn-ghost btn-sm"
+                               data-add-episode
+                               data-base-url="{{ route('admin.episode.batch') }}">
+                                + Tambah Episode
+                            </a>
 
                             @error('episode_id')
                                 <p class="field-error">{{ $message }}</p>
