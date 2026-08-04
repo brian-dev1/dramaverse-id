@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api;
 use App\Http\Controllers\Web\WebSearchController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\Internal\VideoInboxController;
 
 /*
 |--------------------------------------------------------------------------
@@ -29,3 +30,6 @@ Route::prefix('v1')->name('api.v1.')->middleware('throttle:api')->group(function
         Route::get('/notifications', [Api\NotificationController::class, 'index'])->name('notifications');
     });
 });
+
+Route::post('/internal/video-inbox', [VideoInboxController::class, 'store'])
+    ->middleware('throttle:60,1');

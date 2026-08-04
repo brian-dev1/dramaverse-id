@@ -7,7 +7,10 @@ return [
     | Third Party Services
     |--------------------------------------------------------------------------
     */
-
+    'video_worker' => [
+    'token' => env('VIDEO_WORKER_TOKEN'),
+    ],
+    
     'postmark' => [
         'key' => env('POSTMARK_API_KEY'),
     ],
