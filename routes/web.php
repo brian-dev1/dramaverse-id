@@ -684,5 +684,23 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('/settings', [Admin\SettingController::class, 'index'])->name('settings');
             Route::put('/settings', [Admin\SettingController::class, 'update'])->name('settings.update');
         });
+
+                /*
+        |--------------------------------------------------------------------------
+        | Video Inbox
+        |
+        | Video yang sudah diunggah worker Telegram ke storage provider.
+        | Admin hanya memasangkan object yang sudah ada ke episode, sehingga
+        | tidak ada download atau upload ulang berkas.
+        |--------------------------------------------------------------------------
+        */
+        Route::controller(Admin\VideoInboxController::class)
+            ->prefix('video-inbox')->name('video-inbox.')
+            ->middleware('permission:episode.manage')
+            ->group(function () {
+                Route::get('/', 'index')->name('index');
+                Route::post('/{videoInbox}/assign', 'assign')
+                    ->name('assign')->whereNumber('videoInbox');
+            });
     });
 });
