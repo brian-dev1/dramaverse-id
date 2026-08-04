@@ -18,7 +18,7 @@ return new class extends Migration
             $table->unsignedBigInteger('telegram_message_id')->nullable();
 
             $table->string('original_filename');
-            $table->string('object_key', 900);
+            $table->string('object_key', 700);
 
             $table->string('mime_type', 150)->default('video/mp4');
             $table->unsignedBigInteger('size')->default(0);
