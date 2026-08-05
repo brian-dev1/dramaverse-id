@@ -1,10 +1,10 @@
 <?php
 
 use App\Http\Controllers\Api;
-use App\Http\Controllers\Web\WebSearchController;
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\Internal\VideoInboxController;
 use App\Http\Controllers\Api\Internal\VideoUploadTargetController;
+use App\Http\Controllers\Web\WebSearchController;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -35,5 +35,8 @@ Route::prefix('v1')->name('api.v1.')->middleware('throttle:api')->group(function
 Route::post('/internal/video-inbox', [VideoInboxController::class, 'store'])
     ->middleware('throttle:60,1');
 
-Route::get('/internal/video-upload-target', VideoUploadTargetController::class)
+Route::get('/internal/video-upload-target', [VideoUploadTargetController::class, 'show'])
+    ->middleware('throttle:60,1');
+
+Route::post('/internal/video-upload-target', [VideoUploadTargetController::class, 'store'])
     ->middleware('throttle:60,1');
