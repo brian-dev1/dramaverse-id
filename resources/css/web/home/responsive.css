@@ -84,3 +84,115 @@
 
     .perf{ padding-left:var(--space-2); padding-right:var(--space-2); }
 }
+/* ============ RESPONSIF ============ */
+
+@media (max-width: 1100px){
+    .footer-grid{ grid-template-columns:1fr 1fr 1fr; }
+}
+
+@media (max-width: 980px){
+    .nav-links{ display:none; }
+    .search-pill{ width:auto; }
+    .search-pill span{ display:none; }
+}
+
+@media (max-width: 900px){
+    .footer-grid{ grid-template-columns:1fr 1fr; }
+    .membership{ flex-direction:column; align-items:flex-start; }
+}
+
+@media (max-width: 640px){
+    .wrap,
+    .section-pad{ padding-left:var(--space-3); padding-right:var(--space-3); }
+
+    .hero-frame{
+        min-height:auto;
+        margin:0 var(--space-2);
+        border-radius:var(--radius-l);
+    }
+    .hero-content{ padding:var(--space-5) var(--space-3) var(--space-4); }
+    .hero-dots{ display:none; }
+
+    /* Grid katalog: 3 kolom tetap ala kit, bukan auto-fill yang kadang
+       cuma muat 2 di layar sempit. */
+    .grid{
+        grid-template-columns:repeat(3, 1fr);
+        gap:10px;
+    }
+    .rail{ gap:10px; }
+    .drama-card{ flex-basis:118px; }
+    .grid .drama-card{ flex-basis:auto; }
+    .card-title{ font-size:14px; }
+    .card-sub{ font-size:9.5px; }
+
+    /* Poster & overlay lebih ringkas di kartu sempit, senada kit
+       (badge kecil pojok, progress tipis di dasar). */
+    .drama-poster{ padding:10px 9px; }
+    .card-badge{ font-size:9px; padding:2px 6px; }
+    .card-rank{ font-size:24px; }
+    .card-progress{ margin-top:6px; }
+
+    .membership{ margin:var(--space-5) var(--space-3) 0; padding:var(--space-4) var(--space-3); }
+
+    .section-head{ flex-wrap:wrap; }
+    .section-title{ font-size:19px; }
+
+    /* --- Navigasi bawah --- */
+    .mobile-nav{
+        display:flex; position:fixed; bottom:0; left:0; right:0; z-index:60;
+        background:rgba(15,13,20,.92); backdrop-filter:blur(16px);
+        border-top:1px solid var(--border-soft);
+        padding:8px 6px calc(8px + env(safe-area-inset-bottom));
+        justify-content:space-around;
+    }
+    .mobile-nav a{
+        display:flex; flex-direction:column; align-items:center; gap:3px;
+        font-size:10px; color:var(--text-muted); font-weight:600;
+        flex:1; padding:4px 0;
+    }
+    .mobile-nav a.active{ color:var(--gold); }
+
+    body{ padding-bottom:76px; }
+}
+
+@media (max-width: 420px){
+    /* Ponsel sangat sempit: tetap 3 kolom, hanya jarak dipadatkan
+       supaya proporsi kartu mendekati kit. */
+    .grid{ gap:8px; }
+    .rail{ gap:8px; }
+    .drama-card{ flex-basis:108px; }
+    .card-title{ font-size:12.5px; }
+}
+
+/* --- Kontainer pada layar sempit --- */
+@media (max-width: 900px){
+    .wrap,
+    .section-pad,
+    .hero{
+        padding-left:var(--space-3);
+        padding-right:var(--space-3);
+    }
+
+    .membership,
+    .empty-state{
+        margin-left:var(--space-3);
+        margin-right:var(--space-3);
+    }
+}
+
+@media (max-width: 640px){
+    .wrap,
+    .section-pad,
+    .hero{
+        padding-left:var(--space-2);
+        padding-right:var(--space-2);
+    }
+
+    .membership,
+    .empty-state{
+        margin-left:var(--space-2);
+        margin-right:var(--space-2);
+    }
+
+    .perf{ padding-left:var(--space-2); padding-right:var(--space-2); }
+}
