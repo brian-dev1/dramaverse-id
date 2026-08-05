@@ -1,67 +1,73 @@
-import hashlib
 import asyncio
+import hashlib
+import mimetypes
 import os
-import sys
 import re
+import sys
 
-import boto3
 import requests
-from botocore.config import Config
 from telethon import TelegramClient
 
 from fast_download import ParallelDownloader
 
-# --- Ambil dari environment variable, JANGAN hardcode di sini ---
-# Sebelum jalanin, set dulu di terminal:
-#   export TG_API_ID=123456
-#   export TG_API_HASH=abcdef...
+
+# ============================================================
+# Telegram
+# ============================================================
+
 API_ID = os.environ.get("TG_API_ID")
 API_HASH = os.environ.get("TG_API_HASH")
 
 DOWNLOAD_DIR = "./downloads"
 
-# ==========================================
-# Cloudflare R2 Configuration
-# ==========================================
+SCAN_LIMIT = 50
+PARALLEL_CONNECTIONS = 6
 
-R2_ENDPOINT = "https://eca700cac8f9f9384e77cd568efb76d7.r2.cloudflarestorage.com"
-R2_ACCESS_KEY = "ac825d85545ea4c82b6586be05f20ac8"
-R2_SECRET_KEY = "8d5f304004fdf7cc9c6a372e007e78dc00652fd0e8a7be0225abc31e16532423"
-R2_BUCKET = "dracinhub-storage"
-R2_FOLDER = "telegram"
 
-# ==========================================
+# ============================================================
 # DramaVerse Laravel API
-# ==========================================
+# ============================================================
 
-LARAVEL_API_URL = "https://dracinverse.cloud/api/internal/video-inbox"
+LARAVEL_BASE_URL = "https://dracinverse.cloud/api/internal"
+
+UPLOAD_TARGET_URL = f"{LARAVEL_BASE_URL}/video-upload-target"
+VIDEO_INBOX_URL = f"{LARAVEL_BASE_URL}/video-inbox"
+
 LARAVEL_API_TOKEN = os.environ.get("VIDEO_WORKER_TOKEN")
 
-r2 = boto3.client(
-    "s3",
-    endpoint_url=R2_ENDPOINT,
-    aws_access_key_id=R2_ACCESS_KEY,
-    aws_secret_access_key=R2_SECRET_KEY,
-    config=Config(signature_version="s3v4"),
-)
+
+def api_headers():
+    if not LARAVEL_API_TOKEN:
+        raise RuntimeError(
+            "VIDEO_WORKER_TOKEN belum tersedia di environment."
+        )
+
+    return {
+        "Authorization": f"Bearer {LARAVEL_API_TOKEN}",
+        "Accept": "application/json",
+    }
+
+
+# ============================================================
+# Filename
+# ============================================================
+
 def make_safe_filename(filename):
-    """
-    Normalisasi nama object R2 agar kompatibel dengan
-    Laravel ObjectKey.
-    """
     filename = os.path.basename(filename)
 
     stem, extension = os.path.splitext(filename)
 
-    # Laravel Str::slug(): lowercase dan karakter selain
-    # huruf/angka dipisahkan dengan tanda '-'.
-    safe_stem = re.sub(r"[^a-z0-9]+", "-", stem.lower())
-    safe_stem = safe_stem.strip("-")
+    safe_stem = re.sub(
+        r"[^a-z0-9]+",
+        "-",
+        stem.lower(),
+    ).strip("-")
 
     if not safe_stem:
-        raise ValueError("Nama file tidak menghasilkan object key yang valid.")
+        raise ValueError(
+            "Nama file tidak menghasilkan object key yang valid."
+        )
 
-    # ObjectKey Laravel membatasi stem ke 120 karakter.
     safe_stem = safe_stem[:120].rstrip("-")
 
     extension = extension.lower().lstrip(".")
@@ -72,82 +78,132 @@ def make_safe_filename(filename):
     return safe_stem
 
 
-def upload_to_r2(local_file):
-    """
-    Upload file ke Cloudflare R2.
-    Mengembalikan key object yang berhasil di-upload.
-    """
+def detect_mime_type(filename):
+    mime_type, _ = mimetypes.guess_type(filename)
 
-    filename = os.path.basename(local_file)
-    stored_filename = make_safe_filename(filename)
-    object_key = f"{R2_FOLDER}/{stored_filename}"
+    return mime_type or "video/mp4"
 
-    print(f"[R2] Uploading {filename}...")
-    print(f"[R2] Object key: {object_key}")
 
-    r2.upload_file(
-        local_file,
-        R2_BUCKET,
-        object_key,
+# ============================================================
+# Storage Provider
+# ============================================================
+
+def get_storage_providers():
+    print("\n[STORAGE] Mengambil daftar storage dari DramaVerse...")
+
+    response = requests.get(
+        UPLOAD_TARGET_URL,
+        headers=api_headers(),
+        timeout=30,
     )
 
-    print("[R2] Upload selesai.")
-
-    return object_key
-    r2.upload_file(
-        local_file,
-        R2_BUCKET,
-        object_key,
-    )
-
-    print("[R2] Upload selesai.")
-
-    return object_key
-
-def calculate_sha256(local_file):
-    sha256 = hashlib.sha256()
-
-    with open(local_file, "rb") as file:
-        while chunk := file.read(1024 * 1024):
-            sha256.update(chunk)
-
-    return sha256.hexdigest()
-
-def sync_to_laravel(local_file, object_key, telegram_message_id=None):
-    """
-    Kirim metadata video yang sudah berada di R2 ke Laravel Video Inbox.
-    """
-
-    if not LARAVEL_API_TOKEN:
+    if not response.ok:
         raise RuntimeError(
-            "VIDEO_WORKER_TOKEN belum tersedia di environment."
+            f"HTTP {response.status_code}: {response.text}"
         )
 
-    filename = os.path.basename(local_file)
-    file_size = os.path.getsize(local_file)
+    data = response.json()
 
-    print("[CHECKSUM] Menghitung SHA-256...")
-    checksum = calculate_sha256(local_file)
-    print("[CHECKSUM] Selesai.")
+    return (
+        data.get("default_provider"),
+        data.get("providers", []),
+    )
 
-    payload = {
-        "provider_slug": "r2",
-        "telegram_message_id": telegram_message_id,
-        "original_filename": filename,
-        "object_key": object_key,
-        "mime_type": "video/mp4",
-        "size": file_size,
-        "checksum": checksum,
-    }
 
-    print("[LARAVEL] Menyinkronkan metadata video...")
+def choose_storage_provider():
+    default_slug, providers = get_storage_providers()
+
+    if not providers:
+        raise RuntimeError(
+            "Tidak ada storage provider yang tersedia."
+        )
+
+    print("\n========================================")
+    print(" STORAGE PROVIDER")
+    print("========================================")
+
+    default_name = next(
+        (
+            provider["name"]
+            for provider in providers
+            if provider["slug"] == default_slug
+        ),
+        default_slug or "-",
+    )
+
+    print(f"[1] Auto (Default: {default_name})")
+
+    for index, provider in enumerate(
+        providers,
+        start=2,
+    ):
+        marker = " [DEFAULT]" if (
+            provider["slug"] == default_slug
+        ) else ""
+
+        print(
+            f"[{index}] "
+            f"{provider['name']} "
+            f"({provider['driver']})"
+            f"{marker}"
+        )
+
+    print("========================================")
+
+    while True:
+        choice = input("\nPilih storage: ").strip()
+
+        try:
+            choice_number = int(choice)
+        except ValueError:
+            print("Pilihan tidak valid.")
+            continue
+
+        if choice_number == 1:
+            print(
+                f"[STORAGE] Mode Auto -> {default_name}"
+            )
+
+            return "auto"
+
+        provider_index = choice_number - 2
+
+        if 0 <= provider_index < len(providers):
+            provider = providers[provider_index]
+
+            print(
+                "[STORAGE] Dipilih: "
+                f"{provider['name']}"
+            )
+
+            return provider["slug"]
+
+        print("Pilihan tidak valid.")
+
+
+# ============================================================
+# Upload Target
+# ============================================================
+
+def create_upload_target(
+    provider_slug,
+    filename,
+    mime_type,
+):
+    print(
+        "[STORAGE] Meminta URL upload sementara..."
+    )
 
     response = requests.post(
-        LARAVEL_API_URL,
-        json=payload,
+        UPLOAD_TARGET_URL,
+        json={
+            "provider_slug": provider_slug,
+            "filename": filename,
+            "mime_type": mime_type,
+        },
         headers={
-            "Authorization": f"Bearer {LARAVEL_API_TOKEN}",
-            "Accept": "application/json",
+            **api_headers(),
+            "Content-Type": "application/json",
         },
         timeout=30,
     )
@@ -159,101 +215,381 @@ def sync_to_laravel(local_file, object_key, telegram_message_id=None):
 
     data = response.json()
 
-    print("[LARAVEL] Video berhasil masuk ke Video Inbox.")
+    if (
+        "provider" not in data
+        or "file" not in data
+        or "upload" not in data
+    ):
+        raise RuntimeError(
+            "Response upload target dari Laravel tidak valid."
+        )
 
     return data
 
-# Berapa banyak pesan terakhir yang di-scan untuk cari video
-SCAN_LIMIT = 50
 
-# Berapa banyak koneksi paralel dipakai untuk download.
-# Makin banyak, makin cepat (sampai batas tertentu), tapi juga makin berat.
-# 4-8 biasanya titik optimal. Jangan set terlalu tinggi (>16) karena
-# Telegram bisa mulai membatasi/menolak koneksi berlebihan.
-PARALLEL_CONNECTIONS = 6
+def upload_to_storage(
+    local_file,
+    provider_slug,
+):
+    filename = os.path.basename(local_file)
+    mime_type = detect_mime_type(filename)
 
+    target = create_upload_target(
+        provider_slug,
+        filename,
+        mime_type,
+    )
+
+    provider = target["provider"]
+    file_info = target["file"]
+    upload = target["upload"]
+
+    upload_url = upload["url"]
+    method = upload.get("method", "PUT").upper()
+    headers = upload.get("headers", {})
+
+    if method != "PUT":
+        raise RuntimeError(
+            f"Metode upload tidak didukung: {method}"
+        )
+
+    print(
+        f"[STORAGE] Provider : {provider['name']}"
+    )
+    print(
+        f"[STORAGE] Object   : {file_info['object_key']}"
+    )
+    print(
+        f"[STORAGE] Uploading {filename}..."
+    )
+
+    file_size = os.path.getsize(local_file)
+
+    with open(local_file, "rb") as file:
+        response = requests.put(
+            upload_url,
+            data=file,
+            headers=headers,
+            timeout=(30, 7200),
+        )
+
+    if not response.ok:
+        raise RuntimeError(
+            "Upload storage gagal "
+            f"(HTTP {response.status_code}): "
+            f"{response.text[:500]}"
+        )
+
+    print(
+        "[STORAGE] Upload selesai "
+        f"({format_size(file_size)})."
+    )
+
+    return {
+        "provider_slug": provider["slug"],
+        "object_key": file_info["object_key"],
+        "stored_filename": file_info["stored_filename"],
+        "mime_type": file_info["mime_type"],
+    }
+
+
+# ============================================================
+# Checksum
+# ============================================================
+
+def calculate_sha256(local_file):
+    sha256 = hashlib.sha256()
+
+    with open(local_file, "rb") as file:
+        while True:
+            chunk = file.read(1024 * 1024)
+
+            if not chunk:
+                break
+
+            sha256.update(chunk)
+
+    return sha256.hexdigest()
+
+
+# ============================================================
+# Video Inbox
+# ============================================================
+
+def sync_to_laravel(
+    local_file,
+    upload_result,
+    telegram_message_id=None,
+):
+    filename = os.path.basename(local_file)
+    file_size = os.path.getsize(local_file)
+
+    print("[CHECKSUM] Menghitung SHA-256...")
+
+    checksum = calculate_sha256(local_file)
+
+    print("[CHECKSUM] Selesai.")
+
+    payload = {
+        "provider_slug": upload_result["provider_slug"],
+        "telegram_message_id": telegram_message_id,
+        "original_filename": filename,
+        "object_key": upload_result["object_key"],
+        "mime_type": upload_result["mime_type"],
+        "size": file_size,
+        "checksum": checksum,
+    }
+
+    print(
+        "[LARAVEL] Mengirim video ke Video Inbox..."
+    )
+
+    response = requests.post(
+        VIDEO_INBOX_URL,
+        json=payload,
+        headers={
+            **api_headers(),
+            "Content-Type": "application/json",
+        },
+        timeout=30,
+    )
+
+    if not response.ok:
+        raise RuntimeError(
+            f"HTTP {response.status_code}: {response.text}"
+        )
+
+    data = response.json()
+
+    print(
+        "[LARAVEL] Video berhasil masuk ke Video Inbox."
+    )
+
+    return data
+
+
+# ============================================================
+# Helpers
+# ============================================================
 
 def progress_callback(current, total):
+    if not total:
+        return
+
     percent = current * 100 / total
+
     bar_len = 30
     filled = int(bar_len * current / total)
-    bar = "#" * filled + "-" * (bar_len - filled)
+
+    bar = (
+        "#" * filled
+        + "-" * (bar_len - filled)
+    )
+
     mb_current = current / (1024 * 1024)
     mb_total = total / (1024 * 1024)
-    print(f"\r[{bar}] {percent:5.1f}%  ({mb_current:.1f}/{mb_total:.1f} MB)", end="", flush=True)
+
+    print(
+        f"\r[{bar}] "
+        f"{percent:5.1f}%  "
+        f"({mb_current:.1f}/{mb_total:.1f} MB)",
+        end="",
+        flush=True,
+    )
 
 
 def format_size(num_bytes):
     if not num_bytes:
         return "?"
+
     mb = num_bytes / (1024 * 1024)
+
+    if mb >= 1024:
+        return f"{mb / 1024:.2f} GB"
+
     return f"{mb:.1f} MB"
 
 
+# ============================================================
+# Main
+# ============================================================
+
 async def main():
     if not API_ID or not API_HASH:
-        print("ERROR: TG_API_ID / TG_API_HASH belum di-set sebagai environment variable.")
-        print("Jalankan dulu:")
-        print("  export TG_API_ID=xxxxxx")
-        print("  export TG_API_HASH=xxxxxxxxxxxxxxxx")
+        print(
+            "ERROR: TG_API_ID / TG_API_HASH "
+            "belum di-set sebagai environment variable."
+        )
         sys.exit(1)
 
-    os.makedirs(DOWNLOAD_DIR, exist_ok=True)
-
-    client = TelegramClient("telegram_session", int(API_ID), API_HASH)
-    await client.start()
-    print("Telegram berhasil terhubung.")
-
-    bot_username = input("Masukkan username bot (contoh: @namabot atau namabot): ").strip().lstrip("@")
+    if not LARAVEL_API_TOKEN:
+        print(
+            "ERROR: VIDEO_WORKER_TOKEN "
+            "belum di-set sebagai environment variable."
+        )
+        sys.exit(1)
 
     try:
-        entity = await client.get_entity(bot_username)
-    except ValueError:
-        print(f"Bot '{bot_username}' tidak ditemukan. Pastikan kamu sudah pernah chat dengan bot ini.")
-        await client.disconnect()
+        selected_provider = choose_storage_provider()
+    except Exception as error:
+        print(
+            f"\n[STORAGE] Gagal mengambil storage: {error}"
+        )
         return
 
-    print(f"Mengambil {SCAN_LIMIT} pesan terakhir dari chat bot...")
+    os.makedirs(
+        DOWNLOAD_DIR,
+        exist_ok=True,
+    )
+
+    client = TelegramClient(
+        "telegram_session",
+        int(API_ID),
+        API_HASH,
+    )
+
+    await client.start()
+
+    print("\nTelegram berhasil terhubung.")
+
+    bot_username = input(
+        "Masukkan username bot "
+        "(contoh: @namabot atau namabot): "
+    ).strip().lstrip("@")
+
+    try:
+        entity = await client.get_entity(
+            bot_username
+        )
+
+    except ValueError:
+        print(
+            f"Bot '{bot_username}' tidak ditemukan. "
+            "Pastikan kamu sudah pernah chat "
+            "dengan bot ini."
+        )
+
+        await client.disconnect()
+
+        return
+
+    print(
+        f"Mengambil {SCAN_LIMIT} pesan terakhir "
+        "dari chat bot..."
+    )
 
     videos = []
-    async for message in client.iter_messages(entity, limit=SCAN_LIMIT):
-        if message.video or (message.document and message.file and message.file.mime_type and "video" in message.file.mime_type):
+
+    async for message in client.iter_messages(
+        entity,
+        limit=SCAN_LIMIT,
+    ):
+        is_video = bool(message.video)
+
+        is_video_document = bool(
+            message.document
+            and message.file
+            and message.file.mime_type
+            and "video" in message.file.mime_type
+        )
+
+        if is_video or is_video_document:
             videos.append(message)
 
     if not videos:
-        print("Tidak ada video ditemukan di chat bot ini.")
+        print(
+            "Tidak ada video ditemukan di chat bot ini."
+        )
+
         await client.disconnect()
+
         return
 
-    print(f"\nDitemukan {len(videos)} video:\n")
-    for i, msg in enumerate(videos, start=1):
-        name = msg.file.name if msg.file and msg.file.name else "(tanpa nama)"
-        size = format_size(msg.file.size if msg.file else None)
-        date = msg.date.strftime("%Y-%m-%d %H:%M")
-        print(f"  [{i}] {name} — {size} — {date}")
+    print(
+        f"\nDitemukan {len(videos)} video:\n"
+    )
 
-    pilihan = input("\nPilih nomor video yang mau didownload (atau 'all' untuk semua): ").strip().lower()
+    for index, message in enumerate(
+        videos,
+        start=1,
+    ):
+        name = (
+            message.file.name
+            if message.file and message.file.name
+            else "(tanpa nama)"
+        )
 
-    if pilihan == "all":
+        size = format_size(
+            message.file.size
+            if message.file
+            else None
+        )
+
+        date = message.date.strftime(
+            "%Y-%m-%d %H:%M"
+        )
+
+        print(
+            f"  [{index}] "
+            f"{name} — {size} — {date}"
+        )
+
+    choice = input(
+        "\nPilih nomor video yang mau didownload "
+        "(atau 'all' untuk semua): "
+    ).strip().lower()
+
+    if choice == "all":
         selected = videos
+
     else:
         try:
-            idx = int(pilihan)
-            if idx < 1 or idx > len(videos):
+            index = int(choice)
+
+            if (
+                index < 1
+                or index > len(videos)
+            ):
                 raise ValueError
-            selected = [videos[idx - 1]]
+
+            selected = [
+                videos[index - 1]
+            ]
+
         except ValueError:
             print("Input tidak valid.")
+
             await client.disconnect()
+
             return
 
-    downloader = ParallelDownloader(client, num_connections=PARALLEL_CONNECTIONS)
+    downloader = ParallelDownloader(
+        client,
+        num_connections=PARALLEL_CONNECTIONS,
+    )
 
-    for i, message in enumerate(selected, start=1):
-        print(f"\nMendownload video {i}/{len(selected)} (mode paralel, {PARALLEL_CONNECTIONS} koneksi)...")
+    for index, message in enumerate(
+        selected,
+        start=1,
+    ):
+        print(
+            f"\nMendownload video "
+            f"{index}/{len(selected)} "
+            f"(mode paralel, "
+            f"{PARALLEL_CONNECTIONS} koneksi)..."
+        )
 
-        file_name = message.file.name if message.file and message.file.name else f"video_{message.id}.mp4"
-        out_path = os.path.join(DOWNLOAD_DIR, file_name)
+        file_name = (
+            message.file.name
+            if message.file
+            and message.file.name
+            else f"video_{message.id}.mp4"
+        )
+
+        out_path = os.path.join(
+            DOWNLOAD_DIR,
+            file_name,
+        )
 
         try:
             path = await downloader.download(
@@ -261,44 +597,78 @@ async def main():
                 out_path,
                 progress_callback=progress_callback,
             )
-        except Exception as e:
-            # Kalau mode paralel gagal (misal media bukan document biasa),
-            # fallback ke cara download standar Telethon.
-            print(f"\nMode paralel gagal ({e}), mencoba cara biasa...")
+
+        except Exception as error:
+            print(
+                "\nMode paralel gagal "
+                f"({error}), mencoba cara biasa..."
+            )
+
             path = await client.download_media(
                 message,
                 file=DOWNLOAD_DIR,
                 progress_callback=progress_callback,
             )
 
-        print(f"\nSelesai! File tersimpan di: {path}")
+        print(
+            f"\nSelesai! File tersimpan di: {path}"
+        )
 
         try:
-            object_key = upload_to_r2(path)
-            print(f"[R2] File berhasil diupload: {object_key}")
+            upload_result = upload_to_storage(
+                path,
+                selected_provider,
+            )
 
-        except Exception as e:
-            print(f"[R2] Upload gagal: {e}")
-            print("[LOCAL] File lokal tetap disimpan.")
+            print(
+                "[STORAGE] File berhasil diupload: "
+                f"{upload_result['object_key']}"
+            )
+
+        except Exception as error:
+            print(
+                f"[STORAGE] Upload gagal: {error}"
+            )
+            print(
+                "[LOCAL] File lokal tetap disimpan."
+            )
+
             continue
 
         try:
             sync_to_laravel(
                 path,
-                object_key,
+                upload_result,
                 telegram_message_id=message.id,
             )
 
-        except Exception as e:
-            print(f"[LARAVEL] Sinkronisasi gagal: {e}")
-            print(f"[R2] Video tetap aman di R2: {object_key}")
+        except Exception as error:
+            print(
+                f"[LARAVEL] Sinkronisasi gagal: {error}"
+            )
+            print(
+                "[STORAGE] Video tetap aman di "
+                f"{upload_result['provider_slug']}: "
+                f"{upload_result['object_key']}"
+            )
+
+            # Jangan hapus file lokal jika metadata gagal
+            # masuk ke Video Inbox.
+            continue
 
         try:
             os.remove(path)
-            print("[LOCAL] File lokal dihapus.")
 
-        except OSError as e:
-            print(f"[LOCAL] Gagal menghapus file lokal: {e}")
+            print(
+                "[LOCAL] File lokal dihapus."
+            )
+
+        except OSError as error:
+            print(
+                "[LOCAL] Gagal menghapus "
+                f"file lokal: {error}"
+            )
+
     await client.disconnect()
 
 
