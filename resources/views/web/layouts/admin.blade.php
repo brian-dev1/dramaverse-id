@@ -32,6 +32,10 @@
             // alternatif dengan alasan yang sama seperti route-nya — izin
             // `upload.view` belum ada sampai RoleSeeder dijalankan ulang.
             ['route' => 'admin.upload.index',  'icon' => 'clock',  'label' => 'Upload Queue', 'can' => ['upload.view', 'episode.manage']],
+            // Video Inbox: berkas yang sudah didorong worker Telegram ke
+            // storage dan menunggu dipasangkan ke episode. Diletakkan tepat
+            // setelah Upload Queue karena satu alur kerja.
+            ['route' => 'admin.video-inbox.index', 'icon' => 'inbox', 'label' => 'Video Inbox', 'can' => 'episode.manage'],
             // Batch Upload duduk di sebelah Upload Queue karena keduanya satu
             // alur: unggah banyak berkas di sini, lihat nasibnya di sana.
             ['route' => 'admin.batch.form',    'icon' => 'plus',   'label' => 'Batch Upload', 'can' => ['upload.manage', 'episode.manage']],

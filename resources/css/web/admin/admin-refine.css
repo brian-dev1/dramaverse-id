@@ -1,0 +1,502 @@
+/* ==========================================================================
+   Panel Admin — perapian tata letak + tema "Bioskop Arsip"
+   --------------------------------------------------------------------------
+   Dimuat PALING AKHIR di antara berkas admin, jadi berhak menimpa
+   admin.css, panel-spacing.css, dan action-layout.css.
+
+   Tidak ada perubahan markup di sini. Semua murni tampilan, sehingga
+   integrasi Telegram, worker, dan route tetap utuh.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+| 1. Dasar: matikan latar foto & tipografi display situs pengunjung
+|
+| Panel admin butuh kontras tinggi dan keterbacaan, bukan poster film.
+-------------------------------------------------------------------------- */
+.admin-body::before,
+.admin-body::after{ display:none !important; }
+
+.admin-body{
+    background:var(--bg-primary);
+    background-image:
+        radial-gradient(ellipse 70% 40% at 50% -8%, rgba(255,106,26,.07), transparent),
+        repeating-linear-gradient(0deg, rgba(255,255,255,.008) 0px, rgba(255,255,255,.008) 1px, transparent 1px, transparent 3px);
+    background-attachment:fixed;
+    font-family:var(--font-body);
+}
+
+/* Judul admin memakai Work Sans tebal, bukan Anton — Anton terlalu ramai
+   untuk tabel data dan label form. */
+.admin-body .page-title,
+.admin-body .section-title,
+.admin-body .panel-title,
+.admin-body .card-title,
+.admin-body h1,
+.admin-body h2,
+.admin-body h3{
+    font-family:var(--font-body) !important;
+    font-weight:700 !important;
+    letter-spacing:-.01em !important;
+    text-transform:none !important;
+    background:none !important;
+    color:var(--text-primary) !important;
+    -webkit-text-fill-color:currentColor !important;
+    text-shadow:none !important;
+}
+
+.admin-body .page-title{ font-size:24px; line-height:1.25; }
+.admin-body .panel-title{ font-size:16px; line-height:1.3; }
+
+/* --------------------------------------------------------------------------
+| 2. Kerangka: sidebar + area konten tidak lagi saling menindih
+|
+| Penyebab tumpang tindih sebelumnya adalah konten tanpa lebar minimum 0
+| di dalam grid/flex — anak grid punya `min-width:auto` secara bawaan,
+| sehingga tabel lebar mendorong keluar kolomnya.
+-------------------------------------------------------------------------- */
+.admin-body .admin-shell{
+    align-items:stretch;
+}
+
+.admin-body .admin-main,
+.admin-body .admin-content,
+.admin-body main{
+    min-width:0;
+    max-width:100%;
+}
+
+.admin-body .admin-sidebar{
+    background:var(--bg-secondary);
+    border-right:1px solid var(--border);
+    z-index:40;
+}
+
+.admin-body .admin-nav{
+    display:flex;
+    flex-direction:column;
+    gap:2px;
+    padding:0 10px 20px;
+    overflow-y:auto;
+}
+
+.admin-body .admin-nav-group{
+    font-family:var(--font-mono);
+    font-size:9.5px;
+    letter-spacing:.16em;
+    text-transform:uppercase;
+    color:var(--text-muted);
+    padding:0 10px;
+    margin:18px 0 6px;
+}
+.admin-body .admin-nav-group:first-child{ margin-top:8px; }
+
+.admin-body .admin-nav a{
+    display:flex;
+    align-items:center;
+    gap:11px;
+    padding:9px 11px;
+    border-radius:8px;
+    font-size:13.5px;
+    line-height:1.2;
+    color:var(--text-secondary);
+    white-space:nowrap;
+    transition:background .18s ease, color .18s ease;
+}
+.admin-body .admin-nav a:hover{
+    background:rgba(255,178,56,.07);
+    color:var(--text-primary);
+}
+.admin-body .admin-nav a.active{
+    background:linear-gradient(90deg, rgba(200,16,46,.28), rgba(255,106,26,.12));
+    color:var(--amber);
+    box-shadow:inset 3px 0 0 var(--orange);
+}
+.admin-body .admin-nav a .icon{ flex-shrink:0; }
+.admin-body .admin-nav a span{
+    overflow:hidden;
+    text-overflow:ellipsis;
+}
+
+/* --------------------------------------------------------------------------
+| 3. Panel: jarak seragam, tidak ada lagi yang mepet ke tepi
+-------------------------------------------------------------------------- */
+.admin-body .panel{
+    background:var(--bg-card);
+    border:1px solid var(--border);
+    border-radius:var(--radius-m);
+    overflow:hidden;
+    margin-bottom:var(--space-3);
+}
+
+.admin-body .panel + .panel{ margin-top:0; }
+
+.admin-body .panel-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:12px;
+    padding:16px var(--space-3);
+    border-bottom:1px solid var(--border-soft);
+}
+
+.admin-body .panel-body{ padding:var(--space-3); }
+
+.admin-body .page-head{
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:14px;
+    margin-bottom:var(--space-3);
+}
+
+/* --------------------------------------------------------------------------
+| 4. Tabel — perbaikan inti tumpang tindih
+|
+| `td.col-actions` sebelumnya diberi `display:flex`. Sebuah <td> yang
+| bukan `table-cell` keluar dari aliran baris tabel: tinggi baris tidak
+| lagi dihitung darinya, sehingga isinya menimpa kolom tetangga dan
+| baris di bawahnya. Dikembalikan ke `table-cell`, perataan diurus
+| `text-align` + `inline-flex` pada anaknya.
+-------------------------------------------------------------------------- */
+.admin-body .table-wrap,
+.admin-body .table-scroll{
+    width:100%;
+    max-width:100%;
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+}
+
+.admin-body .data-table{
+    width:100%;
+    min-width:720px;
+    border-collapse:collapse;
+    table-layout:auto;
+}
+
+.admin-body .data-table th,
+.admin-body .data-table td{
+    vertical-align:middle;
+    padding:12px var(--space-3);
+    border-bottom:1px solid var(--border-soft);
+    text-align:left;
+}
+
+.admin-body .data-table thead th{
+    position:sticky;
+    top:0;
+    z-index:2;
+    background:var(--bg-secondary);
+    font-family:var(--font-mono);
+    font-size:10px;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    color:var(--text-muted);
+    white-space:nowrap;
+}
+
+.admin-body .data-table tbody tr:hover{ background:rgba(255,178,56,.04); }
+.admin-body .data-table tbody tr:last-child td{ border-bottom:none; }
+
+/* Sel isi tidak boleh melar tak terkendali */
+.admin-body .data-table td{
+    max-width:340px;
+    overflow-wrap:anywhere;
+}
+
+/* --- Kolom aksi: kembali jadi sel tabel yang normal --- */
+.admin-body .data-table td.col-actions,
+.admin-body .col-actions{
+    display:table-cell !important;
+    width:1%;
+    min-width:150px;
+    max-width:none;
+    text-align:right;
+    white-space:nowrap;
+    vertical-align:middle;
+}
+
+.admin-body .col-actions .inline-form,
+.admin-body .col-actions form{
+    display:inline-flex;
+    vertical-align:middle;
+    margin:0;
+}
+
+.admin-body .col-actions .btn-icon,
+.admin-body .col-actions .btn,
+.admin-body .col-actions a{
+    vertical-align:middle;
+    margin-left:5px;
+}
+.admin-body .col-actions > *:first-child,
+.admin-body .col-actions .inline-form:first-child .btn-icon{ margin-left:0; }
+
+/* --------------------------------------------------------------------------
+| 5. Tombol ikon — termasuk tombol Hapus yang tadinya tidak terlihat
+|
+| `.btn-icon` mewarisi `background:none` dari reset tombol global, jadi
+| di atas baris gelap ia praktis tak kelihatan. Diberi kotak, batas, dan
+| ukuran sentuh minimum. Varian bahaya diberi warna merah tegas supaya
+| terbaca sebagai aksi merusak sebelum diklik, bukan hanya saat hover.
+-------------------------------------------------------------------------- */
+.admin-body .btn-icon{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width:32px;
+    height:32px;
+    padding:0;
+    flex:0 0 auto;
+    border:1px solid var(--border);
+    border-radius:8px;
+    background:rgba(255,255,255,.04);
+    color:var(--text-secondary);
+    cursor:pointer;
+    transition:background .18s ease, color .18s ease, border-color .18s ease;
+}
+.admin-body .btn-icon:hover{
+    background:rgba(255,178,56,.12);
+    border-color:var(--amber);
+    color:var(--amber);
+}
+.admin-body .btn-icon .icon{ pointer-events:none; }
+
+.admin-body .btn-icon.btn-danger{
+    border-color:rgba(200,16,46,.45);
+    background:rgba(200,16,46,.12);
+    color:#FF8A8A;
+}
+.admin-body .btn-icon.btn-danger:hover{
+    background:var(--crimson);
+    border-color:var(--crimson);
+    color:#FFF1E6;
+}
+
+.admin-body .btn.btn-danger{
+    background:var(--crimson);
+    border-color:var(--crimson);
+    color:#FFF1E6;
+}
+.admin-body .btn.btn-danger:hover{ background:#A00D25; }
+
+/* --------------------------------------------------------------------------
+| 6. Toolbar & filter — sejajar, tidak lagi berlompatan tingginya
+-------------------------------------------------------------------------- */
+.admin-body .admin-toolbar{
+    gap:14px;
+    padding:14px var(--space-3);
+}
+
+.admin-body .toolbar-search,
+.admin-body .toolbar-actions{ align-items:center; }
+
+.admin-body .toolbar-search .control,
+.admin-body .toolbar-search .btn,
+.admin-body .toolbar-actions .btn,
+.admin-body .col-actions .btn{
+    height:34px;
+    min-height:34px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+}
+
+.admin-body select.control{
+    appearance:none;
+    padding-right:30px;
+    background-image:linear-gradient(45deg, transparent 50%, var(--text-muted) 50%),
+                     linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
+    background-position:calc(100% - 15px) 50%, calc(100% - 10px) 50%;
+    background-size:5px 5px, 5px 5px;
+    background-repeat:no-repeat;
+}
+
+/* --------------------------------------------------------------------------
+| 7. Form — label dan input berhenti saling mepet
+-------------------------------------------------------------------------- */
+.admin-body .form-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));
+    gap:var(--space-2) var(--space-3);
+    align-items:start;
+}
+
+.admin-body .field{
+    display:flex;
+    flex-direction:column;
+    gap:7px;
+    min-width:0;
+    margin-bottom:var(--space-2);
+}
+
+.admin-body .field > label,
+.admin-body .field-label{
+    font-size:12.5px;
+    font-weight:600;
+    letter-spacing:.01em;
+    color:var(--text-secondary);
+    line-height:1.3;
+}
+
+.admin-body .field .hint,
+.admin-body .field small{
+    font-size:11.5px;
+    line-height:1.5;
+    color:var(--text-muted);
+}
+
+.admin-body .control{
+    width:100%;
+    padding:9px 13px;
+    border:1px solid var(--border);
+    border-radius:8px;
+    background:var(--bg-secondary);
+    color:var(--text-primary);
+    font-family:inherit;
+    font-size:14px;
+    line-height:1.4;
+}
+.admin-body .control:focus{
+    outline:none;
+    border-color:var(--orange);
+    box-shadow:0 0 0 3px rgba(255,106,26,.15);
+}
+.admin-body textarea.control{ min-height:110px; resize:vertical; }
+
+.admin-body .form-actions{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    flex-wrap:wrap;
+    padding-top:var(--space-2);
+    margin-top:var(--space-2);
+    border-top:1px solid var(--border-soft);
+}
+
+/* --------------------------------------------------------------------------
+| 8. Kartu statistik & bagan — tinggi seragam, tidak tumpang tindih
+-------------------------------------------------------------------------- */
+.admin-body .stat-grid,
+.admin-body .stats-row{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));
+    gap:var(--space-2);
+    margin-bottom:var(--space-3);
+}
+
+.admin-body .stat-card{
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+    gap:8px;
+    min-width:0;
+    min-height:104px;
+    padding:16px 18px;
+    border:1px solid var(--border);
+    border-radius:var(--radius-m);
+    background:var(--bg-card);
+}
+.admin-body .stat-card .label{
+    font-family:var(--font-mono);
+    font-size:10px;
+    letter-spacing:.13em;
+    text-transform:uppercase;
+    color:var(--text-muted);
+}
+.admin-body .stat-card .value{
+    font-size:26px;
+    font-weight:700;
+    line-height:1.1;
+    color:var(--text-primary);
+}
+
+.admin-body .chart-wrap,
+.admin-body .chart-box{
+    position:relative;
+    width:100%;
+    min-width:0;
+    height:280px;
+    overflow:hidden;
+}
+.admin-body .chart-wrap canvas,
+.admin-body .chart-box canvas{
+    max-width:100% !important;
+    max-height:100% !important;
+}
+
+/* --------------------------------------------------------------------------
+| 9. Lencana status
+-------------------------------------------------------------------------- */
+.admin-body .badge,
+.admin-body .status-badge{
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    padding:3px 10px;
+    border-radius:999px;
+    border:1px solid var(--border);
+    background:rgba(255,255,255,.04);
+    font-family:var(--font-mono);
+    font-size:10px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    white-space:nowrap;
+    color:var(--text-secondary);
+}
+.admin-body .badge.ok,
+.admin-body .badge.success,
+.admin-body .badge.active{
+    border-color:rgba(255,178,56,.45);
+    background:rgba(255,178,56,.12);
+    color:var(--amber);
+}
+.admin-body .badge.danger,
+.admin-body .badge.failed{
+    border-color:rgba(200,16,46,.45);
+    background:rgba(200,16,46,.14);
+    color:#FF9A9A;
+}
+
+/* --------------------------------------------------------------------------
+| 10. Paginasi & dialog konfirmasi
+-------------------------------------------------------------------------- */
+.admin-body .pagination-wrap{
+    display:flex;
+    justify-content:center;
+    flex-wrap:wrap;
+    gap:6px;
+    padding:var(--space-3);
+    border-top:1px solid var(--border-soft);
+}
+.admin-body .pagination-wrap svg{ width:14px; height:14px; }
+
+.admin-body .confirm-dialog,
+.admin-body dialog{
+    border:1px solid var(--border);
+    border-radius:var(--radius-m);
+    background:var(--bg-card);
+    color:var(--text-primary);
+    padding:var(--space-3);
+    max-width:420px;
+}
+.admin-body dialog::backdrop{ background:rgba(10,5,3,.72); backdrop-filter:blur(3px); }
+
+/* --------------------------------------------------------------------------
+| 11. Responsif
+-------------------------------------------------------------------------- */
+@media (max-width: 1024px){
+    .admin-body .data-table{ min-width:640px; }
+}
+
+@media (max-width: 640px){
+    .admin-body .panel-body,
+    .admin-body .admin-toolbar{ padding:14px var(--space-2); }
+
+    .admin-body .data-table th,
+    .admin-body .data-table td{ padding:10px var(--space-2); }
+
+    .admin-body .page-head{ align-items:flex-start; }
+    .admin-body .page-title{ font-size:20px; }
+}

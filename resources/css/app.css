@@ -33,6 +33,9 @@
 /* --- Lapisan tema (menimpa komponen) --- */
 @import "./web/home/vintage.css";
 
+/* --- Panel admin (setelah tema, agar admin punya aturannya sendiri) --- */
+@import "./web/admin/admin-refine.css";
+
 /* --- Responsif (terakhir agar dapat menimpa) --- */
 @import "./web/home/responsive.css";
 @import "./web/detail/responsive.css";

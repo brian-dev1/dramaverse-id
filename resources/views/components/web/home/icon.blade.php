@@ -25,6 +25,7 @@
         'clock'       => '<circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 3"/>',
         'user'        => '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>',
         'trash'       => '<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>',
+        'inbox'       => '<path d="M3 12h5l2 3h4l2-3h5M3 12l3-7h12l3 7v7H3z"/>',
         'edit'        => '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
         'plus'        => '<path d="M12 5v14M5 12h14"/>',
         'restore'     => '<path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/>',
