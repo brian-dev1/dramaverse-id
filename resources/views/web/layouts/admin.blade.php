@@ -40,6 +40,7 @@
             ['route' => 'admin.membership.index',  'icon' => 'card',  'label' => 'Membership', 'can' => 'membership.manage'],
             ['route' => 'admin.subscription.index','icon' => 'card',  'label' => 'Langganan',  'can' => 'membership.manage'],
             ['route' => 'admin.user.index',        'icon' => 'users', 'label' => 'Pengguna',   'can' => 'user.view'],
+            ['route' => 'admin.admin-account.index', 'icon' => 'users', 'label' => 'Akun Admin', 'can' => 'admin.manage'],
             ['route' => 'admin.telegram',          'icon' => 'send',  'label' => 'Telegram',   'can' => 'telegram.manage'],
             ['route' => 'admin.telegram-menu.index', 'icon' => 'list', 'label' => 'Menu Telegram', 'can' => 'telegram.manage'],
             ['route' => 'admin.telegram-sync.index', 'icon' => 'film', 'label' => 'Sinkron Telegram', 'can' => 'telegram.manage'],

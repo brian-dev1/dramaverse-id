@@ -238,6 +238,12 @@
                                 $isDefault = isset($record->is_default)
                                     ? (bool) $record->is_default
                                     : false;
+
+                                // Root Owner tetap ditampilkan sebagai informasi,
+                                // tetapi aksi edit/hapus tidak ditawarkan di UI.
+                                $isProtectedRoot = $routeKey === 'admin-account'
+                                    && method_exists($record, 'isRoot')
+                                    && $record->isRoot();
                             @endphp
 
                             @foreach ($columns as $label => $path)
@@ -352,14 +358,14 @@
                                             </a>
                                         @endif
 
-                                        @if ($canEdit)
+                                        @if ($canEdit && ! $isProtectedRoot)
                                             <a href="{{ route('admin.'.$routeKey.'.edit', $record->id) }}"
                                                class="btn-icon" title="Ubah" aria-label="Ubah">
                                                 <x-web.home.icon name="edit" :size="15" />
                                             </a>
                                         @endif
 
-                                        @if ($canDelete)
+                                        @if ($canDelete && ! $isProtectedRoot)
                                             <x-admin.confirm
                                                 :action="route('admin.'.$routeKey.'.destroy', $record->id)"
                                                 message="Data ini akan dihapus. Tindakan ini tidak dapat dibatalkan." />

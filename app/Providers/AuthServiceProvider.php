@@ -23,6 +23,11 @@ class AuthServiceProvider extends ServiceProvider
         'membership.manage' => ['membership', 'Kelola paket dan langganan'],
         'user.view'         => ['user', 'Lihat pengguna'],
         'user.manage'       => ['user', 'Kelola pengguna'],
+
+        // Dipisahkan dari user.manage karena akun admin memiliki hak akses
+        // ke panel dan jauh lebih sensitif daripada pengguna biasa.
+        'admin.manage'      => ['admin', 'Kelola akun admin'],
+
         'telegram.manage'   => ['telegram', 'Broadcast dan status bot'],
         'report.view'       => ['report', 'Lihat laporan dan analytics'],
         'log.view'          => ['log', 'Lihat log aktivitas'],

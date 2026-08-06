@@ -63,10 +63,34 @@ class RoleController extends AdminCrudController
     {
         return [
             // Izin dikelompokkan per modul agar form mudah dibaca.
-            'permissionGroups' => Permission::orderBy('module')->orderBy('name')->get()->groupBy('module'),
-            'selectedPermissions' => $model?->exists ? $model->permissions->pluck('id')->all() : [],
-            'admins' => User::where('is_admin', true)->orderBy('name')->get(['id', 'name', 'email']),
-            'selectedUsers' => $model?->exists ? $model->users->pluck('id')->all() : [],
+            'permissionGroups' => Permission::orderBy('module')
+                ->orderBy('name')
+                ->get()
+                ->groupBy('module'),
+
+            'selectedPermissions' => $model?->exists
+                ? $model->permissions->pluck('id')->all()
+                : [],
+
+            /*
+             * Root Owner tidak dikelola melalui Role Management.
+             *
+             * Hak Root berasal dari users.is_root dan tidak bergantung
+             * pada pivot role_user. Karena itu Root tidak ditampilkan
+             * sebagai pilihan assignment role.
+             */
+            'admins' => User::query()
+                ->where('is_admin', true)
+                ->where('is_root', false)
+                ->orderBy('name')
+                ->get(['id', 'name', 'email']),
+
+            'selectedUsers' => $model?->exists
+                ? $model->users()
+                    ->where('users.is_root', false)
+                    ->pluck('users.id')
+                    ->all()
+                : [],
         ];
     }
 
@@ -74,13 +98,25 @@ class RoleController extends AdminCrudController
     {
         return [
             'name'          => ['required', 'string', 'max:100'],
-            'slug'          => ['nullable', 'string', 'max:50', 'alpha_dash',
-                                Rule::unique('roles', 'slug')->ignore($model?->getKey())],
+            'slug'          => [
+                'nullable',
+                'string',
+                'max:50',
+                'alpha_dash',
+                Rule::unique('roles', 'slug')->ignore($model?->getKey()),
+            ],
             'description'   => ['nullable', 'string', 'max:500'],
             'permissions'   => ['nullable', 'array'],
             'permissions.*' => ['integer', 'exists:permissions,id'],
             'users'         => ['nullable', 'array'],
-            'users.*'       => ['integer', 'exists:users,id'],
+            'users.*'       => [
+                'integer',
+                Rule::exists('users', 'id')->where(
+                    fn ($query) => $query
+                        ->where('is_admin', true)
+                        ->where('is_root', false)
+                ),
+            ],
         ];
     }
 
@@ -97,13 +133,41 @@ class RoleController extends AdminCrudController
 
     protected function afterSave(Request $request, Model $role, bool $created): void
     {
-        // Super admin selalu memegang seluruh izin — tidak bisa dikurangi.
+        /*
+         * Super Admin selalu memegang seluruh izin dan tidak bisa dikurangi
+         * melalui form.
+         */
         $permissions = $role->isSuperAdmin()
             ? Permission::pluck('id')->all()
             : $request->input('permissions', []);
 
         $role->permissions()->sync($permissions);
-        $role->users()->sync($request->input('users', []));
+
+        /*
+         * Jangan gunakan sync() langsung terhadap seluruh users karena
+         * operasi itu dapat melepaskan Root Owner dari pivot yang sudah ada.
+         *
+         * Root tidak dikelola dari halaman ini. Kita hanya menyinkronkan
+         * membership role untuk admin non-root.
+         */
+        $selectedUsers = User::query()
+            ->where('is_admin', true)
+            ->where('is_root', false)
+            ->whereIn('id', $request->input('users', []))
+            ->pluck('id')
+            ->all();
+
+        $currentRootUsers = $role->users()
+            ->where('users.is_root', true)
+            ->pluck('users.id')
+            ->all();
+
+        $role->users()->sync(
+            array_values(array_unique([
+                ...$currentRootUsers,
+                ...$selectedUsers,
+            ]))
+        );
     }
 
     /** Peran bawaan super admin tidak boleh dihapus. */

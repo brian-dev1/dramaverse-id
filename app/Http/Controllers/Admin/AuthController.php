@@ -17,8 +17,19 @@ class AuthController extends Controller
 {
     public function showLogin(): View|RedirectResponse
     {
-        if (Auth::check() && Auth::user()->isAdmin()) {
+        $user = Auth::user();
+
+        if ($user?->canAccessAdmin()) {
             return redirect()->route('admin.dashboard');
+        }
+
+        /*
+         * Jangan biarkan sesi admin yang sudah tidak valid tetap hidup.
+         * Ini bisa terjadi bila akun dinonaktifkan/diblokir ketika sesi
+         * browsernya masih aktif.
+         */
+        if ($user !== null && $user->isAdmin()) {
+            Auth::logout();
         }
 
         return view('web.pages.admin.login');
@@ -37,16 +48,37 @@ class AuthController extends Controller
             ]);
         }
 
-        if (! Auth::user()->isAdmin()) {
-            Auth::logout();
+        $user = Auth::user();
+
+        if (! $user->isAdmin()) {
+            $this->logoutInvalidSession($request);
 
             throw ValidationException::withMessages([
                 'email' => 'Akun ini tidak memiliki akses admin.',
             ]);
         }
 
+        if (! $user->is_active) {
+            $this->logoutInvalidSession($request);
+
+            throw ValidationException::withMessages([
+                'email' => 'Akun admin ini sedang dinonaktifkan.',
+            ]);
+        }
+
+        if ($user->is_banned) {
+            $this->logoutInvalidSession($request);
+
+            throw ValidationException::withMessages([
+                'email' => 'Akun admin ini sedang diblokir.',
+            ]);
+        }
+
         $request->session()->regenerate();
-        Auth::user()->forceFill(['last_login_at' => now()])->save();
+
+        $user->forceFill([
+            'last_login_at' => now(),
+        ])->save();
 
         return redirect()->intended(route('admin.dashboard'));
     }
@@ -54,9 +86,22 @@ class AuthController extends Controller
     public function logout(Request $request): RedirectResponse
     {
         Auth::logout();
+
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
         return redirect()->route('admin.login');
+    }
+
+    /**
+     * Bersihkan sesi hasil Auth::attempt() ketika akun ternyata tidak boleh
+     * menggunakan panel admin.
+     */
+    private function logoutInvalidSession(Request $request): void
+    {
+        Auth::logout();
+
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
     }
 }

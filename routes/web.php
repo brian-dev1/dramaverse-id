@@ -189,8 +189,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
             'country' => Admin\CountryController::class,
             'banner'  => Admin\BannerController::class,
             'membership'   => Admin\MembershipController::class,
-            'subscription' => Admin\SubscriptionController::class,
-            'role'         => Admin\RoleController::class,
+            'subscription'  => Admin\SubscriptionController::class,
+            'role'          => Admin\RoleController::class,
+            'admin-account' => Admin\AdminAccountController::class,
         ];
 
         // Izin yang diperlukan tiap modul CRUD.
@@ -201,8 +202,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
             'country'      => 'taxonomy.manage',
             'banner'       => 'taxonomy.manage',
             'membership'   => 'membership.manage',
-            'subscription' => 'membership.manage',
-            'role'         => 'role.manage',
+            'subscription'  => 'membership.manage',
+            'role'          => 'role.manage',
+            'admin-account' => 'admin.manage',
         ];
 
         foreach ($cruds as $key => $controller) {

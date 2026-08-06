@@ -40,15 +40,16 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
+            'email_verified_at'  => 'datetime',
             'is_premium'         => 'boolean',
             'premium_expired_at' => 'datetime',
-            'password'          => 'hashed',
-            'is_admin'          => 'boolean',
-            'is_active'         => 'boolean',
-            'is_banned'         => 'boolean',
-            'last_login_at'     => 'datetime',
-            'last_seen_at'      => 'datetime',
+            'password'           => 'hashed',
+            'is_admin'           => 'boolean',
+            'is_root'            => 'boolean',
+            'is_active'          => 'boolean',
+            'is_banned'          => 'boolean',
+            'last_login_at'      => 'datetime',
+            'last_seen_at'       => 'datetime',
         ];
     }
 
@@ -90,7 +91,7 @@ class User extends Authenticatable
 
     /*
     |--------------------------------------------------------------------------
-    | Helper
+    | Helper akun
     |--------------------------------------------------------------------------
     */
 
@@ -98,6 +99,32 @@ class User extends Authenticatable
     {
         return $this->is_admin === true;
     }
+
+    /**
+     * Root Owner adalah akun administratif tertinggi.
+     *
+     * Status ini berasal dari kolom database `is_root`, bukan dari email,
+     * user ID, ataupun role. Dengan begitu identitas/login akun root dapat
+     * berubah tanpa menghilangkan proteksi Root Owner.
+     */
+    public function isRoot(): bool
+    {
+        return $this->is_admin === true && $this->is_root === true;
+    }
+
+    /**
+     * Apakah akun boleh menggunakan panel admin.
+     *
+     * Root tetap mengikuti status akun sehat. Namun operasi manajemen admin
+     * nantinya tidak akan mengizinkan Root dibuat nonaktif atau diblokir.
+     */
+    public function canAccessAdmin(): bool
+    {
+        return $this->isAdmin()
+            && $this->is_active === true
+            && $this->is_banned === false;
+    }
+
     /**
      * Premium hanya dianggap aktif bila flag premium benar DAN tanggal
      * kedaluwarsanya belum lewat.
@@ -121,9 +148,12 @@ class User extends Authenticatable
     /**
      * Apakah pengguna memegang satu izin.
      *
-     * Akun dengan penanda `is_admin` tanpa peran apa pun diperlakukan
-     * sebagai super admin â€” ini mencegah panel terkunci bila peran belum
-     * sempat dikonfigurasi.
+     * Root Owner selalu mempunyai seluruh izin dan tidak bergantung pada
+     * tabel role/permission.
+     *
+     * Untuk kompatibilitas dengan sistem lama, akun admin tanpa role tetap
+     * diperlakukan sebagai Super Admin. Perilaku ini dapat diperketat nanti
+     * setelah seluruh akun admin dikelola melalui Admin Account Management.
      */
     public function hasPermission(string $slug): bool
     {
@@ -131,7 +161,13 @@ class User extends Authenticatable
             return false;
         }
 
-        $roles = $this->relationLoaded('roles') ? $this->roles : $this->roles()->with('permissions')->get();
+        if ($this->isRoot()) {
+            return true;
+        }
+
+        $roles = $this->relationLoaded('roles')
+            ? $this->roles
+            : $this->roles()->with('permissions')->get();
 
         if ($roles->isEmpty()) {
             return true;
@@ -149,6 +185,10 @@ class User extends Authenticatable
     /** Apakah pengguna memegang salah satu dari beberapa izin. */
     public function hasAnyPermission(array $slugs): bool
     {
+        if ($this->isRoot()) {
+            return true;
+        }
+
         foreach ($slugs as $slug) {
             if ($this->hasPermission($slug)) {
                 return true;
@@ -177,4 +217,3 @@ class User extends Authenticatable
         return mb_strtoupper(mb_substr($this->display_name, 0, 1));
     }
 }
-
