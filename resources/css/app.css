@@ -30,6 +30,9 @@
 @import "./web/admin/panel-spacing.css";
 @import "./web/admin/action-layout.css";
 
+/* --- Lapisan tema (menimpa komponen) --- */
+@import "./web/home/vintage.css";
+
 /* --- Responsif (terakhir agar dapat menimpa) --- */
 @import "./web/home/responsive.css";
 @import "./web/detail/responsive.css";

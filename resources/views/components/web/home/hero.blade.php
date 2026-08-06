@@ -13,8 +13,6 @@
             'href'     => route('web.drama.show', $d->slug),
             'cta'      => 'Tonton Sekarang',
             'meta'     => array_filter([
-                $d->rating > 0 ? number_format((float) $d->rating, 1) : null,
-                $d->release_year,
                 $d->country?->name,
                 $d->total_episode ? $d->total_episode.' Episode' : null,
             ]),
@@ -46,14 +44,8 @@
 
                 @if (! empty($slide->meta))
                     <div class="hero-meta">
-                        @foreach ($slide->meta as $i => $meta)
-                            @if ($i === 0)
-                                <span class="rating">
-                                    <x-web.home.icon name="star" :size="13" />{{ $meta }}
-                                </span>
-                            @else
-                                <span class="chip">{{ $meta }}</span>
-                            @endif
+                        @foreach ($slide->meta as $meta)
+                            <span class="chip">{{ $meta }}</span>
                         @endforeach
                     </div>
                 @endif

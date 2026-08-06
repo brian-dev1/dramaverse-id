@@ -7,27 +7,32 @@
 */
 
 :root{
-    /* --- Permukaan --- */
-    --bg-primary:#0B0A10;
-    --bg-secondary:#131019;
-    --bg-card:#1C1822;
-    --bg-card-hover:#231D2A;
+    /* --- Permukaan (tema bioskop arsip) --- */
+    --bg-primary:#140A06;
+    --bg-secondary:#1F120A;
+    --bg-card:#2A170D;
+    --bg-card-hover:#331C10;
 
     /* --- Garis --- */
-    --border:#2B2532;
-    --border-soft:#211C27;
+    --border:rgba(255,178,56,0.18);
+    --border-soft:rgba(255,178,56,0.10);
 
     /* --- Teks --- */
-    --text-primary:#F3EEE7;
-    --text-secondary:#9C93A6;
-    --text-muted:#645E70;
+    --text-primary:#FFE9D6;
+    --text-secondary:#D9BFA9;
+    --text-muted:#9A7B63;
 
     /* --- Aksen --- */
-    --gold:#D9AF6E;
-    --gold-bright:#EAC98C;
-    --crimson:#C1425B;
-    --crimson-deep:#7E2C40;
-    --violet:#5B4B8A;
+    --gold:#FFB238;
+    --gold-bright:#FFCE73;
+    --crimson:#C8102E;
+    --crimson-deep:#7A1220;
+    --violet:#FF6A1A;
+
+    /* --- Alias tema --- */
+    --orange:#FF6A1A;
+    --amber:#FFB238;
+    --cream:#FFE9D6;
 
     /* --- Radius --- */
     --radius-s:6px;
@@ -45,9 +50,9 @@
     --space-7:96px;
 
     /* --- Tipografi --- */
-    --font-display:"Space Grotesk", sans-serif;
-    --font-body:"Plus Jakarta Sans", sans-serif;
-    --font-mono:"Plus Jakarta Sans", sans-serif;
+    --font-display:"Anton", sans-serif;
+    --font-body:"Work Sans", sans-serif;
+    --font-mono:"JetBrains Mono", monospace;
 
     /* --- Gerak --- */
     --transition:.28s ease;
@@ -60,6 +65,10 @@ html{ scroll-behavior:smooth; }
 
 body{
     background:var(--bg-primary);
+    background-image:
+        radial-gradient(ellipse 80% 50% at 50% -10%, rgba(255,106,26,0.15), transparent),
+        repeating-linear-gradient(0deg, rgba(255,255,255,0.012) 0px, rgba(255,255,255,0.012) 1px, transparent 1px, transparent 3px);
+    background-attachment:fixed;
     color:var(--text-primary);
     font-family:var(--font-body);
     -webkit-font-smoothing:antialiased;
@@ -71,7 +80,7 @@ a{ color:inherit; text-decoration:none; }
 button{ font-family:inherit; cursor:pointer; border:none; background:none; color:inherit; }
 ul{ list-style:none; }
 
-::selection{ background:var(--gold); color:#141019; }
+::selection{ background:var(--orange); color:#1A0D06; }
 
 :focus-visible{
     outline:2px solid var(--gold);
@@ -110,7 +119,7 @@ ul{ list-style:none; }
 /* --- Butiran film (grain overlay) --- */
 .grain{
     position:fixed; inset:0; pointer-events:none; z-index:1;
-    opacity:.035; mix-blend-mode:overlay;
+    opacity:.05; mix-blend-mode:overlay;
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
@@ -123,9 +132,19 @@ ul{ list-style:none; }
     overflow:hidden;
 }
 .perf span{
-    width:6px; height:6px; border-radius:50%;
-    background:var(--border);
+    width:7px; height:7px; border-radius:50%;
+    background:var(--amber);
+    box-shadow:0 0 6px 2px rgba(255,178,56,.5);
     flex-shrink:0;
+    animation:bulb-blink 1.6s infinite ease-in-out;
+}
+.perf span:nth-child(3n){ animation-delay:.4s; }
+.perf span:nth-child(3n+1){ animation-delay:.9s; }
+.perf span:nth-child(5n){ animation-delay:1.3s; }
+
+@keyframes bulb-blink{
+    0%,100%{ opacity:1; box-shadow:0 0 8px 3px rgba(255,178,56,.7); }
+    50%{ opacity:.25; box-shadow:0 0 2px 1px rgba(255,178,56,.2); }
 }
 
 /* --- Tombol --- */
@@ -136,12 +155,14 @@ ul{ list-style:none; }
     transition:transform .2s ease, box-shadow .2s ease, background .2s ease;
 }
 .btn-primary{
-    background:linear-gradient(135deg, var(--gold-bright), var(--gold));
-    color:#191118;
+    background:linear-gradient(90deg, var(--crimson), var(--orange));
+    color:#1A0D06;
+    font-weight:700;
+    letter-spacing:.02em;
 }
 .btn-primary:hover{
     transform:translateY(-2px);
-    box-shadow:0 10px 30px -8px rgba(217,175,110,.5);
+    box-shadow:0 10px 30px -8px rgba(200,16,46,.55);
 }
 .btn-ghost{
     background:rgba(255,255,255,.05);
@@ -159,7 +180,7 @@ ul{ list-style:none; }
     font-size:12.5px; font-weight:500;
     color:var(--text-secondary);
 }
-.chip.gold{ border-color:rgba(217,175,110,.4); color:var(--gold-bright); }
+.chip.gold{ border-color:rgba(255,178,56,.4); color:var(--amber); }
 
 .pill-row{ display:flex; gap:10px; flex-wrap:wrap; }
 .pill{
@@ -169,8 +190,12 @@ ul{ list-style:none; }
     font-size:13.5px; font-weight:600; color:var(--text-secondary);
     transition:all .2s ease;
 }
-.pill:hover, .pill.active{
-    color:#191118; background:var(--gold); border-color:var(--gold);
+.pill:hover{ color:var(--cream); border-color:var(--orange); }
+.pill.active{
+    color:#1A0D06;
+    background:linear-gradient(90deg, var(--crimson), var(--orange));
+    border-color:transparent;
+    font-weight:700;
 }
 
 .rating{
@@ -183,9 +208,9 @@ ul{ list-style:none; }
     margin:var(--space-3) var(--space-4) 0;
     padding:14px 18px;
     border-radius:var(--radius-m);
-    border:1px solid rgba(217,175,110,.3);
-    background:rgba(217,175,110,.08);
-    color:var(--gold-bright);
+    border:1px solid rgba(255,178,56,.3);
+    background:rgba(255,178,56,.08);
+    color:var(--amber);
     font-size:14px;
 }
 
@@ -230,7 +255,7 @@ ul{ list-style:none; }
 .pill.active .country-badge{
     border-color:rgba(0,0,0,.25);
     background:rgba(0,0,0,.12);
-    color:#191118;
+    color:#1A0D06;
 }
 
 /* --- Pemisah antar potongan metadata, pengganti karakter titik tengah --- */

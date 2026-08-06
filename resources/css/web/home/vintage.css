@@ -1,0 +1,157 @@
+/*
+|--------------------------------------------------------------------------
+| DramaVerse ID — Lapisan Tema "Bioskop Arsip"
+|--------------------------------------------------------------------------
+| Berkas ini hanya menimpa tampilan (tipografi + warna) di atas modul yang
+| sudah ada. Tidak ada perubahan struktur/markup, sehingga integrasi lain
+| (Telegram, admin, player) tetap utuh.
+| Dimuat setelah komponen, sebelum responsive.
+*/
+
+/* --- Judul display: Anton hanya punya satu berat --- */
+.hero-title,
+.section-title,
+.page-title,
+.membership-copy h2,
+.empty-state h3,
+.logo,
+.brand{
+    font-family:var(--font-display);
+    font-weight:400 !important;
+    letter-spacing:.01em !important;
+    text-transform:uppercase;
+}
+
+.hero-title{
+    background:linear-gradient(180deg,#FFE9D6 10%, var(--amber) 55%, var(--crimson) 120%);
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+    text-shadow:0 10px 40px rgba(200,16,46,.25);
+    line-height:.94;
+}
+
+/* --- Judul kartu: Bebas Neue, lebih padat --- */
+.card-title,
+.drama-content .card-title{
+    font-family:"Bebas Neue", var(--font-display);
+    font-weight:400;
+    font-size:20px;
+    letter-spacing:.02em;
+    line-height:1.06;
+    color:var(--cream);
+}
+
+.card-rank{
+    font-family:var(--font-display);
+    font-weight:400;
+    color:rgba(255,233,214,.24);
+}
+
+.card-sub,
+.card-badge,
+.hero-eyebrow,
+.section-eyebrow{
+    font-family:var(--font-mono);
+    letter-spacing:.12em;
+    text-transform:uppercase;
+}
+
+.card-badge{
+    background:linear-gradient(90deg, var(--crimson), var(--orange));
+    color:#1A0D06;
+    font-weight:500;
+    border:none;
+}
+
+.hero-eyebrow{ color:var(--orange); }
+
+/* --- Kartu: pinggiran seluloid + angkat saat hover --- */
+.drama-card{
+    border:1px solid var(--border);
+    border-radius:10px;
+    transition:transform .35s ease, box-shadow .35s ease;
+}
+.drama-card:hover{
+    transform:translateY(-8px);
+    box-shadow:0 20px 40px rgba(200,16,46,.35), 0 0 0 1px var(--orange);
+}
+
+.drama-poster{
+    background:linear-gradient(180deg, transparent 35%, rgba(10,5,3,.92) 78%);
+}
+
+/* --- Navbar --- */
+.navbar,
+.nav-links a{
+    font-family:var(--font-body);
+}
+.nav-links a{
+    font-family:var(--font-mono);
+    font-size:11px;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    color:var(--text-secondary);
+}
+.nav-links a:hover,
+.nav-links a.active{ color:var(--amber); }
+
+/* --- Filmstrip: pita seluloid sebagai pembatas bagian --- */
+.filmstrip{
+    display:flex;
+    background:var(--bg-card);
+    border-top:1px solid var(--border);
+    border-bottom:1px solid var(--border);
+}
+.filmstrip i{
+    flex:1;
+    height:12px;
+    margin:6px 4px;
+    background:var(--bg-primary);
+    border-radius:3px;
+}
+
+/* --- Footer --- */
+footer,
+.site-footer{
+    border-top:1px solid var(--border);
+}
+
+/* --------------------------------------------------------------------------
+| Panel admin tetap memakai palet lama
+|
+| Admin berbagi berkas app.css yang sama, jadi token dikembalikan di sini
+| agar perubahan tema hanya terlihat di sisi pengunjung.
+-------------------------------------------------------------------------- */
+.admin-body{
+    --bg-primary:#0B0A10;
+    --bg-secondary:#131019;
+    --bg-card:#1C1822;
+    --bg-card-hover:#231D2A;
+    --border:#2B2532;
+    --border-soft:#211C27;
+    --text-primary:#F3EEE7;
+    --text-secondary:#9C93A6;
+    --text-muted:#645E70;
+    --gold:#D9AF6E;
+    --gold-bright:#EAC98C;
+    --crimson:#C1425B;
+    --crimson-deep:#7E2C40;
+    --violet:#5B4B8A;
+    --font-display:"Work Sans", sans-serif;
+    --font-mono:"Work Sans", sans-serif;
+
+    background-image:none;
+}
+
+.admin-body .card-title,
+.admin-body .page-title,
+.admin-body .section-title{
+    font-family:var(--font-display);
+    font-weight:600 !important;
+    letter-spacing:0 !important;
+    text-transform:none;
+    background:none;
+    color:var(--text-primary);
+    -webkit-text-fill-color:currentColor;
+}

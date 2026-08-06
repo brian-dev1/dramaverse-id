@@ -50,7 +50,7 @@
             </select>
 
             <select name="sort" class="search-select">
-                @foreach (['' => 'Terbaru', 'rating' => 'Rating', 'popular' => 'Populer', 'oldest' => 'Terlama'] as $val => $label)
+                @foreach (['' => 'Terbaru', 'popular' => 'Populer', 'oldest' => 'Terlama'] as $val => $label)
                     <option value="{{ $val }}" @selected(request('sort') === $val)>{{ $label }}</option>
                 @endforeach
             </select>
