@@ -27,6 +27,7 @@ class MediaService
         'episode/thumbnail'  => 'thumbnail',
         'banner'             => 'banner',
         'settings'           => 'logo',
+        'payment/qris'       => 'qris',
     ];
 
     public function __construct(

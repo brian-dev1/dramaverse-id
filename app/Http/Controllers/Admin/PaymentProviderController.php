@@ -6,6 +6,7 @@ use App\Enums\PaymentDriver;
 use App\Http\Controllers\Controller;
 use App\Models\PaymentProvider;
 use App\Services\Admin\ActivityLogger;
+use App\Services\Admin\MediaService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -94,8 +95,10 @@ class PaymentProviderController extends Controller
             'fee_percent'   => ['nullable', 'string', 'max:30'],
             'fee_flat'      => ['nullable', 'string', 'max:30'],
             'instruction'   => ['nullable', 'string', 'max:2000'],
-            'credentials'   => ['array'],
-            'credentials.*' => ['nullable', 'string', 'max:500'],
+            'credentials'       => ['array'],
+            'credentials.*'     => ['nullable', 'string', 'max:500'],
+            'qris_image'        => MediaService::rules(),
+            'remove_qris_image' => ['nullable', 'boolean'],
         ]);
 
         // Payment flexible amount normalization: update
@@ -118,13 +121,33 @@ class PaymentProviderController extends Controller
             }
         }
 
+        $media = app(MediaService::class);
+
+        $qrisImagePath = $provider->qris_image_path;
+
+        // Tidak upload gambar berarti mempertahankan QRIS lama.
+        if ($request->boolean('remove_qris_image')) {
+            $media->delete($qrisImagePath);
+            $qrisImagePath = null;
+        }
+
+        // Gambar baru menggantikan gambar lama melalui MediaService.
+        if ($request->hasFile('qris_image')) {
+            $qrisImagePath = $media->store(
+                $request->file('qris_image'),
+                'payment/qris',
+                $qrisImagePath
+            );
+        }
+
         $provider->update([
             'name'        => $data['name'],
             'mode'        => $data['mode'],
             'fee_percent' => $data['fee_percent'] ?? 0,
             'fee_flat'    => $data['fee_flat'] ?? 0,
-            'instruction' => $data['instruction'] ?? null,
-            'credentials' => $kredensial,
+            'instruction'     => $data['instruction'] ?? null,
+            'credentials'     => $kredensial,
+            'qris_image_path' => $qrisImagePath,
         ]);
 
         app(ActivityLogger::class)->log('update', 'payment-provider', $provider);

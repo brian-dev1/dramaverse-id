@@ -68,6 +68,25 @@
                         <p class="page-subtitle">{!! nl2br(e($provider->instruction)) !!}</p>
                     @endif
 
+                    @if ($provider?->qris_image_path)
+                        <div class="qris-payment">
+                            <p class="page-subtitle">
+                                <strong>Scan QRIS untuk membayar</strong>
+                            </p>
+
+                            <img
+                                src="{{ asset('storage/'.$provider->qris_image_path) }}"
+                                alt="QRIS {{ $provider->name }}"
+                                style="display:block; width:min(100%, 360px); height:auto; margin:16px 0; border-radius:12px;"
+                            >
+
+                            <p class="page-subtitle">
+                                Bayar sesuai nominal tagihan:
+                                <strong>Rp {{ number_format((float) $invoice->total, 0, ',', '.') }}</strong>
+                            </p>
+                        </div>
+                    @endif
+
                     @if ($provider && $provider->driver->isManual())
                         <dl class="settings-meta">
                             <dt>Bank</dt>

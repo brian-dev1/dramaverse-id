@@ -20,6 +20,7 @@ class ImageProcessor
         'thumbnail' => [640, 360],
         'banner'    => [1600, 900],
         'logo'      => [512, 512],
+        'qris'      => [1200, 1200],
         'default'   => [1600, 1600],
     ];
 
@@ -80,7 +81,18 @@ class ImageProcessor
                 imagefilledrectangle($canvas, 0, 0, $newW, $newH, $transparent);
             }
 
-            imagecopyresampled($canvas, $source, 0, 0, 0, 0, $newW, $newH, $width, $height);
+            imagecopyresampled(
+                $canvas,
+                $source,
+                0,
+                0,
+                0,
+                0,
+                $newW,
+                $newH,
+                $width,
+                $height
+            );
 
             $written = $this->write($canvas, $absolutePath, $mime);
 
@@ -124,8 +136,11 @@ class ImageProcessor
      * Foto dari ponsel sering tersimpan miring dengan penanda orientasi;
      * tanpa koreksi ini, poster yang diunggah bisa tampil terbalik.
      */
-    private function applyExifOrientation(\GdImage $image, string $path, string $mime): \GdImage
-    {
+    private function applyExifOrientation(
+        \GdImage $image,
+        string $path,
+        string $mime
+    ): \GdImage {
         if ($mime !== 'image/jpeg' || ! function_exists('exif_read_data')) {
             return $image;
         }

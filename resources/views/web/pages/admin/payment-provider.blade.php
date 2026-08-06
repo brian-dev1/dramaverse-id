@@ -162,7 +162,7 @@
             </div>
 
             <form method="POST" action="{{ route('admin.payment-provider.update', $editingProvider->id) }}"
-                  class="admin-form">
+                  class="admin-form" enctype="multipart/form-data">
                 @csrf
                 @method('PUT')
 
@@ -190,6 +190,26 @@
 
                 <x-admin.field name="instruction" label="Instruksi untuk pengguna" type="textarea"
                                :rows="4" :value="old('instruction', $editingProvider->instruction)" />
+
+                <x-admin.image-field
+                    name="qris_image"
+                    label="Gambar QRIS"
+                    :current="$editingProvider->qris_image_path"
+                    :hint="\App\Services\Admin\MediaService::hint('qris')" />
+
+                @if ($editingProvider->qris_image_path)
+                    <div class="field">
+                        <label class="checkbox-item">
+                            <input type="checkbox" name="remove_qris_image" value="1"
+                                   @checked(old('remove_qris_image'))>
+                            Hapus gambar QRIS yang tersimpan
+                        </label>
+                        <p class="field-hint">
+                            Kosongkan upload untuk mempertahankan gambar saat ini.
+                            Pilih gambar baru untuk menggantinya.
+                        </p>
+                    </div>
+                @endif
 
                 <div class="form-actions">
                     <button type="submit" class="btn btn-primary">

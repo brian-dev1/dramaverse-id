@@ -32,6 +32,7 @@ class PaymentProvider extends Model
         'fee_percent',
         'fee_flat',
         'instruction',
+        'qris_image_path',
     ];
 
     protected $casts = [
