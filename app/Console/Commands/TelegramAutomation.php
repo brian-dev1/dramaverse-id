@@ -184,13 +184,17 @@ class TelegramAutomation extends Command
         $tersangkut = $this->health->stuckQuery()->get();
 
         foreach ($tersangkut as $video) {
+            $sebab = 'Tersangkut di status Diproses melebihi '
+                .config('telegram.automation.stuck_minutes').' menit. '
+                .'Worker kemungkinan berhenti sebelum selesai. Dilepaskan otomatis.';
+
             $video->forceFill([
                 'sync_status' => TelegramSyncStatus::FAILED,
-                'last_error'  => 'Tersangkut di status Diproses melebihi '
-                    .config('telegram.automation.stuck_minutes').' menit. '
-                    .'Worker kemungkinan berhenti sebelum selesai. Dilepaskan otomatis.',
+                'last_error'  => $sebab,
                 'retry_count' => $video->retry_count + 1,
             ])->save();
+
+            $video->reportIssue($sebab);
         }
 
         $berkas = $this->purgeTempFiles();

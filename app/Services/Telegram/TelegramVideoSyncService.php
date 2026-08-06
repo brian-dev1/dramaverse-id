@@ -112,6 +112,7 @@ class TelegramVideoSyncService
 
         if ($alasan = $this->blocker($video)) {
             $this->fail($video, $alasan, naikkanRetry: false);
+            $video->reportIssue($alasan);
 
             throw new RuntimeException($alasan);
         }
@@ -145,6 +146,7 @@ class TelegramVideoSyncService
             $sebab = $this->reason($e);
 
             $this->fail($video, $sebab);
+            $video->reportIssue($sebab);
 
             $this->log('error', 'sync.failed', $video, ['sebab' => $sebab]);
 

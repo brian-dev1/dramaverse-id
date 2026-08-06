@@ -45,6 +45,10 @@ class EpisodeVideo extends Model
         'synced_at',
         'last_error',
         'retry_count',
+        'issue_message',
+        'issue_detected_at',
+        'issue_resolved_at',
+        'issue_resolution',
     ];
 
     protected $casts = [
@@ -57,6 +61,8 @@ class EpisodeVideo extends Model
         'sync_status'         => TelegramSyncStatus::class,
         'synced_at'           => 'datetime',
         'retry_count'         => 'integer',
+        'issue_detected_at'   => 'datetime',
+        'issue_resolved_at'   => 'datetime',
     ];
 
     /*
@@ -126,5 +132,58 @@ class EpisodeVideo extends Model
     {
         return $this->sync_status === TelegramSyncStatus::SYNCED
             && filled($this->telegram_file_id);
+    }
+
+    /** Ada problem yang belum dibuktikan selesai. */
+    public function hasActiveIssue(): bool
+    {
+        return filled($this->issue_message) && $this->issue_resolved_at === null;
+    }
+
+    /** Catat problem dan pertahankan sampai ada verifikasi sehat. */
+    public function reportIssue(string $message): self
+    {
+        $this->forceFill([
+            'issue_message'     => $message,
+            'issue_detected_at' => now(),
+            'issue_resolved_at' => null,
+            'issue_resolution'  => null,
+        ])->save();
+
+        return $this;
+    }
+
+    /** Tutup problem hanya setelah pemeriksaan membuktikan kondisi sehat. */
+    public function resolveIssue(string $resolution): self
+    {
+        if (! $this->hasActiveIssue()) {
+            return $this;
+        }
+
+        $this->forceFill([
+            'issue_resolved_at' => now(),
+            'issue_resolution'  => $resolution,
+        ])->save();
+
+        return $this;
+    }
+
+    /** Status yang ditampilkan admin; sync_status teknis tetap tidak berubah. */
+    public function getAdminStatusLabelAttribute(): string
+    {
+        if ($this->isSyncedToTelegram() && ! $this->hasActiveIssue()) {
+            return 'Selesai';
+        }
+
+        return $this->sync_status->label();
+    }
+
+    public function getAdminStatusBadgeAttribute(): string
+    {
+        if ($this->isSyncedToTelegram() && ! $this->hasActiveIssue()) {
+            return 'badge-on';
+        }
+
+        return $this->sync_status->badge();
     }
 }

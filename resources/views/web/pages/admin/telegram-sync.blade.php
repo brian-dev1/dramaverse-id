@@ -232,13 +232,26 @@
                                 </td>
                                 <td>{{ $video->size_for_humans }}</td>
                                 <td>
-                                    <span class="badge {{ $video->sync_status->badge() }}">
-                                        {{ $video->sync_status->label() }}
+                                    <span class="badge {{ $video->admin_status_badge }}">
+                                        {{ $video->admin_status_label }}
                                     </span>
                                     @if ($video->retry_count > 0)
                                         <br><span class="cell-empty">{{ $video->retry_count }}x dicoba</span>
                                     @endif
-                                    @if ($video->last_error)
+
+                                    @if ($video->hasActiveIssue())
+                                        <br><span class="queue-error">
+                                            ⚠ Masih ada masalah: {{ $video->issue_message }}
+                                        </span>
+                                        @if ($video->issue_detected_at)
+                                            <br><span class="cell-empty">
+                                                Terdeteksi {{ $video->issue_detected_at->format('d M Y H:i') }}.
+                                                Verifikasi file_id setelah perbaikan untuk menutup masalah.
+                                            </span>
+                                        @endif
+                                    @elseif ($video->isSyncedToTelegram())
+                                        <br><span class="cell-empty">✓ Selesai, tidak ada masalah aktif.</span>
+                                    @elseif ($video->last_error)
                                         <br><span class="queue-error">{{ $video->last_error }}</span>
                                     @endif
                                 </td>

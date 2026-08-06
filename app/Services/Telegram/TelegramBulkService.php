@@ -137,10 +137,14 @@ class TelegramBulkService
                 continue;
             }
 
+            $sebab = 'Dibatalkan admin dari panel.';
+
             $video->forceFill([
                 'sync_status' => TelegramSyncStatus::FAILED,
-                'last_error'  => 'Dibatalkan admin dari panel.',
+                'last_error'  => $sebab,
             ])->save();
+
+            $video->reportIssue($sebab);
 
             $dibatalkan++;
         }
@@ -169,11 +173,15 @@ class TelegramBulkService
             if ($video->sync_status === TelegramSyncStatus::PROCESSING
                 && $video->updated_at?->lt($batas)) {
 
+                $sebab = 'Pekerjaan tersangkut di status Diproses dan dilepaskan '
+                    .'saat status disegarkan. Worker kemungkinan berhenti sebelum selesai.';
+
                 $video->forceFill([
                     'sync_status' => TelegramSyncStatus::FAILED,
-                    'last_error'  => 'Pekerjaan tersangkut di status Diproses dan dilepaskan '
-                        .'saat status disegarkan. Worker kemungkinan berhenti sebelum selesai.',
+                    'last_error'  => $sebab,
                 ])->save();
+
+                $video->reportIssue($sebab);
             }
 
             $disegarkan++;

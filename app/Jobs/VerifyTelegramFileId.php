@@ -63,6 +63,10 @@ class VerifyTelegramFileId implements ShouldQueue
         try {
             $telegram->withRetries(1)->getFile($video->telegram_file_id);
 
+            $video->resolveIssue(
+                'file_id berhasil diverifikasi ke Telegram dan dinyatakan sehat.'
+            );
+
             $this->log('info', 'verify.ok', $video);
 
         } catch (TelegramException $e) {
@@ -78,11 +82,15 @@ class VerifyTelegramFileId implements ShouldQueue
                 return;
             }
 
+            $sebab = 'file_id ditolak Telegram saat diverifikasi: '.$e->getMessage()
+                .' Sinkronkan ulang dari storage provider.';
+
             $video->forceFill([
                 'sync_status' => TelegramSyncStatus::FAILED,
-                'last_error'  => 'file_id ditolak Telegram saat diverifikasi: '.$e->getMessage()
-                    .' Sinkronkan ulang dari storage provider.',
+                'last_error'  => $sebab,
             ])->save();
+
+            $video->reportIssue($sebab);
 
             $cache->forget($video->episode_id);
 
