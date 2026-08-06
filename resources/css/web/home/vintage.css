@@ -66,6 +66,78 @@
 
 .hero-eyebrow{ color:var(--orange); }
 
+/* --------------------------------------------------------------------------
+| Tirai gelap di atas poster hero
+|
+| Poster drama sering terang, sehingga judul dan tombol menempel di gambar
+| dan sulit terbaca. Lapisan ini menggelapkan sisi kiri-bawah tempat teks
+| berada, tanpa menutupi wajah di sisi kanan.
+-------------------------------------------------------------------------- */
+.hero-frame::after{
+    content:"";
+    position:absolute; inset:0;
+    z-index:1;
+    pointer-events:none;
+    background:
+        linear-gradient(180deg, rgba(20,10,6,.55) 0%, rgba(20,10,6,0) 38%, rgba(20,10,6,.88) 88%),
+        linear-gradient(90deg, rgba(20,10,6,.92) 0%, rgba(20,10,6,.55) 42%, rgba(20,10,6,0) 72%);
+}
+
+/* Konten hero harus berada di atas tirai */
+.hero-content,
+.hero-dots{ position:relative; z-index:3; }
+
+.hero-desc{ color:var(--cream); }
+
+.hero-meta .chip{
+    background:rgba(20,10,6,.62);
+    border-color:rgba(255,178,56,.38);
+    color:var(--cream);
+    backdrop-filter:blur(4px);
+}
+
+/* Tombol sekunder sempat tak terlihat di atas poster terang */
+.hero-actions .btn-ghost,
+.btn-ghost{
+    background:rgba(20,10,6,.55);
+    border:1px solid rgba(255,178,56,.45);
+    color:var(--cream);
+    backdrop-filter:blur(6px);
+}
+.hero-actions .btn-ghost:hover,
+.btn-ghost:hover{
+    background:rgba(20,10,6,.75);
+    border-color:var(--orange);
+    color:var(--amber);
+}
+
+/* Halaman detail drama memakai pola yang sama */
+.detail-hero{ position:relative; }
+.detail-hero::after{
+    content:"";
+    position:absolute; inset:0;
+    z-index:1;
+    pointer-events:none;
+    background:
+        linear-gradient(180deg, rgba(20,10,6,.55) 0%, rgba(20,10,6,.25) 40%, rgba(20,10,6,.92) 92%),
+        linear-gradient(90deg, rgba(20,10,6,.88) 0%, rgba(20,10,6,.45) 50%, rgba(20,10,6,0) 78%);
+}
+.detail-hero-inner{ position:relative; z-index:3; }
+.detail-original{ color:var(--text-secondary); }
+
+/* --- Deretan lampu marquee: rapat, satu baris, tidak melebar --- */
+.perf{
+    gap:14px;
+    justify-content:flex-start;
+    flex-wrap:nowrap;
+    margin-top:var(--space-4);
+    opacity:.55;
+}
+.perf span{
+    width:5px; height:5px;
+    box-shadow:0 0 4px 1px rgba(255,178,56,.35);
+}
+
 /* --- Kartu: pinggiran seluloid + angkat saat hover --- */
 .drama-card{
     border:1px solid var(--border);
