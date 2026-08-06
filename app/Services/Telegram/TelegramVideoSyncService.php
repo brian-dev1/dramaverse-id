@@ -103,6 +103,13 @@ class TelegramVideoSyncService
      */
     public function sync(EpisodeVideo $video): EpisodeVideo
     {
+        // Idempotency guard: jangan ubah video yang sudah sukses menjadi FAILED.
+        if ($video->isSyncedToTelegram()) {
+            $this->log('info', 'sync.already_synced', $video);
+
+            return $video->refresh();
+        }
+
         if ($alasan = $this->blocker($video)) {
             $this->fail($video, $alasan, naikkanRetry: false);
 
@@ -168,9 +175,21 @@ class TelegramVideoSyncService
      */
     public function retry(EpisodeVideo $video): EpisodeVideo
     {
-        $video->forceFill(['sync_status' => TelegramSyncStatus::PENDING])->save();
+        // Retry terhadap video yang sudah punya file_id harus menjadi no-op.
+        if ($video->isSyncedToTelegram()) {
+            $this->log('info', 'sync.retry_skipped_already_synced', $video);
 
-        $this->log('info', 'sync.retry', $video, ['percobaan' => $video->retry_count + 1]);
+            return $video->refresh();
+        }
+
+        $video->forceFill([
+            'sync_status' => TelegramSyncStatus::PENDING,
+            'last_error'  => null,
+        ])->save();
+
+        $this->log('info', 'sync.retry', $video, [
+            'percobaan' => $video->retry_count + 1,
+        ]);
 
         return $this->sync($video);
     }
