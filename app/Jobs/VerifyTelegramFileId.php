@@ -17,22 +17,13 @@ use Illuminate\Support\Facades\Log;
 /**
  * Memastikan `telegram_file_id` yang tersimpan masih bisa dipakai.
  *
- * ## Kenapa ini perlu ada
+ * Bot API `getFile` tidak cocok untuk video besar. Karena itu file yang
+ * ukurannya melebihi batas pemeriksaan getFile tidak boleh dianggap rusak
+ * hanya karena Telegram menjawab "file is too big".
  *
- * Sampai Sprint 8.6, `file_id` disimpan sekali lalu dipercaya selamanya.
- * Telegram bisa membuang berkas lama, dan bila itu terjadi gejalanya adalah
- * pengguna menekan tombol lalu mendapat galat — bukan admin yang diberi tahu
- * ada yang perlu disinkronkan ulang.
- *
- * ## Caranya: getFile, bukan mengirim ulang
- *
- * `getFile` menanyakan metadata berkas tanpa mengirim apa pun ke siapa pun.
- * Murah, dan tidak mengganggu pengguna mana pun. Mengirim video ke chat
- * penyimpanan untuk menguji akan menambah satu salinan setiap kali diperiksa.
- *
- * Bila ditolak, status dikembalikan ke FAILED dengan sebabnya — sehingga ia
- * muncul di panel dan bisa disinkronkan ulang **dari storage provider**,
- * tanpa ada yang perlu mengunggah apa pun dari komputer.
+ * Untuk file yang masih berada dalam batas pemeriksaan, getFile tetap dipakai.
+ * Gangguan jaringan/rate-limit dianggap inconclusive, sedangkan penolakan
+ * definitif lainnya tetap menandai video FAILED dan membuka persistent issue.
  */
 class VerifyTelegramFileId implements ShouldQueue
 {
@@ -42,6 +33,11 @@ class VerifyTelegramFileId implements ShouldQueue
     use SerializesModels;
 
     public int $tries = 1;
+
+    /**
+     * Batas aman Bot API getFile yang digunakan verifier ini.
+     */
+    private const GET_FILE_MAX_BYTES = 20 * 1024 * 1024;
 
     public function __construct(
         public int $videoId
@@ -60,22 +56,78 @@ class VerifyTelegramFileId implements ShouldQueue
             return;
         }
 
+        /*
+         * File besar tidak diverifikasi dengan getFile karena endpoint tersebut
+         * memang dapat menolak berdasarkan ukuran. file_id yang sudah diperoleh
+         * dari sinkronisasi tetap dipertahankan dan issue operasional lama boleh
+         * ditutup: kegagalan getFile karena ukuran bukan bukti file_id rusak.
+         */
+        if ($video->size > self::GET_FILE_MAX_BYTES) {
+            $video->forceFill([
+                'sync_status' => TelegramSyncStatus::SYNCED,
+                'last_error'  => null,
+            ])->save();
+
+            $video->resolveIssue(
+                'Verifikasi getFile dilewati karena ukuran video melebihi batas pemeriksaan Bot API. '
+                .'file_id hasil sinkronisasi tetap dipertahankan.'
+            );
+
+            $cache->forget($video->episode_id);
+
+            $this->log('info', 'verify.skipped_too_large', $video, [
+                'size' => $video->size,
+                'limit' => self::GET_FILE_MAX_BYTES,
+            ]);
+
+            return;
+        }
+
         try {
             $telegram->withRetries(1)->getFile($video->telegram_file_id);
+
+            $video->forceFill([
+                'sync_status' => TelegramSyncStatus::SYNCED,
+                'last_error'  => null,
+            ])->save();
 
             $video->resolveIssue(
                 'file_id berhasil diverifikasi ke Telegram dan dinyatakan sehat.'
             );
 
+            $cache->forget($video->episode_id);
+
             $this->log('info', 'verify.ok', $video);
 
         } catch (TelegramException $e) {
 
-            // Kegagalan jaringan BUKAN berarti file_id-nya buruk. Menandai
-            // FAILED karena gangguan sesaat akan membuat seluruh katalog
-            // tampak rusak setiap kali koneksi VPS terganggu.
+            // Kegagalan jaringan BUKAN berarti file_id-nya buruk.
             if ($e->isConnectionProblem() || $e->isRateLimited()) {
                 $this->log('warning', 'verify.inconclusive', $video, [
+                    'sebab' => $e->getMessage(),
+                ]);
+
+                return;
+            }
+
+            /*
+             * Defensive fallback. Jika ukuran metadata lokal tidak akurat tetapi
+             * Telegram tetap menjawab "file is too big", jangan pernah
+             * mengklasifikasikannya sebagai file_id invalid.
+             */
+            if (str_contains(strtolower($e->getMessage()), 'file is too big')) {
+                $video->forceFill([
+                    'sync_status' => TelegramSyncStatus::SYNCED,
+                    'last_error'  => null,
+                ])->save();
+
+                $video->resolveIssue(
+                    'Telegram mengenali file_id, tetapi getFile tidak dapat digunakan karena ukuran file terlalu besar.'
+                );
+
+                $cache->forget($video->episode_id);
+
+                $this->log('info', 'verify.skipped_too_large', $video, [
                     'sebab' => $e->getMessage(),
                 ]);
 
