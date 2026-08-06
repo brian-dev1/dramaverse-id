@@ -118,11 +118,126 @@ footer,
 }
 
 /* --------------------------------------------------------------------------
+| Latar situs — foto bioskop dari Unsplash
+|
+| Dipasang sebagai lapisan tetap (fixed) di belakang konten, ditumpuk dengan
+| gradasi gelap agar teks tetap terbaca. Memakai ::before pada <body> supaya
+| tidak mengganggu z-index komponen mana pun.
+-------------------------------------------------------------------------- */
+body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    z-index:-2;
+    background-image:url("https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=1920&q=70");
+    background-size:cover;
+    background-position:center;
+    opacity:.22;
+    filter:saturate(.55) contrast(1.05);
+}
+
+body::after{
+    content:"";
+    position:fixed;
+    inset:0;
+    z-index:-1;
+    background:
+        radial-gradient(ellipse 90% 55% at 50% -5%, rgba(255,106,26,.22), transparent 70%),
+        linear-gradient(180deg, rgba(20,10,6,.62) 0%, rgba(20,10,6,.86) 45%, rgba(20,10,6,.97) 100%);
+}
+
+/* Bagian dengan latar sendiri dibuat semi-transparan agar foto tembus tipis */
+.section,
+main{ position:relative; z-index:1; }
+
+/* --------------------------------------------------------------------------
+| Hero — poster langsung, tanpa bingkai
+-------------------------------------------------------------------------- */
+.hero{
+    padding:0 !important;
+    max-width:none !important;
+    margin:0 !important;
+}
+
+.hero-frame{
+    border-radius:0 !important;
+    border:none !important;
+    min-height:clamp(420px, 62vh, 660px) !important;
+    background-color:transparent !important;
+}
+.hero-frame::before{ display:none !important; }
+
+/* Gradasi baca di atas poster */
+.hero-frame::after{
+    content:"";
+    position:absolute; inset:0; z-index:1;
+    background:
+        linear-gradient(90deg, rgba(20,10,6,.92) 0%, rgba(20,10,6,.62) 42%, transparent 78%),
+        linear-gradient(0deg, var(--bg-primary) 0%, rgba(20,10,6,.35) 38%, transparent 65%);
+}
+
+.hero-content{
+    padding:var(--space-6) var(--space-5) var(--space-6);
+    max-width:min(660px, 92vw);
+    margin-left:max(calc((100vw - 1440px) / 2), 0px);
+}
+
+/* Titik indikator slider disembunyikan */
+.hero-dots,
+.perf{ display:none !important; }
+
+/* --------------------------------------------------------------------------
+| Kartu status akun di halaman profil
+-------------------------------------------------------------------------- */
+.account-panel{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
+    gap:var(--space-2);
+}
+
+.account-item{
+    padding:18px 20px;
+    border:1px solid var(--border);
+    border-radius:var(--radius-m);
+    background:rgba(42,23,13,.55);
+    backdrop-filter:blur(4px);
+}
+.account-item .k{
+    display:block;
+    font-family:var(--font-mono);
+    font-size:10.5px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--text-muted);
+    margin-bottom:7px;
+}
+.account-item .v{
+    font-family:"Bebas Neue", var(--font-display);
+    font-size:22px;
+    letter-spacing:.02em;
+    color:var(--cream);
+}
+.account-item .v.on{ color:var(--amber); }
+.account-item .v.off{ color:var(--text-secondary); }
+
+.status-dot{
+    display:inline-block;
+    width:8px; height:8px; border-radius:50%;
+    margin-right:8px;
+    background:var(--orange);
+    box-shadow:0 0 8px 2px rgba(255,106,26,.55);
+    vertical-align:middle;
+}
+
+/* --------------------------------------------------------------------------
 | Panel admin tetap memakai palet lama
 |
 | Admin berbagi berkas app.css yang sama, jadi token dikembalikan di sini
 | agar perubahan tema hanya terlihat di sisi pengunjung.
 -------------------------------------------------------------------------- */
+.admin-body::before,
+.admin-body::after{ display:none !important; }
+
 .admin-body{
     --bg-primary:#0B0A10;
     --bg-secondary:#131019;

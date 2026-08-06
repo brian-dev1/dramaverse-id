@@ -37,15 +37,48 @@
     </section>
 
     <section class="section section-pad">
-        <x-web.home.section-header title="Membership" :href="route('web.membership')" />
-        <p class="page-subtitle">
-            @if ($subscription)
-                <span class="meta-item">{{ $subscription->plan?->name }}</span>
-                <span class="meta-item">Berakhir {{ $subscription->expired_at?->translatedFormat('d F Y') ?? 'tidak diketahui' }}</span>
-            @else
-                Anda masih memakai paket Gratis.
-            @endif
-        </p>
+        <x-web.home.section-header title="Status Akun" />
+
+        <div class="account-panel">
+
+            <div class="account-item">
+                <span class="k">Paket</span>
+                <span class="v {{ $subscription ? 'on' : 'off' }}">
+                    <span class="status-dot"></span>{{ $subscription?->plan?->name ?? 'Gratis' }}
+                </span>
+            </div>
+
+            <div class="account-item">
+                <span class="k">Berlaku Sampai</span>
+                <span class="v">
+                    {{ $subscription?->expired_at?->translatedFormat('d M Y') ?? 'Tanpa Batas' }}
+                </span>
+            </div>
+
+            <div class="account-item">
+                <span class="k">Akun Telegram</span>
+                <span class="v">
+                    {{ $user->telegram_username ? '@'.$user->telegram_username : 'Tersambung' }}
+                </span>
+            </div>
+
+            <div class="account-item">
+                <span class="k">Bergabung</span>
+                <span class="v">{{ $user->created_at->translatedFormat('d M Y') }}</span>
+            </div>
+
+        </div>
+    </section>
+
+    <section class="section section-pad">
+        <x-web.home.section-header title="Pintasan" />
+        <div class="pill-row">
+            <a href="{{ route('web.history') }}" class="pill">Riwayat Tontonan</a>
+            <a href="{{ route('web.favorites') }}" class="pill">Favorit</a>
+            <a href="{{ route('web.my-list') }}" class="pill">Daftar Saya</a>
+            <a href="{{ route('web.notifications') }}" class="pill">Notifikasi</a>
+            <a href="{{ route('web.settings') }}" class="pill">Pengaturan</a>
+        </div>
     </section>
 
     @if ($continueWatching->isEmpty() && $stats['history'] === 0)

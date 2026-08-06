@@ -13,9 +13,7 @@
             <h4>Jelajahi</h4>
             <a href="{{ route('web.trending') }}">Trending</a>
             <a href="{{ route('web.latest') }}">Rilis Terbaru</a>
-            <a href="{{ route('web.top-rated') }}">Rating Tertinggi</a>
             <a href="{{ route('web.genre.index') }}">Genre</a>
-            <a href="{{ route('web.country.index') }}">Negara</a>
         </div>
 
         <div class="footer-col">
@@ -27,7 +25,6 @@
                 <a href="{{ route('web.favorites') }}">Favorit</a>
                 <a href="{{ route('web.settings') }}">Pengaturan</a>
             @else
-                <a href="{{ route('web.membership') }}">Membership</a>
                 <a href="{{ route('web.vip') }}">Koleksi VIP</a>
             @endauth
         </div>

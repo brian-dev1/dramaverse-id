@@ -4,15 +4,15 @@
             ['route' => 'web.home',     'icon' => 'home',   'label' => 'Beranda'],
             ['route' => 'web.search',   'icon' => 'search', 'label' => 'Cari'],
             ['route' => 'web.trending', 'icon' => 'trend',  'label' => 'Trending'],
-            ['route' => 'web.history',  'icon' => 'clock',  'label' => 'Riwayat'],
+            ['route' => 'web.latest',   'icon' => 'clock',  'label' => 'Terbaru'],
             ['route' => 'web.profile',  'icon' => 'user',   'label' => 'Profil'],
         ]
         : [
             ['route' => 'web.home',       'icon' => 'home',   'label' => 'Beranda'],
             ['route' => 'web.search',     'icon' => 'search', 'label' => 'Cari'],
             ['route' => 'web.trending',   'icon' => 'trend',  'label' => 'Trending'],
-            ['route' => 'web.latest',     'icon' => 'clock',  'label' => 'Terbaru'],
-            ['route' => 'web.membership', 'icon' => 'user',   'label' => 'VIP'],
+            ['route' => 'web.latest',      'icon' => 'clock', 'label' => 'Terbaru'],
+            ['route' => 'web.genre.index', 'icon' => 'tag',   'label' => 'Genre'],
         ];
 @endphp
 

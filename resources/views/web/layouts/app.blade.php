@@ -40,9 +40,6 @@
         @yield('content')
     </main>
 
-    {{-- Promo membership hanya muncul di halaman yang meminta lewat @section('promo') --}}
-    @yield('promo')
-
     <x-web.home.footer />
 
     <x-web.home.mobile-nav />

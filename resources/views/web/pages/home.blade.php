@@ -15,12 +15,6 @@
 
     <x-web.home.hero :banners="$banners" :dramas="$trending" />
 
-    @unless ($catalogEmpty)
-        <div class="perf" aria-hidden="true">
-            @for ($i = 0; $i < 30; $i++)<span></span>@endfor
-        </div>
-    @endunless
-
     <x-web.home.continue-watching :histories="$continueWatching" />
 
     <x-web.home.rail
@@ -60,8 +54,3 @@
 
 @endsection
 
-@section('promo')
-    @guest
-        <x-web.home.membership-banner />
-    @endguest
-@endsection

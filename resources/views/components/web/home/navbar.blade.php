@@ -13,8 +13,6 @@
                 'web.trending'    => 'Trending',
                 'web.latest'      => 'Terbaru',
                 'web.genre.index' => 'Genre',
-                'web.country.index' => 'Negara',
-                'web.membership'  => 'Membership',
             ] as $route => $label)
                 <a href="{{ route($route) }}"
                    class="{{ request()->routeIs($route) ? 'active' : '' }}">{{ $label }}</a>
