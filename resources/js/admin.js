@@ -9,7 +9,10 @@ function sidebar() {
     const shell = document.querySelector('[data-shell]');
     if (!shell) return;
 
-    if (localStorage.getItem(SIDEBAR_KEY) === 'collapsed') {
+    // Di ponsel menu selalu mulai tertutup agar konten langsung terlihat.
+    const isMobile = window.matchMedia('(max-width: 900px)').matches;
+
+    if (isMobile || localStorage.getItem(SIDEBAR_KEY) === 'collapsed') {
         shell.classList.add('sidebar-collapsed');
     }
 

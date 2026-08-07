@@ -146,22 +146,46 @@ input:focus, select:focus, textarea:focus{
     .nav-links{ display:none; }
     .nav-right{ gap:8px; }
 
-    /* Admin: sidebar jadi laci geser */
-    .admin-shell{ display:block; }
-    .admin-sidebar{
-        position:fixed; inset:0 auto 0 0;
-        width:min(80vw, 268px);
-        z-index:80;
-        transform:translateX(-100%);
-        transition:transform .26s ease;
-        overflow-y:auto;
-        box-shadow:24px 0 60px -30px #000;
+    /* Tidak boleh ada geser kanan-kiri di mana pun */
+    html, body, .admin-shell, .admin-main, .admin-content{
+        max-width:100%;
+        overflow-x:hidden;
     }
-    .admin-shell.sidebar-open .admin-sidebar,
-    .admin-sidebar.is-open{ transform:translateX(0); }
+
+    /* Admin: sidebar menumpuk di atas, buka-tutup dengan scroll ke bawah */
+    .admin-shell{
+        display:block !important;
+        grid-template-columns:none !important;
+        width:100%;
+    }
+    .admin-sidebar{
+        position:static !important;
+        transform:none !important;
+        width:100% !important;
+        max-width:100% !important;
+        height:auto !important;
+        min-height:0 !important;
+        border-right:none;
+        border-bottom:1px solid var(--border-soft);
+        box-shadow:none;
+    }
+    /* Menu tertutup secara bawaan; ditekan hamburger → terbuka ke bawah
+       (halaman di-scroll, tidak digeser ke samping). */
+    .admin-shell.sidebar-collapsed .admin-sidebar .admin-nav,
+    .admin-shell.sidebar-collapsed .admin-sidebar .admin-logout{ display:none; }
+
+    .admin-sidebar .admin-nav{
+        padding:6px 10px 12px;
+        max-height:62vh;
+        overflow-y:auto;
+        -webkit-overflow-scrolling:touch;
+    }
+    .admin-nav a{ font-size:13px; padding:9px 11px; }
+    .admin-nav-group{ font-size:9.5px; letter-spacing:.14em; margin:10px 0 4px; }
+
     .admin-main{ margin-left:0 !important; width:100%; }
-    .admin-content{ padding:16px 14px 88px; }
-    .admin-topbar{ padding:10px 14px; position:sticky; top:0; z-index:40; }
+    .admin-content{ padding:14px 12px 88px; }
+    .admin-topbar{ padding:10px 12px; position:sticky; top:0; z-index:40; }
 
     /* Toolbar & filter menumpuk rapi */
     .admin-toolbar,
@@ -174,12 +198,35 @@ input:focus, select:focus, textarea:focus{
     .admin-toolbar input, .admin-toolbar select,
     .report-toolbar input, .report-toolbar select{ width:100%; }
 
-    /* Tabel lebar → geser horizontal, bukan merusak layout */
-    .table-wrap, .admin-content .table-wrap{
+    /* Tabel lebar: scroll di dalam kotaknya sendiri, halaman tetap diam */
+    .table-wrap, .admin-content .table-wrap, .panel, .card{
+        max-width:100%;
+    }
+    .table-wrap{
         overflow-x:auto;
         -webkit-overflow-scrolling:touch;
     }
-    .table-wrap table{ min-width:640px; }
+    .admin-content table{
+        display:block;
+        width:100%;
+        overflow-x:auto;
+        -webkit-overflow-scrolling:touch;
+        white-space:nowrap;
+        font-size:12.5px;
+    }
+    .admin-content thead th{ font-size:9.5px; padding:9px 10px; }
+    .admin-content tbody td{ font-size:12.5px; padding:10px 10px; }
+
+    /* Skala teks umum agar pas di layar ponsel */
+    .admin-content{ font-size:13px; }
+    .admin-content h1{ font-size:20px; }
+    .admin-content h2{ font-size:17px; }
+    .admin-content h3{ font-size:15px; }
+    .admin-content label{ font-size:12px; }
+    .stat-card .stat-value, .stat-value{ font-size:20px; }
+    .stat-card .stat-label, .stat-label{ font-size:10.5px; }
+    .badge{ font-size:10px; padding:3px 7px; }
+    .admin-topbar .page-title{ font-size:16px; }
 
     /* Grid statistik & kartu */
     .stat-grid, .admin-grid, .asset-grid{
@@ -199,10 +246,14 @@ input:focus, select:focus, textarea:focus{
 }
 
 @media (max-width:480px){
-    .admin-content{ padding:14px 12px 88px; }
-    .stat-grid, .admin-grid{ grid-template-columns:repeat(2, minmax(0,1fr)); }
-    .btn{ padding:9px 12px; font-size:13px; }
+    .admin-content{ padding:12px 10px 88px; font-size:12.5px; }
+    .stat-grid, .admin-grid{ grid-template-columns:repeat(2, minmax(0,1fr)); gap:10px; }
+    .btn{ padding:8px 11px; font-size:12.5px; }
     .admin-toolbar .btn{ flex:1 1 calc(50% - 5px); justify-content:center; }
+    .chart-card{ padding:12px; }
+    .chart-canvas{ max-height:200px; }
+    .card, .panel, .chart-card, .stat-card{ padding:12px; border-radius:12px; }
+    .brand-wordmark{ font-size:17px; }
 }
 
 /* Sisa aturan footer lama dinetralkan (footer sudah dihapus) */
