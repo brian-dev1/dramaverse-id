@@ -196,9 +196,45 @@ input:focus, select:focus, textarea:focus{
     .admin-logout{ flex:0 0 auto; padding:10px; border-top:1px solid var(--border-soft); }
     .admin-brand{ flex:0 0 auto; padding:14px 12px; min-height:auto; }
 
+    /* Saat ditutup: sidebar benar-benar dilepas dari tampilan supaya tidak
+       menyisakan bayangan/efek buram menutupi konten. */
+    .admin-shell.sidebar-collapsed .admin-sidebar{
+        display:none !important;
+        visibility:hidden !important;
+        opacity:0 !important;
+        pointer-events:none !important;
+        box-shadow:none !important;
+        filter:none !important;
+        backdrop-filter:none !important;
+        transition:none !important;
+    }
+    .admin-shell:not(.sidebar-collapsed) .admin-sidebar{
+        visibility:visible !important;
+        opacity:1 !important;
+        transform:none !important;
+        box-shadow:0 0 60px rgba(0,0,0,.6);
+    }
+
+    /* Efek buram/blur dimatikan di ponsel: berat dan sering menyisakan
+       artefak saat laci dibuka-tutup. */
+    .admin-topbar,
+    .admin-shell,
+    .admin-main,
+    .admin-content,
+    .navbar{
+        backdrop-filter:none !important;
+        -webkit-backdrop-filter:none !important;
+        filter:none !important;
+    }
+    .admin-topbar{
+        padding:10px 12px;
+        position:sticky; top:0; z-index:40;
+        background:#0C0704 !important;
+    }
+    .navbar{ background:rgba(12,7,4,.96) !important; }
+
     .admin-main{ margin-left:0 !important; width:100%; }
     .admin-content{ padding:14px 12px 88px; }
-    .admin-topbar{ padding:10px 12px; position:sticky; top:0; z-index:40; }
 
     /* Toolbar & filter menumpuk rapi */
     .admin-toolbar,
