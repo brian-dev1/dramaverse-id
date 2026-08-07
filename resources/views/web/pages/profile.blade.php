@@ -13,7 +13,7 @@
                     @if ($user->telegram_username)
                         <span class="meta-item">&#64;{{ $user->telegram_username }}</span>
                     @endif
-                    <span class="meta-item">Bergabung {{ $user->created_at->translatedFormat('F Y') }}</span>
+                    <span class="meta-item">Bergabung {{ \App\Support\Waktu::bulan($user->created_at) }}</span>
                 </p>
             </div>
         </div>
@@ -51,7 +51,7 @@
             <div class="account-item">
                 <span class="k">Berlaku Sampai</span>
                 <span class="v">
-                    {{ $subscription?->expired_at?->translatedFormat('d M Y') ?? 'Tanpa Batas' }}
+                    {{ $subscription?->expired_at ? \App\Support\Waktu::ringkas($subscription->expired_at) : 'Tanpa Batas' }}
                 </span>
             </div>
 
@@ -64,7 +64,7 @@
 
             <div class="account-item">
                 <span class="k">Bergabung</span>
-                <span class="v">{{ $user->created_at->translatedFormat('d M Y') }}</span>
+                <span class="v">{{ \App\Support\Waktu::tanggal($user->created_at) }}</span>
             </div>
 
         </div>

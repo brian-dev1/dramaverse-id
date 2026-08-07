@@ -10,7 +10,7 @@
 
     <section class="section section-pad">
         <article class="prose">
-            <p><em>Terakhir diperbarui: {{ now()->translatedFormat("d F Y") }}</em></p>
+            <p><em>Terakhir diperbarui: {{ \App\Support\Waktu::tanggal(now()) }}</em></p>
 
             <h2>Penerimaan ketentuan</h2>
             <p>Dengan mengakses DramaVerse ID, Anda menyetujui ketentuan di halaman ini.</p>

@@ -10,7 +10,7 @@
 
     <section class="section section-pad">
         <article class="prose">
-            <p><em>Terakhir diperbarui: {{ now()->translatedFormat("d F Y") }}</em></p>
+            <p><em>Terakhir diperbarui: {{ \App\Support\Waktu::tanggal(now()) }}</em></p>
 
             <h2>Data yang kami kumpulkan</h2>
             <ul>

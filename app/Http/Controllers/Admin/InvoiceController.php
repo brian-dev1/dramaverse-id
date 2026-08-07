@@ -19,6 +19,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
+use App\Support\Waktu;
 
 /**
  * Tagihan dan transaksi di panel admin.
@@ -216,7 +217,7 @@ class InvoiceController extends Controller
                 foreach ($rows as $invoice) {
                     fputcsv($out, [
                         $invoice->number,
-                        $invoice->created_at?->format('Y-m-d H:i'),
+                        Waktu::presisi($invoice->created_at),
                         $invoice->user?->name ?? '-',
                         $invoice->plan_name,
                         $invoice->plan_duration,
@@ -224,7 +225,7 @@ class InvoiceController extends Controller
                         $invoice->fee,
                         $invoice->total,
                         $invoice->status->label(),
-                        $invoice->paid_at?->format('Y-m-d H:i') ?? '-',
+                        Waktu::presisi($invoice->paid_at, '-'),
                     ]);
                 }
             });

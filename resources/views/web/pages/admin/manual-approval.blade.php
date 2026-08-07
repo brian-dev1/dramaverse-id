@@ -76,7 +76,7 @@
                                 <td>
                                     {{ $tx->proof_uploaded_at?->diffForHumans() }}
                                     <br><span class="cell-empty">
-                                        {{ $tx->proof_uploaded_at?->format('d M H:i') }}
+                                        {{ \App\Support\Waktu::ringkas($tx->proof_uploaded_at) }}
                                     </span>
                                 </td>
                                 <td class="col-actions">
@@ -211,7 +211,7 @@
                     </span>
                     @if (! empty($status['expires_at']))
                         sampai
-                        <strong>{{ \Illuminate\Support\Carbon::parse($status['expires_at'])->format('d M Y H:i') }}</strong>
+                        <strong>{{ \App\Support\Waktu::ringkas($status['expires_at']) }}</strong>
                     @endif
                     @if (! empty($status['plan']))
                         · paket {{ $status['plan'] }}
@@ -262,9 +262,9 @@
                                 {{ $invoice->status->label() }}
                             </span>
                             <span class="cell-empty">
-                                dibuat {{ $invoice->created_at?->format('d M Y H:i') }}
+                                dibuat {{ \App\Support\Waktu::ringkas($invoice->created_at) }}
                                 @if ($invoice->due_at)
-                                    · tempo {{ $invoice->due_at->format('d M Y H:i') }}
+                                    · tempo {{ \App\Support\Waktu::ringkas($invoice->due_at) }}
                                     @if ($invoice->isOverdue())
                                         <span class="queue-error">(lewat tempo)</span>
                                     @endif
@@ -285,7 +285,7 @@
                                          style="max-width:220px;border-radius:8px;">
                                 </a>
                                 <br><span class="cell-empty">
-                                    Dikirim {{ $tx->proof_uploaded_at?->format('d M Y H:i') }}
+                                    Dikirim {{ \App\Support\Waktu::ringkas($tx->proof_uploaded_at) }}
                                     @if ($tx->proof_note)
                                         — “{{ $tx->proof_note }}”
                                     @endif

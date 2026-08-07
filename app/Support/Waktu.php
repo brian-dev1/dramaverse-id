@@ -96,6 +96,34 @@ final class Waktu
     }
 
     /**
+     * Tanggal saja: "07 Agu 2026".
+     *
+     * Dipakai HANYA untuk hal yang memang tidak punya jam bermakna — tanggal
+     * bergabung, rentang laporan, label kolom sempit. Untuk tenggat dan masa
+     * berlaku, pakai `ringkas()` atau `lengkap()`: di sana jam justru bagian
+     * yang paling ditanyakan.
+     *
+     * Tetap lewat `lokal()`, bukan `format()` langsung. Tanggal pun bisa
+     * meleset satu hari kalau dicetak dari UTC — apa saja yang tersimpan
+     * antara pukul 00.00 dan 07.00 WIB jatuh di tanggal sebelumnya menurut
+     * UTC, dan itu persis jam-jam ramai bot ini.
+     */
+    public static function tanggal(CarbonInterface|string|null $waktu, string $kosong = '—'): string
+    {
+        $t = self::lokal($waktu);
+
+        return $t === null ? $kosong : $t->translatedFormat('d M Y');
+    }
+
+    /** Bulan dan tahun saja: "Agustus 2026". */
+    public static function bulan(CarbonInterface|string|null $waktu, string $kosong = '—'): string
+    {
+        $t = self::lokal($waktu);
+
+        return $t === null ? $kosong : $t->translatedFormat('F Y');
+    }
+
+    /**
      * Bentuk untuk mesin: "2026-08-07 21:30:00 +07:00".
      *
      * Dipakai di ekspor CSV dan atribut `title=` pada HTML, supaya nilai yang

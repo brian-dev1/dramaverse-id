@@ -11,6 +11,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use App\Support\Waktu;
 
 /**
  * Upload Queue.
@@ -103,7 +104,7 @@ class UploadQueueController extends Controller
                 'class'   => $log->level_class,
                 'event'   => $log->event,
                 'message' => $log->message,
-                'at'      => $log->created_at?->format('d M Y H:i:s'),
+                'at'      => Waktu::ringkas($log->created_at),
             ])->all(),
         ]);
     }
@@ -215,8 +216,8 @@ class UploadQueueController extends Controller
             'error'       => $job->error_message,
             'can_retry'   => $job->isRetryable(),
             'can_cancel'  => $job->isCancellable(),
-            'queued_at'   => $job->queued_at?->format('d M Y H:i'),
-            'finished_at' => $job->finished_at?->format('d M Y H:i'),
+            'queued_at'   => Waktu::ringkas($job->queued_at),
+            'finished_at' => Waktu::ringkas($job->finished_at),
         ];
     }
 

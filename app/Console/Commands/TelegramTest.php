@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Services\Telegram\Contracts\TelegramServiceInterface;
 use App\Services\Telegram\Exceptions\TelegramException;
 use Illuminate\Console\Command;
+use App\Support\Waktu;
 
 /**
  * Membuktikan lapisan Telegram benar-benar bekerja.
@@ -147,7 +148,7 @@ class TelegramTest extends Command
         }
 
         $pesan = $this->option('message')
-            ?: 'Uji koneksi DramaVerse ID pada '.now()->format('d M Y H:i:s').'.';
+            ?: 'Uji koneksi DramaVerse ID pada '.Waktu::ringkas(now()).'.';
 
         $this->newLine();
 

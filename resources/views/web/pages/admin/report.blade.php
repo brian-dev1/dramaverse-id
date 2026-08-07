@@ -62,8 +62,8 @@
         @if ($rows->isEmpty())
             <div class="empty-state">
                 <h3>Tidak ada data</h3>
-                <p>Tidak ada catatan pada rentang {{ $from->translatedFormat('d M Y') }}
-                   sampai {{ $to->translatedFormat('d M Y') }}.</p>
+                <p>Tidak ada catatan pada rentang {{ \App\Support\Waktu::tanggal($from) }}
+                   sampai {{ \App\Support\Waktu::tanggal($to) }}.</p>
             </div>
         @else
             <div class="table-wrap">
@@ -81,7 +81,7 @@
                                 @foreach ($row as $value)
                                     <td>
                                         @if ($value instanceof \Illuminate\Support\Carbon)
-                                            {{ $value->translatedFormat('d M Y, H:i') }}
+                                            {{ \App\Support\Waktu::ringkas($value) }}
                                         @elseif (is_bool($value))
                                             <span class="badge {{ $value ? 'badge-on' : 'badge-off' }}">
                                                 {{ $value ? 'Ya' : 'Tidak' }}

@@ -245,7 +245,7 @@
                                         </span>
                                         @if ($video->issue_detected_at)
                                             <br><span class="cell-empty">
-                                                Terdeteksi {{ $video->issue_detected_at->format('d M Y H:i') }}.
+                                                Terdeteksi {{ \App\Support\Waktu::ringkas($video->issue_detected_at) }}.
                                                 Verifikasi file_id setelah perbaikan untuk menutup masalah.
                                             </span>
                                         @endif
@@ -262,7 +262,7 @@
                                         <span class="cell-empty">—</span>
                                     @endif
                                 </td>
-                                <td>{{ $video->synced_at?->format('d M Y H:i') ?? '—' }}</td>
+                                <td>{{ \App\Support\Waktu::ringkas($video->synced_at) }}</td>
                                 <td class="col-actions">
                                     @if ($video->sync_status->value === 'failed')
                                         <form method="POST"

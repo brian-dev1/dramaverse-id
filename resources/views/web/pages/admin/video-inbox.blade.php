@@ -68,7 +68,7 @@
                     <div>
                         <dt>Masuk</dt>
                         <dd>
-                            {{ $video->uploaded_at?->format('d M Y H:i') ?? '—' }}
+                            {{ \App\Support\Waktu::ringkas($video->uploaded_at) }}
                         </dd>
                     </div>
 

@@ -158,7 +158,7 @@
                                 <td><span class="fm-key">{{ $b['nama'] }}</span></td>
                                 <td>{{ $ukuran($b['size']) }}</td>
                                 <td>
-                                    {{ $b['waktu']->format('d M Y H:i') }}
+                                    {{ \App\Support\Waktu::ringkas($b['waktu']) }}
                                     <br><span class="cell-empty">{{ $b['waktu']->diffForHumans() }}</span>
                                 </td>
                                 <td class="col-actions">

@@ -7,6 +7,7 @@ use App\Services\Monitoring\AlertService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use Throwable;
+use App\Support\Waktu;
 
 /**
  * Membuat, memeriksa, dan memangkas cadangan.
@@ -175,7 +176,7 @@ class BackupRun extends Command
             $semua->map(fn (array $b) => [
                 $b['nama'],
                 $this->ukuran($b['size']),
-                $b['waktu']->format('d M Y H:i'),
+                Waktu::ringkas($b['waktu']),
                 $b['waktu']->diffForHumans(),
             ])->all()
         );

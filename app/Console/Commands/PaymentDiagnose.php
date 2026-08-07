@@ -8,6 +8,7 @@ use App\Models\Invoice;
 use App\Services\Payments\PaymentGatewayManager;
 use App\Support\LogFileReader;
 use Illuminate\Console\Command;
+use App\Support\Waktu;
 
 /**
  * Menjawab satu pertanyaan: kenapa pembayaran ini belum aktif.
@@ -110,7 +111,7 @@ class PaymentDiagnose extends Command
             'Langganan',
             $langganan === null
                 ? '<fg=red>tidak ada</>'
-                : $langganan->status.' — '.($langganan->expired_at?->format('d M Y') ?? 'tanpa batas')
+                : $langganan->status.' — '.Waktu::ringkas($langganan->expired_at, 'tanpa batas')
         );
     }
 

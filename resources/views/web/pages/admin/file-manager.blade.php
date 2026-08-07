@@ -157,7 +157,7 @@
 
                             <td>{{ $file['size_human'] }}</td>
 
-                            <td>{{ $file['uploaded_at']?->format('d M Y H:i') ?: '—' }}</td>
+                            <td>{{ \App\Support\Waktu::ringkas($file['uploaded_at']) }}</td>
 
                             <td>
                                 <span class="badge badge-status {{ $file['reachable'] ? 'badge-on' : 'badge-off' }}">

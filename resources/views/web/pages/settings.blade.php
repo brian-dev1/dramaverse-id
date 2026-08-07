@@ -31,7 +31,7 @@
                 <dd>{{ $user->telegram_id ?? '—' }}</dd>
 
                 <dt>Terakhir masuk</dt>
-                <dd>{{ $user->last_login_at?->translatedFormat('d F Y, H:i') ?? '—' }}</dd>
+                <dd>{{ \App\Support\Waktu::ringkas($user->last_login_at) }}</dd>
             </dl>
 
             <button type="submit" class="btn btn-primary">Simpan</button>

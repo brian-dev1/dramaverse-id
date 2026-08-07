@@ -6,6 +6,7 @@ use App\Models\StorageProvider;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use App\Support\Waktu;
 
 /**
  * Angka-angka untuk Storage Monitoring.
@@ -67,7 +68,7 @@ class StorageMonitorService
             'default'   => $this->defaultSummary($providers),
             'test'      => $this->testSummary($providers),
             'rows'      => $this->rows($providers),
-            'at'        => now()->format('d M Y H:i:s'),
+            'at'        => Waktu::ringkas(now()),
         ];
     }
 
@@ -206,7 +207,7 @@ class StorageMonitorService
             'ok'          => $providers->where('last_test_status', 'ok')->count(),
             'failed'      => $providers->where('last_test_status', 'failed')->count(),
             'never'       => $providers->whereNull('last_test_status')->count(),
-            'last_at'     => $terakhir instanceof Carbon ? $terakhir->format('d M Y H:i') : null,
+            'last_at'     => $terakhir instanceof Carbon ? Waktu::ringkas($terakhir) : null,
             'last_for_humans' => $terakhir instanceof Carbon ? $terakhir->diffForHumans() : null,
         ];
     }
@@ -289,7 +290,7 @@ class StorageMonitorService
                 'test_status' => $provider->last_test_status,
                 'test_badge'  => $this->testBadge($provider->last_test_status),
                 'test_label'  => $this->testLabel($provider->last_test_status),
-                'tested_at'   => $provider->last_tested_at?->format('d M Y H:i'),
+                'tested_at'   => Waktu::ringkas($provider->last_tested_at),
                 'duration'    => $provider->last_test_duration,
                 'files'       => (int) $angka['jumlah'],
                 'bytes'       => (int) $angka['ukuran'],

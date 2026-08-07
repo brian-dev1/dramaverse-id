@@ -55,7 +55,7 @@
         <h1>{{ $title }}</h1>
         <p class="meta">
             {{ setting('site_name', 'DramaVerse ID') }} &nbsp;|&nbsp;
-            Periode {{ $from->translatedFormat('d F Y') }} &ndash; {{ $to->translatedFormat('d F Y') }} &nbsp;|&nbsp;
+            Periode {{ \App\Support\Waktu::tanggal($from) }} &ndash; {{ \App\Support\Waktu::tanggal($to) }} &nbsp;|&nbsp;
             {{ number_format($rows->count()) }} baris
         </p>
     </header>
@@ -77,7 +77,7 @@
                         @foreach ($row as $value)
                             <td>
                                 @if ($value instanceof \Illuminate\Support\Carbon)
-                                    {{ $value->format('d/m/Y H:i') }}
+                                    {{ \App\Support\Waktu::ringkas($value) }}
                                 @elseif (is_bool($value))
                                     {{ $value ? 'Ya' : 'Tidak' }}
                                 @else
@@ -91,7 +91,7 @@
         </table>
     @endif
 
-    <footer>Dicetak {{ now()->translatedFormat('d F Y, H:i') }} WIB</footer>
+    <footer>Dicetak {{ \App\Support\Waktu::lengkap(now()) }}</footer>
 
 </body>
 </html>

@@ -138,7 +138,7 @@
                             </td>
 
                             <td>
-                                {{ $job->queued_at?->format('d M Y H:i') ?: '—' }}
+                                {{ \App\Support\Waktu::ringkas($job->queued_at) }}
                             </td>
 
                             <td class="col-actions">

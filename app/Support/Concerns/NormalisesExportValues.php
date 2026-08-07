@@ -3,6 +3,7 @@
 namespace App\Support\Concerns;
 
 use Illuminate\Support\Carbon;
+use App\Support\Waktu;
 
 /**
  * Menyeragamkan nilai sebelum ditulis ke berkas ekspor.
@@ -17,7 +18,7 @@ trait NormalisesExportValues
     protected function normalise(mixed $value): string
     {
         return match (true) {
-            $value instanceof Carbon => $value->format('Y-m-d H:i'),
+            $value instanceof Carbon => Waktu::presisi($value),
             is_bool($value)          => $value ? 'Ya' : 'Tidak',
             is_null($value)          => '',
             default                  => (string) $value,

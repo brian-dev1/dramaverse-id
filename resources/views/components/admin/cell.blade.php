@@ -46,7 +46,7 @@
     <span class="badge {{ $value ? 'badge-on' : 'badge-off' }}">{{ $value ? 'Ya' : 'Tidak' }}</span>
 
 @elseif ($value instanceof \Illuminate\Support\Carbon)
-    <time datetime="{{ $value->toDateString() }}">{{ $value->translatedFormat('d M Y') }}</time>
+    <time datetime="{{ $value->toDateString() }}" title="{{ \App\Support\Waktu::presisi($value) }}">{{ \App\Support\Waktu::ringkas($value) }}</time>
 
 @elseif ($path === 'status')
     <span class="badge {{ $statusClass }}">{{ ucfirst((string) $value) }}</span>

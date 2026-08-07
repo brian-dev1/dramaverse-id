@@ -34,13 +34,13 @@
                 </dd>
 
                 <dt>Terakhir masuk</dt>
-                <dd>{{ $user->last_login_at?->translatedFormat('d F Y, H:i') ?? '—' }}</dd>
+                <dd>{{ \App\Support\Waktu::ringkas($user->last_login_at) }}</dd>
 
                 <dt>Terakhir aktif</dt>
                 <dd>{{ $user->last_seen_at?->diffForHumans() ?? '—' }}</dd>
 
                 <dt>Bergabung</dt>
-                <dd>{{ $user->created_at->translatedFormat('d F Y') }}</dd>
+                <dd>{{ \App\Support\Waktu::ringkas($user->created_at) }}</dd>
             </dl>
 
             @unless ($user->is_admin)
@@ -111,7 +111,7 @@
                         <tr>
                             <td>{{ $sub->plan?->name ?? '—' }}</td>
                             <td><span class="badge badge-status">{{ ucfirst($sub->status) }}</span></td>
-                            <td>{{ $sub->expired_at?->translatedFormat('d M Y') ?? '—' }}</td>
+                            <td>{{ \App\Support\Waktu::ringkas($sub->expired_at) }}</td>
                         </tr>
                     @empty
                         <tr><td colspan="3"><span class="cell-empty">Belum pernah berlangganan.</span></td></tr>

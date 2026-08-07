@@ -11,6 +11,7 @@ use App\Services\Payments\PaymentResult;
 use Illuminate\Console\Command;
 use Illuminate\Support\Str;
 use Throwable;
+use App\Support\Waktu;
 
 /**
  * Mengaktifkan tagihan secara manual, dari baris perintah.
@@ -170,7 +171,7 @@ class PaymentActivate extends Command
             'Langganan',
             $langganan === null
                 ? 'tidak ada'
-                : $langganan->status.' sampai '.($langganan->expired_at?->format('d M Y') ?? '-')
+                : $langganan->status.' sampai '.Waktu::ringkas($langganan->expired_at, '-')
         );
 
         $this->line('        Pengguna sudah menerima pemberitahuan di bot.');

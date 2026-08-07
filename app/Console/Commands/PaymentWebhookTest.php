@@ -8,6 +8,7 @@ use App\Services\Payments\PaymentCallbackService;
 use App\Services\Payments\PaymentGatewayManager;
 use Illuminate\Console\Command;
 use Throwable;
+use App\Support\Waktu;
 
 /**
  * Mengirim callback tiruan ke jalur callback yang sungguhan.
@@ -153,7 +154,7 @@ class PaymentWebhookTest extends Command
             'Langganan',
             $langganan === null
                 ? 'tidak ada'
-                : $langganan->status.' sampai '.($langganan->expired_at?->format('d M Y') ?? '-')
+                : $langganan->status.' sampai '.Waktu::ringkas($langganan->expired_at, '-')
         );
 
         $this->newLine();

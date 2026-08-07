@@ -6,6 +6,7 @@ use App\Services\Telegram\Contracts\TelegramServiceInterface;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Throwable;
+use App\Support\Waktu;
 
 /**
  * Pemberitahuan operator untuk seluruh sistem.
@@ -80,7 +81,7 @@ class AlertService
                 $chat,
                 ($kritis ? '🔴 ' : '⚠️ ').'<b>'.e($judul)."</b>\n\n".e($pesan)
                     ."\n\n<i>".e((string) config('app.name')).' — '
-                    .now()->format('d M Y H:i').'</i>'
+                    .Waktu::ringkas(now()).'</i>'
             );
 
         } catch (Throwable) {
