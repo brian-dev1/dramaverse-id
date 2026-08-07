@@ -55,6 +55,14 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: [
             'telegram/webhook',
             'payment/callback/*',
+
+            // Mini App membuktikan dirinya lewat tanda tangan HMAC pada
+            // initData, bukan lewat token sesi. Di Telegram Desktop/Web
+            // halaman berjalan di dalam iframe pihak ketiga, dan cookie
+            // sesi — termasuk cookie XSRF — belum tentu ikut terkirim pada
+            // permintaan pertama. Menuntut token CSRF di sini berarti login
+            // otomatis gagal 419 sebelum tanda tangannya sempat diperiksa.
+            'auth/telegram/miniapp',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

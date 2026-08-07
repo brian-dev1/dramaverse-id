@@ -8,6 +8,7 @@ use App\Support\TelegramInitData;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Login otomatis ketika website dibuka sebagai Telegram Mini App.
@@ -37,6 +38,13 @@ class TelegramMiniAppController extends Controller
         );
 
         if (! $payload) {
+            // Dicatat supaya penyebabnya bisa dibedakan: bot token salah,
+            // initData kosong, atau tanda tangan tidak cocok.
+            Log::warning('telegram.miniapp.invalid', [
+                'panjang_init_data' => strlen($initData),
+                'ada_bot_token'     => config('telegram.bot_token') ? 'ya' : 'tidak',
+            ]);
+
             return response()->json([
                 'ok'      => false,
                 'message' => 'Data Telegram tidak valid atau sudah kedaluwarsa.',

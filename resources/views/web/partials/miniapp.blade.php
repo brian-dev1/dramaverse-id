@@ -42,7 +42,12 @@
 
     try { tg.ready(); tg.expand(); } catch (e) {}
     try { tg.disableVerticalSwipes && tg.disableVerticalSwipes(); } catch (e) {}
-    try { tg.requestFullscreen && tg.isVersionAtLeast('8.0') && tg.requestFullscreen(); } catch (e) {}
+
+    // Dikunci potret. requestFullscreen() sengaja TIDAK dipakai: di mode
+    // itu Telegram membiarkan jendela ikut berputar mengikuti sensor, dan
+    // tata letak mobile yang memang dirancang potret jadi melebar.
+    try { tg.lockOrientation && tg.lockOrientation(); } catch (e) {}
+    try { screen.orientation && screen.orientation.lock && screen.orientation.lock('portrait').catch(function () {}); } catch (e) {}
 
     // Warna header/latar mengikuti tema situs.
     try {
@@ -90,15 +95,21 @@
             },
             body: JSON.stringify({ init_data: tg.initData })
         })
-        .then(function (r) { return r.json().catch(function () { return {}; }); })
+        .then(function (r) {
+            return r.json().catch(function () { return { status: r.status }; });
+        })
         .then(function (data) {
             if (data && data.ok) {
-                window.location.reload();
+                // replace(), bukan reload(): reload mengulang POST kalau
+                // halaman ini sendiri hasil kiriman form.
+                window.location.replace(window.location.href);
                 return;
             }
+            console.warn('Mini App login gagal:', data);
             body.classList.remove('tg-authenticating');
         })
-        .catch(function () {
+        .catch(function (err) {
+            console.warn('Mini App login error:', err);
             body.classList.remove('tg-authenticating');
         });
     })();
