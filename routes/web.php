@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin;
 use App\Http\Controllers\Auth\TelegramAuthController;
+use App\Http\Controllers\Auth\TelegramMiniAppController;
 use App\Http\Controllers\PaymentCallbackController;
 use App\Http\Controllers\TelegramWebhookController;
 use App\Http\Controllers\Web;
@@ -81,6 +82,11 @@ Route::controller(Web\PageController::class)->group(function () {
 */
 
 Route::get('/auth/telegram/{token}', TelegramAuthController::class)->name('web.telegram.login');
+
+// --- Telegram Mini App: tukar initData jadi sesi login ---
+Route::post('/auth/telegram/miniapp', TelegramMiniAppController::class)
+    ->middleware('throttle:20,1')
+    ->name('web.telegram.miniapp');
 /*
 |--------------------------------------------------------------------------
 | Callback pembayaran

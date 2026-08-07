@@ -42,6 +42,8 @@
 
     <x-web.home.mobile-nav />
 
+    @include('web.partials.miniapp')
+
     @stack('scripts')
 
 </body>

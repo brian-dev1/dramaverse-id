@@ -60,6 +60,23 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Mini App (Telegram WebApp)
+    |--------------------------------------------------------------------------
+    |
+    | miniapp_url adalah alamat HTTPS yang dibuka Telegram di dalam aplikasi.
+    | Kosongkan untuk memakai APP_URL. miniapp_auth_ttl membatasi umur initData
+    | (detik) supaya tidak bisa diputar ulang.
+    |
+    */
+
+    'miniapp_url' => env('TELEGRAM_MINIAPP_URL'),
+
+    'miniapp_button_text' => env('TELEGRAM_MINIAPP_BUTTON_TEXT', 'Buka DramaVerse'),
+
+    'miniapp_auth_ttl' => (int) env('TELEGRAM_MINIAPP_AUTH_TTL', 86400),
+
+    /*
+    |--------------------------------------------------------------------------
     | Alamat API
     |--------------------------------------------------------------------------
     |

@@ -36,6 +36,32 @@ class WebsiteHandler
             return;
         }
 
+        $miniAppUrl = rtrim((string) (config('telegram.miniapp_url') ?: config('app.url')), '/').'/';
+
+        // Mini App hanya boleh HTTPS. Kalau belum, jatuh kembali ke tautan
+        // login sekali pakai supaya fitur ini tetap jalan.
+        if (str_starts_with($miniAppUrl, 'https://')) {
+            $this->telegram->sendMessage(
+                $chatId,
+                implode("\n", [
+                    "🌐 *DramaVerse Website*",
+                    "",
+                    "Buka langsung di dalam Telegram — akun Anda otomatis masuk.",
+                ]),
+                [
+                    'parse_mode' => 'Markdown',
+                    'reply_markup' => json_encode([
+                        'inline_keyboard' => [[[
+                            'text'    => (string) config('telegram.miniapp_button_text', 'Buka DramaVerse'),
+                            'web_app' => ['url' => $miniAppUrl],
+                        ]]],
+                    ]),
+                ]
+            );
+
+            return;
+        }
+
         $token = $this->login->generate($user);
 
         $minutes = (int) config('telegram.login_token_ttl', 10);
