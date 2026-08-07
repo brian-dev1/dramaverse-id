@@ -82,9 +82,7 @@
     <aside class="admin-sidebar" data-sidebar>
 
         <div class="admin-brand">
-            <a href="{{ route('admin.dashboard') }}" class="logo">
-                DramaVerse<span class="dot"></span><span class="id">ADMIN</span>
-            </a>
+            <x-web.home.brand :href="route('admin.dashboard')" text="DramaVerse" badge="Admin" />
             <button type="button" class="btn-icon sidebar-toggle" data-sidebar-toggle
                     aria-label="Sembunyikan menu">
                 <x-web.home.icon name="menu" :size="17" />

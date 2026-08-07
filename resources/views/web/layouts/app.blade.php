@@ -40,8 +40,6 @@
         @yield('content')
     </main>
 
-    <x-web.home.footer />
-
     <x-web.home.mobile-nav />
 
     @stack('scripts')

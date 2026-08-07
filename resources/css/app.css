@@ -14,6 +14,7 @@
 
 /* --- Kerangka --- */
 @import "./web/home/navbar.css";
+@import "./web/home/brand.css";
 @import "./web/home/section.css";
 
 /* --- Komponen --- */
@@ -38,6 +39,10 @@
 
 /* --- Responsif (terakhir agar dapat menimpa) --- */
 @import "./web/home/responsive.css";
+
+/* --- Merek & pemolesan elegan (paling akhir agar menang) --- */
+@import "./web/home/brand.css";
+@import "./web/home/elegant.css";
 @import "./web/detail/responsive.css";
 
 /* --- Perbaikan toolbar admin (paling akhir, wajib menang) --- */

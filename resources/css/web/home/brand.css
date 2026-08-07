@@ -1,0 +1,99 @@
+/* ============ BRAND / LOGO (ember wordmark) ============ */
+
+.brand-logo{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    flex-shrink:0;
+    line-height:1;
+    text-decoration:none;
+    user-select:none;
+}
+
+.brand-wordmark{
+    position:relative;
+    display:inline-flex;
+    font-family:var(--font-display, 'Oswald', sans-serif);
+    font-weight:600;
+    font-size:clamp(19px, 2.2vw, 25px);
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    white-space:nowrap;
+}
+
+.brand-letter{
+    display:inline-block;
+    background:linear-gradient(180deg,#ffeacb 0%,#ffc172 32%,#ff8b3d 66%,#e0561f 100%);
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+    transform-origin:center bottom;
+    animation:brandBreathe 3.6s ease-in-out infinite;
+    animation-delay:var(--d, 0s);
+}
+
+@keyframes brandBreathe{
+    0%,100%{
+        opacity:.45;
+        transform:scale(.97) translateY(1px);
+        filter:drop-shadow(0 0 0 rgba(255,140,60,0));
+    }
+    50%{
+        opacity:1;
+        transform:scale(1.02) translateY(-1px);
+        filter:drop-shadow(0 0 9px rgba(255,168,88,.55));
+    }
+}
+
+/* Lapisan kilau: teks identik, disorot mengikuti bentuk huruf (tanpa kotak) */
+.brand-shine{
+    position:absolute;
+    inset:0;
+    pointer-events:none;
+    background:linear-gradient(100deg,
+        transparent 38%,
+        rgba(255,248,232,.95) 48%,
+        rgba(255,255,255,1) 52%,
+        transparent 62%);
+    background-size:280% 100%;
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+    animation:brandShine 5.2s ease-in-out infinite;
+}
+
+@keyframes brandShine{
+    0%,72%  { background-position:180% 0; }
+    100%    { background-position:-80% 0; }
+}
+
+.brand-badge{
+    align-self:flex-start;
+    margin-top:2px;
+    font-family:var(--font-mono, ui-monospace, monospace);
+    font-size:9.5px;
+    font-weight:600;
+    letter-spacing:.16em;
+    text-transform:uppercase;
+    color:#f0b978;
+    background:linear-gradient(180deg, rgba(255,170,90,.16), rgba(255,120,40,.07));
+    border:1px solid rgba(255,170,90,.28);
+    border-radius:999px;
+    padding:3px 7px;
+    line-height:1;
+}
+
+/* Sidebar admin: sedikit lebih ringkas */
+.admin-brand .brand-wordmark{ font-size:19px; letter-spacing:.05em; }
+.admin-brand .brand-badge{ font-size:9px; padding:3px 6px; }
+
+@media (max-width:640px){
+    .brand-wordmark{ font-size:18px; letter-spacing:.04em; }
+    .brand-badge{ font-size:8.5px; padding:2px 5px; }
+    .brand-logo{ gap:6px; }
+}
+
+@media (prefers-reduced-motion: reduce){
+    .brand-letter{ animation:none; opacity:1; transform:none; filter:none; }
+    .brand-shine{ display:none; }
+}

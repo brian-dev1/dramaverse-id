@@ -2,9 +2,7 @@
     <div class="navbar-inner">
 
         {{-- Logo --}}
-        <a href="{{ route('web.home') }}" class="logo">
-            DramaVerse<span class="dot"></span><span class="id">ID</span>
-        </a>
+        <x-web.home.brand :href="route('web.home')" text="DramaVerse" badge="ID" />
 
         {{-- Menu utama --}}
         <nav class="nav-links">
