@@ -124,6 +124,11 @@ class CallbackHandler
                 app(PremiumHandler::class)->buy($callback, $user, (int) ($argumen[0] ?? 0));
 
                 return;
+
+            case PremiumHandler::PAID:
+                app(PremiumHandler::class)->confirmPaid($callback, $user, (int) ($argumen[0] ?? 0));
+
+                return;
         }
 
         /*

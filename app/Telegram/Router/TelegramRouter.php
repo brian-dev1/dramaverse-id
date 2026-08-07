@@ -7,6 +7,8 @@ use App\Services\Telegram\Contracts\TelegramServiceInterface;
 use App\Services\UserSessionService;
 use App\Enums\TelegramMenuAction;
 use App\Telegram\Handlers\CallbackHandler;
+use App\Telegram\Handlers\PaymentProofHandler;
+use App\Telegram\Handlers\PremiumHandler;
 use App\Telegram\Handlers\SearchHandler;
 use App\Telegram\Handlers\StartHandler;
 use Illuminate\Support\Facades\Log;
@@ -112,6 +114,33 @@ class TelegramRouter
 
         $state = $this->sessions->current((int) $user->id);
 
+        /*
+        |----------------------------------------------------------------------
+        | Foto
+        |----------------------------------------------------------------------
+        |
+        | Diperiksa SEBELUM pencocokan state berbasis teks. Pesan foto datang
+        | tanpa `text` sama sekali, jadi kalau dibiarkan jatuh ke cabang
+        | pencarian di bawah, bukti bayar yang dikirim pengguna akan
+        | ditafsirkan sebagai kata kunci kosong — dan hilang tanpa jejak.
+        |
+        | Foto di luar state PAY_PROOF sengaja diabaikan diam-diam. Orang
+        | mengirim gambar ke bot karena bermacam alasan, dan membalas setiap
+        | satunya dengan "saya tidak mengerti" membuat bot terasa cerewet.
+        |
+        */
+
+        if (isset($message['photo']) && $state === PremiumHandler::STATE_PROOF) {
+
+            app(PaymentProofHandler::class)->handle(
+                $message,
+                $user,
+                $this->sessions->payload((int) $user->id)
+            );
+
+            return;
+        }
+
         match ($state) {
 
             'SEARCH' => app(SearchHandler::class)
@@ -119,6 +148,13 @@ class TelegramRouter
                     $chatId,
                     (int) $user->id,
                     $text
+                ),
+
+            PremiumHandler::STATE_PROOF => app(TelegramServiceInterface::class)
+                ->sendMessage(
+                    $chatId,
+                    'Saya sedang menunggu <b>foto</b> bukti pembayaran. Kirim '
+                    .'tangkapan layarnya, atau tekan /vip untuk membatalkan.'
                 ),
 
             default => null,

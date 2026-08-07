@@ -520,6 +520,24 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
             Route::get('/payment/log', [Admin\PaymentLogController::class, 'index'])
                 ->name('payment-log.index');
+
+            /*
+            |------------------------------------------------------------------
+            | ACC Manual
+            |
+            | Halaman terpisah dari daftar Tagihan dengan sengaja: yang satu
+            | menjawab "apa yang terjadi di sistem pembayaran", yang ini
+            | menjawab "orang ini bilang sudah bayar, benar tidak?" — dan
+            | admin membuka yang kedua sambil memegang ID pengguna, bukan
+            | nomor tagihan. Lihat docblock ManualApprovalController.
+            |------------------------------------------------------------------
+            */
+            Route::get('/payment/acc', [Admin\ManualApprovalController::class, 'index'])
+                ->name('manual-approval.index');
+            Route::post('/payment/acc/{id}/approve', [Admin\ManualApprovalController::class, 'approve'])
+                ->name('manual-approval.approve')->whereNumber('id');
+            Route::post('/payment/acc/{id}/reject', [Admin\ManualApprovalController::class, 'rejectProof'])
+                ->name('manual-approval.reject')->whereNumber('id');
         });
 
         Route::get('/logs', [Admin\LogController::class, 'index'])

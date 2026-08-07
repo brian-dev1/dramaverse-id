@@ -74,7 +74,54 @@ class PaymentProvider extends Model
             }
         }
 
+        // Gambar QRIS ikut dihitung sebagai field wajib meski bukan
+        // kredensial. Ia disimpan di kolomnya sendiri karena berkas, bukan
+        // teks — tapi bagi driver QRIS ia sama menentukannya dengan nomor
+        // rekening bagi transfer bank: tanpa itu, pengguna sampai di layar
+        // pembayaran dan tidak ada yang bisa dipindai.
+        if ($this->driver->needsQrisImage() && blank($this->qris_image_path)) {
+            $kurang[] = 'qris_image';
+        }
+
         return $kurang;
+    }
+
+    /**
+     * Field yang kurang, dalam bahasa yang dibaca admin.
+     *
+     * "qris_image" dan "webhook_token" berarti sesuatu bagi yang menulis
+     * kodenya, bukan bagi yang harus memperbaikinya jam dua pagi.
+     *
+     * @return array<int,string>
+     */
+    public function missingLabels(): array
+    {
+        $label = $this->driver->requiredFields() + ['qris_image' => 'Gambar QRIS'];
+
+        return array_map(
+            fn (string $field) => $label[$field] ?? $field,
+            $this->missingFields()
+        );
+    }
+
+    /** URL gambar QRIS yang bisa dibuka browser, atau null. */
+    public function qrisUrl(): ?string
+    {
+        return filled($this->qris_image_path)
+            ? asset('storage/'.$this->qris_image_path)
+            : null;
+    }
+
+    /** Path absolut gambar QRIS di disk, untuk diunggah ke Telegram. */
+    public function qrisAbsolutePath(): ?string
+    {
+        if (blank($this->qris_image_path)) {
+            return null;
+        }
+
+        $path = \Illuminate\Support\Facades\Storage::disk('public')->path($this->qris_image_path);
+
+        return is_file($path) ? $path : null;
     }
 
     /**
@@ -100,7 +147,11 @@ class PaymentProvider extends Model
         }
 
         if ($kurang = $this->missingFields()) {
-            return 'Kredensial belum lengkap: '.implode(', ', $kurang).'.';
+
+            // Nama field diterjemahkan ke label yang dibaca admin. "qris_image"
+            // dan "webhook_token" berarti sesuatu bagi yang menulis kodenya,
+            // bukan bagi yang harus memperbaikinya jam dua pagi.
+            return 'Belum lengkap: '.implode(', ', $this->missingLabels()).'.';
         }
 
         if (! $this->is_active) {

@@ -13,6 +13,26 @@
 
     <section class="panel">
         <div class="panel-head">
+            <h2>Setup cepat QRIS</h2>
+            <span class="panel-meta">Bayar VIP lewat bot dengan scan QR</span>
+        </div>
+
+        <div class="detail-body-admin">
+            <ol class="page-subtitle">
+                <li>Tambahkan metode baru di bawah dengan driver <strong>QRIS</strong>.</li>
+                <li>Tekan <strong>Edit</strong> pada barisnya, isi <code>merchant_name</code>,
+                    lalu unggah <strong>Gambar QRIS</strong> dan simpan.</li>
+                <li>Tekan <strong>Aktifkan</strong>, lalu <strong>Jadikan utama</strong>.</li>
+                <li>Uji di bot: <code>/vip</code> → pilih paket. Bot mengirim gambar QRIS
+                    beserta nomor tagihan dan tombol <em>Saya sudah bayar</em>.</li>
+                <li>Setelah pengguna mengirim bukti, ACC di menu
+                    <a href="{{ route('admin.manual-approval.index') }}">ACC Manual</a>.</li>
+            </ol>
+        </div>
+    </section>
+
+    <section class="panel">
+        <div class="panel-head">
             <h2>Setup cepat Trakteer</h2>
             <span class="panel-meta">Yang penting untuk pembayaran VIP otomatis</span>
         </div>
@@ -51,6 +71,7 @@
                         <tr>
                             <th>Nama</th>
                             <th>Driver</th>
+                            <th>QRIS</th>
                             <th>Mode</th>
                             <th>Biaya</th>
                             <th>Transaksi</th>
@@ -71,6 +92,18 @@
                                     @unless ($p->driver->isImplemented())
                                         <br><span class="badge badge-off">kerangka</span>
                                     @endunless
+                                </td>
+                                <td>
+                                    @if ($p->qris_image_path)
+                                        <a href="{{ $p->qrisUrl() }}" target="_blank" rel="noopener">
+                                            <img src="{{ $p->qrisUrl() }}" alt="QRIS {{ $p->name }}"
+                                                 style="width:56px;height:56px;object-fit:cover;border-radius:6px;">
+                                        </a>
+                                    @elseif ($p->driver->needsQrisImage())
+                                        <span class="queue-error">Belum diunggah</span>
+                                    @else
+                                        <span class="cell-empty">—</span>
+                                    @endif
                                 </td>
                                 <td>
                                     <span class="badge {{ $p->isSandbox() ? 'badge-pending' : 'badge-on' }}">
@@ -193,9 +226,12 @@
 
                 <x-admin.image-field
                     name="qris_image"
-                    label="Gambar QRIS"
+                    :label="$editingProvider->driver->needsQrisImage() ? 'Gambar QRIS (wajib)' : 'Gambar QRIS (opsional)'"
                     :current="$editingProvider->qris_image_path"
-                    :hint="\App\Services\Admin\MediaService::hint('qris')" />
+                    :hint="\App\Services\Admin\MediaService::hint('qris')
+                        .($editingProvider->driver->needsQrisImage()
+                            ? ' Provider QRIS tidak bisa diaktifkan sebelum gambarnya ada — inilah yang dikirim bot ke pengguna saat menekan Beli VIP.'
+                            : ' Boleh dikosongkan. Bila diisi, bot ikut mengirimkannya sebagai pilihan bayar.')" />
 
                 @if ($editingProvider->qris_image_path)
                     <div class="field">

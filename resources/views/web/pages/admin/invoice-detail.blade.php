@@ -126,7 +126,25 @@
                                     <br><span class="cell-empty">{{ $tx->method }}</span>
                                 @endif
                             </td>
-                            <td>Rp {{ number_format((float) $tx->amount, 0, ',', '.') }}</td>
+                            <td>
+                                Rp {{ number_format((float) $tx->amount, 0, ',', '.') }}
+
+                                {{-- Bukti bayar dari bot; lihat PaymentProofHandler. --}}
+                                @if ($tx->hasProof())
+                                    <br>
+                                    @if ($tx->proofUrl())
+                                        <a href="{{ $tx->proofUrl() }}" target="_blank" rel="noopener">
+                                            <img src="{{ $tx->proofUrl() }}" alt="Bukti bayar"
+                                                 style="width:48px;height:48px;object-fit:cover;border-radius:6px;">
+                                        </a>
+                                    @else
+                                        <span class="cell-empty">bukti terkirim, berkas tidak tersimpan</span>
+                                    @endif
+                                    <br><span class="cell-empty">
+                                        {{ $tx->proof_uploaded_at?->format('d M H:i') }}
+                                    </span>
+                                @endif
+                            </td>
                             <td>
                                 <span class="badge {{ $tx->status->badge() }}">{{ $tx->status->label() }}</span>
                                 @if ($tx->last_error)

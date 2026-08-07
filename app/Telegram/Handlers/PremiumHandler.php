@@ -4,13 +4,16 @@ namespace App\Telegram\Handlers;
 
 use App\Models\Invoice;
 use App\Models\MembershipPlan;
+use App\Models\PaymentProvider;
 use App\Models\User;
 use App\Services\Membership\MembershipService;
 use App\Services\Payments\CheckoutService;
 use App\Services\Payments\Exceptions\PaymentException;
 use App\Services\Payments\PaymentGatewayManager;
 use App\Services\Telegram\Contracts\TelegramServiceInterface;
+use App\Services\UserSessionService;
 use Illuminate\Support\Facades\Log;
+use SplFileInfo;
 use Throwable;
 
 /**
@@ -40,11 +43,25 @@ class PremiumHandler
     /** Awalan callback tombol beli. Lihat EpisodeKeyboard untuk yang lain. */
     public const BUY = 'buy';
 
+    /**
+     * Awalan callback tombol "Saya sudah bayar".
+     *
+     * Argumennya id invoice, bukan id transaksi. Tombolnya menempel di pesan
+     * yang bisa ditekan berjam-jam kemudian, dan sampai saat itu transaksinya
+     * mungkin sudah berganti karena percobaan ulang — nomor tagihan tidak
+     * pernah berganti.
+     */
+    public const PAID = 'paid';
+
+    /** State percakapan saat bot menunggu foto bukti bayar. */
+    public const STATE_PROOF = 'PAY_PROOF';
+
     public function __construct(
         protected TelegramServiceInterface $telegram,
         protected MembershipService $membership,
         protected CheckoutService $checkout,
-        protected PaymentGatewayManager $gateways
+        protected PaymentGatewayManager $gateways,
+        protected UserSessionService $sessions
     ) {
     }
 
@@ -57,6 +74,14 @@ class PremiumHandler
     public function handle(array $callback, ?User $user = null): void
     {
         $chatId = $callback['message']['chat']['id'];
+
+        // Kembali ke daftar paket berarti keluar dari percakapan unggah bukti.
+        // Tanpa ini, tombol Batal tidak membatalkan apa pun: foto berikutnya
+        // yang dikirim pengguna — foto apa saja — masih akan ditafsirkan
+        // sebagai bukti bayar.
+        if ($user !== null && $this->sessions->current((int) $user->id) === self::STATE_PROOF) {
+            $this->sessions->clear((int) $user->id);
+        }
 
         $baris = ['💎 <b>Premium</b>', ''];
 
@@ -85,9 +110,20 @@ class PremiumHandler
             $baris[] = '';
             $baris[] = 'Selesaikan dulu yang ini sebelum memilih paket baru.';
 
-            $this->telegram->sendMessage($chatId, implode("\n", $baris), [
-                'reply_markup' => ['inline_keyboard' => $this->tombolBayar($tertunda)],
-            ]);
+            $this->telegram->sendMessage($chatId, implode("\n", $baris));
+
+            // QRIS-nya dikirim ulang, bukan cuma disebut. Pesan lama sudah
+            // tergulir jauh ke atas, dan menyuruh orang mencarinya sendiri
+            // adalah cara paling mudah membuat tagihan tidak pernah dibayar.
+            $provider = $tertunda->latestTransaction()->with('provider')->first()?->provider;
+
+            if ($provider !== null) {
+                $this->kirimTagihan($chatId, $tertunda, $provider);
+            } else {
+                $this->telegram->sendMessage($chatId, 'Tekan tombol di bawah untuk melanjutkan.', [
+                    'reply_markup' => ['inline_keyboard' => $this->tombolBayar($tertunda)],
+                ]);
+            }
 
             return;
         }
@@ -209,10 +245,11 @@ class PremiumHandler
             return;
         }
 
-        $respon = $this->telegram->sendMessage(
+        $respon = $this->kirimTagihan(
             $chatId,
-            implode("\n", $this->instruksi($transaction->invoice, $provider)),
-            ['reply_markup' => ['inline_keyboard' => $this->tombolBayar($transaction->invoice, $transaction->checkout_url)]]
+            $transaction->invoice,
+            $provider,
+            $transaction->checkout_url
         );
 
         // Disimpan supaya bisa dihapus lagi kalau tagihannya nanti dibatalkan
@@ -227,6 +264,184 @@ class PremiumHandler
                 'telegram_message_id' => $messageId,
             ])->save();
         }
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Konfirmasi bayar
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Pengguna menekan "Saya sudah bayar".
+     *
+     * Yang terjadi di sini HANYA membuka percakapan unggah bukti. Status
+     * tagihan tidak disentuh sedikit pun — bukan karena belum sempat, tetapi
+     * karena tombol yang ditekan pengguna bukan bukti bahwa uangnya pindah.
+     * Satu-satunya yang boleh melunasi tagihan adalah admin yang melihat
+     * mutasi, lewat `PaymentCallbackService` yang sama dengan callback gateway
+     * sungguhan.
+     */
+    public function confirmPaid(array $callback, ?User $user, int $invoiceId): void
+    {
+        $chatId = $callback['message']['chat']['id'];
+
+        if ($user === null) {
+            $this->telegram->sendMessage($chatId, 'Kirim /start dulu supaya akun Anda dikenali.');
+
+            return;
+        }
+
+        $invoice = Invoice::query()
+            ->where('id', $invoiceId)
+            ->where('user_id', $user->id)
+            ->first();
+
+        // Kepemilikan diperiksa, bukan diasumsikan. Callback data datang dari
+        // klien dan bisa disusun siapa pun; tanpa penjagaan ini seseorang bisa
+        // menempelkan bukti bayar ke tagihan orang lain.
+        if ($invoice === null) {
+            $this->telegram->sendMessage($chatId, 'Tagihan itu tidak ditemukan di akun Anda.');
+
+            return;
+        }
+
+        if ($invoice->status !== \App\Enums\PaymentStatus::PENDING) {
+
+            $this->telegram->sendMessage(
+                $chatId,
+                'Tagihan <code>'.e($invoice->number).'</code> sudah tidak menunggu '
+                .'pembayaran. Cek statusnya di menu Profil.'
+            );
+
+            return;
+        }
+
+        $this->sessions->set((int) $user->id, self::STATE_PROOF, [
+            'invoice_id' => $invoice->id,
+        ]);
+
+        $this->telegram->sendMessage(
+            $chatId,
+            implode("\n", [
+                '📸 <b>Kirim bukti pembayaran</b>',
+                '',
+                'Tagihan: <code>'.e($invoice->number).'</code>',
+                'Nominal: Rp '.number_format((float) $invoice->total, 0, ',', '.'),
+                '',
+                'Kirim <b>foto</b> struk atau tangkapan layar keberhasilan transfer '
+                .'ke chat ini. Pastikan nominal dan waktunya terbaca.',
+                '',
+                'Bukti yang masuk langsung tampil di panel admin. Membership aktif '
+                .'setelah admin memeriksanya — biasanya tidak lama.',
+            ]),
+            ['reply_markup' => ['inline_keyboard' => [
+                [['text' => '✖️ Batal', 'callback_data' => 'premium']],
+            ]]]
+        );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Pengiriman tagihan
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Kirim tagihan; sebagai gambar QRIS bila providernya punya.
+     *
+     * Gambar dikirim sebagai BERKAS dari disk, bukan sebagai URL. Telegram
+     * yang mengambil sendiri lewat URL memerlukan situs kita bisa dijangkau
+     * dari internet — di server yang masih di balik tunnel atau yang
+     * `APP_URL`-nya belum benar, itu gagal diam-diam dan pengguna menerima
+     * tagihan tanpa QR. Mengunggah berkasnya menghilangkan seluruh
+     * ketergantungan itu.
+     *
+     * Kalau berkasnya raib dari disk, kirimannya turun ke pesan teks biasa,
+     * bukan gagal: pengguna sudah punya tagihan, dan menahan instruksinya
+     * karena satu gambar hilang hanya menambah satu masalah lagi.
+     */
+    private function kirimTagihan(
+        int|string $chatId,
+        Invoice $invoice,
+        PaymentProvider $provider,
+        ?string $checkoutUrl = null
+    ): \App\Services\Telegram\TelegramResponse {
+
+        $tombol = ['reply_markup' => ['inline_keyboard' =>
+            $this->tombolBayar($invoice, $checkoutUrl, $provider),
+        ]];
+
+        $gambar = $provider->qrisAbsolutePath();
+
+        if ($gambar !== null) {
+
+            try {
+                return $this->telegram->sendPhoto(
+                    $chatId,
+                    new SplFileInfo($gambar),
+                    implode("\n", $this->captionQris($invoice, $provider)),
+                    $tombol
+                );
+
+            } catch (Throwable $e) {
+
+                // Dicatat, lalu diteruskan ke jalur teks. Kegagalan mengirim
+                // gambar tidak boleh berarti pengguna tidak menerima nomor
+                // tagihannya sama sekali.
+                Log::warning('payment.telegram.qris_photo_failed', [
+                    'invoice' => $invoice->number,
+                    'sebab'   => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return $this->telegram->sendMessage(
+            $chatId,
+            implode("\n", $this->instruksi($invoice, $provider)),
+            $tombol
+        );
+    }
+
+    /**
+     * Keterangan di bawah gambar QRIS.
+     *
+     * Sengaja pendek. Telegram memotong caption di 1024 karakter, dan yang
+     * terpotong selalu bagian akhir — tempat nomor tagihan berada kalau
+     * instruksinya ditulis sepanjang versi teks. Yang perlu terbaca sambil
+     * memandang layar pembayaran cuma tiga: berapa, ke siapa, dan nomor
+     * tagihannya.
+     *
+     * @return array<int,string>
+     */
+    private function captionQris(Invoice $invoice, PaymentProvider $provider): array
+    {
+        $baris = [
+            '🧾 <b>Scan QRIS untuk bayar</b>',
+            '',
+            '<b>Paket</b>: '.e($invoice->plan_name).' — '.(int) $invoice->plan_duration.' hari',
+            '<b>Nominal</b>: Rp '.number_format((float) $invoice->total, 0, ',', '.'),
+            '<b>Nomor tagihan</b>: <code>'.e($invoice->number).'</code>',
+        ];
+
+        if (filled($merchant = $provider->credential('merchant_name'))) {
+            $baris[] = '<b>Atas nama</b>: '.e($merchant);
+        }
+
+        if ($invoice->due_at !== null) {
+            $baris[] = '<b>Bayar sebelum</b>: '.$invoice->due_at->format('d M Y H:i');
+        }
+
+        $baris[] = '';
+        $baris[] = '⚠️ Isi nominalnya <b>tepat sama</b> dengan angka di atas. '
+            .'Selisih membuat pembayaran Anda harus dicocokkan manual dan '
+            .'aktivasinya jadi lebih lama.';
+
+        $baris[] = '';
+        $baris[] = 'Setelah membayar, tekan <b>Saya sudah bayar</b> lalu kirim '
+            .'foto buktinya.';
+
+        return $baris;
     }
 
     /*
@@ -259,6 +474,41 @@ class PremiumHandler
             $baris[] = '<b>Bayar sebelum</b>: '.$invoice->due_at->format('d M Y H:i');
         }
 
+        /*
+        |----------------------------------------------------------------------
+        | Driver manual berhenti di sini
+        |----------------------------------------------------------------------
+        |
+        | Sisa fungsi ini seluruhnya tentang Trakteer: saran jumlah unit, dan
+        | peringatan agar pesan otomatis berisi nomor tagihan tidak dihapus.
+        | Keduanya salah kalau ditempelkan ke transfer bank atau QRIS — tidak
+        | ada halaman pembayaran yang punya kolom pesan, dan tidak ada unit
+        | yang perlu dihitung.
+        |
+        | Instruksi yang keliru lebih buruk daripada tidak ada instruksi:
+        | pengguna yang mencari "kolom pesan" yang tidak pernah ada akan
+        | berhenti dan bertanya, bukan membayar.
+        |
+        */
+
+        if ($provider instanceof PaymentProvider && $provider->driver->isManual()) {
+
+            if (filled($provider->instruction)) {
+                $baris[] = '';
+                $baris[] = e($provider->instruction);
+            }
+
+            $baris[] = '';
+            $baris[] = '⚠️ Bayar <b>tepat</b> sebesar nominal di atas. Selisih '
+                .'membuat pembayaran Anda harus dicocokkan manual.';
+
+            $baris[] = '';
+            $baris[] = 'Setelah membayar, tekan <b>Saya sudah bayar</b> lalu kirim '
+                .'foto buktinya. Membership aktif setelah admin memeriksanya.';
+
+            return $baris;
+        }
+
         $saran = method_exists($provider, 'unitSuggestions')
             ? $provider->unitSuggestions((float) $invoice->total)
             : [];
@@ -289,15 +539,34 @@ class PremiumHandler
         return $baris;
     }
 
-    /** @return array<int,array<int,array<string,string>>> */
-    private function tombolBayar(Invoice $invoice, ?string $url = null): array
+    /**
+     * Tombol di bawah tagihan.
+     *
+     * "Saya sudah bayar" hanya muncul untuk driver yang diverifikasi manusia.
+     * Untuk gateway yang punya callback, tombol itu justru merugikan: ia
+     * mengundang pengguna melapor manual atas pembayaran yang sebenarnya akan
+     * aktif sendiri dalam hitungan detik, dan menciptakan antrean ACC yang
+     * tidak perlu ada.
+     *
+     * @return array<int,array<int,array<string,string>>>
+     */
+    private function tombolBayar(Invoice $invoice, ?string $url = null, ?PaymentProvider $provider = null): array
     {
         $url ??= $invoice->latestTransaction()->first()?->checkout_url;
+
+        $provider ??= $invoice->latestTransaction()->with('provider')->first()?->provider;
 
         $tombol = [];
 
         if (filled($url)) {
             $tombol[] = [['text' => '💳 Bayar sekarang', 'url' => $url]];
+        }
+
+        if ($provider?->driver->isManual()) {
+            $tombol[] = [[
+                'text'          => '✅ Saya sudah bayar',
+                'callback_data' => self::PAID.':'.$invoice->id,
+            ]];
         }
 
         $tombol[] = [['text' => '👤 Cek status di Profil', 'callback_data' => 'profile']];

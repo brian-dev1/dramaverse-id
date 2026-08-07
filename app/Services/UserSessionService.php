@@ -18,6 +18,23 @@ class UserSessionService
             ?->state;
     }
 
+    /**
+     * Data yang dititipkan bersama state.
+     *
+     * Alur yang butuh mengingat sesuatu antar pesan — nomor tagihan yang
+     * buktinya sedang ditunggu, misalnya — menyimpannya di sini, bukan di
+     * cache. Cache boleh hilang kapan saja; percakapan yang setengah jalan
+     * tidak boleh.
+     *
+     * @return array<string,mixed>
+     */
+    public function payload(int $userId): array
+    {
+        $payload = $this->sessions->get($userId)?->payload;
+
+        return is_array($payload) ? $payload : [];
+    }
+
     public function set(
         int $userId,
         string $state,

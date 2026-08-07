@@ -87,7 +87,14 @@
                         </div>
                     @endif
 
-                    @if ($provider && $provider->driver->isManual())
+                    {{--
+                        Dicocokkan ke driver MANUAL saja, bukan ke isManual().
+                        Sejak driver QRIS ada, isManual() bernilai benar untuk
+                        keduanya — dan blok ini akan menampilkan tiga baris
+                        "—" kepada orang yang sedang memandang gambar QR,
+                        yang membuatnya ragu apakah halaman ini rusak.
+                    --}}
+                    @if ($provider?->driver === \App\Enums\PaymentDriver::MANUAL)
                         <dl class="settings-meta">
                             <dt>Bank</dt>
                             <dd>{{ $provider->credential('bank_name') ?? '—' }}</dd>

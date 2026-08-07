@@ -162,9 +162,9 @@ class PaymentProviderController extends Controller
         // Diperiksa dengan aturan yang sama persis dengan yang akan menolaknya
         // saat checkout. Mengaktifkan provider yang tidak siap hanya memindah
         // kegagalannya ke tempat yang lebih buruk.
-        if ($kurang = $provider->missingFields()) {
+        if ($provider->missingFields() !== []) {
             return back()->with('error',
-                'Kredensial belum lengkap: '.implode(', ', $kurang).'.');
+                'Belum lengkap: '.implode(', ', $provider->missingLabels()).'.');
         }
 
         if (! $provider->driver->isImplemented()) {

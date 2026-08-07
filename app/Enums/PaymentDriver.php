@@ -4,6 +4,7 @@ namespace App\Enums;
 
 use App\Services\Payments\Drivers\ManualTransferGateway;
 use App\Services\Payments\Drivers\MidtransGateway;
+use App\Services\Payments\Drivers\QrisGateway;
 use App\Services\Payments\Drivers\TrakteerGateway;
 use App\Services\Payments\Drivers\TripayGateway;
 use App\Services\Payments\Drivers\XenditGateway;
@@ -35,6 +36,17 @@ enum PaymentDriver: string
     /** Transfer bank manual, diverifikasi admin. Tidak butuh API mana pun. */
     case MANUAL = 'manual';
 
+    /**
+     * QRIS statis, diverifikasi admin.
+     *
+     * Bedanya dengan `MANUAL` bukan cuma kosmetik. Transfer bank memberi
+     * pengguna tiga potong teks yang harus disalin benar; QRIS memberinya satu
+     * gambar yang dipindai. Karena itu gambarnya WAJIB ada sebelum provider
+     * boleh diaktifkan — QRIS tanpa gambar adalah metode pembayaran yang tidak
+     * bisa dijalankan sama sekali, bukan metode yang tampilannya kurang rapi.
+     */
+    case QRIS = 'qris';
+
     case TRAKTEER = 'trakteer';
 
     case MIDTRANS = 'midtrans';
@@ -47,6 +59,7 @@ enum PaymentDriver: string
     {
         return match ($this) {
             self::MANUAL   => 'Transfer Manual',
+            self::QRIS     => 'QRIS',
             self::TRAKTEER => 'Trakteer',
             self::MIDTRANS => 'Midtrans',
             self::XENDIT   => 'Xendit',
@@ -59,6 +72,7 @@ enum PaymentDriver: string
     {
         return match ($this) {
             self::MANUAL   => ManualTransferGateway::class,
+            self::QRIS     => QrisGateway::class,
             self::TRAKTEER => TrakteerGateway::class,
             self::MIDTRANS => MidtransGateway::class,
             self::XENDIT   => XenditGateway::class,
@@ -75,9 +89,22 @@ enum PaymentDriver: string
     public function isImplemented(): bool
     {
         return match ($this) {
-            self::MANUAL, self::TRAKTEER => true,
+            self::MANUAL, self::QRIS, self::TRAKTEER => true,
             default => false,
         };
+    }
+
+    /**
+     * Driver ini memerlukan gambar QRIS yang diunggah admin.
+     *
+     * Dipisahkan dari `requiredFields()` karena gambarnya bukan kredensial:
+     * ia berkas, bukan teks, dan tersimpan di kolomnya sendiri
+     * (`payment_providers.qris_image_path`), bukan di `credentials` yang
+     * terenkripsi. Yang memeriksanya `PaymentProvider::missingFields()`.
+     */
+    public function needsQrisImage(): bool
+    {
+        return $this === self::QRIS;
     }
 
     /**
@@ -96,6 +123,13 @@ enum PaymentDriver: string
                 'bank_name'      => 'Nama bank',
                 'account_number' => 'Nomor rekening',
                 'account_name'   => 'Atas nama',
+            ],
+
+            // Hanya nama merchantnya. Nominal, tujuan, dan cara bayarnya
+            // semua ada di dalam gambar QR — mengetiknya lagi sebagai field
+            // hanya menambah tempat baru untuk salah ketik.
+            self::QRIS => [
+                'merchant_name' => 'Nama merchant yang tampil di aplikasi pembayar',
             ],
 
             self::TRAKTEER => [
@@ -177,7 +211,7 @@ enum PaymentDriver: string
      */
     public function isManual(): bool
     {
-        return $this === self::MANUAL;
+        return $this === self::MANUAL || $this === self::QRIS;
     }
 
     /**

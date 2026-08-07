@@ -30,6 +30,10 @@ class PaymentTransaction extends Model
         'request_payload',
         'response_payload',
         'signature',
+        'proof_path',
+        'proof_file_id',
+        'proof_uploaded_at',
+        'proof_note',
         'paid_at',
         'verified_at',
         'expires_at',
@@ -43,11 +47,26 @@ class PaymentTransaction extends Model
         'refund_status'    => RefundStatus::class,
         'request_payload'  => 'array',
         'response_payload' => 'array',
-        'paid_at'          => 'datetime',
-        'verified_at'      => 'datetime',
-        'expires_at'       => 'datetime',
-        'verify_attempts'  => 'integer',
+        'paid_at'           => 'datetime',
+        'verified_at'       => 'datetime',
+        'expires_at'        => 'datetime',
+        'proof_uploaded_at' => 'datetime',
+        'verify_attempts'   => 'integer',
     ];
+
+    /** Pengguna sudah mengunggah bukti bayar. */
+    public function hasProof(): bool
+    {
+        return filled($this->proof_path) || filled($this->proof_file_id);
+    }
+
+    /** URL bukti bayar yang bisa dibuka admin, atau null. */
+    public function proofUrl(): ?string
+    {
+        return filled($this->proof_path)
+            ? asset('storage/'.$this->proof_path)
+            : null;
+    }
 
     public function invoice(): BelongsTo
     {

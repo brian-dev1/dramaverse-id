@@ -45,5 +45,42 @@ class PaymentProviderSeeder extends Seeder
                     .'/admin/payment/provider, lalu aktifkan.'
                 : 'Provider "Transfer Bank" sudah ada, tidak diubah.'
         );
+
+        /*
+        |----------------------------------------------------------------------
+        | QRIS
+        |----------------------------------------------------------------------
+        |
+        | Ikut dipasang karena syaratnya sama dengan transfer manual: tidak
+        | ada akun pihak ketiga, tidak ada kredensial API, tidak ada sandbox.
+        | Yang perlu admin cuma satu gambar dari aplikasi pembayarannya.
+        |
+        | Tetap nonaktif. Gambar QRIS-nya belum ada, dan provider QRIS tanpa
+        | gambar gagal tepat saat pengguna menekan tombol bayar — tempat
+        | paling buruk untuk gagal.
+        |
+        */
+
+        $qris = PaymentProvider::firstOrCreate(
+            ['slug' => 'qris'],
+            [
+                'name'        => 'QRIS',
+                'driver'      => PaymentDriver::QRIS->value,
+                'mode'        => 'live',
+                'sort_order'  => 0,
+                'is_active'   => false,
+                'is_default'  => false,
+                'instruction' => "Scan QRIS di atas dengan aplikasi bank atau e-wallet "
+                    ."mana pun, lalu bayar sesuai nominal tagihan.\n\n"
+                    ."Membership aktif setelah bukti pembayaran diperiksa admin.",
+            ]
+        );
+
+        $this->command?->info(
+            $qris->wasRecentlyCreated
+                ? 'Provider "QRIS" dibuat. Unggah gambar QRIS-nya di '
+                    .'/admin/payment/provider, lalu aktifkan dan jadikan utama.'
+                : 'Provider "QRIS" sudah ada, tidak diubah.'
+        );
     }
 }
