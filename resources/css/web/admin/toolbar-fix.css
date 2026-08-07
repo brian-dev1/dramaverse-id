@@ -1,0 +1,107 @@
+/* ==========================================================================
+   Perbaikan toolbar admin — hentikan tumpang tindih teks tombol/filter
+   Dimuat PALING AKHIR agar menang dari admin.css & admin-refine.css.
+   ========================================================================== */
+
+/* 1. Toolbar boleh turun baris. Sebelumnya nowrap, sehingga tombol kanan
+      menyusut sampai 0 dan teksnya meluber menimpa select filter. */
+.admin-body .admin-toolbar,
+.admin-toolbar{
+    display:flex !important;
+    flex-wrap:wrap !important;
+    align-items:center !important;
+    justify-content:space-between !important;
+    gap:12px !important;
+    overflow:visible !important;
+}
+
+/* 2. Baris filter juga boleh turun baris. */
+.admin-toolbar .toolbar-search{
+    flex-wrap:wrap !important;
+    flex:1 1 420px !important;
+    min-width:0 !important;
+    row-gap:10px !important;
+}
+
+/* 3. Grup tombol kanan: boleh turun baris, tidak boleh menyusut isinya. */
+.admin-toolbar .toolbar-actions,
+.admin-toolbar .export-group,
+.admin-toolbar .toolbar-add{
+    flex-wrap:wrap !important;
+    flex:0 1 auto !important;
+    justify-content:flex-end !important;
+    row-gap:10px !important;
+    margin-left:auto !important;
+    min-width:0 !important;
+}
+
+/* 4. INTI MASALAH: form/tombol di dalam toolbar tidak boleh menyusut,
+      dan teks tidak boleh meluber keluar kotaknya. */
+.admin-toolbar .toolbar-actions > *,
+.admin-toolbar .export-group > *,
+.admin-toolbar .toolbar-search > *,
+.admin-toolbar .inline-form,
+.admin-toolbar form{
+    flex:0 0 auto !important;
+    min-width:0 !important;
+    max-width:100% !important;
+}
+
+.admin-toolbar .btn,
+.admin-toolbar button.btn,
+.admin-toolbar a.btn{
+    flex:0 0 auto !important;
+    display:inline-flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    gap:6px !important;
+    white-space:nowrap !important;
+    overflow:hidden !important;
+    text-overflow:ellipsis !important;
+    max-width:100% !important;
+}
+
+/* 5. Select filter: beri ruang untuk panah, teks tidak tertimpa. */
+.admin-toolbar .toolbar-search select,
+.admin-toolbar .toolbar-search select.control,
+.admin-toolbar .toolbar-search select.control-sm{
+    flex:0 1 180px !important;
+    min-width:150px !important;
+    max-width:220px !important;
+    padding-right:34px !important;
+    text-overflow:ellipsis !important;
+    -webkit-appearance:none !important;
+    -moz-appearance:none !important;
+    appearance:none !important;
+    background-image:linear-gradient(45deg, transparent 50%, currentColor 50%),
+                     linear-gradient(135deg, currentColor 50%, transparent 50%) !important;
+    background-position:calc(100% - 17px) 50%, calc(100% - 12px) 50% !important;
+    background-size:5px 5px, 5px 5px !important;
+    background-repeat:no-repeat !important;
+}
+
+/* 6. Kotak pencarian tetap fleksibel tapi tidak menindih tetangganya. */
+.admin-toolbar .toolbar-search input[type="search"],
+.admin-toolbar .toolbar-search input[name="q"]{
+    flex:1 1 240px !important;
+    min-width:180px !important;
+    max-width:340px !important;
+}
+
+/* 7. Layar sempit: semuanya jadi satu kolom penuh. */
+@media (max-width: 900px){
+    .admin-toolbar .toolbar-search,
+    .admin-toolbar .toolbar-actions,
+    .admin-toolbar .export-group,
+    .admin-toolbar .toolbar-add{
+        flex:1 1 100% !important;
+        justify-content:flex-start !important;
+        margin-left:0 !important;
+    }
+    .admin-toolbar .toolbar-search input[type="search"],
+    .admin-toolbar .toolbar-search input[name="q"],
+    .admin-toolbar .toolbar-search select{
+        flex:1 1 100% !important;
+        max-width:none !important;
+    }
+}

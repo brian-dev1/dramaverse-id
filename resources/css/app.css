@@ -40,6 +40,9 @@
 @import "./web/home/responsive.css";
 @import "./web/detail/responsive.css";
 
+/* --- Perbaikan toolbar admin (paling akhir, wajib menang) --- */
+@import "./web/admin/toolbar-fix.css";
+
 /*
 |--------------------------------------------------------------------------
 | Sumber pemindaian Tailwind
