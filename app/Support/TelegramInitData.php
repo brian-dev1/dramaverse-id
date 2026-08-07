@@ -24,7 +24,20 @@ class TelegramInitData
             return null;
         }
 
-        parse_str($initData, $data);
+        // parse_str() tidak dipakai: fungsi itu mengubah nama field yang
+        // mengandung titik atau spasi, dan menerjemahkan '+' menjadi spasi.
+        // Data-check-string harus persis seperti yang dikirim Telegram.
+        $data = [];
+
+        foreach (explode('&', $initData) as $pair) {
+            if ($pair === '') {
+                continue;
+            }
+
+            [$key, $value] = array_pad(explode('=', $pair, 2), 2, '');
+
+            $data[rawurldecode($key)] = rawurldecode($value);
+        }
 
         $hash = $data['hash'] ?? null;
 
@@ -32,19 +45,31 @@ class TelegramInitData
             return null;
         }
 
-        unset($data['hash'], $data['signature']);
+        unset($data['hash']);
         ksort($data);
 
-        $pairs = [];
+        $secret = hash_hmac('sha256', $botToken, 'WebAppData', true);
 
-        foreach ($data as $key => $value) {
-            $pairs[] = $key.'='.$value;
+        // "Chain of all received fields" — hanya `hash` yang dikeluarkan.
+        // `signature` (Bot API 7.10) ikut ditandatangani, jadi harus tetap
+        // ada di sini. Varian tanpa `signature` dicoba sebagai cadangan
+        // untuk klien lama yang belum mengirim field tersebut.
+        $cocok = false;
+
+        foreach ([$data, array_diff_key($data, ['signature' => true])] as $kandidat) {
+            $pairs = [];
+
+            foreach ($kandidat as $key => $value) {
+                $pairs[] = $key.'='.$value;
+            }
+
+            if (hash_equals(hash_hmac('sha256', implode("\n", $pairs), $secret), $hash)) {
+                $cocok = true;
+                break;
+            }
         }
 
-        $secret = hash_hmac('sha256', $botToken, 'WebAppData', true);
-        $check  = hash_hmac('sha256', implode("\n", $pairs), $secret);
-
-        if (! hash_equals($check, $hash)) {
+        if (! $cocok) {
             return null;
         }
 
