@@ -21,8 +21,10 @@
         justify-content: center;
         background: #140A06;
         color: #fff;
-        font: 600 14px/1.4 'Work Sans', system-ui, sans-serif;
+        font: 600 14px/1.5 'Work Sans', system-ui, sans-serif;
         letter-spacing: .02em;
+        white-space: pre-wrap;
+        word-break: break-word;
     }
     body.tg-authenticating #tg-boot { display: flex; }
 </style>
@@ -33,8 +35,31 @@
 (function () {
     var tg = window.Telegram && window.Telegram.WebApp;
 
-    if (!tg || !tg.initData) {
-        return; // Dibuka lewat browser biasa — tidak ada yang perlu dilakukan.
+    // Mode diagnosa: buka halaman dengan ?tgdebug=1 untuk melihat kenapa
+    // login otomatis tidak jalan, langsung di layar ponsel.
+    var debug = window.location.search.indexOf('tgdebug=1') !== -1;
+
+    function lapor(pesan) {
+        if (!debug) return;
+        var el = document.getElementById('tg-boot');
+        el.textContent = pesan;
+        el.style.display = 'flex';
+        el.style.padding = '24px';
+        el.style.textAlign = 'center';
+        el.onclick = function () { el.style.display = 'none'; };
+    }
+
+    if (!tg) {
+        lapor('SDK Telegram tidak ada. Halaman ini dibuka lewat browser biasa '
+            + 'atau in-app browser Telegram, bukan sebagai Mini App.');
+        return;
+    }
+
+    if (!tg.initData) {
+        lapor('Telegram.WebApp terdeteksi tetapi initData KOSONG.\n\n'
+            + 'Artinya halaman dibuka bukan lewat tombol Mini App. '
+            + 'platform=' + (tg.platform || '?') + ' versi=' + (tg.version || '?'));
+        return;
     }
 
     var body = document.body;
@@ -107,10 +132,12 @@
             }
             console.warn('Mini App login gagal:', data);
             body.classList.remove('tg-authenticating');
+            lapor('Login ditolak server.\n\n' + JSON.stringify(data));
         })
         .catch(function (err) {
             console.warn('Mini App login error:', err);
             body.classList.remove('tg-authenticating');
+            lapor('Permintaan login gagal terkirim.\n\n' + err);
         });
     })();
     @endguest
