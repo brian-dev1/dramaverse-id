@@ -6,6 +6,7 @@ use App\Models\Invoice;
 use App\Services\Membership\MembershipService;
 use App\Services\Telegram\Contracts\TelegramServiceInterface;
 use App\Support\Concerns\LogsPaymentEvents;
+use App\Support\Telegram\Notice;
 use Throwable;
 
 /**
@@ -56,24 +57,23 @@ class PaymentNotifier
 
         $langganan = $invoice->subscription()->first();
 
-        $baris = [
-            '✅ <b>Pembayaran berhasil!</b>',
-            '',
-            'Terima kasih. Membership Anda sudah <b>AKTIF</b>.',
-            '',
-            '<b>Paket</b>: '.e($invoice->plan_name),
-            '<b>Dibayar</b>: Rp '.number_format((float) $invoice->total, 0, ',', '.'),
-            '<b>Tagihan</b>: <code>'.e($invoice->number).'</code>',
-        ];
+        $pesan = Notice::make('✅', 'Pembayaran berhasil')
+            ->lead('Terima kasih. Membership Anda sudah AKTIF.')
+            ->rows([
+                'Paket'   => $invoice->plan_name,
+                'Dibayar' => 'Rp '.number_format((float) $invoice->total, 0, ',', '.'),
+                'Tagihan' => $invoice->number,
+                'Waktu'   => Waktu::ringkas($invoice->paid_at ?? now()),
+                // Tanggal saja memunculkan pertanyaan "jam berapa persisnya
+                // aksesnya berhenti?" — pertanyaan yang paling sering datang
+                // justru di hari terakhir, saat sudah terlambat menjawabnya.
+                'Berlaku sampai' => $langganan?->expired_at !== null
+                    ? Waktu::ringkas($langganan->expired_at)
+                    : null,
+            ])
+            ->note('Seluruh episode premium sudah terbuka. Selamat menonton! 🎬');
 
-        if ($langganan?->expired_at !== null) {
-            $baris[] = '<b>Berlaku sampai</b>: '.$langganan->expired_at->format('d M Y');
-        }
-
-        $baris[] = '';
-        $baris[] = 'Seluruh episode premium sudah terbuka. Selamat menonton! 🎬';
-
-        $this->kirim($user->telegram_id, $baris, [
+        $this->kirim($user->telegram_id, $pesan, [
             [['text' => '🔎 Cari Drama', 'callback_data' => 'search']],
             [['text' => '👤 Profil', 'callback_data' => 'profile']],
         ], 'notify.paid', $invoice);
@@ -94,19 +94,17 @@ class PaymentNotifier
             return;
         }
 
-        $baris = [
-            '💰 <b>Pembayaran diterima sebagian</b>',
-            '',
-            '<b>Masuk</b>: Rp '.number_format($masuk, 0, ',', '.'),
-            '<b>Terkumpul</b>: Rp '.number_format((float) $invoice->paid_amount, 0, ',', '.')
-                .' dari Rp '.number_format((float) $invoice->total, 0, ',', '.')
-                .' ('.$invoice->paidPercent().'%)',
-            '<b>Kurang</b>: Rp '.number_format($invoice->outstanding(), 0, ',', '.'),
-            '',
-            'Membership aktif otomatis begitu jumlahnya cukup. Kirim sisanya '
-                .'dengan nomor tagihan yang sama:',
-            '<code>'.e($invoice->number).'</code>',
-        ];
+        $pesan = Notice::make('💰', 'Pembayaran diterima sebagian')
+            ->lead('Membership aktif otomatis begitu jumlahnya cukup.')
+            ->rows([
+                'Masuk'     => 'Rp '.number_format($masuk, 0, ',', '.'),
+                'Terkumpul' => 'Rp '.number_format((float) $invoice->paid_amount, 0, ',', '.')
+                    .' / Rp '.number_format((float) $invoice->total, 0, ',', '.')
+                    .' ('.$invoice->paidPercent().'%)',
+                'Kurang'    => 'Rp '.number_format($invoice->outstanding(), 0, ',', '.'),
+            ])
+            ->text('Kirim sisanya dengan nomor tagihan yang sama:')
+            ->code($invoice->number);
 
         $tombol = [];
 
@@ -118,7 +116,7 @@ class PaymentNotifier
 
         $tombol[] = [['text' => '👤 Cek status', 'callback_data' => 'profile']];
 
-        $this->kirim($user->telegram_id, $baris, $tombol, 'notify.partial', $invoice);
+        $this->kirim($user->telegram_id, $pesan, $tombol, 'notify.partial', $invoice);
     }
 
     /** Pembayaran gagal, kedaluwarsa, atau dibatalkan. */
@@ -132,16 +130,13 @@ class PaymentNotifier
 
         $this->kirim(
             $user->telegram_id,
-            [
-                '⚠️ <b>Pembayaran tidak selesai</b>',
-                '',
-                '<b>Tagihan</b>: <code>'.e($invoice->number).'</code>',
-                '<b>Status</b>: '.e($invoice->status->label()),
-                '',
-                e($sebab),
-                '',
-                'Anda bisa memilih paket lagi lewat menu Premium.',
-            ],
+            Notice::make('⚠️', 'Pembayaran tidak selesai')
+                ->lead($sebab)
+                ->rows([
+                    'Tagihan' => $invoice->number,
+                    'Status'  => $invoice->status->label(),
+                ])
+                ->note('Anda bisa memilih paket lagi lewat menu Premium.'),
             [[['text' => '💎 Premium', 'callback_data' => 'premium']]],
             'notify.failed',
             $invoice
@@ -155,12 +150,11 @@ class PaymentNotifier
     */
 
     /**
-     * @param  array<int,string>  $baris
      * @param  array<int,array<int,array<string,string>>>  $tombol
      */
     private function kirim(
         int|string $chatId,
-        array $baris,
+        Notice $pesan,
         array $tombol,
         string $event,
         Invoice $invoice
@@ -169,7 +163,7 @@ class PaymentNotifier
         try {
             $this->telegram->withRetries(2)->sendMessage(
                 $chatId,
-                implode("\n", $baris),
+                $pesan->render(),
                 $tombol === [] ? [] : ['reply_markup' => ['inline_keyboard' => $tombol]]
             );
 

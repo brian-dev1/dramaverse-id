@@ -14,6 +14,8 @@ use App\Services\Payments\PaymentAlertService;
 use App\Services\Payments\PaymentCallbackService;
 use App\Services\Payments\PaymentResult;
 use App\Services\Telegram\Contracts\TelegramServiceInterface;
+use App\Support\Telegram\Notice;
+use App\Support\Waktu;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -220,58 +222,26 @@ class ManualApprovalController extends Controller
 
         $this->alerts->manualActivation($tx->invoice, $request->user()->name);
 
-        $this->kabariPengguna($tx->invoice->fresh(['user']));
+        /*
+        |----------------------------------------------------------------------
+        | Pengguna TIDAK dikabari dari sini
+        |----------------------------------------------------------------------
+        |
+        | `callbacks->apply()` di atas sudah memanggil PaymentNotifier::paid()
+        | begitu tagihan berubah menjadi lunas -- jalur yang sama dipakai oleh
+        | callback otomatis maupun ACC manual.
+        |
+        | Dulu controller ini mengirim ucapan selamatnya sendiri, sehingga
+        | setiap ACC manual menghasilkan DUA pesan berisi hal yang sama dengan
+        | susunan yang berbeda. Bagi pengguna, pesan kedua tidak terbaca
+        | sebagai "informasi tambahan", melainkan sebagai sistem yang mengirim
+        | notifikasi dua kali -- persis kesan yang paling tidak diinginkan
+        | tepat setelah seseorang mengirim uang.
+        |
+        */
 
         return back()->with('status',
             'Tagihan '.$tx->invoice->number.' di-ACC. Membership aktif dan pengguna diberi tahu.');
-    }
-
-    /**
-     * Kabari pengguna lewat bot bahwa membership-nya sudah hidup.
-     *
-     * Kegagalannya ditelan. Pengguna yang tidak menerima pesan tetap bisa
-     * menonton — aktivasinya sudah tersimpan sebelum baris ini dijalankan —
-     * dan membatalkan ACC yang sudah berhasil karena Telegram sedang lambat
-     * akan menghasilkan keadaan yang jauh lebih buruk daripada pesan yang
-     * tidak sampai.
-     */
-    private function kabariPengguna(?Invoice $invoice): void
-    {
-        $chatId = $invoice?->telegram_chat_id ?: $invoice?->user?->telegram_id;
-
-        if ($invoice === null || blank($chatId)) {
-            return;
-        }
-
-        $aktif = $invoice->user !== null ? $this->membership->active($invoice->user) : null;
-
-        try {
-            app(TelegramServiceInterface::class)->sendMessage(
-                $chatId,
-                implode("\n", array_filter([
-                    '🎉 <b>Pembayaran diterima — VIP aktif!</b>',
-                    '',
-                    'Tagihan: <code>'.e($invoice->number).'</code>',
-                    'Paket: '.e($invoice->plan_name),
-                    $aktif?->expired_at
-                        ? 'Berlaku sampai: <b>'.$aktif->expired_at->format('d M Y').'</b>'
-                        : null,
-                    '',
-                    'Semua episode premium sudah terbuka. Selamat menonton!',
-                ])),
-                ['reply_markup' => ['inline_keyboard' => [
-                    [['text' => '🔥 Lihat yang terbaru', 'callback_data' => 'latest']],
-                    [['text' => '👤 Profil', 'callback_data' => 'profile']],
-                ]]]
-            );
-
-        } catch (Throwable $e) {
-
-            Log::warning('payment.approval.notify_failed', [
-                'invoice' => $invoice->number,
-                'sebab'   => $e->getMessage(),
-            ]);
-        }
     }
 
     /**
@@ -310,15 +280,15 @@ class ManualApprovalController extends Controller
             try {
                 app(TelegramServiceInterface::class)->sendMessage(
                     $chatId,
-                    implode("\n", [
-                        '⚠️ <b>Bukti bayar belum bisa diterima</b>',
-                        '',
-                        'Tagihan: <code>'.e($tx->invoice->number).'</code>',
-                        'Alasan: '.e($alasan),
-                        '',
-                        'Tagihannya <b>masih berlaku</b> — tidak perlu mengulang dari awal. '
-                        .'Tekan /vip, lalu kirim ulang bukti yang benar.',
-                    ])
+                    Notice::make('⚠️', 'Bukti bayar belum bisa diterima')
+                        ->lead('Tagihannya masih berlaku — tidak perlu mengulang dari awal.')
+                        ->rows([
+                            'Tagihan' => $tx->invoice->number,
+                            'Alasan'  => $alasan,
+                            'Ditinjau' => Waktu::ringkas(now()),
+                        ])
+                        ->note('Tekan /vip, lalu kirim ulang bukti yang benar.')
+                        ->render()
                 );
 
             } catch (Throwable $e) {

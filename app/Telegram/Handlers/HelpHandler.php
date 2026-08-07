@@ -3,6 +3,7 @@
 namespace App\Telegram\Handlers;
 
 use App\Services\Telegram\Contracts\TelegramServiceInterface;
+use App\Support\Telegram\Notice;
 
 class HelpHandler
 {
@@ -17,23 +18,20 @@ class HelpHandler
 
         $this->telegram->sendMessage(
             $chatId,
-            <<<HTML
-ℹ️ <b>Bantuan</b>
-
-Selamat datang di DramaVerse ID.
-
-Menu yang tersedia:
-
-🔍 Cari Drama
-🔥 Trending
-🆕 Drama Baru
-❤️ Favorit
-👤 Profil
-🌐 Website
-💎 Premium
-
-Jika mengalami kendala, silakan hubungi admin.
-HTML
+            Notice::make('ℹ️', 'Bantuan')
+                ->lead('Selamat datang di DramaVerse ID.')
+                ->section('🧭', 'Menu yang tersedia')
+                ->bullets([
+                    '🔍 Cari Drama — cari judul lewat kata kunci',
+                    '🔥 Trending — yang paling banyak ditonton',
+                    '🆕 Drama Baru — episode yang baru masuk',
+                    '❤️ Favorit — daftar simpanan Anda',
+                    '👤 Profil — status membership & tagihan',
+                    '🌐 Website — jelajahi katalog lengkap',
+                    '💎 Premium — beli atau perpanjang VIP',
+                ])
+                ->note('Jika mengalami kendala, silakan hubungi admin.')
+                ->render()
         );
     }
 }

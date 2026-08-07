@@ -6,6 +6,7 @@ use App\Models\Subscription;
 use App\Models\User;
 use App\Services\Telegram\Contracts\TelegramServiceInterface;
 use App\Services\Telegram\TelegramRetentionService;
+use App\Support\Telegram\Notice;
 use App\Support\Waktu;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -139,29 +140,26 @@ class MembershipExpiryNotifier
     {
         $nama = $subscription->plan?->name ?? 'VIP';
 
-        $baris = [
-            '⏰ <b>Masa VIP Anda sudah berakhir</b>',
-            '',
-            '<b>Paket</b>: '.e((string) $nama),
-        ];
-
-        if ($subscription->started_at !== null) {
-            $baris[] = '<b>Mulai</b>: '.Waktu::lengkap($subscription->started_at);
-        }
-
-        // Tanggal DAN jam. "Berakhir 7 Agustus" menimbulkan pertanyaan
-        // "jam berapa" tepat pada saat pengguna paling ingin tahu jawabannya.
-        $baris[] = '<b>Berakhir</b>: '.Waktu::lengkap($subscription->expired_at);
-
-        $baris[] = '';
-        $baris[] = 'Akun Anda otomatis kembali ke <b>paket Gratis</b>. Mulai sekarang:';
-        $baris[] = '• Episode VIP terkunci';
-        $baris[] = '• Video premium yang sudah dikirim ditarik dari chat ini';
-        $baris[] = '• Episode gratis tetap bisa ditonton seperti biasa';
-        $baris[] = '';
-        $baris[] = 'Perpanjang kapan saja — sisa hari dari pembelian baru '
-            .'ditambahkan, bukan menghapus riwayat Anda.';
-
-        return implode("\n", $baris);
+        return Notice::make('⏰', 'Masa VIP Anda sudah berakhir')
+            ->lead('Akun Anda otomatis kembali ke paket Gratis.')
+            ->rows([
+                'Paket' => (string) $nama,
+                // Tanggal DAN jam. "Berakhir 7 Agustus" menimbulkan pertanyaan
+                // "jam berapa" tepat pada saat pengguna paling ingin tahu
+                // jawabannya.
+                'Mulai'    => $subscription->started_at !== null
+                    ? Waktu::lengkap($subscription->started_at)
+                    : null,
+                'Berakhir' => Waktu::lengkap($subscription->expired_at),
+            ])
+            ->text('Mulai sekarang:')
+            ->bullets([
+                'Episode VIP terkunci',
+                'Video premium yang sudah dikirim ditarik dari chat ini',
+                'Episode gratis tetap bisa ditonton seperti biasa',
+            ])
+            ->note('Perpanjang kapan saja — sisa hari dari pembelian baru '
+                .'ditambahkan, bukan menghapus riwayat Anda.')
+            ->render();
     }
 }

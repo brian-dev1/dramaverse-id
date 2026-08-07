@@ -9,6 +9,8 @@ use App\Services\FavoriteService;
 use App\Services\Membership\MembershipService;
 use App\Services\Telegram\Contracts\TelegramServiceInterface;
 use App\Services\WatchHistoryService;
+use App\Support\Telegram\Notice;
+use App\Support\Waktu;
 use App\Telegram\Keyboards\EpisodeKeyboard;
 
 /**
@@ -56,7 +58,7 @@ class ProfileHandler
 
         $this->telegram->sendMessage(
             $chatId,
-            implode("\n", $this->baris($user)),
+            $this->teks($user),
             ['reply_markup' => ['inline_keyboard' => $this->tombol($user)]]
         );
     }
@@ -67,18 +69,16 @@ class ProfileHandler
     |--------------------------------------------------------------------------
     */
 
-    /** @return array<int,string> */
-    private function baris(User $user): array
+    private function teks(User $user): string
     {
-        $baris = ['👤 <b>Profil</b>', ''];
-
-        $baris[] = '<b>Nama</b>: '.e($user->name);
-
-        if (filled($user->telegram_username)) {
-            $baris[] = '<b>Username</b>: @'.e($user->telegram_username);
-        }
-
-        $baris[] = '<b>Bergabung</b>: '.(\App\Support\Waktu::ringkas($user->created_at, '-'));
+        $pesan = Notice::make('👤', 'Profil')
+            ->rows([
+                'Nama'      => $user->name,
+                'Username'  => filled($user->telegram_username)
+                    ? '@'.$user->telegram_username
+                    : null,
+                'Bergabung' => Waktu::ringkas($user->created_at, '-'),
+            ]);
 
         /*
         |----------------------------------------------------------------------
@@ -86,41 +86,47 @@ class ProfileHandler
         |----------------------------------------------------------------------
         */
 
-        $baris[] = '';
-        $baris[] = '💎 <b>Langganan</b>';
-
         $status = $this->membership->status($user);
 
         $aktif = $this->membership->active($user);
 
-        $baris[] = '<b>Status</b>: '.e($status['label']);
+        $pesan->section('💎', 'Langganan');
 
         if ($aktif !== null) {
 
-            $baris[] = '<b>Paket</b>: '.e($aktif->plan?->name ?? '-');
+            $sisa = $aktif->expired_at !== null
+                ? (int) ceil(now()->floatDiffInDays($aktif->expired_at, false))
+                : null;
 
-            if ($aktif->expired_at !== null) {
+            $pesan->rows([
+                'Status'         => $status['label'],
+                'Paket'          => $aktif->plan?->name ?? '-',
+                // Tanggal DAN jam: pertanyaan "jam berapa berhentinya" selalu
+                // datang di hari terakhir, saat sudah terlambat menjawabnya.
+                'Berlaku sampai' => $aktif->expired_at !== null
+                    ? Waktu::lengkap($aktif->expired_at)
+                    : 'tanpa batas waktu',
+                'Sisa'           => $sisa === null
+                    ? null
+                    : max(0, $sisa).' hari',
+            ]);
 
-                $sisa = (int) ceil(now()->floatDiffInDays($aktif->expired_at, false));
-
-                $baris[] = '<b>Berlaku sampai</b>: '.\App\Support\Waktu::lengkap($aktif->expired_at);
-
-                // Sisa hari yang tinggal sedikit ditandai. Itu satu-satunya
-                // pemberitahuan yang diterima pengguna sebelum aksesnya
-                // berhenti, karena pengingat otomatis belum ada.
-                $baris[] = $sisa <= 3
-                    ? '⚠️ <b>Sisa</b>: '.max(0, $sisa).' hari lagi'
-                    : '<b>Sisa</b>: '.$sisa.' hari';
-
-            } else {
-                $baris[] = '<b>Berlaku sampai</b>: tanpa batas waktu';
+            // Sisa hari yang tinggal sedikit ditandai. Itu satu-satunya
+            // pemberitahuan yang diterima pengguna sebelum aksesnya berhenti,
+            // karena pengingat otomatis belum ada.
+            if ($sisa !== null && $sisa <= 3) {
+                $pesan->note('⚠️ Tinggal '.max(0, $sisa).' hari lagi — perpanjang '
+                    .'sebelum episode premium terkunci.');
             }
 
-        } elseif ($status['status'] === 'expired') {
-            $baris[] = 'Langganan Anda sudah berakhir. Perpanjang untuk membuka '
-                .'episode premium lagi.';
         } else {
-            $baris[] = 'Anda belum berlangganan. Episode premium masih terkunci.';
+
+            $pesan->rows(['Status' => $status['label']]);
+
+            $pesan->text($status['status'] === 'expired'
+                ? 'Langganan Anda sudah berakhir. Perpanjang untuk membuka '
+                    .'episode premium lagi.'
+                : 'Anda belum berlangganan. Episode premium masih terkunci.');
         }
 
         /*
@@ -142,25 +148,23 @@ class ProfileHandler
 
         if ($tagihan !== null) {
 
-            $baris[] = '';
-            $baris[] = '🧾 <b>Tagihan menunggu pembayaran</b>';
-            $baris[] = '<b>Nomor</b>: <code>'.e($tagihan->number).'</code>';
-            $baris[] = '<b>Paket</b>: '.e($tagihan->plan_name);
-            $baris[] = '<b>Total</b>: Rp '.number_format((float) $tagihan->total, 0, ',', '.');
+            $adaCicilan = (float) $tagihan->paid_amount > 0;
 
-            if ((float) $tagihan->paid_amount > 0) {
-
-                $baris[] = '<b>Sudah masuk</b>: Rp '
-                    .number_format((float) $tagihan->paid_amount, 0, ',', '.')
-                    .' ('.$tagihan->paidPercent().'%)';
-
-                $baris[] = '<b>Kurang</b>: Rp '
-                    .number_format($tagihan->outstanding(), 0, ',', '.');
-            }
-
-            if ($tagihan->due_at !== null) {
-                $baris[] = '<b>Jatuh tempo</b>: '.\App\Support\Waktu::lengkapRelatif($tagihan->due_at);
-            }
+            $pesan->section('🧾', 'Tagihan menunggu pembayaran')->rows([
+                'Nomor'       => $tagihan->number,
+                'Paket'       => $tagihan->plan_name,
+                'Total'       => 'Rp '.number_format((float) $tagihan->total, 0, ',', '.'),
+                'Sudah masuk' => $adaCicilan
+                    ? 'Rp '.number_format((float) $tagihan->paid_amount, 0, ',', '.')
+                        .' ('.$tagihan->paidPercent().'%)'
+                    : null,
+                'Kurang'      => $adaCicilan
+                    ? 'Rp '.number_format($tagihan->outstanding(), 0, ',', '.')
+                    : null,
+                'Jatuh tempo' => $tagihan->due_at !== null
+                    ? Waktu::lengkapRelatif($tagihan->due_at)
+                    : null,
+            ]);
         }
 
         /*
@@ -169,19 +173,17 @@ class ProfileHandler
         |----------------------------------------------------------------------
         */
 
-        $baris[] = '';
-        $baris[] = '📊 <b>Aktivitas</b>';
-
         $terakhir = $this->history->latest($user, 1)->first()?->episode;
 
-        $baris[] = '<b>Favorit</b>: '.$this->favorites->all($user)->count().' drama';
+        $pesan->section('📊', 'Aktivitas')->rows([
+            'Favorit'          => $this->favorites->all($user)->count().' drama',
+            'Terakhir ditonton' => $terakhir === null
+                ? 'belum ada'
+                : ($terakhir->drama?->title ?? 'Drama')
+                    .' — episode '.$terakhir->episode_number,
+        ]);
 
-        $baris[] = $terakhir === null
-            ? '<b>Terakhir ditonton</b>: belum ada'
-            : '<b>Terakhir ditonton</b>: '.e($terakhir->drama?->title ?? 'Drama')
-                .' — episode '.e((string) $terakhir->episode_number);
-
-        return $baris;
+        return $pesan->render();
     }
 
     /**

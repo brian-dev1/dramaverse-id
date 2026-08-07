@@ -9,6 +9,8 @@ use App\Models\User;
 use App\Services\Monitoring\AlertService;
 use App\Services\Telegram\Contracts\TelegramServiceInterface;
 use App\Services\UserSessionService;
+use App\Support\Telegram\Notice;
+use App\Support\Waktu;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -144,18 +146,17 @@ class PaymentProofHandler
 
         $this->telegram->sendMessage(
             $chatId,
-            implode("\n", [
-                '✅ <b>Bukti diterima</b>',
-                '',
-                'Tagihan: <code>'.e($invoice->number).'</code>',
-                'Nominal: Rp '.number_format((float) $invoice->total, 0, ',', '.'),
-                '',
-                'Admin akan mencocokkannya dengan mutasi rekening. Anda mendapat '
-                .'pesan lagi begitu membership aktif.',
-                '',
-                'Belum ada kabar setelah beberapa jam? Kirim ulang buktinya atau '
-                .'hubungi admin dengan menyebut nomor tagihan di atas.',
-            ]),
+            Notice::make('✅', 'Bukti diterima')
+                ->lead('Admin akan mencocokkannya dengan mutasi rekening.')
+                ->rows([
+                    'Tagihan' => $invoice->number,
+                    'Nominal' => 'Rp '.number_format((float) $invoice->total, 0, ',', '.'),
+                    'Diterima' => Waktu::ringkas(now()),
+                ])
+                ->text('Anda mendapat pesan lagi begitu membership aktif.')
+                ->note('Belum ada kabar setelah beberapa jam? Kirim ulang buktinya '
+                    .'atau hubungi admin dengan menyebut nomor tagihan di atas.')
+                ->render(),
             ['reply_markup' => ['inline_keyboard' => [
                 [['text' => '👤 Cek status di Profil', 'callback_data' => 'profile']],
             ]]]

@@ -12,6 +12,8 @@ use App\Services\Payments\Exceptions\PaymentException;
 use App\Services\Payments\PaymentGatewayManager;
 use App\Services\Telegram\Contracts\TelegramServiceInterface;
 use App\Services\UserSessionService;
+use App\Support\Telegram\Notice;
+use App\Support\Waktu;
 use Illuminate\Support\Facades\Log;
 use SplFileInfo;
 use Throwable;
@@ -83,9 +85,7 @@ class PremiumHandler
             $this->sessions->clear((int) $user->id);
         }
 
-        $baris = ['💎 <b>Premium</b>', ''];
-
-        $baris[] = $this->statusLine($user);
+        $pesan = Notice::make('💎', 'Premium')->lead($this->statusLine($user));
 
         /*
         |----------------------------------------------------------------------
@@ -102,15 +102,18 @@ class PremiumHandler
 
         if ($tertunda !== null) {
 
-            $baris[] = '';
-            $baris[] = '🧾 <b>Anda punya tagihan yang belum dibayar</b>';
-            $baris[] = '<b>Nomor</b>: <code>'.e($tertunda->number).'</code>';
-            $baris[] = '<b>Paket</b>: '.e($tertunda->plan_name);
-            $baris[] = '<b>Sisa</b>: Rp '.number_format($tertunda->outstanding(), 0, ',', '.');
-            $baris[] = '';
-            $baris[] = 'Selesaikan dulu yang ini sebelum memilih paket baru.';
+            $pesan->section('🧾', 'Anda punya tagihan yang belum dibayar')
+                ->rows([
+                    'Nomor' => $tertunda->number,
+                    'Paket' => $tertunda->plan_name,
+                    'Sisa'  => 'Rp '.number_format($tertunda->outstanding(), 0, ',', '.'),
+                    'Bayar sebelum' => $tertunda->due_at !== null
+                        ? Waktu::lengkapRelatif($tertunda->due_at)
+                        : null,
+                ])
+                ->note('Selesaikan dulu yang ini sebelum memilih paket baru.');
 
-            $this->telegram->sendMessage($chatId, implode("\n", $baris));
+            $this->telegram->sendMessage($chatId, $pesan->render());
 
             // QRIS-nya dikirim ulang, bukan cuma disebut. Pesan lama sudah
             // tergulir jauh ke atas, dan menyuruh orang mencarinya sendiri
@@ -132,29 +135,32 @@ class PremiumHandler
 
         if ($plans->isEmpty()) {
 
-            $baris[] = '';
-            $baris[] = 'Belum ada paket yang ditawarkan. Coba lagi nanti.';
+            $pesan->text('Belum ada paket yang ditawarkan. Coba lagi nanti.');
 
-            $this->telegram->sendMessage($chatId, implode("\n", $baris));
+            $this->telegram->sendMessage($chatId, $pesan->render());
 
             return;
         }
 
-        $baris[] = '';
-        $baris[] = '<b>Paket yang tersedia</b>';
+        $pesan->section('🗂', 'Paket yang tersedia');
 
         $tombol = [];
+
+        $daftar = [];
 
         foreach ($plans as $plan) {
 
             $harga = 'Rp '.number_format((float) $plan->price, 0, ',', '.');
 
-            $baris[] = '';
-            $baris[] = '• <b>'.e($plan->name).'</b> — '.$harga.' / '.(int) $plan->duration.' hari';
-
-            if (filled($plan->description)) {
-                $baris[] = '  '.e($plan->description);
-            }
+            // Satu paket, satu baris. Dipecah jadi tiga baris seperti
+            // sebelumnya, membandingkan dua paket berarti melompat naik turun
+            // alih-alih membaca ke bawah.
+            //
+            // Sengaja bukan tabel <pre>: deskripsi paket panjangnya bebas, dan
+            // di layar ponsel blok monospace yang lebih lebar dari layar
+            // menimbulkan geser samping, bukan kolom yang rapi.
+            $daftar[] = $plan->name.' — '.$harga.' / '.(int) $plan->duration.' hari'
+                .(filled($plan->description) ? ' · '.$plan->description : '');
 
             $tombol[] = [[
                 'text'          => $plan->name.' — '.$harga,
@@ -162,11 +168,11 @@ class PremiumHandler
             ]];
         }
 
-        $baris[] = '';
-        $baris[] = 'Pilih paket di bawah. Bot akan membuatkan tagihan beserta '
-            .'tautan pembayarannya.';
+        $pesan->bullets($daftar)
+            ->note('Pilih paket di bawah. Bot akan membuatkan tagihan beserta '
+                .'tautan pembayarannya.');
 
-        $this->telegram->sendMessage($chatId, implode("\n", $baris), [
+        $this->telegram->sendMessage($chatId, $pesan->render(), [
             'reply_markup' => ['inline_keyboard' => $tombol],
         ]);
     }
@@ -323,18 +329,16 @@ class PremiumHandler
 
         $this->telegram->sendMessage(
             $chatId,
-            implode("\n", [
-                '📸 <b>Kirim bukti pembayaran</b>',
-                '',
-                'Tagihan: <code>'.e($invoice->number).'</code>',
-                'Nominal: Rp '.number_format((float) $invoice->total, 0, ',', '.'),
-                '',
-                'Kirim <b>foto</b> struk atau tangkapan layar keberhasilan transfer '
-                .'ke chat ini. Pastikan nominal dan waktunya terbaca.',
-                '',
-                'Bukti yang masuk langsung tampil di panel admin. Membership aktif '
-                .'setelah admin memeriksanya — biasanya tidak lama.',
-            ]),
+            Notice::make('📸', 'Kirim bukti pembayaran')
+                ->lead('Kirim foto struk atau tangkapan layar transfer ke chat ini.')
+                ->rows([
+                    'Tagihan' => $invoice->number,
+                    'Nominal' => 'Rp '.number_format((float) $invoice->total, 0, ',', '.'),
+                ])
+                ->text('Pastikan nominal dan waktunya terbaca.')
+                ->note('Bukti yang masuk langsung tampil di panel admin. Membership '
+                    .'aktif setelah admin memeriksanya — biasanya tidak lama.')
+                ->render(),
             ['reply_markup' => ['inline_keyboard' => [
                 [['text' => '✖️ Batal', 'callback_data' => 'premium']],
             ]]]
@@ -380,7 +384,7 @@ class PremiumHandler
                 return $this->telegram->sendPhoto(
                     $chatId,
                     new SplFileInfo($gambar),
-                    implode("\n", $this->captionQris($invoice, $provider)),
+                    $this->captionQris($invoice, $provider),
                     $tombol
                 );
 
@@ -398,7 +402,7 @@ class PremiumHandler
 
         return $this->telegram->sendMessage(
             $chatId,
-            implode("\n", $this->instruksi($invoice, $provider)),
+            $this->instruksi($invoice, $provider),
             $tombol
         );
     }
@@ -411,37 +415,26 @@ class PremiumHandler
      * instruksinya ditulis sepanjang versi teks. Yang perlu terbaca sambil
      * memandang layar pembayaran cuma tiga: berapa, ke siapa, dan nomor
      * tagihannya.
-     *
-     * @return array<int,string>
      */
-    private function captionQris(Invoice $invoice, PaymentProvider $provider): array
+    private function captionQris(Invoice $invoice, PaymentProvider $provider): string
     {
-        $baris = [
-            '🧾 <b>Scan QRIS untuk bayar</b>',
-            '',
-            '<b>Paket</b>: '.e($invoice->plan_name).' — '.(int) $invoice->plan_duration.' hari',
-            '<b>Nominal</b>: Rp '.number_format((float) $invoice->total, 0, ',', '.'),
-            '<b>Nomor tagihan</b>: <code>'.e($invoice->number).'</code>',
-        ];
-
-        if (filled($merchant = $provider->credential('merchant_name'))) {
-            $baris[] = '<b>Atas nama</b>: '.e($merchant);
-        }
-
-        if ($invoice->due_at !== null) {
-            $baris[] = '<b>Bayar sebelum</b>: '.\App\Support\Waktu::lengkapRelatif($invoice->due_at);
-        }
-
-        $baris[] = '';
-        $baris[] = '⚠️ Isi nominalnya <b>tepat sama</b> dengan angka di atas. '
-            .'Selisih membuat pembayaran Anda harus dicocokkan manual dan '
-            .'aktivasinya jadi lebih lama.';
-
-        $baris[] = '';
-        $baris[] = 'Setelah membayar, tekan <b>Saya sudah bayar</b> lalu kirim '
-            .'foto buktinya.';
-
-        return $baris;
+        return Notice::make('🧾', 'Scan QRIS untuk bayar')
+            ->rows([
+                'Paket'         => $invoice->plan_name.' — '.(int) $invoice->plan_duration.' hari',
+                'Nominal'       => 'Rp '.number_format((float) $invoice->total, 0, ',', '.'),
+                'Nomor tagihan' => $invoice->number,
+                'Atas nama'     => filled($merchant = $provider->credential('merchant_name'))
+                    ? $merchant
+                    : null,
+                'Bayar sebelum' => $invoice->due_at !== null
+                    ? Waktu::lengkapRelatif($invoice->due_at)
+                    : null,
+            ])
+            ->text('⚠️ Isi nominalnya TEPAT SAMA dengan angka di atas. Selisih '
+                .'membuat pembayaran Anda harus dicocokkan manual dan aktivasinya '
+                .'jadi lebih lama.')
+            ->note('Setelah membayar, tekan "Saya sudah bayar" lalu kirim foto buktinya.')
+            ->render();
     }
 
     /*
@@ -458,21 +451,18 @@ class PremiumHandler
      * masuk dan tagihan yang menunggu, dan pengguna yang menghapusnya dari
      * kolom pesan Trakteer membuat pembayarannya tidak tersambung ke mana pun.
      *
-     * @return array<int,string>
      */
-    private function instruksi(Invoice $invoice, $provider): array
+    private function instruksi(Invoice $invoice, $provider): string
     {
-        $baris = [
-            '🧾 <b>Tagihan dibuat</b>',
-            '',
-            '<b>Paket</b>: '.e($invoice->plan_name).' — '.(int) $invoice->plan_duration.' hari',
-            '<b>Total</b>: Rp '.number_format((float) $invoice->total, 0, ',', '.'),
-            '<b>Nomor</b>: <code>'.e($invoice->number).'</code>',
-        ];
-
-        if ($invoice->due_at !== null) {
-            $baris[] = '<b>Bayar sebelum</b>: '.\App\Support\Waktu::lengkapRelatif($invoice->due_at);
-        }
+        $pesan = Notice::make('🧾', 'Tagihan dibuat')
+            ->rows([
+                'Paket' => $invoice->plan_name.' — '.(int) $invoice->plan_duration.' hari',
+                'Total' => 'Rp '.number_format((float) $invoice->total, 0, ',', '.'),
+                'Nomor' => $invoice->number,
+                'Bayar sebelum' => $invoice->due_at !== null
+                    ? Waktu::lengkapRelatif($invoice->due_at)
+                    : null,
+            ]);
 
         /*
         |----------------------------------------------------------------------
@@ -494,19 +484,15 @@ class PremiumHandler
         if ($provider instanceof PaymentProvider && $provider->driver->isManual()) {
 
             if (filled($provider->instruction)) {
-                $baris[] = '';
-                $baris[] = e($provider->instruction);
+                $pesan->section('📋', 'Cara bayar')->text($provider->instruction);
             }
 
-            $baris[] = '';
-            $baris[] = '⚠️ Bayar <b>tepat</b> sebesar nominal di atas. Selisih '
-                .'membuat pembayaran Anda harus dicocokkan manual.';
-
-            $baris[] = '';
-            $baris[] = 'Setelah membayar, tekan <b>Saya sudah bayar</b> lalu kirim '
-                .'foto buktinya. Membership aktif setelah admin memeriksanya.';
-
-            return $baris;
+            return $pesan
+                ->text('⚠️ Bayar TEPAT sebesar nominal di atas. Selisih membuat '
+                    .'pembayaran Anda harus dicocokkan manual.')
+                ->note('Setelah membayar, tekan "Saya sudah bayar" lalu kirim foto '
+                    .'buktinya. Membership aktif setelah admin memeriksanya.')
+                ->render();
         }
 
         $saran = method_exists($provider, 'unitSuggestions')
@@ -515,28 +501,25 @@ class PremiumHandler
 
         if ($saran !== []) {
 
-            $baris[] = '';
-            $baris[] = '<b>Kirim salah satu:</b>';
-
-            foreach (array_slice($saran, 0, 4) as $u) {
-
-                $baris[] = '• '.$u['jumlah'].' '.e($u['nama'])
-                    .' = Rp '.number_format($u['total'], 0, ',', '.')
-                    .($u['pas'] ? ' ✅ pas' : '');
-            }
+            $pesan->section('🔢', 'Kirim salah satu')->rows(
+                collect(array_slice($saran, 0, 4))
+                    ->mapWithKeys(fn (array $u) => [
+                        $u['jumlah'].' '.$u['nama'] => 'Rp '
+                            .number_format($u['total'], 0, ',', '.')
+                            .($u['pas'] ? '  ✅ pas' : ''),
+                    ])
+                    ->all()
+            );
         }
 
-        $baris[] = '';
-        $baris[] = '⚠️ <b>Jangan hapus pesan otomatisnya.</b> Kolom pesan di halaman '
-            .'pembayaran sudah terisi nomor tagihan di atas. Tanpa nomor itu, '
-            .'pembayaran Anda tidak tersambung ke tagihan ini dan membership '
-            .'tidak aktif otomatis.';
-
-        $baris[] = '';
-        $baris[] = 'Boleh dicicil. Setiap pembayaran dijumlahkan, dan membership '
-            .'aktif sendiri begitu totalnya cukup. Pantau di menu Profil.';
-
-        return $baris;
+        return $pesan
+            ->text('⚠️ JANGAN HAPUS pesan otomatisnya. Kolom pesan di halaman '
+                .'pembayaran sudah terisi nomor tagihan di atas. Tanpa nomor itu, '
+                .'pembayaran Anda tidak tersambung ke tagihan ini dan membership '
+                .'tidak aktif otomatis.')
+            ->note('Boleh dicicil. Setiap pembayaran dijumlahkan, dan membership '
+                .'aktif sendiri begitu totalnya cukup. Pantau di menu Profil.')
+            ->render();
     }
 
     /**
@@ -620,14 +603,17 @@ class PremiumHandler
 
         return match ($status['status']) {
 
-            'premium' => 'Status Anda: <b>Premium aktif</b>'
-                .($aktif?->expired_at ? ' sampai '.\App\Support\Waktu::lengkap($aktif->expired_at) : '')
+            // Tanpa tag HTML: kalimat ini masuk ke Notice::lead(), yang
+            // meng-escape isinya supaya nama paket dari basis data tidak
+            // pernah bisa merusak parse pesan.
+            'premium' => 'Status Anda: Premium aktif'
+                .($aktif?->expired_at ? ' sampai '.Waktu::lengkap($aktif->expired_at) : '')
                 .'. Membeli lagi menambah masa aktif, bukan menggantinya.',
 
-            'expired' => 'Status Anda: <b>Kedaluwarsa</b>. Perpanjang untuk membuka '
+            'expired' => 'Status Anda: Kedaluwarsa. Perpanjang untuk membuka '
                 .'episode premium lagi.',
 
-            default => 'Status Anda: <b>Gratis</b>. Episode premium belum bisa dibuka.',
+            default => 'Status Anda: Gratis. Episode premium belum bisa dibuka.',
         };
     }
 }
