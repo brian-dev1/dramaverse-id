@@ -69,6 +69,22 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Zona waktu tampilan
+    |--------------------------------------------------------------------------
+    |
+    | Penyimpanan tetap UTC (baris di atas) — itu yang membuat perbandingan
+    | tanggal kedaluwarsa tidak pernah salah meski server dipindah. Yang
+    | ditampilkan ke pengguna dipindahkan ke zona ini oleh App\Support\Waktu.
+    |
+    | Mengubah `timezone` di atas menjadi Asia/Jakarta adalah kesalahan yang
+    | terlihat benar: seluruh `expired_at` yang sudah tersimpan akan bergeser
+    | tujuh jam maknanya tanpa satu baris pun berubah isinya.
+    |
+    */
+    'display_timezone' => env('APP_DISPLAY_TIMEZONE', 'Asia/Jakarta'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Locale Configuration
     |--------------------------------------------------------------------------
     |

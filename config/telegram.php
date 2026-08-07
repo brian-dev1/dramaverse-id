@@ -402,4 +402,40 @@ return [
 
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Penarikan kembali video
+    |--------------------------------------------------------------------------
+    |
+    | Video premium yang sudah terlanjur terkirim tetap ada di chat pengguna
+    | meski masa VIP-nya berakhir. Telegram TIDAK menyediakan cara menarik
+    | pesan yang usianya lebih dari 48 jam — itu batas keras di sisi mereka,
+    | bukan sesuatu yang bisa disiasati dari sini.
+    |
+    | Karena itu ada dua lapis:
+    |
+    | 1. `on_expire` — saat VIP habis, seluruh video premium yang MASIH dalam
+    |    jendela 48 jam dihapus. Yang di luar jendela ditandai `too_old` di
+    |    panel admin, apa adanya.
+    |
+    | 2. `ttl_hours` — masa hidup setiap video premium sejak dikirim. Dengan
+    |    nilai di bawah 48, hampir semua video akan sudah hilang sendiri
+    |    sebelum sempat menjadi terlalu tua untuk dihapus. Ini satu-satunya
+    |    cara membuat lapis pertama benar-benar efektif. Nol berarti mati.
+    |
+    */
+    'retention' => [
+
+        'on_expire' => $boolean('TELEGRAM_PURGE_ON_EXPIRE', true),
+
+        'ttl_hours' => $angka('TELEGRAM_VIDEO_TTL_HOURS', 24, 0),
+
+        // Berapa banyak pesan yang dihapus dalam satu jalan scheduler.
+        // Telegram membatasi ~30 panggilan per detik; batas ini menjaga satu
+        // pembersihan besar tidak menghabiskan jatah panggilan bot secara
+        // keseluruhan.
+        'batch' => $angka('TELEGRAM_PURGE_BATCH', 200, 10),
+
+    ],
+
 ];

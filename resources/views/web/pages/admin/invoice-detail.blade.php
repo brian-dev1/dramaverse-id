@@ -9,7 +9,7 @@
         <section class="panel">
             <div class="panel-head">
                 <h2>{{ $invoice->number }}</h2>
-                <span class="panel-meta">{{ $invoice->created_at?->format('d M Y H:i') }}</span>
+                <span class="panel-meta">{{ $invoice->created_at?->ringkas() ?? '—' }}</span>
             </div>
 
             <div class="detail-body-admin">
@@ -37,10 +37,10 @@
                     </dd>
 
                     <dt>Jatuh tempo</dt>
-                    <dd>{{ $invoice->due_at?->format('d M Y H:i') ?? '—' }}</dd>
+                    <dd>{{ $invoice->due_at?->lengkapRelatif() ?? '—' }}</dd>
 
                     <dt>Dibayar</dt>
-                    <dd>{{ $invoice->paid_at?->format('d M Y H:i') ?? '—' }}</dd>
+                    <dd>{{ $invoice->paid_at?->lengkap() ?? '—' }}</dd>
 
                     @if ($invoice->note)
                         <dt>Catatan</dt>
@@ -73,10 +73,10 @@
                         <dd>{{ $invoice->subscription->status }}</dd>
 
                         <dt>Mulai</dt>
-                        <dd>{{ $invoice->subscription->started_at?->format('d M Y H:i') ?? '—' }}</dd>
+                        <dd>{{ $invoice->subscription->started_at?->lengkap() ?? '—' }}</dd>
 
                         <dt>Berakhir</dt>
-                        <dd>{{ $invoice->subscription->expired_at?->format('d M Y H:i') ?? '—' }}</dd>
+                        <dd>{{ $invoice->subscription->expired_at?->lengkapRelatif() ?? '—' }}</dd>
 
                         <dt>Sumber</dt>
                         <dd>{{ $invoice->subscription->source }}</dd>
@@ -141,7 +141,7 @@
                                         <span class="cell-empty">bukti terkirim, berkas tidak tersimpan</span>
                                     @endif
                                     <br><span class="cell-empty">
-                                        {{ $tx->proof_uploaded_at?->format('d M H:i') }}
+                                        {{ $tx->proof_uploaded_at?->ringkas() ?? '—' }}
                                     </span>
                                 @endif
                             </td>
@@ -157,7 +157,7 @@
                                 </span>
                             </td>
                             <td>
-                                {{ $tx->verified_at?->format('d M H:i') ?? '—' }}
+                                {{ $tx->verified_at?->ringkas() ?? '—' }}
                                 @if ($tx->verify_attempts > 0)
                                     <br><span class="cell-empty">{{ $tx->verify_attempts }}x dicek</span>
                                 @endif

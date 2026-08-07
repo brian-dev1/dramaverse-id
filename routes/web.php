@@ -523,6 +523,24 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
             /*
             |------------------------------------------------------------------
+            | Penarikan video premium
+            |
+            | Memakai izin `membership.manage` yang sama: yang berhak mencabut
+            | akses seseorang adalah yang berhak menarik videonya. Izin baru
+            | berarti RoleSeeder harus dijalankan ulang di produksi, dan admin
+            | yang lupa menjalankannya akan menemukan halaman ini 403 tanpa
+            | tahu sebabnya.
+            |
+            */
+            Route::get('/telegram/retention', [Admin\TelegramRetentionController::class, 'index'])
+                ->name('telegram-retention.index');
+            Route::post('/telegram/retention/run', [Admin\TelegramRetentionController::class, 'runNow'])
+                ->name('telegram-retention.run');
+            Route::post('/telegram/retention/user/{user}', [Admin\TelegramRetentionController::class, 'purgeUser'])
+                ->name('telegram-retention.user')->whereNumber('user');
+
+            /*
+            |------------------------------------------------------------------
             | ACC Manual
             |
             | Halaman terpisah dari daftar Tagihan dengan sengaja: yang satu

@@ -429,7 +429,7 @@ class PremiumHandler
         }
 
         if ($invoice->due_at !== null) {
-            $baris[] = '<b>Bayar sebelum</b>: '.$invoice->due_at->format('d M Y H:i');
+            $baris[] = '<b>Bayar sebelum</b>: '.\App\Support\Waktu::lengkapRelatif($invoice->due_at);
         }
 
         $baris[] = '';
@@ -471,7 +471,7 @@ class PremiumHandler
         ];
 
         if ($invoice->due_at !== null) {
-            $baris[] = '<b>Bayar sebelum</b>: '.$invoice->due_at->format('d M Y H:i');
+            $baris[] = '<b>Bayar sebelum</b>: '.\App\Support\Waktu::lengkapRelatif($invoice->due_at);
         }
 
         /*
@@ -621,7 +621,7 @@ class PremiumHandler
         return match ($status['status']) {
 
             'premium' => 'Status Anda: <b>Premium aktif</b>'
-                .($aktif?->expired_at ? ' sampai '.$aktif->expired_at->format('d M Y') : '')
+                .($aktif?->expired_at ? ' sampai '.\App\Support\Waktu::lengkap($aktif->expired_at) : '')
                 .'. Membeli lagi menambah masa aktif, bukan menggantinya.',
 
             'expired' => 'Status Anda: <b>Kedaluwarsa</b>. Perpanjang untuk membuka '

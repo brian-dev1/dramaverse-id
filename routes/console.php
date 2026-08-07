@@ -175,3 +175,36 @@ Schedule::command('episodes:publish')
     ->everyFiveMinutes()
     ->withoutOverlapping()
     ->runInBackground();
+
+/*
+|--------------------------------------------------------------------------
+| Siklus hidup membership
+|--------------------------------------------------------------------------
+|
+| Tiga pekerjaan yang harus berjalan berurutan dan tidak boleh saling
+| mendahului:
+|
+| 1. Kunci  — langganan yang lewat tanggalnya jadi EXPIRED, `is_premium`
+|             jadi false. Ini yang benar-benar menutup episode VIP.
+| 2. Beri tahu — pesan "paket sudah berakhir" ke Telegram pengguna, sekali.
+| 3. Tarik  — video premium yang sudah terlanjur dikirim dihapus dari chat.
+|
+| Digabung dalam satu `sweep` supaya urutannya dijamin. Menjadwalkannya
+| sebagai tiga baris terpisah membuka jendela waktu di mana pengguna sudah
+| menerima pesan "akses dicabut" padahal masih bisa membuka episode VIP —
+| dan yang sebaliknya, video ditarik sebelum ada penjelasan apa pun.
+|
+| Tiap sepuluh menit. Lebih rapat tidak berguna: `EpisodeAccessRepository`
+| tetap membandingkan `premium_expired_at` sendiri pada setiap pemutaran,
+| jadi keterlambatan scheduler tidak pernah berarti akses yang bocor.
+|
+| PENTING: penarikan video bergantung pada batas 48 jam milik Telegram.
+| Bila scheduler mati lebih dari dua hari, video yang menumpuk tidak akan
+| bisa ditarik lagi saat scheduler hidup kembali. Heartbeat di atas ada
+| justru untuk membuat scheduler yang mati terlihat.
+|
+*/
+Schedule::command('membership:auto sweep')
+    ->everyTenMinutes()
+    ->withoutOverlapping()
+    ->runInBackground();

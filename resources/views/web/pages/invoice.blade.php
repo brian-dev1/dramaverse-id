@@ -35,7 +35,7 @@
 
                     @if ($invoice->due_at && $invoice->status->value === 'pending')
                         <dt>Bayar sebelum</dt>
-                        <dd>{{ $invoice->due_at->format('d M Y H:i') }}</dd>
+                        <dd>{{ $invoice->due_at->lengkapRelatif() }}</dd>
                     @endif
                 </dl>
             </div>
@@ -48,7 +48,7 @@
                     <p class="page-subtitle">
                         Pembayaran diterima. Membership Anda sudah aktif
                         @if ($invoice->subscription?->expired_at)
-                            sampai {{ $invoice->subscription->expired_at->format('d M Y') }}.
+                            sampai {{ $invoice->subscription->expired_at->lengkap() }}.
                         @else
                             .
                         @endif

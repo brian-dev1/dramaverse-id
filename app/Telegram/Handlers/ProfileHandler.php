@@ -78,7 +78,7 @@ class ProfileHandler
             $baris[] = '<b>Username</b>: @'.e($user->telegram_username);
         }
 
-        $baris[] = '<b>Bergabung</b>: '.($user->created_at?->format('d M Y') ?? '-');
+        $baris[] = '<b>Bergabung</b>: '.(\App\Support\Waktu::ringkas($user->created_at, '-'));
 
         /*
         |----------------------------------------------------------------------
@@ -103,7 +103,7 @@ class ProfileHandler
 
                 $sisa = (int) ceil(now()->floatDiffInDays($aktif->expired_at, false));
 
-                $baris[] = '<b>Berlaku sampai</b>: '.$aktif->expired_at->format('d M Y');
+                $baris[] = '<b>Berlaku sampai</b>: '.\App\Support\Waktu::lengkap($aktif->expired_at);
 
                 // Sisa hari yang tinggal sedikit ditandai. Itu satu-satunya
                 // pemberitahuan yang diterima pengguna sebelum aksesnya
@@ -159,7 +159,7 @@ class ProfileHandler
             }
 
             if ($tagihan->due_at !== null) {
-                $baris[] = '<b>Jatuh tempo</b>: '.$tagihan->due_at->format('d M Y H:i');
+                $baris[] = '<b>Jatuh tempo</b>: '.\App\Support\Waktu::lengkapRelatif($tagihan->due_at);
             }
         }
 

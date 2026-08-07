@@ -168,6 +168,31 @@ class AppServiceProvider extends ServiceProvider
 
         /*
         |----------------------------------------------------------------------
+        | Format waktu Indonesia
+        |----------------------------------------------------------------------
+        |
+        | Nama bulan dan nama hari harus berbahasa Indonesia di SELURUH
+        | aplikasi, bukan hanya di halaman yang kebetulan ingat memanggil
+        | `translatedFormat`. Locale disetel sekali di sini.
+        |
+        | Macro-nya menempel di Carbon supaya blade dan pesan Telegram cukup
+        | menulis `$invoice->due_at->lengkap()` — satu bentuk, satu tempat
+        | mengubahnya. Sebelum ini ada tiga format berbeda untuk tanggal yang
+        | sama, dan yang paling sering hilang justru jamnya.
+        |
+        */
+        \Carbon\Carbon::setLocale('id');
+        \Illuminate\Support\Carbon::setLocale('id');
+
+        foreach (['lengkap', 'ringkas', 'presisi', 'relatif', 'lengkapRelatif'] as $bentuk) {
+            \Illuminate\Support\Carbon::macro($bentuk, function () use ($bentuk) {
+                /** @var \Illuminate\Support\Carbon $this */
+                return \App\Support\Waktu::{$bentuk}($this);
+            });
+        }
+
+        /*
+        |----------------------------------------------------------------------
         | Observer video episode
         |----------------------------------------------------------------------
         |

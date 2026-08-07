@@ -120,7 +120,7 @@
                                         <br><span class="cell-empty">lewat jatuh tempo</span>
                                     @endif
                                 </td>
-                                <td>{{ $invoice->created_at?->format('d M Y H:i') }}</td>
+                                <td>{{ $invoice->created_at?->ringkas() ?? '—' }}</td>
                                 <td class="col-actions">
                                     <a href="{{ route('admin.invoice.show', $invoice->number) }}" class="btn btn-sm">
                                         Detail

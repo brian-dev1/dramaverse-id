@@ -72,8 +72,8 @@
                             <tr>
                                 <td>{{ $sub->plan?->name ?? '—' }}</td>
                                 <td>Rp {{ number_format((float) $sub->price, 0, ',', '.') }}</td>
-                                <td>{{ $sub->started_at?->format('d M Y') ?? '—' }}</td>
-                                <td>{{ $sub->expired_at?->format('d M Y') ?? '—' }}</td>
+                                <td>{{ $sub->started_at?->ringkas() ?? '—' }}</td>
+                                <td>{{ $sub->expired_at?->ringkas() ?? '—' }}</td>
                                 <td>{{ ucfirst($sub->status) }}</td>
                             </tr>
                         @endforeach

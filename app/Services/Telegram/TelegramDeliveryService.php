@@ -38,7 +38,8 @@ class TelegramDeliveryService
         protected EpisodeAccessService $access,
         protected WatchHistoryService $history,
         protected FavoriteService $favorites,
-        protected TelegramCacheService $cache
+        protected TelegramCacheService $cache,
+        protected TelegramRetentionService $retention
     ) {
     }
 
@@ -131,7 +132,7 @@ class TelegramDeliveryService
             && $episode->drama !== null
             && $this->favorites->isFavorite($user, $episode->drama);
 
-        $this->telegram->sendVideo(
+        $respons = $this->telegram->sendVideo(
             $chatId,
             $fileId,
             $this->caption($episode),
@@ -142,6 +143,29 @@ class TelegramDeliveryService
         );
 
         $this->log('info', 'delivery.sent', $episode, $user);
+
+        /*
+        |----------------------------------------------------------------------
+        | 5. Catat pesannya
+        |----------------------------------------------------------------------
+        |
+        | HARUS di sini, bukan belakangan. Telegram tidak punya cara menanyakan
+        | "pesan apa saja yang pernah saya kirim ke chat ini" — pasangan
+        | chat_id + message_id yang tidak ditangkap pada detik ini tidak akan
+        | pernah bisa dihapus.
+        |
+        | Pencatatannya sengaja tidak pernah melempar: video sudah sampai ke
+        | pengguna, dan kegagalan menulis satu baris tabel tidak boleh berubah
+        | menjadi pesan galat di layar mereka.
+        |
+        */
+        $this->retention->catat(
+            $chatId,
+            $respons->messageId(),
+            $user,
+            $episode,
+            (bool) $episode->is_vip
+        );
 
         // Riwayat ditulis SETELAH pengiriman berhasil. Menulisnya lebih dulu
         // membuat episode yang gagal terkirim tetap muncul di "lanjut

@@ -19,13 +19,15 @@ class Subscription extends Model
         'auto_renew',
         'cancelled_at',
         'source',
+        'expiry_notified_at',
     ];
 
     protected $casts = [
-        'started_at'   => 'datetime',
-        'expired_at'   => 'datetime',
-        'cancelled_at' => 'datetime',
-        'auto_renew'   => 'boolean',
+        'started_at'         => 'datetime',
+        'expired_at'         => 'datetime',
+        'cancelled_at'       => 'datetime',
+        'expiry_notified_at' => 'datetime',
+        'auto_renew'         => 'boolean',
     ];
 
     public function user(): BelongsTo
