@@ -152,36 +152,39 @@ input:focus, select:focus, textarea:focus{
         overflow-x:hidden;
     }
 
-    /* Admin: sidebar tetap laci di kiri seperti semula (posisi fixed),
-       hanya isinya yang di-scroll ke BAWAH — tidak pernah menyamping. */
-    .admin-sidebar{
-        position:fixed; top:0; left:0; bottom:0;
-        width:min(78vw, 250px);
-        max-width:250px;
-        height:100dvh;
-        z-index:80;
-        display:flex;
-        flex-direction:column;
-        overflow:hidden;                 /* scroll ditangani .admin-nav */
+    /* Admin: laci sidebar bawaan dipertahankan (muncul saat hamburger
+       ditekan). Yang diperbaiki hanya isinya: satu kolom, scroll ke BAWAH. */
+    .admin-shell .admin-sidebar{
+        width:min(78vw, 248px) !important;
+        max-width:248px !important;
+        height:100dvh !important;
+        max-height:100dvh !important;
+        display:flex !important;
+        flex-direction:column !important;
+        flex-wrap:nowrap !important;
+        overflow:hidden !important;      /* scroll ditangani .admin-nav */
     }
 
-    /* Daftar menu: SATU kolom vertikal, scroll ke bawah. Ini kunci —
-       tanpa ini menu melimpah jadi beberapa kolom lalu geser ke samping. */
-    .admin-sidebar .admin-nav{
+    /* Daftar menu: SATU kolom vertikal + scroll. Ini kuncinya — tanpa
+       min-height:0 daftar melimpah dan pecah jadi beberapa kolom. */
+    .admin-shell .admin-sidebar .admin-nav{
         display:flex !important;
         flex-direction:column !important;
         flex-wrap:nowrap !important;
         column-count:initial !important;
         gap:2px;
-        flex:1 1 auto;
-        min-height:0;
+        flex:1 1 auto !important;
+        min-height:0 !important;
+        height:auto !important;
+        max-height:none !important;
+        width:100% !important;
         padding:8px 10px 16px;
-        overflow-y:auto;
-        overflow-x:hidden;
+        overflow-y:auto !important;
+        overflow-x:hidden !important;
         -webkit-overflow-scrolling:touch;
         overscroll-behavior:contain;
     }
-    .admin-sidebar .admin-nav > *{ flex:0 0 auto; width:100%; }
+    .admin-shell .admin-sidebar .admin-nav > *{ flex:0 0 auto; width:100%; }
     .admin-nav a{
         font-size:13px;
         padding:9px 11px;
