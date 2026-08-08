@@ -80,7 +80,7 @@
 
                 <x-admin.field name="published_at" label="Tanggal terbit" type="datetime-local"
                                :value="$record->published_at?->format('Y-m-d\TH:i')"
-                               hint="Kosongkan untuk menyimpan sebagai draf." />
+                               hint="Drama baru: kosong = langsung terbit sekarang. Saat mengedit, kosongkan untuk menjadikannya draf." />
             </section>
 
         </div>

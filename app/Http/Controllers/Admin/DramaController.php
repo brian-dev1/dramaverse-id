@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Models\Country;
 use App\Models\Drama;
 use App\Models\Genre;
+use App\Repositories\HomeRepository;
 use App\Services\Admin\MediaService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -151,6 +152,20 @@ class DramaController extends AdminCrudController
 
         unset($data['poster_file'], $data['genre_ids']);
 
+        /*
+        | Drama BARU tanpa tanggal terbit tidak akan pernah muncul di beranda,
+        | karena scopePublished() menyaring published_at yang null. Sebelum ini
+        | admin yang mengosongkan field itu — dan itu perilaku default form —
+        | mengira dramanya gagal tersimpan, padahal ia tersimpan sebagai draf
+        | tanpa ada yang memberi tahu. Maka: buat = terbit sekarang.
+        |
+        | Saat MENGEDIT, kosong tetap berarti draf. Di sana admin memang sedang
+        | melihat nilai lamanya, jadi mengosongkannya adalah tindakan sengaja.
+        */
+        if ($model === null && blank($data['published_at'] ?? null)) {
+            $data['published_at'] = now();
+        }
+
         return $data;
     }
 
@@ -172,7 +187,7 @@ class DramaController extends AdminCrudController
 
     protected function applyBulk(string $action, Builder $query): int
     {
-        return match ($action) {
+        $terdampak = match ($action) {
             'publish' => $query->update(['published_at' => now()]),
             'draft'   => $query->update(['published_at' => null]),
             'vip'     => $query->update(['is_vip' => true]),
@@ -180,6 +195,14 @@ class DramaController extends AdminCrudController
             'delete'  => $query->delete(),
             default   => 0,
         };
+
+        // Mass update melewati event model, jadi DramaObserver tidak jalan
+        // di sini. Cache beranda dibuang manual — setelah update, bukan
+        // sebelumnya, supaya permintaan lain tidak sempat mengisinya ulang
+        // dengan data lama.
+        HomeRepository::flushCatalog();
+
+        return $terdampak;
     }
 
     /** Menjamin slug unik dengan menambahkan sufiks angka bila perlu. */

@@ -48,7 +48,9 @@ use App\Services\Storage\Contracts\StorageManagerInterface;
 use App\Services\Storage\StorageEngine;
 use App\Services\Storage\StorageManager;
 use App\Listeners\LogAuthenticationEvents;
+use App\Models\Drama;
 use App\Models\EpisodeVideo;
+use App\Observers\DramaObserver;
 use App\Observers\EpisodeVideoObserver;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Lockout;
@@ -207,6 +209,20 @@ class AppServiceProvider extends ServiceProvider
         |
         */
         EpisodeVideo::observe(EpisodeVideoObserver::class);
+
+        /*
+        |----------------------------------------------------------------------
+        | Observer drama
+        |----------------------------------------------------------------------
+        |
+        | Membuang cache katalog beranda begitu ada drama yang berubah.
+        |
+        | Catatan: aksi massal di panel memakai `$query->update()`, yang
+        | melewati event model. Karena itu DramaController::applyBulk()
+        | memanggil flush-nya sendiri — observer ini menutup jalur satuan.
+        |
+        */
+        Drama::observe(DramaObserver::class);
 
         /*
         |----------------------------------------------------------------------

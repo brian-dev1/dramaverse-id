@@ -22,6 +22,34 @@ class HomeRepository implements HomeRepositoryInterface
         'is_vip', 'published_at',
     ];
 
+    /**
+     * Kunci cache blok katalog beranda.
+     *
+     * Didaftarkan eksplisit, bukan lewat cache tag, karena store yang dipakai
+     * di produksi adalah `database` — dan driver itu tidak mendukung tag.
+     */
+    public const CATALOG_KEYS = [
+        'home:trending',
+        'home:latest',
+        'home:popular',
+        'home:top-rated',
+    ];
+
+    /**
+     * Membuang cache katalog beranda.
+     *
+     * Dipanggil DramaObserver setiap kali baris drama berubah. Tanpa ini,
+     * drama yang baru diterbitkan baru muncul setelah TTL habis — dan admin
+     * yang menyegarkan beranda lalu tidak melihat apa-apa akan menyimpulkan
+     * penyimpanannya gagal.
+     */
+    public static function flushCatalog(): void
+    {
+        foreach (self::CATALOG_KEYS as $key) {
+            Cache::forget($key);
+        }
+    }
+
     public function homeData(?int $userId = null): array
     {
         return [
