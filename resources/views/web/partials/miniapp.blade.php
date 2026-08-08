@@ -55,6 +55,46 @@
         return;
     }
 
+    /*
+    | Tautan t.me di dalam Mini App
+    | -----------------------------
+    | Di dalam Mini App, <a href="https://t.me/..." target="_blank"> TIDAK
+    | melakukan apa-apa. Webview-nya bukan tab browser: Telegram memblokir
+    | window.open ke domainnya sendiri, jadi tombol "Tonton di Telegram"
+    | terlihat bisa diklik tapi diam saja — persis keluhan yang muncul.
+    |
+    | Satu-satunya jalan yang sah adalah openTelegramLink(), yang menutup
+    | Mini App lalu membuka chat botnya. Dipasang sebagai delegasi di
+    | document supaya SEMUA tautan t.me ikut tertangani — tombol tonton,
+    | poster, dan tombol berlangganan — termasuk yang dirender belakangan.
+    |
+    | Didaftarkan SEBELUM pemeriksaan initData: halaman bisa saja dibuka
+    | tanpa initData (mis. dari tautan biasa di dalam Telegram) dan
+    | tombolnya tetap harus berfungsi.
+    */
+    document.addEventListener('click', function (e) {
+        var a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+
+        if (!a) return;
+
+        var href = a.getAttribute('href') || '';
+
+        if (!/^(https?:\/\/(t\.me|telegram\.me)\/|tg:\/\/)/i.test(href)) return;
+
+        // Hanya dicegat kalau ada jalan penggantinya. Kalau SDK-nya versi
+        // lama dan openTelegramLink tidak ada, biarkan perilaku bawaan —
+        // lebih baik tautan biasa daripada klik yang kita telan sendiri.
+        if (!tg.openTelegramLink) return;
+
+        e.preventDefault();
+
+        try {
+            tg.openTelegramLink(a.href);
+        } catch (err) {
+            window.location.href = a.href;
+        }
+    }, false);
+
     if (!tg.initData) {
         lapor('Telegram.WebApp terdeteksi tetapi initData KOSONG.\n\n'
             + 'Artinya halaman dibuka bukan lewat tombol Mini App. '
