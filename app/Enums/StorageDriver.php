@@ -22,6 +22,8 @@ enum StorageDriver: string
 
     case B2 = 'b2';
 
+    case KILAT = 'kilat';
+
     case WASABI = 'wasabi';
 
     case SPACES = 'spaces';
@@ -42,6 +44,7 @@ enum StorageDriver: string
             self::S3     => 'Amazon S3',
             self::R2     => 'Cloudflare R2',
             self::B2     => 'Backblaze B2',
+            self::KILAT  => 'Kilat Storage',
             self::WASABI => 'Wasabi',
             self::SPACES => 'DigitalOcean Spaces',
             self::MINIO  => 'MinIO',
@@ -117,6 +120,12 @@ enum StorageDriver: string
             // R2 memakai region tetap `auto`, jadi region tidak diwajibkan.
             self::R2 => ['bucket', 'endpoint', 'access_key', 'secret_key'],
 
+            // Kilat Storage menggunakan endpoint S3-compatible khusus.
+            // Region diberi default `us-east-1` dan tidak perlu diisi admin.
+            self::KILAT => [
+                'bucket', 'endpoint', 'access_key', 'secret_key',
+            ],
+
             // MinIO biasanya jalan di jaringan sendiri: endpoint wajib.
             self::MINIO => ['bucket', 'endpoint', 'access_key', 'secret_key'],
 
@@ -140,6 +149,7 @@ enum StorageDriver: string
     {
         return match ($this) {
             self::R2    => 'auto',
+            self::KILAT  => 'us-east-1',
             self::MINIO => 'us-east-1',
             default     => null,
         };
@@ -158,13 +168,19 @@ enum StorageDriver: string
      * MinIO dan S3 gateway swakelola lain juga umumnya tidak memetakan
      * bucket ke subdomain.
      *
+     * Kilat Storage menggunakan endpoint S3-compatible dan kita pakai
+     * path-style untuk menjaga request tetap menuju endpoint S3 Kilat.
+     *
      * B2, Wasabi, dan Spaces mendukung kedua gaya, jadi tidak dipaksa di
      * sini — admin tetap bisa menyalakannya sendiri lewat `use_path_style`.
      */
     public function prefersPathStyle(): bool
     {
         return match ($this) {
-            self::R2, self::MINIO => true,
+            self::R2,
+            self::MINIO,
+            self::KILAT => true,
+
             default => false,
         };
     }
