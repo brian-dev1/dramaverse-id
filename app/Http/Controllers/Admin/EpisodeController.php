@@ -83,6 +83,47 @@ class EpisodeController extends AdminCrudController
         ];
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Daftar: dikelompokkan per drama
+    |--------------------------------------------------------------------------
+    |
+    | Satu daftar berisi semua episode dari semua drama cepat sekali menjadi
+    | ribuan baris yang tak terbaca. Maka pintu masuk menu Episode adalah
+    | daftar DRAMA; episodenya baru muncul setelah salah satu dipilih.
+    |
+    | Tabel episode yang lama tidak dibuang — ia dipakai persis seperti dulu
+    | begitu ?drama_id= ada di URL, sehingga seluruh redirect lama
+    | (admin.episode.index dengan drama_id) tetap mendarat di tempat benar.
+    */
+    public function index(Request $request): View
+    {
+        if ($request->filled('drama_id')) {
+            return parent::index($request);
+        }
+
+        $keyword = trim((string) $request->get('q'));
+
+        $dramas = Drama::query()
+            ->with('country:id,name')
+            ->when($keyword !== '', fn (Builder $q) => $q->where('title', 'like', "%{$keyword}%"))
+            ->withCount([
+                'episodes',
+                'episodes as episodes_vip_count' => fn ($q) => $q->where('is_vip', true),
+                'episodes as episodes_published_count' => fn ($q) => $q->where('status', 'published'),
+            ])
+            ->withMax('episodes', 'episode_number')
+            ->orderBy('title')
+            ->paginate(24)
+            ->withQueryString();
+
+        return view('web.pages.admin.episode-groups', [
+            'dramas'  => $dramas,
+            'title'   => 'Episode',
+            'keyword' => $keyword,
+        ]);
+    }
+
     protected function formData(?Model $model = null): array
     {
         return [
@@ -223,10 +264,11 @@ class EpisodeController extends AdminCrudController
     |--------------------------------------------------------------------------
     */
 
-    public function batchForm(): View
+    public function batchForm(Request $request): View
     {
         return view('web.pages.admin.episode-batch', [
             'dramas' => Drama::orderBy('title')->get(['id', 'title']),
+            'dramaId' => $request->integer('drama_id') ?: null,
             'nextNumbers' => Episode::query()
                 ->selectRaw('drama_id, MAX(episode_number) + 1 AS next')
                 ->groupBy('drama_id')
@@ -235,17 +277,49 @@ class EpisodeController extends AdminCrudController
         ]);
     }
 
+    /**
+     * Membuat beberapa RENTANG episode sekaligus.
+     *
+     * Satu drama biasanya punya pola akses bertingkat: episode 1 gratis
+     * sebagai umpan, sisanya VIP. Memasukkannya satu per satu — atau bahkan
+     * satu rentang per submit — berarti admin harus bolak-balik ke form yang
+     * sama. Di sini setiap baris rentang berdiri sendiri: nomor awal, nomor
+     * akhir, akses, dan status masing-masing.
+     */
     public function batchStore(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'drama_id'   => ['required', 'integer', 'exists:dramas,id'],
-            'start_from' => ['required', 'integer', 'min:1', 'max:9999'],
-            'count'      => ['required', 'integer', 'min:1', 'max:100'],
-            'is_vip'     => ['boolean'],
-            'status'     => ['required', 'in:draft,published'],
-            'duration'   => ['nullable', 'integer', 'min:0'],
-            'url_pattern'=> ['nullable', 'string', 'max:500'],
+            'drama_id'          => ['required', 'integer', 'exists:dramas,id'],
+            'ranges'            => ['required', 'array', 'min:1', 'max:20'],
+            'ranges.*.from'     => ['required', 'integer', 'min:1', 'max:9999'],
+            'ranges.*.to'       => ['required', 'integer', 'min:1', 'max:9999'],
+            'ranges.*.is_vip'   => ['nullable', 'boolean'],
+            'ranges.*.status'   => ['required', 'in:draft,published'],
+            'duration'          => ['nullable', 'integer', 'min:0'],
+            'url_pattern'       => ['nullable', 'string', 'max:500'],
+        ], [
+            'ranges.required' => 'Isi minimal satu rentang episode.',
         ]);
+
+        // Rentang terbalik dan rentang raksasa ditolak di sini, bukan
+        // dibiarkan meledak sebagai 20.000 insert di dalam transaksi.
+        $total = 0;
+
+        foreach ($data['ranges'] as $i => $range) {
+            if ($range['to'] < $range['from']) {
+                return back()->withInput()->withErrors([
+                    "ranges.{$i}.to" => 'Nomor akhir tidak boleh lebih kecil dari nomor awal.',
+                ]);
+            }
+
+            $total += $range['to'] - $range['from'] + 1;
+        }
+
+        if ($total > 300) {
+            return back()->withInput()->withErrors([
+                'ranges' => "Total {$total} episode terlalu banyak sekali jalan. Maksimal 300.",
+            ]);
+        }
 
         $drama = Drama::findOrFail($data['drama_id']);
 
@@ -257,28 +331,34 @@ class EpisodeController extends AdminCrudController
         $created = 0;
         $skipped = 0;
 
-        DB::transaction(function () use ($data, $drama, $existing, &$created, &$skipped, $request) {
-            for ($i = 0; $i < $data['count']; $i++) {
-                $number = $data['start_from'] + $i;
+        DB::transaction(function () use ($data, $drama, $existing, &$created, &$skipped) {
+            foreach ($data['ranges'] as $range) {
+                $vip    = (bool) ($range['is_vip'] ?? false);
+                $status = $range['status'];
 
-                if ($existing->has($number)) {
-                    $skipped++;
-                    continue;
+                for ($number = $range['from']; $number <= $range['to']; $number++) {
+                    // Bentrok bisa datang dari database maupun dari rentang
+                    // lain di form yang sama, jadi daftarnya ikut tumbuh.
+                    if ($existing->has($number)) {
+                        $skipped++;
+                        continue;
+                    }
+
+                    Episode::create([
+                        'drama_id'       => $drama->id,
+                        'episode_number' => $number,
+                        'title'          => 'Episode '.$number,
+                        'slug'           => \Illuminate\Support\Str::slug($drama->slug.'-episode-'.$number),
+                        'video_url'      => $this->expandPattern($data['url_pattern'] ?? null, $number),
+                        'duration'       => $data['duration'] ?? 0,
+                        'is_vip'         => $vip,
+                        'status'         => $status,
+                        'published_at'   => $status === 'published' ? now() : null,
+                    ]);
+
+                    $existing->put($number, true);
+                    $created++;
                 }
-
-                Episode::create([
-                    'drama_id'       => $drama->id,
-                    'episode_number' => $number,
-                    'title'          => 'Episode '.$number,
-                    'slug'           => \Illuminate\Support\Str::slug($drama->slug.'-episode-'.$number),
-                    'video_url'      => $this->expandPattern($data['url_pattern'] ?? null, $number),
-                    'duration'       => $data['duration'] ?? 0,
-                    'is_vip'         => $request->boolean('is_vip'),
-                    'status'         => $data['status'],
-                    'published_at'   => $data['status'] === 'published' ? now() : null,
-                ]);
-
-                $created++;
             }
         });
 

@@ -167,6 +167,70 @@ function autoEpisodeNumber() {
     number.addEventListener('input', () => { number.dataset.touched = 'true'; });
 }
 
+/**
+ * Baris rentang pada form tambah episode massal.
+ *
+ * Nama input diberi indeks ulang setiap kali baris ditambah atau dihapus.
+ * Kalau tidak, menghapus baris tengah meninggalkan lubang pada indeks
+ * (ranges[0], ranges[2]) — PHP masih membacanya, tapi pesan error validasi
+ * jadi menunjuk baris yang salah di mata admin.
+ */
+function episodeRanges() {
+    const table = document.querySelector('[data-range-table]');
+
+    if (!table) return;
+
+    const body = table.querySelector('[data-range-body]');
+    const add  = document.querySelector('[data-range-add]');
+
+    const reindex = () => {
+        body.querySelectorAll('[data-range-row]').forEach((row, i) => {
+            row.querySelectorAll('input, select').forEach((el) => {
+                el.name = el.name.replace(/ranges\[\d+\]/, `ranges[${i}]`);
+            });
+        });
+    };
+
+    add?.addEventListener('click', () => {
+        const rows = body.querySelectorAll('[data-range-row]');
+        const last = rows[rows.length - 1];
+
+        if (!last) return;
+
+        const clone = last.cloneNode(true);
+
+        // Pesan error milik baris sumber tidak ikut disalin.
+        clone.querySelectorAll('.field-error').forEach((el) => el.remove());
+        clone.querySelectorAll('[data-auto-number]').forEach((el) => {
+            delete el.dataset.autoNumber;
+        });
+
+        // Rentang baru dimulai satu nomor setelah rentang terakhir.
+        const lastTo = parseInt(last.querySelector('input[name$="[to]"]')?.value, 10);
+        const inputs = clone.querySelectorAll('input[type="number"]');
+
+        if (!Number.isNaN(lastTo)) {
+            inputs[0].value = lastTo + 1;
+            inputs[1].value = lastTo + 1;
+        }
+
+        body.appendChild(clone);
+        reindex();
+        inputs[0].focus();
+    });
+
+    body.addEventListener('click', (e) => {
+        if (!e.target.closest('[data-range-remove]')) return;
+
+        // Baris terakhir tidak boleh hilang: form tanpa rentang tidak bisa
+        // dikirim, dan admin akan terjebak tanpa tombol untuk memulihkannya.
+        if (body.querySelectorAll('[data-range-row]').length <= 1) return;
+
+        e.target.closest('[data-range-row]').remove();
+        reindex();
+    });
+}
+
 function dismissToast() {
     document.querySelectorAll('[data-toast]').forEach((toast) => {
         setTimeout(() => toast.classList.add('is-hiding'), 4000);
@@ -182,6 +246,7 @@ export default function admin() {
     confirmDialog();
     uploadPreview();
     autoEpisodeNumber();
+    episodeRanges();
     dismissToast();
     charts();
     reorderTable();
