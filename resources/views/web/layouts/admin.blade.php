@@ -157,9 +157,27 @@
                 <a href="{{ route('web.home') }}" class="btn btn-ghost btn-sm" target="_blank" rel="noopener">
                     Lihat situs
                 </a>
-                <span class="avatar" title="{{ auth()->user()?->name }}">
-                    {{ auth()->user()?->initial }}
-                </span>
+                {{-- Identitas akun yang sedang login.
+
+                     Sebelumnya topbar hanya menampilkan inisial di avatar,
+                     sehingga pada instalasi dengan beberapa akun admin tidak
+                     ada cara cepat memastikan sedang login sebagai siapa dan
+                     dengan hak akses apa. Nama dan role kini ditampilkan
+                     eksplisit di bawah avatar. --}}
+                @php
+                    $adminUser = auth()->user();
+                    $adminRoleLabel = $adminUser?->isRoot()
+                        ? 'Root Owner'
+                        : ($adminUser?->roles->pluck('name')->filter()->join(', ') ?: 'Super Admin');
+                @endphp
+
+                <div class="admin-identity" title="{{ $adminUser?->name }} — {{ $adminRoleLabel }}">
+                    <span class="avatar">{{ $adminUser?->initial }}</span>
+                    <span class="admin-identity-text">
+                        <span class="admin-identity-name">{{ $adminUser?->name }}</span>
+                        <span class="admin-identity-role">{{ $adminRoleLabel }}</span>
+                    </span>
+                </div>
             </div>
         </header>
 

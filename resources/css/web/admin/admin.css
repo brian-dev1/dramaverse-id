@@ -94,6 +94,26 @@
 }
 .admin-topbar-right{ display:flex; align-items:center; gap:var(--space-2); }
 
+/* Identitas akun: avatar dengan nama + role di bawahnya. */
+.admin-identity{
+    display:flex; flex-direction:column; align-items:center;
+    gap:4px; min-width:0; max-width:180px;
+}
+.admin-identity-text{
+    display:flex; flex-direction:column; align-items:center;
+    line-height:1.25; min-width:0; max-width:100%;
+}
+.admin-identity-name,
+.admin-identity-role{
+    max-width:100%;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.admin-identity-name{ font-size:12px; font-weight:600; }
+.admin-identity-role{
+    font-size:10.5px; letter-spacing:.04em; text-transform:uppercase;
+    color:var(--text-muted, rgba(255,255,255,.55));
+}
+
 .sidebar-open{ display:none; }
 .sidebar-collapsed .sidebar-open{ display:inline-flex; }
 
@@ -384,6 +404,8 @@ input[type="color"].control{ height:42px; padding:4px; cursor:pointer; }
     .admin-content{ padding:var(--space-3) var(--space-2); }
     .admin-topbar{ padding:var(--space-2) var(--space-3); }
     .admin-topbar h1{ font-size:17px; }
+    /* Ruang topbar terlalu sempit di layar kecil: sisakan avatar saja. */
+    .admin-identity-text{ display:none; }
     .toolbar-add{ margin-left:0; width:100%; justify-content:center; }
     .form-card{ padding:var(--space-3); }
     .toast{ margin:var(--space-2) var(--space-3) 0; }
