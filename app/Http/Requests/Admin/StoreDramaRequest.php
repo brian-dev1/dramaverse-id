@@ -12,6 +12,17 @@ class StoreDramaRequest extends FormRequest
         return $this->user()?->isAdmin() ?? false;
     }
 
+    protected function prepareForValidation(): void
+    {
+        // rating & total_episode NOT NULL dengan default di database.
+        // Field kosong dari form mengirim null dan menabrak constraint.
+        foreach (['rating', 'total_episode'] as $kolomBerdefault) {
+            if ($this->has($kolomBerdefault) && blank($this->input($kolomBerdefault))) {
+                $this->request->remove($kolomBerdefault);
+            }
+        }
+    }
+
     public function rules(): array
     {
         return [

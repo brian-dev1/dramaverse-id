@@ -150,6 +150,12 @@ class EpisodeController extends AdminCrudController
 
         unset($data['thumbnail_file']);
 
+        // duration NOT NULL + default 0: field kosong mengirim null dan
+        // menabrak constraint. Buang key-nya agar default/nilai lama dipakai.
+        if (array_key_exists('duration', $data) && $data['duration'] === null) {
+            unset($data['duration']);
+        }
+
         return $data;
     }
 

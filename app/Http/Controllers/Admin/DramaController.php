@@ -153,6 +153,19 @@ class DramaController extends AdminCrudController
         unset($data['poster_file'], $data['genre_ids']);
 
         /*
+        | Kolom berikut NOT NULL dengan default di database. Form yang
+        | dikosongkan mengirim null, dan null itu menabrak constraint —
+        | admin melihat error meski field-nya memang opsional. Buang saja
+        | key-nya saat kosong: baris baru memakai default, baris lama
+        | mempertahankan nilai sebelumnya.
+        */
+        foreach (['rating', 'total_episode'] as $kolomBerdefault) {
+            if (array_key_exists($kolomBerdefault, $data) && $data[$kolomBerdefault] === null) {
+                unset($data[$kolomBerdefault]);
+            }
+        }
+
+        /*
         | Drama BARU tanpa tanggal terbit tidak akan pernah muncul di beranda,
         | karena scopePublished() menyaring published_at yang null. Sebelum ini
         | admin yang mengosongkan field itu — dan itu perilaku default form —
