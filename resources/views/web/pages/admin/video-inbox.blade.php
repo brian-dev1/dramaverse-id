@@ -4,209 +4,266 @@
 
 @section('content')
 
-    <div class="form-grid">
+    <style>
+        .inbox-wrap { max-width: 880px; }
 
-        <section class="form-card form-main">
-            <h2>Video Inbox</h2>
+        .inbox-intro {
+            margin: 0 0 18px;
+            font-size: 13px;
+            line-height: 1.6;
+            opacity: .65;
+        }
 
-            <p class="field-hint">
-                Video di halaman ini sudah tersimpan di Cloudflare R2 melalui
-                worker Telegram. Pilih episode tujuan untuk memasangkan video
-                tanpa mengunggah ulang berkas.
-            </p>
+        .inbox-alert {
+            margin: 0 0 14px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            border: 1px solid rgba(255,255,255,.12);
+        }
 
-            @if (session('success'))
-                <div class="upload-result">
-                    {{ session('success') }}
-                </div>
-            @endif
+        .inbox-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
 
-            @if (session('error'))
-                <div class="field-error">
-                    {{ session('error') }}
-                </div>
-            @endif
-        </section>
+        .inbox-row {
+            border: 1px solid rgba(255,255,255,.10);
+            border-radius: 10px;
+            padding: 14px 16px;
+        }
 
-        @forelse ($videos as $video)
+        .inbox-head {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
 
-            <section class="form-card">
+        .inbox-name {
+            margin: 0;
+            font-size: 14px;
+            font-weight: 600;
+            line-height: 1.3;
+            word-break: break-all;
+            flex: 1 1 260px;
+        }
 
-                <h2>{{ $video->original_filename }}</h2>
+        .inbox-tag {
+            font-size: 11px;
+            letter-spacing: .04em;
+            text-transform: uppercase;
+            padding: 3px 8px;
+            border-radius: 999px;
+            border: 1px solid rgba(255,255,255,.18);
+            opacity: .8;
+            white-space: nowrap;
+        }
 
-                <dl class="file-facts">
-                    <div>
-                        <dt>Status</dt>
-                        <dd>
-                            <span class="badge badge-status">
-                                {{ $video->status === 'available' ? 'Tersedia' : 'Terpasang' }}
-                            </span>
-                        </dd>
+        .inbox-meta {
+            margin: 8px 0 0;
+            font-size: 12px;
+            line-height: 1.6;
+            opacity: .55;
+            word-break: break-all;
+        }
+
+        .inbox-meta span + span::before {
+            content: "·";
+            margin: 0 7px;
+            opacity: .6;
+        }
+
+        .inbox-assigned {
+            margin: 8px 0 0;
+            font-size: 12.5px;
+            opacity: .7;
+        }
+
+        .inbox-form {
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255,255,255,.08);
+        }
+
+        .inbox-form .field {
+            flex: 1 1 200px;
+            min-width: 160px;
+            margin: 0;
+        }
+
+        .inbox-form label {
+            display: block;
+            font-size: 11px;
+            letter-spacing: .04em;
+            text-transform: uppercase;
+            opacity: .55;
+            margin-bottom: 5px;
+        }
+
+        .inbox-form .control { width: 100%; }
+
+        .inbox-form .inbox-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .inbox-note {
+            flex: 1 1 100%;
+            margin: 0;
+            font-size: 12px;
+        }
+
+        .inbox-pager { margin-top: 18px; }
+    </style>
+
+    <div class="inbox-wrap">
+
+        <p class="inbox-intro">
+            Video di halaman ini sudah tersimpan di Cloudflare R2 melalui worker
+            Telegram. Pilih episode tujuan untuk memasangkan video tanpa
+            mengunggah ulang berkas.
+        </p>
+
+        @if (session('success'))
+            <div class="inbox-alert">{{ session('success') }}</div>
+        @endif
+
+        @if (session('error'))
+            <div class="inbox-alert field-error">{{ session('error') }}</div>
+        @endif
+
+        <div class="inbox-list">
+
+            @forelse ($videos as $video)
+
+                <section class="inbox-row">
+
+                    <div class="inbox-head">
+                        <h2 class="inbox-name">{{ $video->original_filename }}</h2>
+
+                        <span class="inbox-tag">
+                            {{ $video->status === 'available' ? 'Tersedia' : 'Terpasang' }}
+                        </span>
                     </div>
 
-                    <div>
-                        <dt>Ukuran</dt>
-                        <dd>
-                            {{ number_format($video->size / 1024 / 1024, 1) }} MB
-                        </dd>
-                    </div>
-
-                    <div>
-                        <dt>Provider</dt>
-                        <dd>
-                            {{ $video->provider?->name ?? 'Provider tidak ditemukan' }}
-                        </dd>
-                    </div>
-
-                    <div>
-                        <dt>Object Key</dt>
-                        <dd>
-                            <code>{{ $video->object_key }}</code>
-                        </dd>
-                    </div>
-
-                    <div>
-                        <dt>Masuk</dt>
-                        <dd>
-                            {{ \App\Support\Waktu::ringkas($video->uploaded_at) }}
-                        </dd>
-                    </div>
-
-                    <div>
-                        <dt>Checksum</dt>
-                        <dd>
-                            @if ($video->checksum)
-                                Tersedia
-                            @else
-                                Belum tersedia
-                            @endif
-                        </dd>
-                    </div>
-                </dl>
-
-                @if ($video->status === 'assigned' && $video->episode)
-
-                    <p class="field-hint">
-                        Video ini sudah dipasang ke
-                        <strong>
-                            {{ $video->episode->drama?->title ?? 'Drama' }}
-                            — Episode {{ $video->episode->episode_number }}
-                        </strong>.
+                    <p class="inbox-meta">
+                        <span>{{ number_format($video->size / 1024 / 1024, 1) }} MB</span>
+                        <span>{{ $video->provider?->name ?? 'Provider tidak ditemukan' }}</span>
+                        <span>{{ \App\Support\Waktu::ringkas($video->uploaded_at) }}</span>
+                        <span>Checksum {{ $video->checksum ? 'tersedia' : 'belum ada' }}</span>
+                        <span><code>{{ $video->object_key }}</code></span>
                     </p>
 
-                @elseif ($video->isAvailable())
+                    @if ($video->status === 'assigned' && $video->episode)
 
-                    <form method="POST"
-                          action="{{ route('admin.video-inbox.assign', $video) }}"
-                          class="admin-form"
-                          data-inbox-assign
-                          data-episodes-url="{{ route('admin.episode.video.episodes', ['drama' => 0]) }}">
+                        <p class="inbox-assigned">
+                            Terpasang ke
+                            <strong>
+                                {{ $video->episode->drama?->title ?? 'Drama' }}
+                                — Episode {{ $video->episode->episode_number }}
+                            </strong>
+                        </p>
 
-                        @csrf
+                    @elseif ($video->isAvailable())
 
-                        <div class="field">
-                            <label for="inbox-drama-{{ $video->id }}">
-                                Drama
-                                <span class="field-required" aria-hidden="true">*</span>
-                            </label>
+                        <form method="POST"
+                              action="{{ route('admin.video-inbox.assign', $video) }}"
+                              class="admin-form inbox-form"
+                              data-inbox-assign
+                              data-episodes-url="{{ route('admin.episode.video.episodes', ['drama' => 0]) }}">
 
-                            <select id="inbox-drama-{{ $video->id }}"
-                                    class="control"
-                                    data-inbox-drama
-                                    required>
+                            @csrf
 
-                                <option value="">— pilih drama —</option>
+                            <div class="field">
+                                <label for="inbox-drama-{{ $video->id }}">Drama *</label>
 
-                                @foreach ($dramas as $drama)
-                                    <option value="{{ $drama->id }}">
-                                        {{ $drama->title }}
-                                    </option>
-                                @endforeach
+                                <select id="inbox-drama-{{ $video->id }}"
+                                        class="control"
+                                        data-inbox-drama
+                                        required>
 
-                            </select>
+                                    <option value="">— pilih drama —</option>
 
-                            <p class="field-hint">
-                                Pilih drama terlebih dahulu.
-                            </p>
-                        </div>
+                                    @foreach ($dramas as $drama)
+                                        <option value="{{ $drama->id }}">
+                                            {{ $drama->title }}
+                                        </option>
+                                    @endforeach
 
-                        <div class="field">
-                            <label for="inbox-episode-{{ $video->id }}">
-                                Episode
-                                <span class="field-required" aria-hidden="true">*</span>
-                            </label>
-
-                            <select id="inbox-episode-{{ $video->id }}"
-                                    name="episode_id"
-                                    class="control"
-                                    data-inbox-episode
-                                    required
-                                    disabled>
-
-                                <option value="">
-                                    — pilih drama dulu —
-                                </option>
-
-                            </select>
-
-                            <p class="field-hint">
-                                Pilih episode tujuan, atau buat episode baru jika belum tersedia.
-                            </p>
-
-                            <a href="{{ route('admin.episode.batch') }}"
-                               class="btn btn-ghost btn-sm"
-                               data-add-episode
-                               data-base-url="{{ route('admin.episode.batch') }}">
-                                + Tambah Episode
-                            </a>
-
-                            @error('episode_id')
-                                <p class="field-error">{{ $message }}</p>
-                            @enderror
-                        </div>
-
-                        @if (! $video->checksum)
-
-                            <p class="field-error">
-                                Video ini belum memiliki checksum SHA-256 sehingga
-                                belum dapat dipasang ke episode.
-                            </p>
-
-                        @else
-
-                            <div class="form-actions">
-                                <button type="submit" class="btn btn-primary">
-                                    Pasang ke Episode
-                                </button>
+                                </select>
                             </div>
 
-                        @endif
+                            <div class="field">
+                                <label for="inbox-episode-{{ $video->id }}">Episode *</label>
 
-                    </form>
+                                <select id="inbox-episode-{{ $video->id }}"
+                                        name="episode_id"
+                                        class="control"
+                                        data-inbox-episode
+                                        required
+                                        disabled>
 
-                @endif
+                                    <option value="">— pilih drama dulu —</option>
 
-            </section>
+                                </select>
+                            </div>
 
-        @empty
+                            <div class="inbox-actions">
+                                <a href="{{ route('admin.episode.batch') }}"
+                                   class="btn btn-ghost btn-sm"
+                                   data-add-episode
+                                   data-base-url="{{ route('admin.episode.batch') }}">
+                                    + Episode
+                                </a>
 
-            <section class="form-card form-main">
-                <h2>Inbox kosong</h2>
+                                @if ($video->checksum)
+                                    <button type="submit" class="btn btn-primary btn-sm">
+                                        Pasang
+                                    </button>
+                                @endif
+                            </div>
 
-                <p class="field-hint">
-                    Belum ada video dari worker Telegram.
-                </p>
-            </section>
+                            @error('episode_id')
+                                <p class="inbox-note field-error">{{ $message }}</p>
+                            @enderror
 
-        @endforelse
+                            @if (! $video->checksum)
+                                <p class="inbox-note field-error">
+                                    Belum ada checksum SHA-256, video belum dapat dipasang.
+                                </p>
+                            @endif
+
+                        </form>
+
+                    @endif
+
+                </section>
+
+            @empty
+
+                <section class="inbox-row">
+                    <h2 class="inbox-name">Inbox kosong</h2>
+                    <p class="inbox-meta"><span>Belum ada video dari worker Telegram.</span></p>
+                </section>
+
+            @endforelse
+
+        </div>
+
+        @if ($videos->hasPages())
+            <div class="inbox-pager">
+                {{ $videos->links() }}
+            </div>
+        @endif
 
     </div>
-
-    @if ($videos->hasPages())
-        <div class="form-actions">
-            {{ $videos->links() }}
-        </div>
-    @endif
 
 
     <script>
