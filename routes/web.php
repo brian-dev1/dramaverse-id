@@ -782,8 +782,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->middleware('permission:episode.manage')
             ->group(function () {
                 Route::get('/', 'index')->name('index');
-                Route::post('/{videoInbox}/assign', 'assign')
-                    ->name('assign')->whereNumber('videoInbox');
+
+                // Satu permintaan memasang banyak video sekaligus. Pasangan
+                // video->episode dikirim sebagai array `pairs`.
+                Route::post('/assign', 'assign')->name('assign');
             });
     });
 });
