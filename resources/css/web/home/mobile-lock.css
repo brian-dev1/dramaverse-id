@@ -1,0 +1,137 @@
+/*
+|--------------------------------------------------------------------------
+| Mobile Lock — situs web selalu tampil gaya aplikasi HP
+|--------------------------------------------------------------------------
+| Dimuat PALING AKHIR. Semua aturan di sini TANPA media query, supaya
+| tampilan di desktop identik dengan tampilan di ponsel.
+| Panel admin (.admin-body) tidak disentuh sama sekali.
+*/
+
+:root { --dv-app-width: 480px; }
+
+/* ---------- Kanvas ---------- */
+body:not(.admin-body) {
+    background: var(--dv-bg, #0B0710);
+}
+
+/* ---------- Navbar: selalu versi ponsel ---------- */
+body:not(.admin-body) .nav-links { display: none !important; }
+
+body:not(.admin-body) .navbar-inner {
+    display: grid !important;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+        "brand actions"
+        "search search";
+    gap: 10px;
+    max-width: var(--dv-app-width) !important;
+    margin: 0 auto !important;
+    padding: 10px 14px 12px !important;
+}
+body:not(.admin-body) .navbar-inner > :first-child { grid-area: brand; justify-self: start; }
+body:not(.admin-body) .nav-right { grid-area: actions; margin-left: 0 !important; }
+body:not(.admin-body) .nav-search,
+body:not(.admin-body) .search-pill { grid-area: search; width: 100% !important; max-width: none !important; }
+
+/* ---------- Isi halaman dikunci selebar layar HP ---------- */
+body:not(.admin-body) main { padding-bottom: 104px !important; }
+
+body:not(.admin-body) main .section,
+body:not(.admin-body) main .section-pad,
+body:not(.admin-body) main .page-head,
+body:not(.admin-body) main .empty-state,
+body:not(.admin-body) main .pagination-wrap,
+body:not(.admin-body) main > * {
+    max-width: var(--dv-app-width) !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+}
+
+body:not(.admin-body) main .section-pad {
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+}
+
+/* Grid poster: 3 kolom seperti aplikasi drama pendek */
+body:not(.admin-body) .grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+}
+
+/* Rail geser tetap boleh dipakai di halaman lain, tapi ikut selebar HP */
+body:not(.admin-body) .rail { max-width: var(--dv-app-width) !important; }
+
+/* Footer ikut menyempit */
+body:not(.admin-body) .footer-inner,
+body:not(.admin-body) .membership-inner {
+    max-width: var(--dv-app-width) !important;
+    margin: 0 auto !important;
+}
+
+/* ---------- Bottom nav: tampil di semua ukuran layar ---------- */
+body:not(.admin-body) .mobile-nav {
+    position: fixed;
+    left: 50%;
+    bottom: max(14px, env(safe-area-inset-bottom));
+    translate: -50% 0;
+    z-index: 70;
+    display: flex !important;
+    align-items: center;
+    gap: 4px;
+    width: auto;
+    max-width: calc(var(--dv-app-width) - 28px);
+    padding: 7px;
+    border-radius: 999px;
+    background: rgba(18, 13, 26, .9);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border: 1px solid var(--dv-line, rgba(255,255,255,.1));
+    box-shadow: 0 16px 40px -14px rgba(0, 0, 0, .95);
+}
+body:not(.admin-body) .mobile-nav a {
+    display: grid;
+    place-items: center;
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    color: var(--dv-dim, #9C93A6);
+    font-size: 0;
+    transition: color .2s ease, background-color .2s ease;
+}
+body:not(.admin-body) .mobile-nav a svg { width: 21px; height: 21px; }
+body:not(.admin-body) .mobile-nav a:hover { color: #fff; }
+body:not(.admin-body) .mobile-nav a.active {
+    color: #fff;
+    background: linear-gradient(135deg, var(--dv-accent, #F5811F), #FF9445);
+    box-shadow: 0 8px 20px -8px var(--dv-accent, #F5811F);
+}
+
+/* ---------- Chip filter beranda ---------- */
+.home-chips {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 14px 14px 4px;
+    max-width: var(--dv-app-width);
+    margin: 0 auto;
+    scrollbar-width: none;
+}
+.home-chips::-webkit-scrollbar { display: none; }
+.home-chips a {
+    flex: 0 0 auto;
+    padding: 7px 15px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--dv-dim, #9C93A6);
+    background: rgba(255, 255, 255, .06);
+    border: 1px solid var(--dv-line, rgba(255,255,255,.08));
+    white-space: nowrap;
+    transition: all .2s ease;
+}
+.home-chips a:hover { color: #fff; }
+.home-chips a.is-active {
+    color: #1a0d02;
+    background: linear-gradient(135deg, var(--dv-accent, #F5811F), #FF9445);
+    border-color: transparent;
+}

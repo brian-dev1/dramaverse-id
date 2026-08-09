@@ -4,47 +4,37 @@
 @section('description', 'Streaming drama Korea, Tiongkok, Thailand, dan Jepang dengan subtitle Bahasa Indonesia.')
 
 @php
-    // Katalog dianggap kosong bila tidak ada satu pun drama terbit.
-    $catalogEmpty = $trending->isEmpty()
-        && $latest->isEmpty()
-        && $popular->isEmpty()
-        && $topRated->isEmpty();
+    // Beranda gaya aplikasi HP: tanpa hero, tanpa rail geser.
+    // Semua koleksi digabung jadi satu daftar drama, duplikat dibuang.
+    $semua = collect()
+        ->concat($trending)
+        ->concat($latest)
+        ->concat($popular)
+        ->concat($topRated)
+        ->unique('id')
+        ->values();
 @endphp
 
 @section('content')
 
-    <x-web.home.hero :banners="$banners" :dramas="$trending" />
+    <nav class="home-chips" aria-label="Filter cepat">
+        <a href="{{ route('web.home') }}" class="is-active">Semua</a>
+        <a href="{{ route('web.trending') }}">Trending</a>
+        <a href="{{ route('web.latest') }}">Terbaru</a>
+        <a href="{{ route('web.popular') }}">Populer</a>
+        <a href="{{ route('web.top-rated') }}">Rating Tertinggi</a>
+        <a href="{{ route('web.genre.index') }}">Genre</a>
+    </nav>
 
-    <x-web.home.continue-watching :histories="$continueWatching" />
-
-    <x-web.home.rail
-        :dramas="$trending"
-        title="Trending Minggu Ini"
-        variant="rank"
-        :href="route('web.trending')" />
-
-    <x-web.home.grid
-        :dramas="$latest"
-        title="Rilis Terbaru"
-        variant="latest"
-        :href="route('web.latest')" />
-
-    <x-web.home.rail
-        :dramas="$popular"
-        title="Populer Minggu Ini"
-        :href="route('web.popular')" />
-
-    <x-web.home.grid
-        :dramas="$topRated"
-        title="Rating Tertinggi"
-        variant="rated"
-        :href="route('web.top-rated')" />
-
-    {{-- Taksonomi tetap ditampilkan walau katalog kosong: keduanya data nyata. --}}
-    <x-web.home.genre :genres="$genres" />
-    <x-web.home.country :countries="$countries" />
-
-    @if ($catalogEmpty)
+    @if ($semua->isNotEmpty())
+        <section class="section section-pad">
+            <div class="grid">
+                @foreach ($semua as $drama)
+                    <x-web.home.drama-card :drama="$drama" />
+                @endforeach
+            </div>
+        </section>
+    @else
         <x-web.home.empty-state
             title="Katalog belum diisi"
             message="Belum ada drama yang dipublikasikan. Judul akan muncul di sini begitu ditambahkan."
@@ -53,4 +43,3 @@
     @endif
 
 @endsection
-

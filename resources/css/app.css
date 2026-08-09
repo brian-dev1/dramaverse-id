@@ -55,6 +55,9 @@
 /* --- Redesign 2026 (khusus sisi web, tidak menyentuh admin) --- */
 @import "./web/home/redesign.css";
 
+/* --- Kunci tampilan HP (paling akhir, wajib menang) --- */
+@import "./web/home/mobile-lock.css";
+
 /*
 |--------------------------------------------------------------------------
 | Sumber pemindaian Tailwind
