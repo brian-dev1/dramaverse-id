@@ -34,3 +34,7 @@ Thumbs.db
 # Cache Python dari tools/
 __pycache__/
 *.pyc
+
+# Virtualenv Python (tidak pernah ikut repo)
+.venv/
+venv/
