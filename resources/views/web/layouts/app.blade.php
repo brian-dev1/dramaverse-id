@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
+    {{-- Harus paling awal: menukar halaman dengan bingkai ponsel di layar lebar. --}}
+    @include('web.partials.desktop-frame')
+
     <title>@yield('title', setting('site_tagline', 'Drama Asia')) — {{ setting('site_name', 'DramaVerse ID') }}</title>
 
     <meta name="description" content="@yield('description', setting('site_description', 'Streaming drama Asia dengan subtitle Bahasa Indonesia.'))">
