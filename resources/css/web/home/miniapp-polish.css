@@ -10,6 +10,19 @@
 | Panel admin (.admin-body) tidak disentuh.
 */
 
+/* ---------- Latar rata satu warna ----------
+   Gradasi oranye/merah samar dihapus supaya tidak ada belang antara
+   bagian yang terisi konten dan sisa halaman di bawahnya. */
+html { background: #08060D; }
+
+body:not(.admin-body) {
+    background: #08060D;
+    background-image: none;
+    min-height: 100vh;
+}
+
+body:not(.admin-body) .grain { display: none; }
+
 /* ---------- Batang gulir disembunyikan ---------- */
 html { scrollbar-width: none; }
 html::-webkit-scrollbar { display: none; }

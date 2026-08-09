@@ -45,15 +45,13 @@
                 </a>
             @else
                 @php
-                    // Arahkan ke bot Telegram. Bila TELEGRAM_BOT_USERNAME belum
-                    // diisi, jatuh kembali ke halaman membership seperti semula.
-                    $botUsername = trim((string) config('telegram.bot_username'), " \t@");
-                    $masukUrl = $botUsername !== ''
-                        ? 'https://t.me/'.$botUsername
-                        : route('web.membership');
+                    // Arahkan ke channel Telegram (TELEGRAM_CHANNEL_URL).
+                    // Bila belum diisi, jatuh kembali ke halaman membership.
+                    $channelUrl = trim((string) config('telegram.channel_url'));
+                    $masukUrl = $channelUrl !== '' ? $channelUrl : route('web.membership');
                 @endphp
                 <a href="{{ $masukUrl }}" class="btn btn-primary btn-sm" rel="noopener">
-                    Masuk via Telegram
+                    Gabung Channel Telegram
                 </a>
             @endauth
 

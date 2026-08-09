@@ -35,11 +35,11 @@
             '<head><meta charset="UTF-8"><title></title>' +
             '<meta name="robots" content="noindex">' +
             '<style>' +
-            'html,body{margin:0;padding:0;height:100%;background:#0B0710;overflow:hidden;}' +
+            'html,body{margin:0;padding:0;height:100%;background:#08060D;overflow:hidden;}' +
             'body{display:flex;align-items:center;justify-content:center;}' +
             '.dv-phone{width:390px;height:min(844px,calc(100vh - 28px));' +
             'border:1px solid rgba(255,255,255,.09);border-radius:22px;overflow:hidden;' +
-            'box-shadow:0 30px 90px -30px rgba(0,0,0,.9);background:#0B0710;}' +
+            'box-shadow:0 30px 90px -30px rgba(0,0,0,.9);background:#08060D;}' +
             '.dv-phone iframe{width:100%;height:100%;border:0;display:block;}' +
             '</style></head>' +
             '<body><div class="dv-phone"><iframe title="DramaVerse ID"' +
