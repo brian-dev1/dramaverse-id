@@ -17,13 +17,20 @@
             @endforeach
         </nav>
 
-        <div class="nav-right">
+        {{-- Pencarian di tengah --}}
+        <div class="nav-search">
+            <form action="{{ route('web.search') }}" method="GET" role="search">
+                <x-web.home.icon name="search" :size="16" />
+                <input type="search"
+                       name="q"
+                       value="{{ request('q') }}"
+                       placeholder="Cari drama..."
+                       autocomplete="off"
+                       aria-label="Cari drama">
+            </form>
+        </div>
 
-            {{-- Pencarian --}}
-            <a href="{{ route('web.search') }}" class="search-pill">
-                <x-web.home.icon name="search" :size="15" />
-                <span>Cari drama...</span>
-            </a>
+        <div class="nav-right">
 
             @auth
                 {{-- Notifikasi --}}

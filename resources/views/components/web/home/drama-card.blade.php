@@ -11,7 +11,12 @@
    aria-label="{{ $drama->title }}">
 
     @if ($drama->poster_url)
-        <img src="{{ $drama->poster_url }}" alt="" loading="lazy" class="drama-poster-img">
+        <img src="{{ $drama->poster_url }}"
+             alt=""
+             loading="lazy"
+             decoding="async"
+             width="300" height="450"
+             class="drama-poster-img">
     @endif
 
     <div class="drama-poster">

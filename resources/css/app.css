@@ -45,13 +45,15 @@
 /* --- Responsif (terakhir agar dapat menimpa) --- */
 @import "./web/home/responsive.css";
 
-/* --- Merek & pemolesan elegan (paling akhir agar menang) --- */
-@import "./web/home/brand.css";
+/* --- Pemolesan elegan (brand.css sudah dimuat di atas, tidak diulang) --- */
 @import "./web/home/elegant.css";
 @import "./web/detail/responsive.css";
 
-/* --- Perbaikan toolbar admin (paling akhir, wajib menang) --- */
+/* --- Perbaikan toolbar admin (wajib menang untuk admin) --- */
 @import "./web/admin/toolbar-fix.css";
+
+/* --- Redesign 2026 (khusus sisi web, tidak menyentuh admin) --- */
+@import "./web/home/redesign.css";
 
 /*
 |--------------------------------------------------------------------------
