@@ -15,29 +15,51 @@
 /* ---------- Navbar: selalu versi ponsel, pencarian di baris atas ---------- */
 body:not(.admin-body) .nav-links { display: none !important; }
 
+/* Dua baris: [brand | tombol] lalu [pencarian selebar penuh] */
 body:not(.admin-body) .navbar-inner {
     display: grid !important;
-    grid-template-columns: auto 1fr auto;
-    grid-template-areas: "brand search actions";
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+        "brand  actions"
+        "search search";
     align-items: center;
     gap: 10px;
     max-width: var(--dv-app-width) !important;
     margin: 0 auto !important;
-    padding: 10px 16px !important;
+    padding: 10px 16px 12px !important;
 }
-body:not(.admin-body) .navbar-inner > :first-child { grid-area: brand; justify-self: start; }
+body:not(.admin-body) .navbar-inner > :first-child {
+    grid-area: brand;
+    justify-self: start;
+    min-width: 0;
+}
 body:not(.admin-body) .nav-right {
     grid-area: actions;
+    justify-self: end;
     margin-left: 0 !important;
     gap: 8px !important;
+    flex-shrink: 0;
 }
 body:not(.admin-body) .nav-search,
 body:not(.admin-body) .search-pill {
     grid-area: search;
+    display: flex !important;
     width: 100% !important;
     max-width: none !important;
     min-width: 0 !important;
+    box-sizing: border-box;
 }
+
+/* Tombol "Masuk via Telegram" jangan meluber keluar layar */
+body:not(.admin-body) .nav-right .btn,
+body:not(.admin-body) .nav-right a {
+    font-size: 13px !important;
+    padding: 8px 14px !important;
+    white-space: nowrap;
+}
+
+/* Beri ruang di bawah navbar dua-baris supaya kartu tidak tertutup */
+body:not(.admin-body) main { padding-top: 8px; }
 
 /* ---------- Isi halaman dikunci selebar layar HP ---------- */
 body:not(.admin-body) main {
