@@ -55,12 +55,6 @@
 /* --- Redesign 2026 (khusus sisi web, tidak menyentuh admin) --- */
 @import "./web/home/redesign.css";
 
-/* --- Kunci tampilan HP (paling akhir, wajib menang) ---
-     mobile-lock-generated.css dihasilkan oleh tools/gen-mobile-lock.py:
-     seluruh blok @media mobile dipentaskan ulang tanpa media query. */
-@import "./web/home/mobile-lock-generated.css";
-@import "./web/home/mobile-lock.css";
-
 /*
 |--------------------------------------------------------------------------
 | Sumber pemindaian Tailwind
