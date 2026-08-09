@@ -84,15 +84,20 @@
 
         .inbox-form {
             display: flex;
+            flex-direction: row;
             align-items: flex-end;
+            justify-content: flex-start;
             gap: 10px;
             flex-wrap: wrap;
             margin-top: 12px;
-            padding-top: 12px;
+            padding: 12px 0 0;
             border-top: 1px solid rgba(255,255,255,.08);
         }
 
         .inbox-form .field {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
             flex: 1 1 200px;
             min-width: 160px;
             margin: 0;
@@ -111,6 +116,8 @@
 
         .inbox-form .inbox-actions {
             display: flex;
+            flex: 0 0 auto;
+            align-items: center;
             gap: 8px;
             flex-wrap: wrap;
         }
@@ -189,7 +196,7 @@
 
                         <form method="POST"
                               action="{{ route('admin.video-inbox.assign', $video) }}"
-                              class="admin-form inbox-form"
+                              class="inbox-form"
                               data-inbox-assign
                               data-episodes-url="{{ route('admin.episode.video.episodes', ['drama' => 0]) }}">
 
