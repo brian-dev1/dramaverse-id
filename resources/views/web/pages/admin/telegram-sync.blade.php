@@ -206,7 +206,16 @@
                     <thead>
                         <tr>
                             <th class="col-check">
-                                <input type="checkbox" data-check-all>
+                                {{--
+                                    Hanya mencentang yang BELUM tersinkron. Video yang
+                                    sudah punya file_id tidak perlu dikirim ulang — itu
+                                    cuma menghabiskan kuota dan menghasilkan file_id
+                                    kedua untuk isi yang sama. Untuk memilih yang sudah
+                                    tersinkron (misalnya buat Verifikasi file_id), ada
+                                    tombolnya sendiri di baris aksi massal.
+                                --}}
+                                <input type="checkbox" data-check-all
+                                       title="Centang semua yang belum tersinkron">
                             </th>
                             <th>Episode</th>
                             <th>Ukuran</th>
@@ -221,7 +230,8 @@
                             <tr>
                                 <td class="col-check">
                                     <input type="checkbox" form="bulk-form" name="ids[]"
-                                           value="{{ $video->id }}" data-check-item>
+                                           value="{{ $video->id }}" data-check-item
+                                           data-syncable="{{ $video->sync_status->canStart() ? '1' : '0' }}">
                                 </td>
                                 <td>
                                     {{ $video->episode?->drama?->title ?? '—' }}
@@ -300,7 +310,17 @@
 
                 <span class="panel-meta">
                     Aksi massal, maksimal {{ $bulkMax }} video sekali jalan. Semuanya lewat antrean.
+                    <br>
+                    <span data-check-count>Belum ada yang dicentang.</span>
                 </span>
+
+                <button type="button" class="btn btn-sm btn-ghost" data-check-synced>
+                    Centang yang tersinkron
+                </button>
+
+                <button type="button" class="btn btn-sm btn-ghost" data-check-none>
+                    Bersihkan
+                </button>
 
                 <button type="submit" name="aksi" value="sync" class="btn btn-sm" @disabled($blocker !== null)>
                     <x-web.home.icon name="send" :size="14" /> Bulk Sync
@@ -328,3 +348,97 @@
     </section>
 
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+
+        const semua = document.querySelector('[data-check-all]');
+        const items = Array.from(document.querySelectorAll('[data-check-item]'));
+
+        if (!semua || !items.length) {
+            return;
+        }
+
+        const tombolTersinkron = document.querySelector('[data-check-synced]');
+        const tombolBersih     = document.querySelector('[data-check-none]');
+        const penghitung       = document.querySelector('[data-check-count]');
+
+        // Yang boleh dikirim ulang hanyalah PENDING dan FAILED. PROCESSING
+        // sedang berjalan, SYNCED sudah punya file_id — keduanya sengaja
+        // dikeluarkan dari "centang semua".
+        const belumSinkron = items.filter((el) => el.dataset.syncable === '1');
+        const sudahSinkron = items.filter((el) => el.dataset.syncable !== '1');
+
+        const hitung = () => {
+            const dipilih = items.filter((el) => el.checked);
+
+            const dariBelum = dipilih.filter((el) => el.dataset.syncable === '1').length;
+            const dariSudah = dipilih.length - dariBelum;
+
+            if (!dipilih.length) {
+                penghitung.textContent = 'Belum ada yang dicentang.';
+            } else {
+                let teks = `${dipilih.length} dicentang`;
+
+                if (dariSudah > 0) {
+                    teks += ` — ${dariBelum} belum tersinkron, ${dariSudah} sudah`;
+                }
+
+                penghitung.textContent = teks + '.';
+            }
+
+            // Kotak header hanya bicara soal yang belum tersinkron, jadi
+            // keadaannya pun dihitung dari kelompok itu saja.
+            const tercentang = belumSinkron.filter((el) => el.checked).length;
+
+            semua.checked = belumSinkron.length > 0 && tercentang === belumSinkron.length;
+
+            semua.indeterminate = tercentang > 0 && tercentang < belumSinkron.length;
+        };
+
+        semua.addEventListener('change', () => {
+            const nyalakan = semua.checked;
+
+            belumSinkron.forEach((el) => {
+                el.checked = nyalakan;
+            });
+
+            hitung();
+        });
+
+        items.forEach((el) => el.addEventListener('change', hitung));
+
+        if (tombolTersinkron) {
+            // Untuk Verifikasi file_id dan Refresh Status, yang justru
+            // dibutuhkan adalah video yang SUDAH tersinkron.
+            tombolTersinkron.addEventListener('click', () => {
+                sudahSinkron.forEach((el) => {
+                    el.checked = true;
+                });
+
+                hitung();
+            });
+
+            tombolTersinkron.disabled = sudahSinkron.length === 0;
+        }
+
+        if (tombolBersih) {
+            tombolBersih.addEventListener('click', () => {
+                items.forEach((el) => {
+                    el.checked = false;
+                });
+
+                hitung();
+            });
+        }
+
+        if (!belumSinkron.length) {
+            semua.disabled = true;
+            semua.title = 'Tidak ada video yang belum tersinkron di halaman ini.';
+        }
+
+        hitung();
+    });
+</script>
+@endpush
