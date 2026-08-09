@@ -23,8 +23,6 @@ class StoreEpisodeRequest extends FormRequest
 
             'description' => 'nullable|string',
 
-            'duration' => 'nullable|integer',
-
             'thumbnail' => 'nullable|string',
 
             'video_url' => 'required|string',

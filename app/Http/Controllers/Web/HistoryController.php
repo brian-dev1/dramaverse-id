@@ -17,7 +17,7 @@ class HistoryController extends Controller
             ->watchHistories()
             ->with([
                 'drama:id,title,slug,poster,gradient,total_episode',
-                'episode:id,drama_id,episode_number,title,duration',
+                'episode:id,drama_id,episode_number,title',
             ])
             ->whereHas('drama')
             ->orderByDesc('last_watched_at')
@@ -36,7 +36,7 @@ class HistoryController extends Controller
             ->watchHistories()
             ->with([
                 'drama:id,title,slug,poster,gradient,total_episode',
-                'episode:id,drama_id,episode_number,title,duration',
+                'episode:id,drama_id,episode_number,title',
             ])
             ->where('completed', false)
             ->whereHas('drama')

@@ -26,7 +26,7 @@ class CountryController extends Controller
         $dramas = $country->dramas()
             ->select([
                 'id', 'title', 'slug', 'poster', 'gradient', 'country_id',
-                'release_year', 'total_episode', 'status', 'rating', 'views',
+                'total_episode', 'status', 'views',
                 'is_vip', 'published_at',
             ])
             ->with(['genres:id,name,slug'])

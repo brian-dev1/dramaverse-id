@@ -48,18 +48,10 @@
                 <x-admin.field name="status" label="Status" type="select"
                                :value="$record->status ?? 'ongoing'" :options="$statuses" required />
 
-                <x-admin.field name="release_year" label="Tahun rilis" type="number"
-                               :value="$record->release_year" min="1950" max="{{ date('Y') + 5 }}" />
-
                 <x-admin.field name="total_episode" label="Jumlah episode" type="number"
                                :value="$record->total_episode" min="0"
                                hint="Diperbarui otomatis saat episode ditambah." />
 
-                <x-admin.field name="duration" label="Durasi per episode (menit)" type="number"
-                               :value="$record->duration" min="0" />
-
-                <x-admin.field name="rating" label="Rating" type="number" step="0.1"
-                               :value="$record->rating" min="0" max="10" />
             </section>
 
             <section class="form-card">
@@ -73,10 +65,6 @@
 
                 <x-admin.field name="is_trending" label="Trending" type="checkbox"
                                :value="$record->is_trending" hint="Tampil di deretan trending" />
-
-                <x-admin.field name="trending_score" label="Skor trending" type="number"
-                               :value="$record->trending_score" min="0"
-                               hint="Semakin besar semakin atas." />
 
                 <x-admin.field name="published_at" label="Tanggal terbit" type="datetime-local"
                                :value="$record->published_at?->format('Y-m-d\TH:i')"

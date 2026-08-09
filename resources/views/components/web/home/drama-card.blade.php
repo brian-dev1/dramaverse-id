@@ -1,6 +1,6 @@
 @props([
     'drama',
-    'variant' => 'default',   // default | continue | latest | rank | rated
+    'variant' => 'default',   // default | continue | latest | rank
     'rank'     => null,
     'progress' => null,
     'episode'  => null,
@@ -34,10 +34,6 @@
 
                 @case('latest')
                     <span class="dv-tag dv-tag-new">BARU</span>
-                    @break
-
-                @case('rated')
-                    <span class="dv-tag dv-tag-top">TOP</span>
                     @break
             @endswitch
 

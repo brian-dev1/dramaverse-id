@@ -28,8 +28,8 @@ class WatchHistorySeeder extends Seeder
 
         foreach ($users as $user) {
             foreach ($episodes->random(min(5, $episodes->count())) as $episode) {
-                $duration = max($episode->duration, 1);
-                $progress = random_int((int) ($duration * 0.1), (int) ($duration * 0.9));
+                // `progress` disimpan sebagai persen (0-100).
+                $progress = random_int(10, 90);
 
                 WatchHistory::updateOrCreate(
                     ['user_id' => $user->id, 'episode_id' => $episode->id],

@@ -25,29 +25,21 @@ class Drama extends Model
         'trailer_url',
         'gradient',
         'country_id',
-        'release_year',
         'total_episode',
-        'duration',
         'status',
-        'rating',
         'views',
         'is_vip',
         'is_featured',
         'is_trending',
-        'trending_score',
         'published_at',
     ];
 
     protected $casts = [
-        'release_year'   => 'integer',
         'total_episode'  => 'integer',
-        'duration'       => 'integer',
-        'rating'         => 'decimal:1',
         'views'          => 'integer',
         'is_vip'         => 'boolean',
         'is_featured'    => 'boolean',
         'is_trending'    => 'boolean',
-        'trending_score' => 'integer',
         'published_at'   => 'datetime',
     ];
 
@@ -122,7 +114,7 @@ class Drama extends Model
     public function scopeTrending(Builder $query): Builder
     {
         return $query->where('is_trending', true)
-            ->orderByDesc('trending_score');
+            ->orderByDesc('published_at');
     }
 
     public function scopeFeatured(Builder $query): Builder
@@ -138,11 +130,6 @@ class Drama extends Model
     public function scopeLatestRelease(Builder $query): Builder
     {
         return $query->orderByDesc('published_at');
-    }
-
-    public function scopeTopRated(Builder $query): Builder
-    {
-        return $query->orderByDesc('rating')->orderByDesc('views');
     }
 
     public function scopePopular(Builder $query): Builder

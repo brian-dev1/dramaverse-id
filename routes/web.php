@@ -41,7 +41,6 @@ Route::controller(Web\WebSearchController::class)->group(function () {
 Route::controller(Web\CatalogController::class)->group(function () {
     Route::get('/trending', 'trending')->name('web.trending');
     Route::get('/latest', 'latest')->name('web.latest');
-    Route::get('/top-rated', 'topRated')->name('web.top-rated');
     Route::get('/new-release', 'newRelease')->name('web.new-release');
     Route::get('/popular', 'popular')->name('web.popular');
     Route::get('/vip', 'vip')->name('web.vip');

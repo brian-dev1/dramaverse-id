@@ -12,7 +12,7 @@ class BannerSeeder extends Seeder
     {
         $featured = Drama::query()
             ->where('is_featured', true)
-            ->orderByDesc('rating')
+            ->orderByDesc('views')
             ->take(5)
             ->get();
 

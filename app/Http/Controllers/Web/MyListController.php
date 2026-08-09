@@ -17,7 +17,7 @@ class MyListController extends Controller
         $dramas = Drama::query()
             ->select([
                 'dramas.id', 'title', 'slug', 'poster', 'gradient', 'country_id',
-                'release_year', 'total_episode', 'status', 'rating', 'views', 'is_vip',
+                'total_episode', 'status', 'views', 'is_vip',
             ])
             ->with(['country:id,name,slug,flag_emoji'])
             ->join('watchlists', 'watchlists.drama_id', '=', 'dramas.id')

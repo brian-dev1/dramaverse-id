@@ -10,8 +10,8 @@
         <div class="rail">
             @foreach ($histories as $history)
                 @php
-                    $total   = max((int) ($history->episode->duration ?? 0), 1);
-                    $percent = min(100, (int) round(($history->progress / $total) * 100));
+                    // `progress` sudah disimpan sebagai persen (0-100).
+                    $percent = max(0, min(100, (int) $history->progress));
                 @endphp
 
                 <x-web.home.drama-card

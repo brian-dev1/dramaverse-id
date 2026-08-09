@@ -22,7 +22,6 @@ class Episode extends Model
         'video_url',
         'embed_url',
         'thumbnail',
-        'duration',
         'is_vip',
         'views',
         'air_date',
@@ -33,7 +32,6 @@ class Episode extends Model
 
     protected $casts = [
         'episode_number' => 'integer',
-        'duration'       => 'integer',
         'views'          => 'integer',
         'is_vip'         => 'boolean',
         'air_date'       => 'datetime',
@@ -129,14 +127,5 @@ class Episode extends Model
             ->where('episode_number', '<', $this->episode_number)
             ->orderByDesc('episode_number')
             ->first();
-    }
-
-    /** Durasi dalam format mm:ss untuk ditampilkan. */
-    public function getDurationForHumansAttribute(): string
-    {
-        $minutes = intdiv($this->duration, 60);
-        $seconds = $this->duration % 60;
-
-        return sprintf('%02d:%02d', $minutes, $seconds);
     }
 }

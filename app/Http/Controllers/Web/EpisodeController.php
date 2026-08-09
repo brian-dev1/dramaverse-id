@@ -37,7 +37,7 @@ class EpisodeController extends Controller
         $data['episode']  = $episode;
         $data['episodes'] = $episode->drama
             ->episodes()
-            ->select(['id', 'drama_id', 'episode_number', 'title', 'duration', 'is_vip'])
+            ->select(['id', 'drama_id', 'episode_number', 'title', 'is_vip'])
             ->get();
 
         $episode->increment('views');

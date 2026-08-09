@@ -18,7 +18,7 @@ class DramaController extends Controller
             'genres:id,name,slug',
             'episodes' => fn ($q) => $q->select([
                 'id', 'drama_id', 'episode_number', 'title',
-                'duration', 'thumbnail', 'is_vip', 'air_date',
+                'thumbnail', 'is_vip', 'air_date',
             ]),
         ]);
 
@@ -26,13 +26,13 @@ class DramaController extends Controller
         $related = Drama::query()
             ->select([
                 'dramas.id', 'title', 'slug', 'poster', 'gradient', 'country_id',
-                'release_year', 'total_episode', 'status', 'rating', 'views', 'is_vip',
+                'total_episode', 'status', 'views', 'is_vip',
             ])
             ->with(['country:id,name,slug,flag_emoji'])
             ->published()
             ->whereKeyNot($drama->id)
             ->whereHas('genres', fn ($q) => $q->whereIn('genres.id', $drama->genres->pluck('id')))
-            ->orderByDesc('rating')
+            ->orderByDesc('views')
             ->take(12)
             ->get();
 

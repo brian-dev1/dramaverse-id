@@ -104,7 +104,6 @@
                         <span class="episode-title">{{ $episode->title ?: 'Episode '.$episode->episode_number }}</span>
                         <span class="episode-meta">
                             @if ($episode->is_vip)<span class="chip gold">VIP</span>@endif
-                            @if ($episode->duration)<span>{{ $episode->duration_for_humans }}</span>@endif
                         </span>
                     </a>
                 @endforeach

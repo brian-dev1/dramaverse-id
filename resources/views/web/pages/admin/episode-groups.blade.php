@@ -4,7 +4,7 @@
 
 @php
     /*
-    | Tabel ini sengaja meniru daftar Drama: poster, judul, negara, tahun,
+    | Tabel ini sengaja meniru daftar Drama: poster, judul, negara,
     | status. Menu Episode dan menu Drama menampilkan objek yang sama, jadi
     | menampilkannya dengan bentuk berbeda hanya membuat admin harus belajar
     | dua tata letak untuk satu daftar yang sama.
@@ -16,7 +16,6 @@
         'Poster' => 'poster',
         'Judul'  => 'title',
         'Negara' => 'country.name',
-        'Tahun'  => 'release_year',
     ];
 @endphp
 

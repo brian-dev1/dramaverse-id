@@ -8,8 +8,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
- * Halaman daftar katalog: trending, terbaru, rating tertinggi,
- * rilis baru, populer, dan VIP.
+ * Halaman daftar katalog: trending, terbaru, rilis baru, populer, dan VIP.
  *
  * Semua memakai satu view + satu komponen grid agar tidak ada duplikasi.
  */
@@ -32,15 +31,6 @@ class CatalogController extends Controller
             fn (Builder $q) => $q->latestRelease(),
             'Rilis Terbaru',
             'Episode dan judul yang baru saja tayang.',
-        );
-    }
-
-    public function topRated(): View
-    {
-        return $this->render(
-            fn (Builder $q) => $q->topRated(),
-            'Rating Tertinggi',
-            'Judul dengan penilaian terbaik dari penonton.',
         );
     }
 
@@ -82,7 +72,7 @@ class CatalogController extends Controller
         $query = Drama::query()
             ->select([
                 'id', 'title', 'slug', 'poster', 'gradient', 'country_id',
-                'release_year', 'total_episode', 'status', 'rating', 'views',
+                'total_episode', 'status', 'views',
                 'is_vip', 'published_at',
             ])
             ->with([

@@ -12,7 +12,7 @@ class WebSearchRepository
     private const PER_PAGE = 24;
 
     /**
-     * Pencarian drama dengan filter genre, negara, tahun, VIP, dan status.
+     * Pencarian drama dengan filter genre, negara, VIP, dan status.
      *
      * Menerima parameter `q` (dipakai UI) maupun `keyword` (kompatibilitas lama).
      */
@@ -23,8 +23,7 @@ class WebSearchRepository
         $query = Drama::query()
             ->select([
                 'id', 'title', 'slug', 'poster', 'gradient', 'country_id',
-                'release_year', 'total_episode', 'status', 'rating', 'views',
-                'is_vip', 'published_at',
+                'total_episode', 'status', 'views', 'is_vip', 'published_at',
             ])
             ->with([
                 'country:id,name,slug,flag_emoji',
@@ -56,11 +55,6 @@ class WebSearchRepository
             );
         }
 
-        // --- Tahun rilis ---
-        if ($request->filled('year')) {
-            $query->where('release_year', $request->integer('year'));
-        }
-
         // --- Status tayang ---
         if ($request->filled('status')) {
             $query->where('status', $request->string('status'));
@@ -73,7 +67,6 @@ class WebSearchRepository
 
         // --- Urutan ---
         match ($request->get('sort')) {
-            'rating'  => $query->orderByDesc('rating'),
             'popular' => $query->orderByDesc('views'),
             'oldest'  => $query->orderBy('published_at'),
             default   => $query->orderByDesc('published_at'),

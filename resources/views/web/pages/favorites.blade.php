@@ -13,7 +13,7 @@
         <x-web.home.empty-state
             title="Belum ada favorit"
             message="Tekan tombol favorit pada halaman drama untuk menyimpannya di sini."
-            :href="route('web.top-rated')" action="Lihat Rating Tertinggi" />
+            :href="route('web.popular')" action="Lihat Yang Populer" />
     @else
         <x-web.home.grid :dramas="$dramas" />
         <div class="section-pad pagination-wrap">{{ $dramas->links() }}</div>

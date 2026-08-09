@@ -41,9 +41,7 @@ class DramaController extends AdminCrudController
             'Poster'  => 'poster',
             'Judul'   => 'title',
             'Negara'  => 'country.name',
-            'Tahun'   => 'release_year',
             'Episode' => 'total_episode',
-            'Rating'  => 'rating',
             'Status'  => 'status',
             'Terbit'  => 'published_at',
         ];
@@ -51,7 +49,7 @@ class DramaController extends AdminCrudController
 
     protected function sortable(): array
     {
-        return ['title', 'release_year', 'total_episode', 'rating', 'views', 'published_at'];
+        return ['title', 'total_episode', 'views', 'published_at'];
     }
 
     protected function searchable(): array
@@ -119,16 +117,12 @@ class DramaController extends AdminCrudController
             'gradient'       => ['nullable', 'string', 'max:8'],
             'trailer_url'    => ['nullable', 'url', 'max:255'],
 
-            'release_year'   => ['nullable', 'integer', 'min:1950', 'max:'.(date('Y') + 5)],
             'total_episode'  => ['nullable', 'integer', 'min:0', 'max:9999'],
-            'duration'       => ['nullable', 'integer', 'min:0', 'max:600'],
             'status'         => ['required', Rule::in(['ongoing', 'completed', 'upcoming'])],
-            'rating'         => ['nullable', 'numeric', 'min:0', 'max:10'],
 
             'is_vip'         => ['boolean'],
             'is_featured'    => ['boolean'],
             'is_trending'    => ['boolean'],
-            'trending_score' => ['nullable', 'integer', 'min:0'],
 
             'published_at'   => ['nullable', 'date'],
         ];
@@ -159,7 +153,7 @@ class DramaController extends AdminCrudController
         | key-nya saat kosong: baris baru memakai default, baris lama
         | mempertahankan nilai sebelumnya.
         */
-        foreach (['rating', 'total_episode'] as $kolomBerdefault) {
+        foreach (['total_episode'] as $kolomBerdefault) {
             if (array_key_exists($kolomBerdefault, $data) && $data[$kolomBerdefault] === null) {
                 unset($data[$kolomBerdefault]);
             }

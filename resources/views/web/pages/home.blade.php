@@ -7,8 +7,7 @@
     // Katalog dianggap kosong bila tidak ada satu pun drama terbit.
     $catalogEmpty = $trending->isEmpty()
         && $latest->isEmpty()
-        && $popular->isEmpty()
-        && $topRated->isEmpty();
+        && $popular->isEmpty();
 @endphp
 
 @section('content')
@@ -31,12 +30,6 @@
         :dramas="$popular"
         title="Populer Minggu Ini"
         :href="route('web.popular')" />
-
-    <x-web.home.grid
-        :dramas="$topRated"
-        title="Rating Tertinggi"
-        variant="rated"
-        :href="route('web.top-rated')" />
 
     {{-- Taksonomi tetap ditampilkan walau katalog kosong: keduanya data nyata. --}}
     <x-web.home.genre :genres="$genres" />

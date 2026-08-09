@@ -133,7 +133,7 @@ class StatsService
     {
         return Cache::remember("admin:stats:top-drama:{$limit}", self::TTL, fn () =>
             Drama::query()
-                ->select(['id', 'title', 'slug', 'views', 'rating'])
+                ->select(['id', 'title', 'slug', 'views'])
                 ->withCount('watchHistories')
                 ->orderByDesc('views')
                 ->take($limit)

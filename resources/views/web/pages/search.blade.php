@@ -1,13 +1,13 @@
 @extends('web.layouts.app')
 
 @section('title', 'Pencarian')
-@section('description', 'Cari drama Asia berdasarkan judul, genre, negara, dan tahun.')
+@section('description', 'Cari drama Asia berdasarkan judul, genre, dan negara.')
 
 @section('content')
 
     <section class="page-head section-pad">
         <h1 class="page-title">Cari Drama</h1>
-        <p class="page-subtitle">Saring berdasarkan genre, negara, tahun, dan status.</p>
+        <p class="page-subtitle">Saring berdasarkan genre, negara, dan status.</p>
     </section>
 
     <section class="section section-pad">
@@ -33,13 +33,6 @@
                         {{ $country->name }}
                     </option>
                 @endforeach
-            </select>
-
-            <select name="year" class="search-select">
-                <option value="">Semua Tahun</option>
-                @for ($y = (int) date('Y'); $y >= 2010; $y--)
-                    <option value="{{ $y }}" @selected((int) request('year') === $y)>{{ $y }}</option>
-                @endfor
             </select>
 
             <select name="status" class="search-select">

@@ -30,8 +30,6 @@ class DramaResource extends JsonResource
 
             'genres' => $this->whenLoaded('genres', fn () => $this->genres->pluck('name')),
 
-            'release_year' => $this->release_year,
-
             'total_episode' => $this->total_episode,
 
             'status' => $this->status,

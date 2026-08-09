@@ -17,7 +17,6 @@ class EpisodeResource extends JsonResource
 
             'title' => $this->title,
 
-            'duration' => $this->duration,
 
             'thumbnail' => $this->thumbnail,
 

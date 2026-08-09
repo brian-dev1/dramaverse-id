@@ -105,10 +105,6 @@
             <section class="form-card">
                 <h2>Berlaku untuk semua rentang</h2>
 
-                <x-admin.field name="duration" label="Durasi (detik)" type="number"
-                               :value="old('duration')" min="0"
-                               hint="Boleh dikosongkan. Bisa diubah satu per satu nanti." />
-
                 <x-admin.field name="url_pattern" label="Pola URL video" :value="old('url_pattern')"
                                hint="Gunakan {n} untuk nomor, {nn} untuk dua digit. Contoh: https://cdn.contoh.com/judul/ep-{nn}.mp4" />
             </section>

@@ -18,8 +18,7 @@ class HomeRepository implements HomeRepositoryInterface
     /** Kolom yang dibutuhkan kartu drama — hindari SELECT *. */
     private const CARD_COLUMNS = [
         'id', 'title', 'slug', 'poster', 'gradient', 'country_id',
-        'release_year', 'total_episode', 'status', 'rating', 'views',
-        'is_vip', 'published_at',
+        'total_episode', 'status', 'views', 'is_vip', 'published_at',
     ];
 
     /**
@@ -32,7 +31,6 @@ class HomeRepository implements HomeRepositoryInterface
         'home:trending',
         'home:latest',
         'home:popular',
-        'home:top-rated',
     ];
 
     /**
@@ -57,7 +55,6 @@ class HomeRepository implements HomeRepositoryInterface
             'trending'         => $this->trending(),
             'latest'           => $this->latest(),
             'popular'          => $this->popular(),
-            'topRated'         => $this->topRated(),
             'genres'           => $this->genres(),
             'countries'        => $this->countries(),
             'continueWatching' => $this->continueWatching($userId),
@@ -112,15 +109,6 @@ class HomeRepository implements HomeRepositoryInterface
         );
     }
 
-    private function topRated()
-    {
-        return Cache::remember(
-            'home:top-rated',
-            now()->addMinutes(self::CACHE_TTL),
-            fn () => $this->cardQuery()->topRated()->take(12)->get()
-        );
-    }
-
     /*
     |--------------------------------------------------------------------------
     | Taksonomi
@@ -160,7 +148,7 @@ class HomeRepository implements HomeRepositoryInterface
         return WatchHistory::query()
             ->with([
                 'drama:id,title,slug,poster,gradient,total_episode',
-                'episode:id,drama_id,episode_number,title,duration',
+                'episode:id,drama_id,episode_number,title',
             ])
             ->where('user_id', $userId)
             ->where('completed', false)

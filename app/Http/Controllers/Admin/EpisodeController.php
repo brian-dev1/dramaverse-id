@@ -43,7 +43,6 @@ class EpisodeController extends AdminCrudController
             'Drama'   => 'drama.title',
             'Nomor'   => 'episode_number',
             'Judul'   => 'title',
-            'Durasi'  => 'duration',
             'Akses'   => 'is_vip',
             'Status'  => 'status',
             'Tayang'  => 'air_date',
@@ -52,7 +51,7 @@ class EpisodeController extends AdminCrudController
 
     protected function sortable(): array
     {
-        return ['episode_number', 'title', 'duration', 'views', 'air_date'];
+        return ['episode_number', 'title', 'views', 'air_date'];
     }
 
     protected function searchable(): array
@@ -158,7 +157,6 @@ class EpisodeController extends AdminCrudController
             'embed_url'      => ['nullable', 'url', 'max:500'],
             'thumbnail_file' => MediaService::rules(),
 
-            'duration'       => ['nullable', 'integer', 'min:0', 'max:86400'],
             'is_vip'         => ['boolean'],
 
             'air_date'       => ['nullable', 'date'],
@@ -190,12 +188,6 @@ class EpisodeController extends AdminCrudController
         }
 
         unset($data['thumbnail_file']);
-
-        // duration NOT NULL + default 0: field kosong mengirim null dan
-        // menabrak constraint. Buang key-nya agar default/nilai lama dipakai.
-        if (array_key_exists('duration', $data) && $data['duration'] === null) {
-            unset($data['duration']);
-        }
 
         return $data;
     }
@@ -295,7 +287,6 @@ class EpisodeController extends AdminCrudController
             'ranges.*.to'       => ['required', 'integer', 'min:1', 'max:9999'],
             'ranges.*.is_vip'   => ['nullable', 'boolean'],
             'ranges.*.status'   => ['required', 'in:draft,published'],
-            'duration'          => ['nullable', 'integer', 'min:0'],
             'url_pattern'       => ['nullable', 'string', 'max:500'],
         ], [
             'ranges.required' => 'Isi minimal satu rentang episode.',
@@ -350,7 +341,6 @@ class EpisodeController extends AdminCrudController
                         'title'          => 'Episode '.$number,
                         'slug'           => \Illuminate\Support\Str::slug($drama->slug.'-episode-'.$number),
                         'video_url'      => $this->expandPattern($data['url_pattern'] ?? null, $number),
-                        'duration'       => $data['duration'] ?? 0,
                         'is_vip'         => $vip,
                         'status'         => $status,
                         'published_at'   => $status === 'published' ? now() : null,

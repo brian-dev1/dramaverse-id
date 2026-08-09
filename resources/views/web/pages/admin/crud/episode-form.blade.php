@@ -39,9 +39,6 @@
                                hint="Bila diisi, akan diprioritaskan daripada URL video." />
 
                 <x-admin.image-field name="thumbnail_file" label="Thumbnail" :current="$record->thumbnail" />
-
-                <x-admin.field name="duration" label="Durasi (detik)" type="number"
-                               :value="$record->duration" min="0" />
             </section>
 
             <section class="form-card">

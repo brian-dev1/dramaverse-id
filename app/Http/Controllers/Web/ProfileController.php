@@ -21,7 +21,7 @@ class ProfileController extends Controller
         ];
 
         $continueWatching = $user->watchHistories()
-            ->with(['drama:id,title,slug,poster,gradient,total_episode', 'episode:id,drama_id,episode_number,duration'])
+            ->with(['drama:id,title,slug,poster,gradient,total_episode', 'episode:id,drama_id,episode_number'])
             ->where('completed', false)
             ->whereHas('drama')
             ->orderByDesc('last_watched_at')

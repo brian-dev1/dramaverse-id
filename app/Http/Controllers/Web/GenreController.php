@@ -28,7 +28,7 @@ class GenreController extends Controller
         $dramas = $genre->dramas()
             ->select([
                 'dramas.id', 'title', 'slug', 'poster', 'gradient', 'country_id',
-                'release_year', 'total_episode', 'status', 'rating', 'views',
+                'total_episode', 'status', 'views',
                 'is_vip', 'published_at',
             ])
             ->with(['country:id,name,slug,flag_emoji'])

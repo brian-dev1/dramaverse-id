@@ -46,16 +46,15 @@
             </div>
 
             <table class="data-table">
-                <thead><tr><th>Judul</th><th>Tontonan</th><th>Rating</th></tr></thead>
+                <thead><tr><th>Judul</th><th>Tontonan</th></tr></thead>
                 <tbody>
                     @forelse ($topDramas as $drama)
                         <tr>
                             <td>{{ $drama->title }}</td>
                             <td>{{ number_format($drama->views) }}</td>
-                            <td>{{ number_format((float) $drama->rating, 1) }}</td>
                         </tr>
                     @empty
-                        <tr><td colspan="3"><span class="cell-empty">Belum ada drama.</span></td></tr>
+                        <tr><td colspan="2"><span class="cell-empty">Belum ada drama.</span></td></tr>
                     @endforelse
                 </tbody>
             </table>

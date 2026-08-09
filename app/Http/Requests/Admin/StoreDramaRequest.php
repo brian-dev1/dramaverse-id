@@ -14,9 +14,9 @@ class StoreDramaRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        // rating & total_episode NOT NULL dengan default di database.
+        // total_episode NOT NULL dengan default di database.
         // Field kosong dari form mengirim null dan menabrak constraint.
-        foreach (['rating', 'total_episode'] as $kolomBerdefault) {
+        foreach (['total_episode'] as $kolomBerdefault) {
             if ($this->has($kolomBerdefault) && blank($this->input($kolomBerdefault))) {
                 $this->request->remove($kolomBerdefault);
             }
@@ -40,11 +40,8 @@ class StoreDramaRequest extends FormRequest
             'trailer_url'    => ['nullable', 'url', 'max:255'],
             'gradient'       => ['nullable', 'string', 'max:8'],
 
-            'release_year'   => ['nullable', 'integer', 'min:1950', 'max:'.(date('Y') + 5)],
             'total_episode'  => ['nullable', 'integer', 'min:0', 'max:9999'],
-            'duration'       => ['nullable', 'integer', 'min:0'],
             'status'         => ['required', Rule::in(['ongoing', 'completed', 'upcoming'])],
-            'rating'         => ['nullable', 'numeric', 'min:0', 'max:10'],
 
             'is_vip'         => ['boolean'],
             'is_featured'    => ['boolean'],

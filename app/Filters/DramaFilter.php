@@ -34,15 +34,6 @@ class DramaFilter
 
         }
 
-        if ($this->request->filled('year')) {
-
-            $query->where(
-                'release_year',
-                $this->request->integer('year')
-            );
-
-        }
-
         if ($this->request->filled('status')) {
 
             $query->where(

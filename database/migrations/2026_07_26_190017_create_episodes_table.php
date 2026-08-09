@@ -22,7 +22,6 @@ return new class extends Migration
             $table->string('video_url')->nullable();
             $table->string('embed_url')->nullable();
             $table->string('thumbnail')->nullable();
-            $table->unsignedInteger('duration')->default(0); // detik
 
             // --- Akses & statistik ---
             $table->boolean('is_vip')->default(false);

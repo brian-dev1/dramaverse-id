@@ -76,7 +76,7 @@ class DramaSeeder extends Seeder
         $genres    = Genre::pluck('id', 'name');
 
         foreach (self::CATALOG as $i => $row) {
-            [$title, $country, $genreNames, $year, $episodes, $rating, $gradient, $isVip, $isTrending, $isNew, $synopsis] = $row;
+            [$title, $country, $genreNames, , $episodes, , $gradient, $isVip, $isTrending, $isNew, $synopsis] = $row;
 
             $drama = Drama::updateOrCreate(
                 ['slug' => Str::slug($title)],
@@ -85,16 +85,12 @@ class DramaSeeder extends Seeder
                     'synopsis'       => $synopsis,
                     'gradient'       => $gradient,
                     'country_id'     => $countries[$country] ?? null,
-                    'release_year'   => $year,
                     'total_episode'  => $episodes,
-                    'duration'       => 60,
                     'status'         => $isNew ? 'ongoing' : 'completed',
-                    'rating'         => $rating,
                     'views'          => random_int(1_200, 480_000),
                     'is_vip'         => $isVip,
                     'is_featured'    => $i < 5,
                     'is_trending'    => $isTrending,
-                    'trending_score' => $isTrending ? random_int(700, 1000) : 0,
                     'published_at'   => $isNew ? now()->subDays($i) : now()->subMonths($i % 18 + 1),
                 ]
             );
@@ -118,7 +114,6 @@ class DramaSeeder extends Seeder
                     'title'        => 'Episode '.$n,
                     'slug'         => $drama->slug.'-episode-'.$n,
                     'video_url'    => 'https://cdn.example.com/'.$drama->slug.'/ep-'.$n.'.mp4',
-                    'duration'     => random_int(2400, 4200),
                     // Episode 1-2 selalu gratis sebagai pemikat.
                     'is_vip'       => $drama->is_vip && $n > 2,
                     'views'        => random_int(100, 60_000),
