@@ -5,7 +5,7 @@
 @section('content')
 
     <style>
-        .inbox-wrap { max-width: 880px; }
+        .inbox-wrap { max-width: 920px; }
 
         .inbox-intro {
             margin: 0 0 18px;
@@ -32,6 +32,7 @@
             border: 1px solid rgba(255,255,255,.10);
             border-radius: 10px;
             padding: 14px 16px;
+            background: rgba(255,255,255,.015);
         }
 
         .inbox-head {
@@ -120,7 +121,19 @@
             font-size: 12px;
         }
 
-        .inbox-pager { margin-top: 18px; }
+        .inbox-key {
+            margin: 6px 0 0;
+            font-size: 11.5px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            opacity: .4;
+            word-break: break-all;
+        }
+
+        .inbox-pager {
+            margin-top: 18px;
+            display: flex;
+            justify-content: center;
+        }
     </style>
 
     <div class="inbox-wrap">
@@ -158,8 +171,9 @@
                         <span>{{ $video->provider?->name ?? 'Provider tidak ditemukan' }}</span>
                         <span>{{ \App\Support\Waktu::ringkas($video->uploaded_at) }}</span>
                         <span>Checksum {{ $video->checksum ? 'tersedia' : 'belum ada' }}</span>
-                        <span><code>{{ $video->object_key }}</code></span>
                     </p>
+
+                    <p class="inbox-key">{{ $video->object_key }}</p>
 
                     @if ($video->status === 'assigned' && $video->episode)
 

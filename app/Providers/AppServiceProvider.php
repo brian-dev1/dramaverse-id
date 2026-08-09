@@ -239,8 +239,9 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(Failed::class, [LogAuthenticationEvents::class, 'handleFailed']);
         Event::listen(Lockout::class, [LogAuthenticationEvents::class, 'handleLockout']);
 
-        // Pagination memakai markup Tailwind agar seragam dengan tema.
-        Paginator::useTailwind();
+        // Pagination memakai markup minimalis milik tema sendiri.
+        Paginator::defaultView('vendor.pagination.minimal');
+        Paginator::defaultSimpleView('vendor.pagination.minimal-simple');
 
         $this->registerRateLimiters();
     }

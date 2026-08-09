@@ -1,0 +1,59 @@
+/* --------------------------------------------------------------------------
+| Paginasi minimalis (dipakai admin & situs publik)
+-------------------------------------------------------------------------- */
+
+.pager{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    margin:0;
+    padding:0;
+    list-style:none;
+}
+
+.pager-btn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-width:34px;
+    height:34px;
+    padding:0 10px;
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:8px;
+    font-size:13px;
+    line-height:1;
+    font-variant-numeric:tabular-nums;
+    color:inherit;
+    text-decoration:none;
+    background:transparent;
+    transition:background .15s ease, border-color .15s ease, opacity .15s ease;
+}
+
+.pager-btn:hover{
+    border-color:rgba(255,255,255,.28);
+    background:rgba(255,255,255,.06);
+}
+
+.pager-btn.is-active{
+    border-color:transparent;
+    background:rgba(255,255,255,.14);
+    font-weight:600;
+    cursor:default;
+}
+
+.pager-btn.is-disabled{
+    opacity:.32;
+    pointer-events:none;
+}
+
+.pager-gap{
+    min-width:20px;
+    text-align:center;
+    font-size:13px;
+    opacity:.45;
+}
+
+/* Bungkus paginasi lama tetap rapi. */
+.pagination-wrap{ display:flex; justify-content:center; }
