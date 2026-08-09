@@ -2,46 +2,65 @@
 |--------------------------------------------------------------------------
 | DramaVerse ID — Lapisan Redesign 2026
 |--------------------------------------------------------------------------
-| Dimuat PALING AKHIR untuk sisi web (bukan admin).
-| Tujuan: tampilan mirip aplikasi drama pendek modern — gelap, poster
-| dominan, judul di bawah kartu, bottom-nav mengambang.
+| Dimuat PALING AKHIR. Semua selector di-scope ke body:not(.admin-body)
+| sehingga panel admin sama sekali tidak tersentuh.
 |
-| PENTING: file ini TIDAK menyentuh apa pun di dalam .admin-shell / .admin-*.
-| Semua selector di bawah sengaja tidak berlaku untuk panel admin.
+| Prinsip: desktop-first yang benar (grid lebar, navigasi atas terlihat),
+| lalu diciutkan ke tablet & ponsel. Kartu memakai namespace .dv-* supaya
+| tidak bertabrakan dengan aturan kartu lama.
 |--------------------------------------------------------------------------
 */
 
 /* ==========================================================================
-   1. Token tambahan
-   ========================================================================== */
-
-:root {
-    --dv-bg:            #0A0710;
-    --dv-bg-2:          #120C1B;
-    --dv-glass:         rgba(22, 16, 30, .72);
-    --dv-glass-brd:     rgba(255, 255, 255, .07);
-    --dv-accent:        #FF6A1A;
-    --dv-accent-2:      #FFB238;
-    --dv-accent-soft:   rgba(255, 106, 26, .16);
-    --dv-text:          #F5F0FA;
-    --dv-text-dim:      #A79BB8;
-    --dv-r-card:        14px;
-    --dv-r-pill:        999px;
-    --dv-shadow:        0 10px 30px -12px rgba(0, 0, 0, .8);
-    --dv-nav-h:         64px;
-}
-
-/* ==========================================================================
-   2. Latar — gradien murni (0 request jaringan = jauh lebih ringan
-      daripada foto latar). Aurora halus + grain SVG inline.
+   1. Token
    ========================================================================== */
 
 body:not(.admin-body) {
+    --dv-max:        1440px;
+    --dv-gut:        clamp(16px, 3.2vw, 40px);
+
+    --dv-bg:         #08060D;
+    --dv-glass:      rgba(20, 15, 28, .78);
+    --dv-line:       rgba(255, 255, 255, .08);
+
+    --dv-accent:     #FF6A1A;
+    --dv-accent-2:   #FFB84D;
+    --dv-soft:       rgba(255, 106, 26, .15);
+
+    --dv-text:       #F6F2FB;
+    --dv-dim:        #A79BB8;
+
+    --dv-r:          14px;
+    --dv-pill:       999px;
+    --dv-sh:         0 12px 28px -14px rgba(0, 0, 0, .9);
+
+    /* --- Tipografi baru --- */
+    --font-display:  "Outfit", ui-sans-serif, system-ui, sans-serif;
+    --font-body:     "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+    --font-mono:     "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+
+    font-family: var(--font-body);
     background: var(--dv-bg);
     color: var(--dv-text);
-    /* Cegah scroll horizontal akibat rail */
     overflow-x: hidden;
 }
+
+body:not(.admin-body) .card-title,
+body:not(.admin-body) .drama-content .card-title,
+body:not(.admin-body) .section-title,
+body:not(.admin-body) .page-title,
+body:not(.admin-body) .brand,
+body:not(.admin-body) .logo,
+body:not(.admin-body) h1,
+body:not(.admin-body) h2,
+body:not(.admin-body) h3 {
+    font-family: var(--font-display);
+    letter-spacing: -.01em;
+}
+
+/* ==========================================================================
+   2. Latar — gradien murni, nol permintaan jaringan
+   ========================================================================== */
 
 body:not(.admin-body)::before {
     content: "";
@@ -50,98 +69,124 @@ body:not(.admin-body)::before {
     z-index: -2;
     pointer-events: none;
     background:
-        radial-gradient(900px 620px at 12% -8%,  rgba(255, 106, 26, .16), transparent 62%),
-        radial-gradient(760px 560px at 88% 4%,   rgba(124, 58, 237, .18), transparent 60%),
-        radial-gradient(1100px 800px at 50% 108%, rgba(200, 16, 46, .12), transparent 66%),
-        linear-gradient(180deg, #0D0812 0%, #0A0710 46%, #080510 100%);
+        radial-gradient(900px 620px at 10% -10%,  rgba(255, 106, 26, .15), transparent 62%),
+        radial-gradient(780px 560px at 92% 2%,    rgba(124, 58, 237, .17), transparent 60%),
+        radial-gradient(1200px 820px at 50% 110%, rgba(200, 16, 46, .11), transparent 66%),
+        linear-gradient(180deg, #0C0813 0%, #08060D 48%, #070510 100%);
 }
 
-/* Grain: data-URI, tidak ada permintaan HTTP. */
 body:not(.admin-body) .grain {
     position: fixed;
     inset: 0;
     z-index: -1;
     pointer-events: none;
-    opacity: .045;
+    opacity: .04;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
 /* ==========================================================================
-   3. Navbar — kaca mengambang, pencarian di tengah
+   3. Lebar halaman
+   ========================================================================== */
+
+body:not(.admin-body) .section,
+body:not(.admin-body) .wrap,
+body:not(.admin-body) .page-head {
+    max-width: var(--dv-max);
+    margin-inline: auto;
+    padding-top: 0;
+}
+
+body:not(.admin-body) .section-pad {
+    padding-left: var(--dv-gut);
+    padding-right: var(--dv-gut);
+}
+
+body:not(.admin-body) .section {
+    padding-block: 22px;
+    content-visibility: auto;
+    contain-intrinsic-size: auto 420px;
+}
+
+body:not(.admin-body) main { padding-bottom: 40px; }
+
+/* ==========================================================================
+   4. Navbar — satu baris di desktop, dua baris di ponsel
    ========================================================================== */
 
 body:not(.admin-body) .navbar {
     position: sticky;
     top: 0;
     z-index: 60;
-    background: linear-gradient(180deg, rgba(10, 7, 16, .94), rgba(10, 7, 16, .72));
+    background: linear-gradient(180deg, rgba(8, 6, 13, .95), rgba(8, 6, 13, .74));
     backdrop-filter: blur(18px) saturate(150%);
     -webkit-backdrop-filter: blur(18px) saturate(150%);
-    border-bottom: 1px solid var(--dv-glass-brd);
-    padding: 10px 0;
+    border-bottom: 1px solid var(--dv-line);
 }
 
 body:not(.admin-body) .navbar-inner {
     display: flex;
     align-items: center;
-    gap: 14px;
-    width: min(1240px, 100% - 28px);
+    gap: 20px;
+    max-width: var(--dv-max);
     margin-inline: auto;
-    padding: 0;
+    padding: 12px var(--dv-gut);
 }
 
 body:not(.admin-body) .nav-links {
     display: flex;
-    gap: 4px;
     align-items: center;
+    gap: 2px;
+    flex: none;
 }
 
 body:not(.admin-body) .nav-links a {
-    padding: 8px 14px;
-    border-radius: var(--dv-r-pill);
+    padding: 8px 15px;
+    border-radius: var(--dv-pill);
+    font-family: var(--font-body);
     font-size: 14px;
     font-weight: 600;
-    color: var(--dv-text-dim);
-    letter-spacing: .1px;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--dv-dim);
+    white-space: nowrap;
     transition: color .18s ease, background-color .18s ease;
 }
 
-body:not(.admin-body) .nav-links a:hover { color: var(--dv-text); background: rgba(255, 255, 255, .06); }
+body:not(.admin-body) .nav-links a:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, .07);
+}
 
 body:not(.admin-body) .nav-links a.active {
     color: #fff;
-    background: linear-gradient(135deg, var(--dv-accent), #FF9040);
+    background: linear-gradient(135deg, var(--dv-accent), #FF9445);
     box-shadow: 0 6px 18px -8px var(--dv-accent);
 }
 
-/* --- Kotak pencarian tengah --- */
+/* --- Pencarian --- */
 
 body:not(.admin-body) .nav-search {
     flex: 1 1 auto;
-    max-width: 460px;
+    min-width: 0;
+    max-width: 420px;
     margin-inline: auto;
 }
 
-body:not(.admin-body) .nav-search form,
-body:not(.admin-body) .nav-search .search-pill {
+body:not(.admin-body) .nav-search form {
     display: flex;
     align-items: center;
     gap: 10px;
-    width: 100%;
     height: 42px;
     padding: 0 16px;
-    border-radius: var(--dv-r-pill);
-    background: rgba(255, 255, 255, .055);
-    border: 1px solid var(--dv-glass-brd);
-    color: var(--dv-text-dim);
-    font-size: 14px;
-    transition: border-color .2s ease, background-color .2s ease;
+    border-radius: var(--dv-pill);
+    background: rgba(255, 255, 255, .06);
+    border: 1px solid var(--dv-line);
+    transition: border-color .2s ease, box-shadow .2s ease;
 }
 
 body:not(.admin-body) .nav-search form:focus-within {
-    border-color: rgba(255, 106, 26, .5);
-    background: rgba(255, 255, 255, .08);
-    box-shadow: 0 0 0 4px var(--dv-accent-soft);
+    border-color: rgba(255, 106, 26, .55);
+    box-shadow: 0 0 0 4px var(--dv-soft);
 }
 
 body:not(.admin-body) .nav-search input {
@@ -151,10 +196,12 @@ body:not(.admin-body) .nav-search input {
     border: 0;
     outline: 0;
     color: var(--dv-text);
-    font: inherit;
+    font-family: var(--font-body);
+    font-size: 14px;
 }
 
-body:not(.admin-body) .nav-search input::placeholder { color: var(--dv-text-dim); }
+body:not(.admin-body) .nav-search input::placeholder { color: var(--dv-dim); }
+body:not(.admin-body) .nav-search input::-webkit-search-cancel-button { filter: invert(1); opacity: .5; }
 body:not(.admin-body) .nav-search svg { color: var(--dv-accent); flex: none; }
 
 body:not(.admin-body) .nav-right {
@@ -162,6 +209,7 @@ body:not(.admin-body) .nav-right {
     align-items: center;
     gap: 8px;
     flex: none;
+    margin-left: 0;
 }
 
 body:not(.admin-body) .icon-btn,
@@ -172,42 +220,45 @@ body:not(.admin-body) .avatar {
     height: 38px;
     border-radius: 50%;
     background: rgba(255, 255, 255, .06);
-    border: 1px solid var(--dv-glass-brd);
+    border: 1px solid var(--dv-line);
     color: var(--dv-text);
+    flex: none;
     transition: transform .18s ease, background-color .18s ease;
 }
 
 body:not(.admin-body) .icon-btn:hover,
-body:not(.admin-body) .avatar:hover { transform: translateY(-1px); background: rgba(255, 255, 255, .12); }
+body:not(.admin-body) .avatar:hover { transform: translateY(-1px); background: rgba(255, 255, 255, .13); }
 
 body:not(.admin-body) .avatar {
     background: linear-gradient(135deg, var(--dv-accent), var(--dv-accent-2));
-    color: #17100A;
+    color: #180F07;
     font-weight: 800;
     font-size: 14px;
     border: 0;
 }
 
-/* ==========================================================================
-   4. Judul bagian — batang aksen di kiri
-   ========================================================================== */
-
-body:not(.admin-body) .section {
-    width: min(1240px, 100% - 28px);
-    margin-inline: auto;
-    /* Optimasi render: browser melewati bagian yang belum terlihat. */
-    content-visibility: auto;
-    contain-intrinsic-size: auto 460px;
+body:not(.admin-body) .nav-right .btn-primary {
+    border-radius: var(--dv-pill);
+    padding: 9px 18px;
+    font-family: var(--font-body);
+    font-size: 13.5px;
+    font-weight: 700;
+    white-space: nowrap;
+    background: linear-gradient(135deg, var(--dv-accent), #FF9445);
+    color: #fff;
+    border: 0;
 }
 
-body:not(.admin-body) .section-pad { padding-block: 26px; }
+/* ==========================================================================
+   5. Judul bagian
+   ========================================================================== */
 
 body:not(.admin-body) .section-head {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 14px;
+    gap: 14px;
+    margin-bottom: 16px;
 }
 
 body:not(.admin-body) .section-title {
@@ -215,11 +266,9 @@ body:not(.admin-body) .section-title {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding-left: 14px;
-    font-family: var(--font-body, inherit);
-    font-size: clamp(17px, 2.4vw, 21px);
-    font-weight: 800;
-    letter-spacing: -.2px;
+    padding-left: 15px;
+    font-size: clamp(18px, 2.2vw, 24px);
+    font-weight: 700;
     color: #fff;
     text-transform: none;
 }
@@ -229,9 +278,9 @@ body:not(.admin-body) .section-title::before {
     position: absolute;
     left: 0;
     top: 50%;
-    transform: translateY(-50%);
+    translate: 0 -50%;
     width: 4px;
-    height: 20px;
+    height: 1.05em;
     border-radius: 4px;
     background: linear-gradient(180deg, var(--dv-accent), var(--dv-accent-2));
 }
@@ -241,284 +290,302 @@ body:not(.admin-body) .section:nth-of-type(even) .section-title::before {
 }
 
 body:not(.admin-body) .section-title .count {
+    font-family: var(--font-body);
     font-size: 12px;
     font-weight: 700;
     color: var(--dv-accent-2);
-    background: var(--dv-accent-soft);
-    padding: 3px 9px;
-    border-radius: var(--dv-r-pill);
+    background: var(--dv-soft);
+    padding: 3px 10px;
+    border-radius: var(--dv-pill);
 }
 
 body:not(.admin-body) .see-all {
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--dv-text-dim);
-    padding: 6px 12px;
-    border-radius: var(--dv-r-pill);
+    padding: 7px 14px;
+    border-radius: var(--dv-pill);
     background: rgba(255, 255, 255, .05);
+    border: 1px solid var(--dv-line);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--dv-dim);
+    white-space: nowrap;
     transition: color .18s ease, background-color .18s ease;
 }
 
-body:not(.admin-body) .see-all:hover { color: #fff; background: rgba(255, 255, 255, .1); }
+body:not(.admin-body) .see-all:hover { color: #fff; background: rgba(255, 255, 255, .11); }
 
 /* ==========================================================================
-   5. Kartu drama — poster 2:3, judul di BAWAH kartu
+   6. Tata letak grid & rail
    ========================================================================== */
 
 body:not(.admin-body) .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(152px, 1fr));
-    gap: 18px 14px;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: 26px 18px;
+    align-items: start;
 }
 
 body:not(.admin-body) .rail {
-    display: grid;
-    grid-auto-flow: column;
-    grid-auto-columns: 152px;
-    gap: 14px;
+    display: flex;
+    gap: 18px;
     overflow-x: auto;
+    padding-bottom: 8px;
     scroll-snap-type: x proximity;
-    padding-bottom: 6px;
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
 }
 
 body:not(.admin-body) .rail::-webkit-scrollbar { display: none; }
-body:not(.admin-body) .rail > * { scroll-snap-align: start; }
 
-body:not(.admin-body) .drama-card {
-    position: relative;
-    display: block;
-    background: none;
-    border: 0;
-    border-radius: 0;
-    overflow: visible;
-    aspect-ratio: auto;
-    height: auto;
-    box-shadow: none;
-    transition: transform .28s cubic-bezier(.2, .8, .2, 1);
-    will-change: transform;
+body:not(.admin-body) .rail > .dv-card {
+    flex: 0 0 170px;
+    scroll-snap-align: start;
 }
 
-body:not(.admin-body) .drama-card:hover { transform: translateY(-5px); }
+/* ==========================================================================
+   7. Kartu drama (.dv-*)
+   ========================================================================== */
 
-/* Poster jadi kotak berbingkai */
-body:not(.admin-body) .drama-card .drama-poster-img,
-body:not(.admin-body) .drama-card > img {
-    position: relative;
-    display: block;
-    width: 100%;
-    aspect-ratio: 2 / 3;
-    object-fit: cover;
-    border-radius: var(--dv-r-card);
-    background: linear-gradient(145deg, #1C1526, #120D1A);
-    box-shadow: var(--dv-shadow);
-    transition: box-shadow .28s ease, filter .28s ease;
-}
-
-body:not(.admin-body) .drama-card:hover .drama-poster-img {
-    box-shadow: 0 16px 38px -14px rgba(255, 106, 26, .55), var(--dv-shadow);
-}
-
-/* Lapisan konten: badge di atas poster, judul jatuh ke bawah poster */
-body:not(.admin-body) .drama-poster {
-    position: absolute;
-    inset: 0;
+body:not(.admin-body) .dv-card {
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
-    padding: 8px;
-    border-radius: var(--dv-r-card);
-    background: none;
+    gap: 9px;
+    min-width: 0;
+    color: inherit;
+    text-decoration: none;
+}
+
+body:not(.admin-body) .dv-poster {
+    position: relative;
+    aspect-ratio: 2 / 3;
+    border-radius: var(--dv-r);
+    overflow: hidden;
+    box-shadow: var(--dv-sh);
+    isolation: isolate;
+    transition: transform .3s cubic-bezier(.2, .8, .2, 1), box-shadow .3s ease;
+}
+
+body:not(.admin-body) .dv-poster img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+body:not(.admin-body) .dv-shade {
+    position: absolute;
+    inset: auto 0 0 0;
+    height: 42%;
+    background: linear-gradient(180deg, transparent, rgba(5, 3, 10, .78));
     pointer-events: none;
 }
 
-body:not(.admin-body) .drama-poster::after {
-    content: "";
-    position: absolute;
-    inset: auto 0 0 0;
-    height: 45%;
-    border-radius: 0 0 var(--dv-r-card) var(--dv-r-card);
-    background: linear-gradient(180deg, transparent, rgba(6, 4, 10, .85));
-    opacity: .9;
+body:not(.admin-body) .dv-card:hover .dv-poster {
+    transform: translateY(-5px);
+    box-shadow: 0 18px 36px -16px rgba(255, 106, 26, .6), var(--dv-sh);
 }
 
-body:not(.admin-body) .card-top {
-    position: relative;
-    z-index: 2;
+body:not(.admin-body) .dv-tags {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    right: 8px;
     display: flex;
     gap: 5px;
     flex-wrap: wrap;
 }
 
-body:not(.admin-body) .card-badge {
+body:not(.admin-body) .dv-tag {
     padding: 3px 8px;
     border-radius: 7px;
     font-size: 10px;
     font-weight: 800;
     letter-spacing: .4px;
+    line-height: 1.5;
     color: #fff;
-    background: rgba(10, 7, 16, .72);
+    background: rgba(8, 6, 13, .74);
+    border: 1px solid rgba(255, 255, 255, .14);
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
-    border: 1px solid rgba(255, 255, 255, .12);
 }
 
-body:not(.admin-body) .drama-card .card-badge:last-child:not(:first-child),
-body:not(.admin-body) .card-badge:only-child {
-    /* biarkan default */
-}
-
-/* Badge VIP diberi warna emas */
-body:not(.admin-body) .card-top .card-badge:last-child {
+body:not(.admin-body) .dv-tag-new { background: linear-gradient(135deg, #10B981, #059669); border-color: transparent; }
+body:not(.admin-body) .dv-tag-top { background: linear-gradient(135deg, #6366F1, #8B5CF6); border-color: transparent; }
+body:not(.admin-body) .dv-tag-vip {
     background: linear-gradient(135deg, var(--dv-accent-2), #FF8A3D);
     color: #1A1006;
     border-color: transparent;
+    margin-left: auto;
 }
 
-body:not(.admin-body) .card-top .card-badge:first-child {
-    background: rgba(10, 7, 16, .72);
-    color: #fff;
-    border-color: rgba(255, 255, 255, .12);
-}
-
-body:not(.admin-body) .card-rank {
-    position: relative;
-    z-index: 2;
-    font-family: var(--font-display, inherit);
-    font-size: 30px;
-    line-height: 1;
-    font-weight: 900;
-    color: #fff;
-    text-shadow: 0 2px 12px rgba(0, 0, 0, .9);
-    -webkit-text-stroke: 1px rgba(255, 106, 26, .85);
-}
-
-body:not(.admin-body) .drama-content {
-    position: relative;
-    z-index: 2;
-}
-
-/* Judul dipindah ke bawah poster (di luar kotak) */
-body:not(.admin-body) .drama-card .card-title {
+body:not(.admin-body) .dv-rank {
     position: absolute;
-    top: calc(100% + 8px);
-    left: 0;
-    right: 0;
-    font-size: 13px;
-    font-weight: 700;
-    line-height: 1.32;
-    color: #EDE7F5;
-    text-shadow: none;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
+    left: 8px;
+    bottom: 8px;
+    font-family: var(--font-display);
+    font-size: 34px;
+    font-weight: 800;
+    line-height: .85;
+    color: rgba(255, 255, 255, .96);
+    text-shadow: 0 3px 14px rgba(0, 0, 0, .95);
 }
 
-body:not(.admin-body) .drama-card:hover .card-title { color: var(--dv-accent-2); }
-
-body:not(.admin-body) .drama-card .card-sub {
-    font-size: 11px;
-    font-weight: 600;
-    color: rgba(255, 255, 255, .72);
-    padding: 0 2px 2px;
+body:not(.admin-body) .dv-play {
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    width: 46px;
+    height: 46px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    color: #fff;
+    background: rgba(255, 106, 26, .92);
+    box-shadow: 0 8px 22px -8px rgba(0, 0, 0, .9);
+    opacity: 0;
+    scale: .82;
+    transition: opacity .22s ease, scale .22s ease;
+    pointer-events: none;
 }
 
-/* Ruang untuk judul di bawah */
-body:not(.admin-body) .grid > .drama-card,
-body:not(.admin-body) .rail > .drama-card { margin-bottom: 42px; }
+body:not(.admin-body) .dv-card:hover .dv-play { opacity: 1; scale: 1; }
 
-body:not(.admin-body) .grid { align-items: start; }
-
-body:not(.admin-body) .card-progress {
+body:not(.admin-body) .dv-bar {
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
     height: 3px;
     border-radius: 3px;
-    background: rgba(255, 255, 255, .22);
+    background: rgba(255, 255, 255, .28);
     overflow: hidden;
-    margin-top: 4px;
 }
 
-body:not(.admin-body) .card-progress i {
+body:not(.admin-body) .dv-bar i {
     display: block;
     height: 100%;
     background: linear-gradient(90deg, var(--dv-accent), var(--dv-accent-2));
 }
 
-/* ==========================================================================
-   6. Hero
-   ========================================================================== */
+body:not(.admin-body) .dv-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
 
-body:not(.admin-body) .hero {
-    width: min(1240px, 100% - 28px);
-    margin: 18px auto 0;
-    border-radius: 22px;
+body:not(.admin-body) .dv-title {
+    font-family: var(--font-body);
+    font-size: 13.5px;
+    font-weight: 700;
+    line-height: 1.35;
+    color: #ECE6F5;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
     overflow: hidden;
-    box-shadow: 0 24px 60px -30px rgba(0, 0, 0, .95);
-    border: 1px solid var(--dv-glass-brd);
+    transition: color .18s ease;
+}
+
+body:not(.admin-body) .dv-card:hover .dv-title { color: var(--dv-accent-2); }
+
+body:not(.admin-body) .dv-sub {
+    font-size: 11.5px;
+    font-weight: 500;
+    color: var(--dv-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+body:not(.admin-body) .dv-sub:empty { display: none; }
+
+/* ==========================================================================
+   8. Hero — dibiarkan lebar penuh (aturan vintage.css memakai !important)
+   ========================================================================== */
+
+body:not(.admin-body) .hero-frame::after {
+    content: "";
+    position: absolute;
+    inset: auto 0 0 0;
+    height: 140px;
+    pointer-events: none;
+    background: linear-gradient(180deg, transparent, var(--dv-bg));
 }
 
 /* ==========================================================================
-   7. Bottom nav mengambang (mobile)
+   9. Bottom nav mengambang — HANYA ponsel/tablet kecil
    ========================================================================== */
 
-body:not(.admin-body) .mobile-nav {
-    position: fixed;
-    left: 50%;
-    bottom: max(14px, env(safe-area-inset-bottom));
-    transform: translateX(-50%);
-    z-index: 70;
-    display: none;
-    align-items: center;
-    gap: 4px;
-    padding: 7px;
-    border-radius: var(--dv-r-pill);
-    background: rgba(18, 12, 26, .82);
-    backdrop-filter: blur(20px) saturate(160%);
-    -webkit-backdrop-filter: blur(20px) saturate(160%);
-    border: 1px solid var(--dv-glass-brd);
-    box-shadow: 0 14px 40px -14px rgba(0, 0, 0, .95);
-    width: auto;
-    max-width: calc(100% - 24px);
-}
-
-body:not(.admin-body) .mobile-nav a {
-    display: grid;
-    place-items: center;
-    width: 46px;
-    height: 46px;
-    border-radius: 50%;
-    color: var(--dv-text-dim);
-    /* Label teks disembunyikan, ikon tetap terbaca screen-reader lewat aria */
-    font-size: 0;
-    transition: color .2s ease, background-color .2s ease, transform .2s ease;
-}
-
-body:not(.admin-body) .mobile-nav a svg { width: 21px; height: 21px; }
-body:not(.admin-body) .mobile-nav a:hover { color: #fff; }
-
-body:not(.admin-body) .mobile-nav a.active {
-    color: #fff;
-    background: linear-gradient(135deg, var(--dv-accent), #FF9040);
-    box-shadow: 0 8px 20px -8px var(--dv-accent);
-    transform: translateY(-1px);
-}
+body:not(.admin-body) .mobile-nav { display: none; }
 
 /* ==========================================================================
-   8. Responsif
+   10. Responsif
    ========================================================================== */
 
-@media (max-width: 1024px) {
+/* Tablet lebar */
+@media (max-width: 1100px) {
+    body:not(.admin-body) .nav-search { max-width: 320px; }
+    body:not(.admin-body) .nav-links a { padding: 8px 11px; font-size: 13.5px; }
+    body:not(.admin-body) .navbar-inner { gap: 12px; }
+    body:not(.admin-body) .grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+    body:not(.admin-body) .rail > .dv-card { flex-basis: 150px; }
+}
+
+/* Tablet — menu atas disembunyikan, bottom-nav muncul */
+@media (max-width: 900px) {
     body:not(.admin-body) .nav-links { display: none; }
     body:not(.admin-body) .nav-search { max-width: none; }
+
+    body:not(.admin-body) .mobile-nav {
+        position: fixed;
+        left: 50%;
+        bottom: max(14px, env(safe-area-inset-bottom));
+        translate: -50% 0;
+        z-index: 70;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        width: auto;
+        max-width: calc(100% - 28px);
+        padding: 7px;
+        border-radius: var(--dv-pill);
+        background: rgba(18, 13, 26, .86);
+        backdrop-filter: blur(20px) saturate(160%);
+        -webkit-backdrop-filter: blur(20px) saturate(160%);
+        border: 1px solid var(--dv-line);
+        box-shadow: 0 16px 40px -14px rgba(0, 0, 0, .95);
+    }
+
+    body:not(.admin-body) .mobile-nav a {
+        display: grid;
+        place-items: center;
+        width: 46px;
+        height: 46px;
+        border-radius: 50%;
+        color: var(--dv-dim);
+        font-size: 0;          /* label disembunyikan, ikon tetap */
+        transition: color .2s ease, background-color .2s ease;
+    }
+
+    body:not(.admin-body) .mobile-nav a svg { width: 21px; height: 21px; }
+    body:not(.admin-body) .mobile-nav a:hover { color: #fff; }
+
+    body:not(.admin-body) .mobile-nav a.active {
+        color: #fff;
+        background: linear-gradient(135deg, var(--dv-accent), #FF9445);
+        box-shadow: 0 8px 20px -8px var(--dv-accent);
+    }
+
+    body:not(.admin-body) main { padding-bottom: 96px; }
 }
 
-@media (max-width: 720px) {
-    body:not(.admin-body) .navbar { padding: 10px 0 12px; }
-
+/* Ponsel */
+@media (max-width: 640px) {
     body:not(.admin-body) .navbar-inner {
         display: grid;
         grid-template-columns: 1fr auto;
@@ -526,44 +593,36 @@ body:not(.admin-body) .mobile-nav a.active {
             "brand actions"
             "search search";
         gap: 10px;
-        width: calc(100% - 24px);
+        padding: 10px var(--dv-gut) 12px;
     }
 
-    body:not(.admin-body) .navbar-inner > .brand,
-    body:not(.admin-body) .navbar-inner > a:first-child { grid-area: brand; justify-self: start; }
+    body:not(.admin-body) .navbar-inner > :first-child { grid-area: brand; justify-self: start; }
     body:not(.admin-body) .nav-right  { grid-area: actions; }
-    body:not(.admin-body) .nav-search { grid-area: search; max-width: none; margin: 0; }
+    body:not(.admin-body) .nav-search { grid-area: search; margin: 0; }
 
-    body:not(.admin-body) .mobile-nav { display: flex; }
-
-    body:not(.admin-body) main { padding-bottom: 92px; }
-
-    body:not(.admin-body) .section,
-    body:not(.admin-body) .hero { width: calc(100% - 24px); }
-
-    body:not(.admin-body) .section-pad { padding-block: 18px; }
+    body:not(.admin-body) .section { padding-block: 16px; }
 
     body:not(.admin-body) .grid {
         grid-template-columns: repeat(3, 1fr);
-        gap: 16px 10px;
+        gap: 20px 10px;
     }
 
-    body:not(.admin-body) .rail { grid-auto-columns: 118px; gap: 10px; }
+    body:not(.admin-body) .rail { gap: 10px; }
+    body:not(.admin-body) .rail > .dv-card { flex-basis: 116px; }
 
-    body:not(.admin-body) .grid > .drama-card,
-    body:not(.admin-body) .rail > .drama-card { margin-bottom: 40px; }
-
-    body:not(.admin-body) .drama-card .card-title { font-size: 11.5px; }
-    body:not(.admin-body) .card-rank { font-size: 24px; }
+    body:not(.admin-body) .dv-title { font-size: 12px; }
+    body:not(.admin-body) .dv-sub   { font-size: 10.5px; }
+    body:not(.admin-body) .dv-rank  { font-size: 26px; }
+    body:not(.admin-body) .dv-play  { width: 38px; height: 38px; }
 }
 
-@media (max-width: 380px) {
+@media (max-width: 400px) {
     body:not(.admin-body) .grid { grid-template-columns: repeat(2, 1fr); }
     body:not(.admin-body) .mobile-nav a { width: 42px; height: 42px; }
 }
 
 /* ==========================================================================
-   9. Aksesibilitas & performa
+   11. Aksesibilitas & perangkat lemah
    ========================================================================== */
 
 @media (prefers-reduced-motion: reduce) {
@@ -576,8 +635,7 @@ body:not(.admin-body) .mobile-nav a.active {
     }
 }
 
-/* Perangkat lemah: blur mahal, matikan bila tidak didukung. */
 @supports not (backdrop-filter: blur(1px)) {
     body:not(.admin-body) .navbar,
-    body:not(.admin-body) .mobile-nav { background: rgba(12, 8, 18, .96); }
+    body:not(.admin-body) .mobile-nav { background: rgba(10, 7, 16, .97); }
 }

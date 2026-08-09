@@ -6,62 +6,75 @@
     'episode'  => null,
 ])
 
+{{--
+    Struktur baru (namespace "dv-") supaya tidak bertabrakan dengan aturan
+    kartu lama. Poster punya rasio tetap, judul berada DI BAWAH poster.
+--}}
 <a href="{{ route('web.drama.show', $drama->slug) }}"
-   class="drama-card {{ $drama->gradient ?? 'g1' }}"
+   class="dv-card"
    aria-label="{{ $drama->title }}">
 
-    @if ($drama->poster_url)
-        <img src="{{ $drama->poster_url }}"
-             alt=""
-             loading="lazy"
-             decoding="async"
-             width="300" height="450"
-             class="drama-poster-img">
-    @endif
+    <div class="dv-poster {{ $drama->gradient ?? 'g1' }}">
 
-    <div class="drama-poster">
+        @if ($drama->poster_url)
+            <img src="{{ $drama->poster_url }}"
+                 alt=""
+                 loading="lazy"
+                 decoding="async"
+                 width="300" height="450">
+        @endif
 
-        <div class="card-top">
+        <span class="dv-shade" aria-hidden="true"></span>
+
+        <div class="dv-tags">
             @switch($variant)
                 @case('continue')
-                    <span class="card-badge">EP {{ str_pad($episode ?? 1, 2, '0', STR_PAD_LEFT) }}</span>
+                    <span class="dv-tag">EP {{ str_pad($episode ?? 1, 2, '0', STR_PAD_LEFT) }}</span>
                     @break
 
                 @case('latest')
-                    <span class="card-badge">BARU</span>
+                    <span class="dv-tag dv-tag-new">BARU</span>
                     @break
 
                 @case('rated')
-                    <span class="card-badge">TOP</span>
-                    @break
-
-                @case('rank')
-                    <span class="card-rank">{{ str_pad($rank, 2, '0', STR_PAD_LEFT) }}</span>
+                    <span class="dv-tag dv-tag-top">TOP</span>
                     @break
             @endswitch
 
-            @if ($drama->is_vip && $variant !== 'rank')
-                <span class="card-badge">VIP</span>
+            @if ($drama->is_vip)
+                <span class="dv-tag dv-tag-vip">VIP</span>
             @endif
         </div>
 
-        <div class="drama-content">
+        @if ($variant === 'rank' && $rank)
+            <span class="dv-rank">{{ $rank }}</span>
+        @endif
 
-            <div class="card-title">{{ $drama->title }}</div>
+        <span class="dv-play" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                <path d="M8 5v14l11-7z"/>
+            </svg>
+        </span>
 
+        @if ($variant === 'continue')
+            <span class="dv-bar"><i style="width:{{ $progress ?? 0 }}%"></i></span>
+        @endif
+    </div>
+
+    <div class="dv-meta">
+        <span class="dv-title">{{ $drama->title }}</span>
+
+        <span class="dv-sub">
             @if ($variant === 'continue')
-                <div class="card-sub">{{ $progress ?? 0 }}% selesai</div>
-                <div class="card-progress"><i style="width:{{ $progress ?? 0 }}%"></i></div>
+                {{ $progress ?? 0 }}% selesai
             @else
-                <div class="card-sub">
-                    @if ($drama->relationLoaded('country') && $drama->country)
-                        <span>{{ $drama->country->name }}</span>
-                    @elseif ($drama->total_episode)
-                        <span>{{ $drama->total_episode }} EP</span>
-                    @endif
-                </div>
+                @if ($drama->relationLoaded('country') && $drama->country)
+                    {{ $drama->country->name }}
+                @endif
+                @if ($drama->total_episode)
+                    {{ ($drama->relationLoaded('country') && $drama->country) ? '· ' : '' }}{{ $drama->total_episode }} EP
+                @endif
             @endif
-
-        </div>
+        </span>
     </div>
 </a>
