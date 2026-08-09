@@ -71,12 +71,11 @@ class VideoInboxController extends Controller
         ]);
 
         $data = $request->validate([
-            'drama_id'              => ['required', 'integer', 'exists:dramas,id'],
-            'pairs'                 => ['required', 'array', 'min:1'],
-            'pairs.*.video_id'      => ['required', 'integer', 'distinct'],
-            'pairs.*.episode_id'    => ['required', 'integer'],
+            'pairs'              => ['required', 'array', 'min:1'],
+            'pairs.*.video_id'   => ['required', 'integer', 'distinct'],
+            'pairs.*.episode_id' => ['required', 'integer'],
         ], [
-            'pairs.required'             => 'Centang minimal satu video dan pilih episodenya.',
+            'pairs.required'              => 'Centang minimal satu video dan pilih episodenya.',
             'pairs.*.episode_id.required' => 'Ada video yang dicentang tetapi belum dipilih episodenya.',
         ]);
 
@@ -101,11 +100,10 @@ class VideoInboxController extends Controller
             ->get()
             ->keyBy('id');
 
-        // Episode dibatasi pada drama yang dipilih. Tanpa batasan ini, id
-        // episode yang dikirim tangan bisa menunjuk drama mana pun.
+        // Tiap baris memilih dramanya sendiri, jadi satu permintaan boleh
+        // memuat episode dari drama yang berbeda-beda.
         $episodes = Episode::query()
-            ->with('video:id,episode_id')
-            ->where('drama_id', $data['drama_id'])
+            ->with(['video:id,episode_id', 'drama:id,title'])
             ->whereIn('id', $episodeIds)
             ->get()
             ->keyBy('id');
@@ -140,7 +138,7 @@ class VideoInboxController extends Controller
             }
 
             if ($episode === null) {
-                $dilewati[] = $nama.': episode tujuan tidak ada pada drama ini.';
+                $dilewati[] = $nama.': episode tujuan tidak ditemukan.';
                 continue;
             }
 
@@ -149,7 +147,8 @@ class VideoInboxController extends Controller
             // kembali, dan salah centang jauh lebih mudah terjadi daripada
             // niat mengganti video.
             if ($episode->video !== null) {
-                $dilewati[] = $nama.': Episode '
+                $dilewati[] = $nama.': '
+                    .($episode->drama?->title ?? 'Drama').' Episode '
                     .str_pad((string) $episode->episode_number, 2, '0', STR_PAD_LEFT)
                     .' sudah punya video.';
                 continue;
