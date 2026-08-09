@@ -11,13 +11,23 @@
 
         <x-web.home.section-header :title="$title" :count="$count" :href="$href" />
 
-        <div class="rail">
-            @foreach ($dramas as $index => $drama)
-                <x-web.home.drama-card
-                    :drama="$drama"
-                    :variant="$variant"
-                    :rank="$index + 1" />
-            @endforeach
+        <div class="rail-wrap">
+            <button type="button" class="rail-arrow rail-arrow-prev" aria-label="Geser ke kiri" hidden>
+                <x-web.home.icon name="arrow-left" :size="18" />
+            </button>
+
+            <div class="rail">
+                @foreach ($dramas as $index => $drama)
+                    <x-web.home.drama-card
+                        :drama="$drama"
+                        :variant="$variant"
+                        :rank="$index + 1" />
+                @endforeach
+            </div>
+
+            <button type="button" class="rail-arrow rail-arrow-next" aria-label="Geser ke kanan" hidden>
+                <x-web.home.icon name="arrow-right" :size="18" />
+            </button>
         </div>
 
     </section>

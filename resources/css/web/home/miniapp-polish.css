@@ -89,4 +89,50 @@ body:not(.admin-body) .mobile-nav a.active {
 }
 
 /* Ruang supaya kartu terakhir tidak tertutup bilah */
-body:not(.admin-body) main { padding-bottom: 78px; }
+body:not(.admin-body) main { padding-bottom: 84px; }
+
+/* ---------- Jarak yang lebih lega ---------- */
+body:not(.admin-body) .navbar-inner,
+body:not(.admin-body) .section-pad,
+body:not(.admin-body) .page-head {
+    padding-left: 18px;
+    padding-right: 18px;
+}
+
+body:not(.admin-body) .section { padding-top: 22px; }
+
+body:not(.admin-body) .section-head { margin-bottom: 12px; }
+
+body:not(.admin-body) .grid { gap: 14px 12px; }
+
+body:not(.admin-body) .rail { gap: 12px; }
+
+/* ---------- Panah geser daftar drama ---------- */
+.rail-wrap { position: relative; }
+
+/* Panah menumpuk di atas daftar, jadi daftar tetap selebar penuh. */
+.rail-arrow {
+    position: absolute;
+    top: 50%;
+    translate: 0 -50%;
+    z-index: 5;
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, .12);
+    background: rgba(10, 8, 16, .82);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    color: #fff;
+    cursor: pointer;
+    opacity: .92;
+    transition: opacity .18s ease, background-color .18s ease;
+}
+.rail-arrow:hover { opacity: 1; background: rgba(10, 8, 16, .95); }
+.rail-arrow[hidden] { display: none; }
+.rail-arrow-prev { left: 2px; }
+.rail-arrow-next { right: 2px; }
+.rail-arrow svg { width: 18px; height: 18px; }

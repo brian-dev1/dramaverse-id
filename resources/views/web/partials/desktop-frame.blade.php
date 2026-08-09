@@ -1,7 +1,7 @@
 {{--
     Bingkai ponsel untuk layar lebar.
 
-    Di desktop, halaman dimuat ulang di dalam <iframe> selebar 390px.
+    Di desktop, halaman dimuat ulang di dalam <iframe> selebar 430px.
     Iframe punya viewport sendiri, jadi seluruh @media (max-width: ...)
     yang sudah ada ikut aktif — tampilannya identik dengan mini app
     Telegram, tanpa mengubah satu baris pun CSS yang sudah ada.
@@ -37,7 +37,7 @@
             '<style>' +
             'html,body{margin:0;padding:0;height:100%;background:#08060D;overflow:hidden;}' +
             'body{display:flex;align-items:center;justify-content:center;}' +
-            '.dv-phone{width:390px;height:min(844px,calc(100vh - 28px));' +
+            '.dv-phone{width:430px;height:min(844px,calc(100vh - 28px));' +
             'border:1px solid rgba(255,255,255,.09);border-radius:22px;overflow:hidden;' +
             'box-shadow:0 30px 90px -30px rgba(0,0,0,.9);background:#08060D;}' +
             '.dv-phone iframe{width:100%;height:100%;border:0;display:block;}' +

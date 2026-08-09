@@ -50,7 +50,10 @@
                     $channelUrl = trim((string) config('telegram.channel_url'));
                     $masukUrl = $channelUrl !== '' ? $channelUrl : route('web.membership');
                 @endphp
-                <a href="{{ $masukUrl }}" class="btn btn-primary btn-sm" rel="noopener">
+                {{-- target="_blank": Telegram menolak dimuat di dalam iframe,
+                     jadi tautan luar harus dibuka di tab/jendela baru. --}}
+                <a href="{{ $masukUrl }}" class="btn btn-primary btn-sm"
+                   @if ($channelUrl !== '') target="_blank" rel="noopener noreferrer" @endif>
                     Gabung Channel Telegram
                 </a>
             @endauth
