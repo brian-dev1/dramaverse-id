@@ -56,3 +56,125 @@
     width: 110px;
     padding: 7px 10px;
 }
+
+/*
+|------------------------------------------------------------------------------
+| Perapian tata letak halaman affiliate
+|------------------------------------------------------------------------------
+| Keluhan yang diperbaiki di sini: teks terlalu besar, jarak antarblok tidak
+| konsisten, dan tabel melebar keluar panel di layar sempit. Semuanya
+| dilingkupi .ref-admin agar halaman admin lain tidak ikut berubah.
+*/
+
+.admin-body .ref-admin { font-size: .85rem; line-height: 1.55; }
+
+.admin-body .ref-admin .panel { margin-bottom: 18px; }
+
+.admin-body .ref-admin .panel-head h2 {
+    margin: 0;
+    font-size: .92rem;
+    font-weight: 700;
+    letter-spacing: .01em;
+}
+
+.admin-body .ref-admin .detail-body-admin { padding: 16px; }
+
+.admin-body .ref-admin .detail-body-admin > p {
+    margin: 0 0 14px;
+    font-size: .8rem;
+    line-height: 1.6;
+    color: var(--text-muted, #94a3b8);
+    max-width: 74ch;
+}
+
+/* Kartu statistik: enam kartu tidak boleh berdesakan jadi satu baris sempit. */
+.admin-body .ref-admin .stat-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(178px, 1fr));
+    gap: 12px;
+    margin-bottom: 18px;
+}
+
+/* Form: dua kolom di layar lebar, satu kolom saat sempit. */
+.admin-body .ref-admin .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 14px 18px;
+    align-items: start;
+}
+
+.admin-body .ref-admin .field { display: flex; flex-direction: column; gap: 6px; }
+
+.admin-body .ref-admin .field > span {
+    font-size: .76rem;
+    font-weight: 600;
+    color: var(--text-muted, #94a3b8);
+}
+
+.admin-body .ref-admin .field input,
+.admin-body .ref-admin .field select,
+.admin-body .ref-admin .field textarea {
+    width: 100%;
+    padding: 9px 11px;
+    font-size: .82rem;
+}
+
+/* Checkbox tidak boleh ikut melebar penuh mengikuti aturan di atas. */
+.admin-body .ref-admin .field input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    padding: 0;
+}
+
+/* Tabel: geser mendatar di dalam panel, bukan mendorong seluruh halaman. */
+.admin-body .ref-admin .table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.admin-body .ref-admin .table { width: 100%; font-size: .8rem; }
+
+.admin-body .ref-admin .table th {
+    font-size: .72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    white-space: nowrap;
+    color: var(--text-muted, #94a3b8);
+}
+
+.admin-body .ref-admin .table td { vertical-align: middle; }
+
+.admin-body .ref-admin .table td,
+.admin-body .ref-admin .table th { padding: 9px 12px; }
+
+/* Kode referral yang panjang: dipotong, bukan merusak lebar kolom. */
+.admin-body .ref-admin .table td code,
+.admin-body .ref-admin .table .code {
+    display: inline-block;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: bottom;
+    font-size: .74rem;
+}
+
+.admin-body .ref-admin .badge { font-size: .7rem; padding: 3px 9px; }
+
+.admin-body .ref-admin .filter-bar {
+    border-bottom: 1px solid var(--border, rgba(148, 163, 184, .14));
+}
+
+.admin-body .ref-admin .filter-bar input[type="text"],
+.admin-body .ref-admin .filter-bar select {
+    padding: 8px 11px;
+    font-size: .8rem;
+}
+
+.admin-body .ref-admin .btn { font-size: .8rem; }
+
+@media (max-width: 640px) {
+    .admin-body .ref-admin .stat-row { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+    .admin-body .ref-admin .form-grid { grid-template-columns: 1fr; }
+}

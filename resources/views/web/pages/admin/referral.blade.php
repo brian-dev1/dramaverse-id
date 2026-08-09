@@ -4,6 +4,8 @@
 
 @section('content')
 
+<div class="ref-admin">
+
     <div class="stat-row">
         <x-admin.stat-card label="Total komisi"       :value="$statistik['komisi_total']"    icon="card"  money />
         <x-admin.stat-card label="Saldo tersedia"     :value="$statistik['komisi_tersedia']" icon="chart" money />
@@ -296,5 +298,7 @@
             tbody.appendChild(tr);
         });
     </script>
+
+</div>
 
 @endsection

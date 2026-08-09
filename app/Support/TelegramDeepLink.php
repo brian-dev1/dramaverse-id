@@ -29,6 +29,9 @@ class TelegramDeepLink
     /** Membuka penawaran paket di bot. */
     public const SUBSCRIBE = 'subscribe';
 
+    /** Tautan affiliate: `?start=ref_<kode>`. */
+    public const REF = 'ref_';
+
     /*
     |--------------------------------------------------------------------------
     | Menyusun
@@ -62,6 +65,12 @@ class TelegramDeepLink
         return self::build(self::SUBSCRIBE);
     }
 
+    /** Tautan affiliate seseorang. Null bila bot belum diatur. */
+    public static function referral(string $code): ?string
+    {
+        return self::build(self::REF.$code);
+    }
+
     /**
      * Tautan mentah dengan parameter apa pun.
      *
@@ -93,6 +102,28 @@ class TelegramDeepLink
     public static function episodeId(string $parameter): ?int
     {
         return self::idAfter($parameter, self::WATCH);
+    }
+
+    /**
+     * Ambil kode affiliate dari parameter start.
+     *
+     * Menerima dua bentuk: `ref_<kode>` (yang dipakai sekarang) dan kode
+     * telanjang yang diawali `ref`/`dv` — tautan lama yang sudah beredar di
+     * grup orang tidak boleh mendadak berhenti menghasilkan komisi.
+     */
+    public static function referralCode(string $parameter): ?string
+    {
+        $kode = str_starts_with($parameter, self::REF)
+            ? substr($parameter, strlen(self::REF))
+            : $parameter;
+
+        $kode = trim($kode);
+
+        if (! preg_match('/^[A-Za-z0-9]{6,40}$/', $kode)) {
+            return null;
+        }
+
+        return $kode;
     }
 
     public static function dramaId(string $parameter): ?int

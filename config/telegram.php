@@ -59,6 +59,12 @@ return [
     'bot_username' => env('TELEGRAM_BOT_USERNAME'),
 
     /*
+    | Alamat channel publik. Dipakai sebagai tombol "Gabung Channel" di bot
+    | dan di halaman affiliate. Kosongkan untuk menyembunyikan tombolnya.
+    */
+    'channel_url' => env('TELEGRAM_CHANNEL_URL'),
+
+    /*
     |--------------------------------------------------------------------------
     | Mini App (Telegram WebApp)
     |--------------------------------------------------------------------------

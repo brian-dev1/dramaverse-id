@@ -61,7 +61,10 @@
 .pf-uid.copied { color: #22c55e; }
 
 .pf-badge {
-    padding: 7px 16px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
     border-radius: 999px;
     font-size: .8rem;
     font-weight: 700;
@@ -89,7 +92,18 @@
 }
 
 .pf-vip-head { display: flex; gap: 12px; align-items: flex-start; }
-.pf-vip-icon { font-size: 1.4rem; line-height: 1; }
+.pf-vip-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    border-radius: 11px;
+    color: #fbbf24;
+    background: rgba(251, 191, 36, .12);
+    border: 1px solid rgba(251, 191, 36, .22);
+}
 .pf-vip-title { margin: 0; font-size: .98rem; font-weight: 700; line-height: 1.35; }
 .pf-vip-sub   { margin: 3px 0 0; font-size: .8rem; color: var(--text-muted, #94a3b8); }
 
@@ -111,7 +125,21 @@
     text-align: center;
 }
 
-.pf-perk-ico { font-size: 1.1rem; line-height: 1; }
+.pf-perk-ico {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 10px;
+    background: rgba(148, 163, 184, .10);
+    border: 1px solid rgba(148, 163, 184, .14);
+}
+
+.pf-perk-ico.c-orange { color: #fb923c; background: rgba(251, 146, 60, .12); border-color: rgba(251, 146, 60, .22); }
+.pf-perk-ico.c-red    { color: #f87171; background: rgba(248, 113, 113, .12); border-color: rgba(248, 113, 113, .22); }
+.pf-perk-ico.c-blue   { color: #60a5fa; background: rgba(96, 165, 250, .12); border-color: rgba(96, 165, 250, .22); }
+.pf-perk-ico.c-green  { color: #34d399; background: rgba(52, 211, 153, .12); border-color: rgba(52, 211, 153, .22); }
 .pf-perk strong { font-size: .8rem; font-weight: 700; }
 .pf-perk span:last-child { font-size: .68rem; color: var(--text-muted, #94a3b8); }
 
@@ -126,6 +154,13 @@
     text-decoration: none;
     background: linear-gradient(135deg, #fb923c, #ea580c);
     transition: filter .18s ease, transform .18s ease;
+}
+
+.pf-cta {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
 }
 
 .pf-cta:hover { filter: brightness(1.08); transform: translateY(-1px); }
@@ -229,7 +264,28 @@
     text-align: center;
 }
 
-.af-stat-k { font-size: .72rem; color: var(--text-muted, #94a3b8); }
+.af-stat-k {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: .72rem;
+    color: var(--text-muted, #94a3b8);
+}
+
+.af-stat-ico {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 7px;
+    background: rgba(148, 163, 184, .10);
+}
+
+.af-stat-ico.green  { color: #4ade80; background: rgba(74, 222, 128, .12); }
+.af-stat-ico.yellow { color: #fbbf24; background: rgba(251, 191, 36, .12); }
+.af-stat-ico.blue   { color: #60a5fa; background: rgba(96, 165, 250, .12); }
+.af-stat-ico.violet { color: #a78bfa; background: rgba(167, 139, 250, .12); }
 .af-stat-v { font-size: 1.05rem; font-weight: 700; }
 
 .af-stat-v.green  { color: #4ade80; }
@@ -265,7 +321,11 @@
 }
 
 .af-copy-btn {
-    padding: 10px 18px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    padding: 10px 16px;
     border: 0;
     border-radius: 10px;
     font-weight: 700;
@@ -274,6 +334,27 @@
     cursor: pointer;
     background: linear-gradient(135deg, #fb923c, #ea580c);
 }
+
+.af-ghost-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin-top: 10px;
+    padding: 9px 14px;
+    border-radius: 999px;
+    font-size: .78rem;
+    font-weight: 600;
+    text-decoration: none;
+    color: var(--text, #e2e8f0);
+    background: var(--surface, #111827);
+    border: 1px solid var(--border, rgba(148, 163, 184, .16));
+    transition: border-color .18s ease, color .18s ease;
+}
+
+.af-ghost-btn:hover { color: #fb923c; border-color: rgba(249, 115, 22, .45); }
+
+/* Kode referral panjang: jangan sampai memaksa kartu melebar. */
+.af-input { font-variant-ligatures: none; letter-spacing: .01em; }
 
 .af-hint {
     margin: 10px 0 0;

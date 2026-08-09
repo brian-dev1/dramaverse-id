@@ -229,3 +229,32 @@ Schedule::command('referral:release')
     ->hourly()
     ->withoutOverlapping()
     ->runInBackground();
+/*
+|--------------------------------------------------------------------------
+| Affiliate — perpanjang kode referral yang masih pendek
+|--------------------------------------------------------------------------
+|
+| Kode lama dibuat 11 karakter dan bisa ditebak dengan percobaan berulang.
+| Perintah ini menggantinya dengan kode 26 karakter. Tautan lama otomatis
+| mati — itu memang tujuannya, dan ikatan referral yang sudah terjadi tidak
+| ikut hilang karena yang disimpan pada pengguna adalah id pengundang, bukan
+| kodenya.
+|
+*/
+Artisan::command('referral:rotate-codes', function () {
+    $service = app(\App\Services\ReferralService::class);
+    $jumlah  = 0;
+
+    \App\Models\User::whereNotNull('referral_code')
+        ->get(['id', 'referral_code'])
+        ->each(function ($user) use ($service, &$jumlah) {
+            if (strlen((string) $user->referral_code) >= 20) {
+                return;
+            }
+
+            $service->rotateCode($user);
+            $jumlah++;
+        });
+
+    $this->info("Kode referral diperbarui: {$jumlah}");
+})->purpose('Ganti kode referral pendek dengan kode panjang yang acak');

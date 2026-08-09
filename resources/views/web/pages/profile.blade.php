@@ -22,7 +22,7 @@
             </div>
 
             <span class="pf-badge {{ $isVip ? 'on' : '' }}">
-                {!! $isVip ? '&#128081;' : '' !!} {{ $isVip ? 'VIP' : 'Gratis' }}
+                @if ($isVip)<x-web.home.icon name="crown" :size="12" />@endif {{ $isVip ? 'VIP' : 'Gratis' }}
             </span>
         </div>
     </section>
@@ -31,7 +31,7 @@
     <section class="section section-pad">
         <div class="pf-vip {{ $isVip ? 'is-vip' : '' }}">
             <div class="pf-vip-head">
-                <span class="pf-vip-icon">&#128142;</span>
+                <span class="pf-vip-icon"><x-web.home.icon name="gem" :size="18" /></span>
                 <div>
                     <h2 class="pf-vip-title">
                         {{ $isVip ? 'Nikmati Semua Keuntungan Eksklusif sebagai VIP' : 'Jadi VIP dan Buka Semua Keuntungan' }}
@@ -48,29 +48,29 @@
 
             <div class="pf-perks">
                 <div class="pf-perk">
-                    <span class="pf-perk-ico c-orange">&#127916;</span>
+                    <span class="pf-perk-ico c-orange"><x-web.home.icon name="film" :size="16" /></span>
                     <strong>{{ $perks['katalog'] }}</strong>
                     <span>Koleksi Film</span>
                 </div>
                 <div class="pf-perk">
-                    <span class="pf-perk-ico c-red">&#128683;</span>
+                    <span class="pf-perk-ico c-red"><x-web.home.icon name="no-ads" :size="16" /></span>
                     <strong>Bebas Iklan</strong>
                     <span>Tanpa Gangguan</span>
                 </div>
                 <div class="pf-perk">
-                    <span class="pf-perk-ico c-blue">&#11015;</span>
+                    <span class="pf-perk-ico c-blue"><x-web.home.icon name="download" :size="16" /></span>
                     <strong>Akses Mudah</strong>
                     <span>Web &amp; Telegram</span>
                 </div>
                 <div class="pf-perk">
-                    <span class="pf-perk-ico c-green">&#128421;</span>
+                    <span class="pf-perk-ico c-green"><x-web.home.icon name="monitor" :size="16" /></span>
                     <strong>Kualitas</strong>
                     <span>1080p HD</span>
                 </div>
             </div>
 
             <a href="{{ route('web.membership') }}" class="pf-cta">
-                &#128081; {{ $isVip ? 'Perpanjang' : 'Berlangganan' }}
+                <x-web.home.icon name="crown" :size="15" /> {{ $isVip ? 'Perpanjang' : 'Berlangganan' }}
             </a>
         </div>
     </section>

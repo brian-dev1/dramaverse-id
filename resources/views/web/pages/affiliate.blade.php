@@ -31,19 +31,19 @@
         <div class="af-card">
             <div class="af-grid">
                 <div class="af-stat">
-                    <span class="af-stat-k">Komisi</span>
+                    <span class="af-stat-k"><span class="af-stat-ico green"><x-web.home.icon name="wallet" :size="13" /></span>Komisi</span>
                     <span class="af-stat-v green" data-af="commission">Rp {{ number_format($summary['commission'], 0, ',', '.') }}</span>
                 </div>
                 <div class="af-stat">
-                    <span class="af-stat-k">Rate</span>
+                    <span class="af-stat-k"><span class="af-stat-ico yellow"><x-web.home.icon name="trend" :size="13" /></span>Rate</span>
                     <span class="af-stat-v yellow" data-af="rate">{{ rtrim(rtrim(number_format($summary['rate'], 2, ',', '.'), '0'), ',') }}%</span>
                 </div>
                 <div class="af-stat">
-                    <span class="af-stat-k">Transaksi Referral</span>
+                    <span class="af-stat-k"><span class="af-stat-ico blue"><x-web.home.icon name="card" :size="13" /></span>Transaksi Referral</span>
                     <span class="af-stat-v blue" data-af="transactions">{{ $summary['transactions'] }}</span>
                 </div>
                 <div class="af-stat">
-                    <span class="af-stat-k">Total Referral</span>
+                    <span class="af-stat-k"><span class="af-stat-ico violet"><x-web.home.icon name="users" :size="13" /></span>Total Referral</span>
                     <span class="af-stat-v violet" data-af="total_referrals">{{ $summary['total_referrals'] }}</span>
                 </div>
             </div>
@@ -52,11 +52,17 @@
                 <span class="af-box-k">Link Referral</span>
                 <div class="af-copy">
                     <input type="text" readonly value="{{ $summary['link'] }}" class="af-input" id="af-link">
-                    <button type="button" class="af-copy-btn" data-copy="{{ $summary['link'] }}">Copy</button>
+                    <button type="button" class="af-copy-btn" data-copy="{{ $summary['link'] }}"><x-web.home.icon name="copy" :size="13" /> Salin</button>
                 </div>
+                @if (! empty($summary['channel']))
+                    <a href="{{ $summary['channel'] }}" target="_blank" rel="noopener" class="af-ghost-btn">
+                        <x-web.home.icon name="send" :size="13" /> Buka Channel DramaVerse
+                    </a>
+                @endif
+
                 <p class="af-hint">
-                    Setiap orang yang membuka tautan ini lalu berlangganan akan tercatat sebagai
-                    referral Anda. Komisi masuk otomatis begitu pembayarannya lunas.
+                    Tautan ini membuka bot DramaVerse. Orang yang menekan Mulai di sana langsung
+                    tercatat sebagai referral Anda, dan komisi masuk otomatis begitu ia berlangganan.
                 </p>
             </div>
 

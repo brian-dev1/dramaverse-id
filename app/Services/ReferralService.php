@@ -110,9 +110,43 @@ class ReferralService
             return $user->referral_code;
         }
 
+        $code = $this->generateCode();
+
+        $user->forceFill(['referral_code' => $code])->saveQuietly();
+
+        return $code;
+    }
+
+    /**
+     * Kode referral baru: panjang dan acak.
+     *
+     * Kode pendek bisa ditebak — orang tinggal mencoba ribuan kombinasi
+     * sampai menemukan kode milik orang lain. 24 karakter dari 32 huruf
+     * aman (tanpa 0/o/1/l/i yang mudah tertukar) memberi ruang tebakan yang
+     * tidak masuk akal untuk dijelajahi, dan tetap jauh di bawah batas 64
+     * karakter parameter `start` Telegram.
+     */
+    public function generateCode(): string
+    {
+        $alfabet = 'abcdefghjkmnpqrstuvwxyz23456789';
+
         do {
-            $code = 'ref'.strtolower(Str::random(8));
+            $acak = '';
+
+            for ($i = 0; $i < 24; $i++) {
+                $acak .= $alfabet[random_int(0, strlen($alfabet) - 1)];
+            }
+
+            $code = 'dv'.$acak;
         } while (User::where('referral_code', $code)->exists());
+
+        return $code;
+    }
+
+    /** Ganti kode seorang pengguna dengan yang baru (tautan lama mati). */
+    public function rotateCode(User $user): string
+    {
+        $code = $this->generateCode();
 
         $user->forceFill(['referral_code' => $code])->saveQuietly();
 
@@ -196,6 +230,30 @@ class ReferralService
     /* ---------------------------------------------------------------- */
     /* Komisi                                                            */
     /* ---------------------------------------------------------------- */
+
+    /**
+     * Kabari pengundang lewat bot bahwa komisinya bertambah.
+     *
+     * Dibungkus try/catch dan tidak pernah melempar: pembayaran yang sah
+     * tidak boleh gagal hanya karena seseorang memblokir bot.
+     */
+    private function notifyCommission(User $referrer, float $amount): void
+    {
+        if (! $referrer->telegram_id) {
+            return;
+        }
+
+        try {
+            app(\App\Services\Telegram\Contracts\TelegramServiceInterface::class)->sendMessage(
+                $referrer->telegram_id,
+                "<b>Komisi masuk</b>\n\n"
+                .'Rp '.number_format($amount, 0, ',', '.').' dari transaksi referral Anda. '
+                .'Saldo bisa dicek di halaman Program Affiliate.'
+            );
+        } catch (\Throwable $e) {
+            Log::warning('referral.notify.failed', ['user' => $referrer->id, 'error' => $e->getMessage()]);
+        }
+    }
 
     /** Rate (persen) yang berlaku untuk seorang referrer saat ini. */
     public function rateFor(User $user): array
@@ -291,6 +349,8 @@ class ReferralService
                     'amount'   => $amount,
                 ]);
 
+                $this->notifyCommission($referrer, $amount);
+
                 return $komisi;
             });
         } catch (\Throwable $e) {
@@ -340,7 +400,12 @@ class ReferralService
 
         return [
             'code'            => $code,
-            'link'            => url('/?ref='.$code),
+            // Tautan utama mengarah ke bot: di sanalah akun dibuat dan
+            // transaksi terjadi, jadi di sanalah referral bisa dipastikan.
+            // Tautan web hanya cadangan bila username bot belum diisi.
+            'link'            => \App\Support\TelegramDeepLink::referral($code) ?? url('/?ref='.$code),
+            'web_link'        => url('/?ref='.$code),
+            'channel'         => trim((string) config('telegram.channel_url')) ?: null,
             'commission'      => (float) ReferralCommission::where('referrer_id', $user->id)
                                     ->where('status', '!=', 'void')->sum('amount'),
             'balance'         => $this->balance($user),

@@ -67,6 +67,25 @@ class StartHandler
                 return;
             }
 
+            /*
+            |------------------------------------------------------------------
+            | Tautan affiliate
+            |------------------------------------------------------------------
+            |
+            | Inilah titik pencatatan referral yang sebenarnya. Bukan klik di
+            | website — klik hanya statistik dan bisa dipalsukan siapa saja
+            | dengan me-refresh halaman. Di sini akun Telegram sudah pasti
+            | ada, sudah pasti unik, dan sudah pasti orang yang nanti
+            | bertransaksi. Ikatannya ditulis sekali seumur akun.
+            |
+            */
+
+            if ($kode = TelegramDeepLink::referralCode($parameter)) {
+                $this->referral($chatId, $user, $kode);
+
+                return;
+            }
+
             // Parameter yang tidak dikenal TIDAK dibiarkan diam. Tautan lama
             // atau salah ketik harus dijawab, lalu dilanjutkan ke menu —
             // bukan berakhir dengan layar kosong.
@@ -84,6 +103,41 @@ class StartHandler
     | Pembantu
     |--------------------------------------------------------------------------
     */
+
+    /**
+     * Proses tautan affiliate lalu antar ke menu.
+     *
+     * Diam-diam gagal bila kodenya tidak sah atau pengguna sudah punya
+     * pengundang: pendatang baru tidak perlu tahu urusan komisi orang lain,
+     * yang ia butuhkan hanya menu.
+     */
+    private function referral(int|string $chatId, mixed $user, string $kode): void
+    {
+        $referral = app(\App\Services\ReferralService::class);
+
+        if ($user && $referral->attach($user, $kode)) {
+
+            $pengundang = $referral->findByCode($kode);
+
+            // Pemberitahuan ke pengundang: satu-satunya umpan balik bahwa
+            // tautannya bekerja. Kegagalan kirim (bot diblokir) tidak boleh
+            // menggagalkan /start orang yang baru saja bergabung.
+            if ($pengundang && $pengundang->telegram_id) {
+                try {
+                    $this->telegram->sendMessage(
+                        $pengundang->telegram_id,
+                        "<b>Referral baru</b>\n\n"
+                        .'Satu akun baru bergabung lewat tautan Anda. '
+                        .'Komisi masuk otomatis begitu akun itu berlangganan.'
+                    );
+                } catch (\Throwable) {
+                    // Sengaja dibiarkan.
+                }
+            }
+        }
+
+        $this->home($chatId);
+    }
 
     /** Ambil bagian setelah `/start`, kosong bila tidak ada. */
     private function parameter(string $text): string
@@ -108,6 +162,12 @@ Telegram digunakan sebagai media untuk menonton drama.
 
 Silakan pilih menu di bawah ini.
 HTML;
+
+        $channel = trim((string) config('telegram.channel_url'));
+
+        if ($channel !== '') {
+            $welcome .= "\n\n".'Ikuti channel resmi: <a href="'.e($channel).'">DramaVerse ID</a>';
+        }
 
         $this->telegram->sendMessage(
             $chatId,
