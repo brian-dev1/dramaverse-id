@@ -13,8 +13,6 @@
 
 @section('content')
 
-    <x-web.home.hero :banners="$banners" :dramas="$trending" />
-
     <x-web.home.continue-watching :histories="$continueWatching" />
 
     <x-web.home.rail

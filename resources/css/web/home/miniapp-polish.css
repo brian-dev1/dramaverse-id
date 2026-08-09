@@ -1,0 +1,79 @@
+/*
+|--------------------------------------------------------------------------
+| Penyelarasan gaya mini app
+|--------------------------------------------------------------------------
+| Dimuat paling akhir. Hanya tiga hal:
+| 1. Bilah navigasi bawah rata ke tepi layar, memakai label.
+| 2. Batang gulir disembunyikan (tetap bisa digulir).
+| 3. Ruang bawah halaman disesuaikan dengan tinggi bilah baru.
+|
+| Panel admin (.admin-body) tidak disentuh.
+*/
+
+/* ---------- Batang gulir disembunyikan ---------- */
+html { scrollbar-width: none; }
+html::-webkit-scrollbar { display: none; }
+body:not(.admin-body) { overflow-x: hidden; }
+
+/* ---------- Bilah navigasi bawah ---------- */
+body:not(.admin-body) .mobile-nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    translate: none;
+    width: 100%;
+    max-width: none;
+    display: flex;
+    align-items: stretch;
+    justify-content: space-around;
+    gap: 0;
+    padding: 7px 2px calc(7px + env(safe-area-inset-bottom, 0px));
+    border: 0;
+    border-top: 1px solid var(--dv-line, rgba(255, 255, 255, .07));
+    border-radius: 0;
+    background: rgba(12, 9, 18, .97);
+    backdrop-filter: blur(18px) saturate(150%);
+    -webkit-backdrop-filter: blur(18px) saturate(150%);
+    box-shadow: none;
+}
+
+body:not(.admin-body) .mobile-nav a {
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    width: auto;
+    height: auto;
+    min-width: 0;
+    padding: 4px 2px;
+    border-radius: 10px;
+    background: none;
+    box-shadow: none;
+    color: var(--dv-dim, #9C93A6);
+    font-size: 10.5px;
+    font-weight: 500;
+    line-height: 1.2;
+    letter-spacing: .01em;
+    white-space: nowrap;
+    transition: color .18s ease;
+}
+
+body:not(.admin-body) .mobile-nav a svg {
+    width: 21px;
+    height: 21px;
+    flex: none;
+}
+
+body:not(.admin-body) .mobile-nav a:hover { color: #fff; }
+
+body:not(.admin-body) .mobile-nav a.active {
+    color: var(--dv-accent, #F5811F);
+    background: none;
+    box-shadow: none;
+}
+
+/* Ruang supaya kartu terakhir tidak tertutup bilah */
+body:not(.admin-body) main { padding-bottom: 78px; }
