@@ -9,6 +9,7 @@ use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use RuntimeException;
 use Throwable;
 
 /**
@@ -243,18 +244,36 @@ class TelegramClient implements TelegramClientInterface
         array $files
     ): Response {
 
-        $request = $this->request($files);
+        // Handle berkas dikumpulkan supaya bisa ditutup setelah permintaan
+        // selesai. Tanpa ini, handle-nya menggantung sepanjang umur proses:
+        // di php-fpm tidak terlihat karena prosesnya mati tiap request, tapi
+        // di `queue:work` yang hidup berjam-jam, setiap video menambah satu
+        // handle terbuka. Berkas sementara sudah di-unlink oleh pemanggil,
+        // sehingga ruang disknya TIDAK dikembalikan selama handle terbuka --
+        // 15 video berukuran ratusan MB pernah menahan 8 GB tanpa satu pun
+        // berkas terlihat di `ls /tmp` atau terhitung oleh `du`.
+        $handles = [];
+
+        $request = $this->request($files, $handles);
 
         $url = $this->endpoint($method);
 
-        if ($verb === 'GET') {
-            return $request->get($url, $this->flatten($payload));
-        }
+        try {
+            if ($verb === 'GET') {
+                return $request->get($url, $this->flatten($payload));
+            }
 
-        return $request->post(
-            $url,
-            $files === [] ? $this->clean($payload) : $this->flatten($payload)
-        );
+            return $request->post(
+                $url,
+                $files === [] ? $this->clean($payload) : $this->flatten($payload)
+            );
+        } finally {
+            foreach ($handles as $handle) {
+                if (is_resource($handle)) {
+                    fclose($handle);
+                }
+            }
+        }
     }
 
     /**
@@ -266,17 +285,29 @@ class TelegramClient implements TelegramClientInterface
      * harus jadi string; itu yang dikerjakan flatten().
      *
      * @param  array<string,SplFileInfo>  $files
+     * @param  list<resource>  $handles Diisi dengan handle berkas yang dibuka,
+     *                                  supaya pemanggil bisa menutupnya.
      */
-    protected function request(array $files): PendingRequest
+    protected function request(array $files, array &$handles = []): PendingRequest
     {
         $request = Http::timeout($this->timeout())
             ->connectTimeout((int) config('telegram.connect_timeout', 5))
             ->withHeaders(['Accept' => 'application/json']);
 
         foreach ($files as $field => $file) {
+            $handle = fopen($file->getPathname(), 'r');
+
+            if ($handle === false) {
+                throw new RuntimeException(
+                    "Berkas {$file->getPathname()} tidak bisa dibuka untuk dikirim."
+                );
+            }
+
+            $handles[] = $handle;
+
             $request = $request->attach(
                 $field,
-                fopen($file->getPathname(), 'r'),
+                $handle,
                 $file->getFilename()
             );
         }
