@@ -113,6 +113,12 @@ class InvoiceService
             'total'   => $invoice->total,
         ]);
 
+        // Komisi affiliate. Satu-satunya tempat komisi lahir, sehingga semua
+        // jalur pembayaran — gateway otomatis maupun ACC manual — melewatinya.
+        // Kegagalan di dalamnya sudah ditangkap sendiri: pembayaran yang sah
+        // tidak boleh batal hanya karena perhitungan bonus bermasalah.
+        app(\App\Services\ReferralService::class)->awardFor($invoice);
+
         return $invoice;
     }
 

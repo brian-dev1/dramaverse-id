@@ -44,6 +44,16 @@ class TelegramAuthController extends Controller
 
         $user->forceFill(['last_login_at' => now()])->saveQuietly();
 
+        // Ikat ke pengundang bila pengguna datang lewat tautan referral.
+        // Dilakukan di sini, bukan saat klik: sebelum login kita belum tahu
+        // siapa orangnya. `attach()` menolak diri sendiri dan menolak menimpa
+        // ikatan lama, jadi aman dipanggil setiap kali login.
+        $kode = $request->cookie('dv_ref') ?? $request->query('ref');
+
+        if (filled($kode)) {
+            app(\App\Services\ReferralService::class)->attach($user, (string) $kode);
+        }
+
         return redirect()
             ->intended(route('web.home'))
             ->with('status', 'Selamat datang, '.$user->display_name.'.');

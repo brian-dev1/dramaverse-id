@@ -208,3 +208,24 @@ Schedule::command('membership:auto sweep')
     ->everyTenMinutes()
     ->withoutOverlapping()
     ->runInBackground();
+
+/*
+|--------------------------------------------------------------------------
+| Affiliate — lepas komisi yang masa tahannya habis
+|--------------------------------------------------------------------------
+|
+| Hanya berguna bila `referral_hold_days` di panel admin diisi lebih dari 0.
+| Dengan nilai 0 perintah ini tidak menemukan apa pun dan selesai seketika,
+| jadi tetap aman dijadwalkan.
+|
+*/
+Artisan::command('referral:release', function () {
+    $jumlah = app(\App\Services\ReferralService::class)->releaseHeld();
+
+    $this->info("Komisi dilepas: {$jumlah}");
+})->purpose('Lepaskan komisi affiliate yang masa tahannya sudah lewat');
+
+Schedule::command('referral:release')
+    ->hourly()
+    ->withoutOverlapping()
+    ->runInBackground();

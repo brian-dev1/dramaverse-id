@@ -35,7 +35,27 @@ class ProfileController extends Controller
             ->latest()
             ->first();
 
-        return view('web.pages.profile', compact('user', 'stats', 'continueWatching', 'subscription'));
+        $referral = app(\App\Services\ReferralService::class);
+
+        // Dipakai kartu VIP di profil. Angka koleksi diambil dari katalog
+        // yang benar-benar tayang, bukan angka pajangan — supaya tidak
+        // berbohong ketika katalog masih kecil.
+        $perks = [
+            'katalog' => \App\Models\Drama::query()->count().'+',
+        ];
+
+        $isVip = $subscription !== null || (bool) $user->is_premium;
+
+        return view('web.pages.profile', [
+            'user'              => $user->loadMissing('referrer'),
+            'stats'             => $stats,
+            'continueWatching'  => $continueWatching,
+            'subscription'      => $subscription,
+            'isVip'             => $isVip,
+            'perks'             => $perks,
+            'affiliateEnabled'  => $referral->enabled(),
+            'affiliateBalance'  => $referral->enabled() ? $referral->balance($user) : 0.0,
+        ]);
     }
 
     /** Keluar dari sesi dan kembali ke beranda. */

@@ -66,6 +66,14 @@ class TelegramMiniAppController extends Controller
 
         $user->forceFill(['last_login_at' => now()])->saveQuietly();
 
+        // Ikatan referral, sama seperti pada login lewat tautan bot. Aman
+        // dipanggil berulang: attach() menolak menimpa upline yang sudah ada.
+        $kode = $request->cookie('dv_ref') ?? $request->input('start_param');
+
+        if (filled($kode)) {
+            app(\App\Services\ReferralService::class)->attach($user, (string) $kode);
+        }
+
         return response()->json([
             'ok'          => true,
             'name'        => $user->display_name,

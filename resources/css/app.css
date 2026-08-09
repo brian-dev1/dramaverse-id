@@ -23,6 +23,7 @@
 @import "./web/home/animation.css";
 
 /* --- Halaman --- */
+@import "./web/home/affiliate.css";
 @import "./web/search/search.css";
 @import "./web/detail/detail.css";
 @import "./web/detail/episode.css";
@@ -36,6 +37,7 @@
 
 /* --- Panel admin (setelah tema, agar admin punya aturannya sendiri) --- */
 @import "./web/admin/admin-refine.css";
+@import "./web/admin/referral-admin.css";
 
 /* --- Paginasi minimalis --- */
 @import "./web/pager.css";

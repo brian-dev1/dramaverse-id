@@ -57,6 +57,7 @@
             ['route' => 'admin.payment-provider.index',  'icon' => 'settings', 'label' => 'Metode Bayar',     'can' => 'membership.manage'],
             ['route' => 'admin.payment-log.index',       'icon' => 'file',     'label' => 'Log Pembayaran',   'can' => 'membership.manage'],
             ['route' => 'admin.telegram-retention.index','icon' => 'film',     'label' => 'Penarikan Video',  'can' => 'membership.manage'],
+            ['route' => 'admin.referral.index',          'icon' => 'users',    'label' => 'Affiliate',        'can' => 'membership.manage'],
             ['route' => 'admin.monitoring.index',    'icon' => 'activity', 'label' => 'Monitoring',  'can' => 'setting.manage'],
             ['route' => 'admin.system-log.index',    'icon' => 'file', 'label' => 'Log Sistem',      'can' => 'log.view'],
         ]],

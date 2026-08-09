@@ -1,0 +1,58 @@
+/*
+|------------------------------------------------------------------------------
+| Panel admin — Program Affiliate
+|------------------------------------------------------------------------------
+| Hanya melengkapi kelas yang belum ada di admin.css: baris filter, tombol
+| kecil di dalam tabel, dan field yang membentang penuh pada form-grid.
+| Semuanya dilingkupi .admin-body supaya tidak bocor ke halaman pengguna.
+*/
+
+.admin-body .filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px 16px;
+    align-items: center;
+}
+
+.admin-body .filter-bar input[type="text"],
+.admin-body .filter-bar select {
+    min-width: 160px;
+}
+
+.admin-body .action-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 14px;
+}
+
+.admin-body .field-wide {
+    grid-column: 1 / -1;
+}
+
+.admin-body .btn-sm {
+    padding: 6px 12px;
+    font-size: .78rem;
+}
+
+/* Form aksi di dalam sel tabel: menumpuk di layar sempit, sejajar di lebar. */
+.admin-body .table .inline-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+}
+
+.admin-body .table .inline-form input[type="text"],
+.admin-body .table .inline-form select {
+    min-width: 120px;
+    padding: 6px 10px;
+    font-size: .78rem;
+}
+
+/* Tabel tingkatan komisi: input rapat agar tabel tidak melebar berlebihan. */
+.admin-body #tier-rows input[type="number"] {
+    width: 110px;
+    padding: 7px 10px;
+}

@@ -136,6 +136,24 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::post('/notifications/read-all', [Web\NotificationController::class, 'markAllRead'])
         ->name('web.notifications.read-all');
 
+    /*
+    |--------------------------------------------------------------------------
+    | Program Affiliate
+    |--------------------------------------------------------------------------
+    |
+    | `affiliate.stats` dipanggil berulang oleh halaman untuk pembaruan
+    | langsung, jadi dibatasi lajunya sendiri — bukan oleh pembatas umum yang
+    | dipakai aksi tulis.
+    |
+    */
+    Route::get('/affiliate', [Web\AffiliateController::class, 'index'])->name('web.affiliate');
+    Route::get('/affiliate/stats', [Web\AffiliateController::class, 'stats'])
+        ->middleware('throttle:120,1')
+        ->name('web.affiliate.stats');
+    Route::post('/affiliate/withdraw', [Web\AffiliateController::class, 'withdraw'])
+        ->middleware('throttle:10,1')
+        ->name('web.affiliate.withdraw');
+
     Route::get('/settings', [Web\SettingController::class, 'index'])->name('web.settings');
     Route::put('/settings', [Web\SettingController::class, 'update'])->name('web.settings.update');
 
@@ -728,6 +746,28 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('/settings', [Admin\SettingController::class, 'index'])->name('settings');
             Route::put('/settings', [Admin\SettingController::class, 'update'])->name('settings.update');
         });
+
+        /*
+        |----------------------------------------------------------------------
+        | Program Affiliate
+        |----------------------------------------------------------------------
+        |
+        | Memakai izin `membership.manage` — orang yang sama yang mengurus
+        | tagihan dan langganan. Izin baru tidak dipakai supaya modul ini
+        | langsung terlihat setelah deploy tanpa menjalankan ulang RoleSeeder.
+        |
+        */
+        Route::prefix('referral')->name('referral.')
+            ->middleware('permission:membership.manage')
+            ->controller(Admin\ReferralController::class)
+            ->group(function () {
+                Route::get('/', 'index')->name('index');
+                Route::put('/settings', 'updateSettings')->name('settings');
+                Route::put('/tiers', 'updateTiers')->name('tiers');
+                Route::post('/commission/{id}/void', 'voidCommission')->name('commission.void')->whereNumber('id');
+                Route::post('/commission/{id}/restore', 'restoreCommission')->name('commission.restore')->whereNumber('id');
+                Route::post('/withdrawal/{id}', 'processWithdrawal')->name('withdrawal.process')->whereNumber('id');
+            });
 
                 /*
         |--------------------------------------------------------------------------

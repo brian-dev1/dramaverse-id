@@ -21,6 +21,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // Berlaku untuk seluruh permintaan web.
         $middleware->web(append: [
             SecurityHeaders::class,
+            // Menangkap ?ref=KODE dari tautan affiliate pada halaman mana pun.
+            \App\Http\Middleware\CaptureReferral::class,
         ]);
 
         $middleware->alias([

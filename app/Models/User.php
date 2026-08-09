@@ -30,6 +30,9 @@ class User extends Authenticatable
         'last_seen_at',
         'is_premium',
         'premium_expired_at',
+        'referral_code',
+        'referred_by_id',
+        'referred_at',
     ];
 
     protected $hidden = [
@@ -62,6 +65,30 @@ class User extends Authenticatable
     public function watchHistories(): HasMany
     {
         return $this->hasMany(WatchHistory::class);
+    }
+
+    /* ---------------- Affiliate ---------------- */
+
+    /** Orang yang mengundang pengguna ini. Ditulis sekali, tidak pernah diubah. */
+    public function referrer()
+    {
+        return $this->belongsTo(self::class, 'referred_by_id');
+    }
+
+    /** Semua orang yang masuk lewat tautan referral pengguna ini. */
+    public function referrals(): HasMany
+    {
+        return $this->hasMany(self::class, 'referred_by_id');
+    }
+
+    public function referralCommissions(): HasMany
+    {
+        return $this->hasMany(ReferralCommission::class, 'referrer_id');
+    }
+
+    public function referralWithdrawals(): HasMany
+    {
+        return $this->hasMany(ReferralWithdrawal::class);
     }
 
     public function favorites(): HasMany
