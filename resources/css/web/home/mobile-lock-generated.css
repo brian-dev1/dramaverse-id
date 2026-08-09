@@ -1,0 +1,446 @@
+/* DIHASILKAN OTOMATIS oleh tools/gen-mobile-lock.py — JANGAN DIEDIT MANUAL.
+   Semua blok @media mobile (<=900px) dari CSS sisi web dipentaskan ulang
+   tanpa media query, supaya desktop tampil persis seperti ponsel. */
+
+/* ==== ./web/home/responsive.css @ <=900px ==== */
+.footer-grid{ grid-template-columns:1fr 1fr; }
+    .membership{ flex-direction:column; align-items:flex-start; }
+
+/* ==== ./web/home/responsive.css @ <=900px ==== */
+.wrap,
+    .section-pad,
+    .hero{
+        padding-left:var(--space-3);
+        padding-right:var(--space-3);
+    }
+
+    .membership,
+    .empty-state{
+        margin-left:var(--space-3);
+        margin-right:var(--space-3);
+    }
+
+/* ==== ./web/home/responsive.css @ <=900px ==== */
+.footer-grid{ grid-template-columns:1fr 1fr; }
+    .membership{ flex-direction:column; align-items:flex-start; }
+
+/* ==== ./web/home/responsive.css @ <=900px ==== */
+.wrap,
+    .section-pad,
+    .hero{
+        padding-left:var(--space-3);
+        padding-right:var(--space-3);
+    }
+
+    .membership,
+    .empty-state{
+        margin-left:var(--space-3);
+        margin-right:var(--space-3);
+    }
+
+/* ==== ./web/home/elegant.css @ <=900px ==== */
+main{ padding-bottom:96px; } /* ruang untuk mobile-nav */
+
+/* ==== ./web/home/elegant.css @ <=900px ==== */
+/* Navbar web */
+    .navbar-inner{ padding:12px 16px; gap:12px; }
+    .nav-links{ display:none; }
+    .nav-right{ gap:8px; }
+
+    /* Cegah geser kanan-kiri. Sengaja TIDAK dipasang di <html> karena
+       overflow pada elemen akar mematikan `position:sticky` dan pada
+       sebagian Chrome menyebabkan halaman gagal dilukis (blank). */
+    body{ max-width:100%; overflow-x:clip; }
+    .admin-shell, .admin-main, .admin-content{
+        max-width:100%;
+        overflow-x:clip;
+    }
+
+    /* Admin: laci sidebar bawaan dipertahankan (muncul saat hamburger
+       ditekan). Yang diperbaiki hanya isinya: satu kolom, scroll ke BAWAH. */
+    .admin-shell .admin-sidebar{
+        width:min(78vw, 248px) !important;
+        max-width:248px !important;
+        height:100dvh !important;
+        max-height:100dvh !important;
+        display:flex !important;
+        flex-direction:column !important;
+        flex-wrap:nowrap !important;
+        overflow:hidden !important;      /* scroll ditangani .admin-nav */
+    }
+
+    /* Daftar menu: SATU kolom vertikal + scroll. Ini kuncinya — tanpa
+       min-height:0 daftar melimpah dan pecah jadi beberapa kolom. */
+    .admin-shell .admin-sidebar .admin-nav{
+        display:flex !important;
+        flex-direction:column !important;
+        flex-wrap:nowrap !important;
+        column-count:initial !important;
+        gap:2px;
+        flex:1 1 auto !important;
+        min-height:0 !important;
+        height:auto !important;
+        max-height:none !important;
+        width:100% !important;
+        padding:8px 10px 16px;
+        overflow-y:auto !important;
+        overflow-x:hidden !important;
+        -webkit-overflow-scrolling:touch;
+        overscroll-behavior:contain;
+    }
+    .admin-shell .admin-sidebar .admin-nav > *{ flex:0 0 auto; width:100%; }
+    .admin-nav a{
+        font-size:13px;
+        padding:9px 11px;
+        white-space:nowrap;
+        overflow:hidden;
+        text-overflow:ellipsis;
+    }
+    .admin-nav-group{ font-size:9.5px; letter-spacing:.14em; margin:10px 0 4px; }
+    .admin-logout{ flex:0 0 auto; padding:10px; border-top:1px solid var(--border-soft); }
+    .admin-brand{ flex:0 0 auto; padding:14px 12px; min-height:auto; }
+
+    /* Saat ditutup: sidebar benar-benar dilepas dari tampilan supaya tidak
+       menyisakan bayangan/efek buram menutupi konten. */
+    .admin-shell.sidebar-collapsed .admin-sidebar{
+        display:none !important;
+        visibility:hidden !important;
+        opacity:0 !important;
+        pointer-events:none !important;
+        box-shadow:none !important;
+        filter:none !important;
+        backdrop-filter:none !important;
+        transition:none !important;
+    }
+    .admin-shell:not(.sidebar-collapsed) .admin-sidebar{
+        visibility:visible !important;
+        opacity:1 !important;
+        transform:none !important;
+        box-shadow:0 0 60px rgba(0,0,0,.6);
+    }
+
+    /* Efek buram/blur dimatikan di ponsel: berat dan sering menyisakan
+       artefak saat laci dibuka-tutup. */
+    .admin-topbar,
+    .admin-shell,
+    .admin-main,
+    .admin-content,
+    .navbar{
+        backdrop-filter:none !important;
+        -webkit-backdrop-filter:none !important;
+        filter:none !important;
+    }
+    .admin-topbar{
+        padding:10px 12px;
+        position:sticky; top:0; z-index:40;
+        background:#0C0704 !important;
+    }
+    .navbar{ background:rgba(12,7,4,.96) !important; }
+
+    .admin-main{ margin-left:0 !important; width:100%; }
+    .admin-content{ padding:14px 12px 88px; }
+
+    /* Toolbar & filter menumpuk rapi */
+    .admin-toolbar,
+    .report-toolbar,
+    .filter-bar{
+        display:flex; flex-wrap:wrap; gap:10px; align-items:stretch;
+    }
+    .admin-toolbar > *,
+    .report-toolbar > *{ flex:1 1 auto; min-width:0; }
+    .admin-toolbar input, .admin-toolbar select,
+    .report-toolbar input, .report-toolbar select{ width:100%; }
+
+    /* Tabel lebar: scroll di dalam kotaknya sendiri, halaman tetap diam */
+    .table-wrap, .admin-content .table-wrap, .panel, .card{
+        max-width:100%;
+    }
+    .table-wrap{
+        overflow-x:auto;
+        -webkit-overflow-scrolling:touch;
+    }
+    .admin-content table{
+        display:block;
+        width:100%;
+        overflow-x:auto;
+        -webkit-overflow-scrolling:touch;
+        white-space:nowrap;
+        font-size:12.5px;
+    }
+    .admin-content thead th{ font-size:9.5px; padding:9px 10px; }
+    .admin-content tbody td{ font-size:12.5px; padding:10px 10px; }
+
+    /* Skala teks umum agar pas di layar ponsel */
+    .admin-content{ font-size:13px; }
+    .admin-content h1{ font-size:20px; }
+    .admin-content h2{ font-size:17px; }
+    .admin-content h3{ font-size:15px; }
+    .admin-content label{ font-size:12px; }
+    .stat-card .stat-value, .stat-value{ font-size:20px; }
+    .stat-card .stat-label, .stat-label{ font-size:10.5px; }
+    .badge{ font-size:10px; padding:3px 7px; }
+    .admin-topbar .page-title{ font-size:16px; }
+
+    /* Grid statistik & kartu */
+    .stat-grid, .admin-grid, .asset-grid{
+        display:grid;
+        grid-template-columns:repeat(auto-fill, minmax(150px, 1fr));
+        gap:12px;
+    }
+    .chart-card{ padding:14px; }
+    .chart-canvas{ max-height:240px; }
+
+    /* Form dua kolom → satu kolom */
+    .admin-form, .form-grid{ grid-template-columns:1fr !important; }
+
+    /* Judul lebih proporsional */
+    .page-title{ font-size:22px; }
+    .section-title{ font-size:20px; }
+
+/* ==== ./web/home/redesign.css @ <=900px ==== */
+body:not(.admin-body) .nav-links { display: none; }
+    body:not(.admin-body) .nav-search { max-width: none; }
+
+    body:not(.admin-body) .mobile-nav {
+        position: fixed;
+        left: 50%;
+        bottom: max(14px, env(safe-area-inset-bottom));
+        translate: -50% 0;
+        z-index: 70;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        width: auto;
+        max-width: calc(100% - 28px);
+        padding: 7px;
+        border-radius: var(--dv-pill);
+        background: rgba(18, 13, 26, .86);
+        backdrop-filter: blur(20px) saturate(160%);
+        -webkit-backdrop-filter: blur(20px) saturate(160%);
+        border: 1px solid var(--dv-line);
+        box-shadow: 0 16px 40px -14px rgba(0, 0, 0, .95);
+    }
+
+    body:not(.admin-body) .mobile-nav a {
+        display: grid;
+        place-items: center;
+        width: 46px;
+        height: 46px;
+        border-radius: 50%;
+        color: var(--dv-dim);
+        font-size: 0;          /* label disembunyikan, ikon tetap */
+        transition: color .2s ease, background-color .2s ease;
+    }
+
+    body:not(.admin-body) .mobile-nav a svg { width: 21px; height: 21px; }
+    body:not(.admin-body) .mobile-nav a:hover { color: #fff; }
+
+    body:not(.admin-body) .mobile-nav a.active {
+        color: #fff;
+        background: linear-gradient(135deg, var(--dv-accent), #FF9445);
+        box-shadow: 0 8px 20px -8px var(--dv-accent);
+    }
+
+    body:not(.admin-body) main { padding-bottom: 96px; }
+
+/* ==== ./web/detail/responsive.css @ <=768px ==== */
+.detail-hero-inner{ flex-direction:column; }
+    .detail-poster{ flex-basis:auto; width:160px; }
+
+/* ==== ./web/home/brand.css @ <=640px ==== */
+.brand-wordmark{ font-size:18px; letter-spacing:.04em; }
+    .brand-badge{ font-size:8.5px; padding:2px 5px; }
+    .brand-logo{ gap:6px; }
+
+/* ==== ./web/search/search.css @ <=640px ==== */
+.search-form{ grid-template-columns:1fr; }
+
+/* ==== ./web/home/responsive.css @ <=640px ==== */
+.wrap,
+    .section-pad{ padding-left:var(--space-3); padding-right:var(--space-3); }
+
+    .hero-frame{
+        min-height:auto;
+        margin:0 var(--space-2);
+        border-radius:var(--radius-l);
+    }
+    .hero-content{ padding:var(--space-5) var(--space-3) var(--space-4); }
+    .hero-dots{ display:none; }
+
+    .grid{ grid-template-columns:repeat(auto-fill, minmax(132px, 1fr)); }
+    .drama-card{ flex-basis:140px; }
+    .card-title{ font-size:16px; }
+
+    .membership{ margin:var(--space-5) var(--space-3) 0; padding:var(--space-4) var(--space-3); }
+
+    .section-head{ flex-wrap:wrap; }
+
+    /* --- Navigasi bawah --- */
+    .mobile-nav{
+        display:flex; position:fixed; bottom:0; left:0; right:0; z-index:60;
+        background:rgba(15,13,20,.9); backdrop-filter:blur(16px);
+        border-top:1px solid var(--border-soft);
+        padding:10px 6px 14px;
+        justify-content:space-around;
+    }
+    .mobile-nav a{
+        display:flex; flex-direction:column; align-items:center; gap:4px;
+        font-size:10px; color:var(--text-muted); font-weight:600;
+    }
+    .mobile-nav a.active{ color:var(--gold); }
+
+    body{ padding-bottom:70px; }
+
+/* ==== ./web/home/responsive.css @ <=640px ==== */
+.wrap,
+    .section-pad,
+    .hero{
+        padding-left:var(--space-2);
+        padding-right:var(--space-2);
+    }
+
+    .membership,
+    .empty-state{
+        margin-left:var(--space-2);
+        margin-right:var(--space-2);
+    }
+
+    .perf{ padding-left:var(--space-2); padding-right:var(--space-2); }
+
+/* ==== ./web/home/responsive.css @ <=640px ==== */
+.wrap,
+    .section-pad{ padding-left:var(--space-3); padding-right:var(--space-3); }
+
+    .hero-frame{
+        min-height:auto;
+        margin:0 var(--space-2);
+        border-radius:var(--radius-l);
+    }
+    .hero-content{ padding:var(--space-5) var(--space-3) var(--space-4); }
+    .hero-dots{ display:none; }
+
+    /* Grid katalog: 3 kolom tetap ala kit, bukan auto-fill yang kadang
+       cuma muat 2 di layar sempit. */
+    .grid{
+        grid-template-columns:repeat(3, 1fr);
+        gap:10px;
+    }
+    .rail{ gap:10px; }
+    .drama-card{ flex-basis:118px; }
+    .grid .drama-card{ flex-basis:auto; }
+    .card-title{ font-size:14px; }
+    .card-sub{ font-size:9.5px; }
+
+    /* Poster & overlay lebih ringkas di kartu sempit, senada kit
+       (badge kecil pojok, progress tipis di dasar). */
+    .drama-poster{ padding:10px 9px; }
+    .card-badge{ font-size:9px; padding:2px 6px; }
+    .card-rank{ font-size:24px; }
+    .card-progress{ margin-top:6px; }
+
+    .membership{ margin:var(--space-5) var(--space-3) 0; padding:var(--space-4) var(--space-3); }
+
+    .section-head{ flex-wrap:wrap; }
+    .section-title{ font-size:19px; }
+
+    /* --- Navigasi bawah --- */
+    .mobile-nav{
+        display:flex; position:fixed; bottom:0; left:0; right:0; z-index:60;
+        background:rgba(15,13,20,.92); backdrop-filter:blur(16px);
+        border-top:1px solid var(--border-soft);
+        padding:8px 6px calc(8px + env(safe-area-inset-bottom));
+        justify-content:space-around;
+    }
+    .mobile-nav a{
+        display:flex; flex-direction:column; align-items:center; gap:3px;
+        font-size:10px; color:var(--text-muted); font-weight:600;
+        flex:1; padding:4px 0;
+    }
+    .mobile-nav a.active{ color:var(--gold); }
+
+    body{ padding-bottom:76px; }
+
+/* ==== ./web/home/responsive.css @ <=640px ==== */
+.wrap,
+    .section-pad,
+    .hero{
+        padding-left:var(--space-2);
+        padding-right:var(--space-2);
+    }
+
+    .membership,
+    .empty-state{
+        margin-left:var(--space-2);
+        margin-right:var(--space-2);
+    }
+
+    .perf{ padding-left:var(--space-2); padding-right:var(--space-2); }
+
+/* ==== ./web/home/elegant.css @ <=640px ==== */
+input, select, textarea{ font-size:16px; }
+
+/* ==== ./web/detail/responsive.css @ <=640px ==== */
+.player-main{ flex-direction:column; }
+    .player-poster-card{ flex-basis:auto; width:150px; margin:0 auto; }
+
+/* ==== ./web/detail/responsive.css @ <=640px ==== */
+.detail-hero{ margin:var(--space-2) var(--space-2) 0; }
+    .episode-item{ padding:12px 14px; }
+    .data-table{ font-size:13px; }
+    .data-table th,
+    .data-table td{ padding:10px 12px; }
+
+/* ==== ./web/home/redesign.css @ <=640px ==== */
+body:not(.admin-body) .navbar-inner {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        grid-template-areas:
+            "brand actions"
+            "search search";
+        gap: 10px;
+        padding: 10px var(--dv-gut) 12px;
+    }
+
+    body:not(.admin-body) .navbar-inner > :first-child { grid-area: brand; justify-self: start; }
+    body:not(.admin-body) .nav-right  { grid-area: actions; }
+    body:not(.admin-body) .nav-search { grid-area: search; margin: 0; }
+
+    body:not(.admin-body) .section { padding-block: 16px; }
+
+    body:not(.admin-body) .grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px 10px;
+    }
+
+    body:not(.admin-body) .rail { gap: 10px; }
+    body:not(.admin-body) .rail > .dv-card { flex-basis: 116px; }
+
+    body:not(.admin-body) .dv-title { font-size: 12px; }
+    body:not(.admin-body) .dv-sub   { font-size: 10.5px; }
+    body:not(.admin-body) .dv-rank  { font-size: 26px; }
+    body:not(.admin-body) .dv-play  { width: 38px; height: 38px; }
+
+/* ==== ./web/home/elegant.css @ <=480px ==== */
+.admin-content{ padding:12px 10px 88px; font-size:12.5px; }
+    .stat-grid, .admin-grid{ grid-template-columns:repeat(2, minmax(0,1fr)); gap:10px; }
+    .btn{ padding:8px 11px; font-size:12.5px; }
+    .admin-toolbar .btn{ flex:1 1 calc(50% - 5px); justify-content:center; }
+    .chart-card{ padding:12px; }
+    .chart-canvas{ max-height:200px; }
+    .card, .panel, .chart-card, .stat-card{ padding:12px; border-radius:12px; }
+    .brand-wordmark{ font-size:17px; }
+
+/* ==== ./web/home/affiliate.css @ <=420px ==== */
+.pf-perks { grid-template-columns: repeat(2, 1fr); row-gap: 14px; }
+
+/* ==== ./web/home/responsive.css @ <=420px ==== */
+/* Ponsel sangat sempit: tetap 3 kolom, hanya jarak dipadatkan
+       supaya proporsi kartu mendekati kit. */
+    .grid{ gap:8px; }
+    .rail{ gap:8px; }
+    .drama-card{ flex-basis:108px; }
+    .card-title{ font-size:12.5px; }
+
+/* ==== ./web/home/redesign.css @ <=400px ==== */
+body:not(.admin-body) .grid { grid-template-columns: repeat(2, 1fr); }
+    body:not(.admin-body) .mobile-nav a { width: 42px; height: 42px; }

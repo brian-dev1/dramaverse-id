@@ -1,102 +1,47 @@
 /*
 |--------------------------------------------------------------------------
-| Mobile Lock — situs web selalu tampil gaya aplikasi HP
+| Mobile Lock — kunci lebar tampilan
 |--------------------------------------------------------------------------
-| Dimuat PALING AKHIR. Aturan di sini TANPA media query, supaya tampilan
-| di desktop identik dengan di ponsel.
+| Dimuat SETELAH mobile-lock-generated.css (yang berisi seluruh aturan
+| mobile dari tiap halaman, dipentaskan ulang tanpa media query).
 |
-| CATATAN: bottom nav (.mobile-nav) sengaja TIDAK disentuh di sini —
-| perilakunya tetap seperti sebelumnya (diatur redesign.css).
-| Panel admin (.admin-body) juga tidak disentuh sama sekali.
+| Berkas ini hanya mengurus lebar kanvas + gaya khas beranda baru.
+| Panel admin (.admin-body) tidak disentuh sama sekali.
 */
 
 :root { --dv-app-width: 460px; }
 
-/* ---------- Navbar: selalu versi ponsel, pencarian di baris atas ---------- */
-body:not(.admin-body) .nav-links { display: none !important; }
-
-/* Dua baris: [brand | tombol] lalu [pencarian selebar penuh] */
-body:not(.admin-body) .navbar-inner {
-    display: grid !important;
-    grid-template-columns: 1fr auto;
-    grid-template-areas:
-        "brand  actions"
-        "search search";
-    align-items: center;
-    gap: 10px;
+/* ---------- Kanvas dikunci selebar layar HP ---------- */
+body:not(.admin-body) .navbar-inner,
+body:not(.admin-body) main,
+body:not(.admin-body) .footer-inner,
+body:not(.admin-body) .membership-inner {
     max-width: var(--dv-app-width) !important;
-    margin: 0 auto !important;
-    padding: 10px 16px 12px !important;
-}
-body:not(.admin-body) .navbar-inner > :first-child {
-    grid-area: brand;
-    justify-self: start;
-    min-width: 0;
-}
-body:not(.admin-body) .nav-right {
-    grid-area: actions;
-    justify-self: end;
-    margin-left: 0 !important;
-    gap: 8px !important;
-    flex-shrink: 0;
-}
-body:not(.admin-body) .nav-search,
-body:not(.admin-body) .search-pill {
-    grid-area: search;
-    display: flex !important;
-    width: 100% !important;
-    max-width: none !important;
-    min-width: 0 !important;
-    box-sizing: border-box;
+    margin-left: auto !important;
+    margin-right: auto !important;
 }
 
-/* Tombol "Masuk via Telegram" jangan meluber keluar layar */
-body:not(.admin-body) .nav-right .btn,
-body:not(.admin-body) .nav-right a {
-    font-size: 13px !important;
-    padding: 8px 14px !important;
-    white-space: nowrap;
-}
+body:not(.admin-body) main { padding-bottom: 110px; }
 
-/* Beri ruang di bawah navbar dua-baris supaya kartu tidak tertutup */
-body:not(.admin-body) main { padding-top: 8px; }
-
-/* ---------- Isi halaman dikunci selebar layar HP ---------- */
-body:not(.admin-body) main {
-    max-width: var(--dv-app-width);
-    margin: 0 auto;
-    padding-bottom: 110px;
-}
-
+/* Blok di dalam main mengikuti lebar main, tidak melebar sendiri */
 body:not(.admin-body) main .section,
 body:not(.admin-body) main .page-head,
 body:not(.admin-body) main .empty-state,
 body:not(.admin-body) main .rail,
-body:not(.admin-body) main .pagination-wrap {
+body:not(.admin-body) main .pagination-wrap,
+body:not(.admin-body) main .detail-wrap,
+body:not(.admin-body) main .player-wrap {
     max-width: 100% !important;
     margin-left: 0 !important;
     margin-right: 0 !important;
 }
 
-/* Satu-satunya sumber jarak kiri-kanan, supaya semua blok lurus sejajar */
-body:not(.admin-body) main .section-pad {
-    padding-left: 16px !important;
-    padding-right: 16px !important;
-}
+/* Menu atas desktop tetap disembunyikan di semua ukuran */
+body:not(.admin-body) .nav-links { display: none !important; }
 
-body:not(.admin-body) main .section { padding-top: 16px !important; }
-
-/* Grid poster: 3 kolom seperti aplikasi drama pendek */
-body:not(.admin-body) .grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-    gap: 12px 10px !important;
-}
-
-/* Footer ikut menyempit */
-body:not(.admin-body) .footer-inner,
-body:not(.admin-body) .membership-inner {
-    max-width: var(--dv-app-width) !important;
-    margin: 0 auto !important;
+/* Bottom nav ikut lebar kanvas */
+body:not(.admin-body) .mobile-nav {
+    max-width: calc(var(--dv-app-width) - 28px) !important;
 }
 
 /* ---------- Chip filter beranda ---------- */
