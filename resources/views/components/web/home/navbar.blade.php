@@ -44,7 +44,15 @@
                     {{ auth()->user()->initial }}
                 </a>
             @else
-                <a href="{{ route('web.membership') }}" class="btn btn-primary btn-sm">
+                @php
+                    // Arahkan ke bot Telegram. Bila TELEGRAM_BOT_USERNAME belum
+                    // diisi, jatuh kembali ke halaman membership seperti semula.
+                    $botUsername = trim((string) config('telegram.bot_username'), " \t@");
+                    $masukUrl = $botUsername !== ''
+                        ? 'https://t.me/'.$botUsername
+                        : route('web.membership');
+                @endphp
+                <a href="{{ $masukUrl }}" class="btn btn-primary btn-sm" rel="noopener">
                     Masuk via Telegram
                 </a>
             @endauth

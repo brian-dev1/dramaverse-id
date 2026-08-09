@@ -1,17 +1,19 @@
 @php
+    // "Cari" sengaja tidak ada di sini: kolom pencarian sudah tersedia
+    // di bilah atas, jadi tempatnya dipakai menu lain yang sudah ada.
     $items = auth()->check()
         ? [
-            ['route' => 'web.home',     'icon' => 'home',   'label' => 'Beranda'],
-            ['route' => 'web.search',   'icon' => 'search', 'label' => 'Cari'],
-            ['route' => 'web.trending', 'icon' => 'trend',  'label' => 'Trending'],
-            ['route' => 'web.latest',   'icon' => 'clock',  'label' => 'Terbaru'],
-            ['route' => 'web.profile',  'icon' => 'user',   'label' => 'Profil'],
+            ['route' => 'web.home',        'icon' => 'home',  'label' => 'Beranda'],
+            ['route' => 'web.trending',    'icon' => 'trend', 'label' => 'Trending'],
+            ['route' => 'web.latest',      'icon' => 'clock', 'label' => 'Terbaru'],
+            ['route' => 'web.genre.index', 'icon' => 'tag',   'label' => 'Genre'],
+            ['route' => 'web.profile',     'icon' => 'user',  'label' => 'Profil'],
         ]
         : [
-            ['route' => 'web.home',       'icon' => 'home',   'label' => 'Beranda'],
-            ['route' => 'web.search',     'icon' => 'search', 'label' => 'Cari'],
-            ['route' => 'web.trending',   'icon' => 'trend',  'label' => 'Trending'],
+            ['route' => 'web.home',        'icon' => 'home',  'label' => 'Beranda'],
+            ['route' => 'web.trending',    'icon' => 'trend', 'label' => 'Trending'],
             ['route' => 'web.latest',      'icon' => 'clock', 'label' => 'Terbaru'],
+            ['route' => 'web.popular',     'icon' => 'star',  'label' => 'Populer'],
             ['route' => 'web.genre.index', 'icon' => 'tag',   'label' => 'Genre'],
         ];
 @endphp
