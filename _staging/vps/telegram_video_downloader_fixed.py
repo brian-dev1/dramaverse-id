@@ -809,6 +809,17 @@ async def main():
 
             checksum = hasher.hexdigest()
 
+            stats = downloader.last_stats
+
+            if stats.get("flood_hits"):
+                print(
+                    f"\n[TG] Kena flood {stats['flood_hits']}x "
+                    f"(total tunggu {stats['flood_seconds']}s), "
+                    f"koneksi disesuaikan "
+                    f"{stats['connections_start']} -> "
+                    f"{stats['connections_min']}."
+                )
+
         except NotEnoughDiskSpace as error:
             # Ini bukan masalah yang bisa diselamatkan dengan
             # fallback -- disk memang penuh.

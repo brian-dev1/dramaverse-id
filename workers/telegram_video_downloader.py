@@ -21,7 +21,14 @@ API_HASH = os.environ.get("TG_API_HASH")
 DOWNLOAD_DIR = "./downloads"
 
 SCAN_LIMIT = 50
-PARALLEL_CONNECTIONS = 6
+
+# Titik awal jumlah koneksi paralel. Modul fast_download akan
+# menurunkannya sendiri kalau Telegram melempar flood wait, lalu
+# menaikkannya lagi begitu lancar. Naikkan lewat env kalau akunnya
+# premium.
+PARALLEL_CONNECTIONS = int(
+    os.environ.get("TG_PARALLEL_CONNECTIONS", "4")
+)
 
 
 # ============================================================
@@ -597,6 +604,17 @@ async def main():
                 out_path,
                 progress_callback=progress_callback,
             )
+
+            stats = downloader.last_stats
+
+            if stats.get("flood_hits"):
+                print(
+                    f"\n[TG] Kena flood {stats['flood_hits']}x "
+                    f"(total tunggu {stats['flood_seconds']}s), "
+                    f"koneksi disesuaikan "
+                    f"{stats['connections_start']} -> "
+                    f"{stats['connections_min']}."
+                )
 
         except Exception as error:
             print(

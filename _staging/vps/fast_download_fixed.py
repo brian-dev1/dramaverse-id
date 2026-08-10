@@ -5,7 +5,7 @@ Membagi file jadi beberapa bagian (part) dan mendownloadnya secara
 bersamaan lewat beberapa koneksi ke Telegram DC, lalu menuliskannya ke
 disk sesuai urutan.
 
-Menangani 2 kasus:
+Menangani 2 kasus koneksi:
 1. Video di DC BERBEDA dari koneksi utama -> pakai exported sender
    (cara standar Telethon untuk pinjam koneksi ke DC lain).
 2. Video di DC SAMA dengan koneksi utama -> Telegram tidak mengizinkan
@@ -13,32 +13,96 @@ Menangani 2 kasus:
    situ). Solusinya: buka koneksi baru langsung pakai auth_key yang
    sudah ada, tanpa proses export/import.
 
-PERBEDAAN DARI VERSI LAMA
--------------------------
-Versi lama menumpuk SELURUH file di dict `results` dan baru menulis ke
-disk setelah semua chunk selesai. Untuk video 2 GB itu berarti 2 GB RAM
---> VPS kecil langsung masuk swap.
+PERBEDAAN DARI VERSI SEBELUMNYA
+-------------------------------
+Versi sebelumnya gagal total begitu Telegram melempar
+FLOOD_PREMIUM_WAIT ("A wait of N seconds is required in non-premium
+accounts"). Tiga hal yang bikin gagal:
 
-Versi ini menulis tiap batch ke disk begitu batch selesai, lalu
-membuang isinya dari memori. Pemakaian RAM jadi tetap (konstan),
-kira-kira:
+1. FloodPremiumWaitError BUKAN turunan FloodWaitError di Telethon,
+   jadi jatuh ke `except Exception` dan di-backoff 1s/2s/4s tanpa
+   menghormati `error.seconds`.
+2. Waktu satu chunk kena flood, koneksi lain tetap menembak. Telegram
+   membaca itu sebagai flood berkelanjutan dan waktu tunggunya naik
+   terus, sampai jatah 3 percobaan habis.
+3. Jatah percobaan dipakai bersama antara error nyata dan flood wait.
+   Flood wait itu backpressure, bukan kegagalan -- tidak seharusnya
+   memotong jatah retry.
 
-    batch_size * CHUNK_SIZE = (num_connections * BATCH_MULTIPLIER) * 512 KB
+Versi ini:
+- Mengenali flood lewat kelas error DAN teks pesannya, jadi aman untuk
+  FloodWaitError, FloodPremiumWaitError, dan varian baru apa pun.
+- Punya "flood gate" global: satu chunk kena flood -> SEMUA koneksi
+  ikut berhenti selama durasi yang diminta Telegram, lalu jalan lagi.
+- Punya limiter adaptif: jumlah request bersamaan otomatis turun tiap
+  kali kena flood dan naik lagi pelan-pelan setelah lancar. Download
+  menyesuaikan diri dengan jatah akun, tidak menyerah.
+- Chunk 1 MB (batas maksimum Telegram) -> jumlah request separuh
+  dibanding 512 KB, jadi jauh lebih jarang kena flood.
+- Menulis tiap batch ke disk begitu selesai lalu membuangnya dari
+  memori, jadi pemakaian RAM tetap konstan:
 
-Dengan default 4 koneksi -> sekitar 6 MB, berapa pun ukuran videonya.
+      batch_size * CHUNK_SIZE = (num_connections * BATCH_MULTIPLIER) * 1 MB
+
+  Dengan default 4 koneksi -> sekitar 12 MB, berapa pun ukuran videonya.
 """
 
 import asyncio
 import math
 import os
+import random
+import re
+import time
 
-from telethon.errors import FloodWaitError
 from telethon.network import MTProtoSender
 from telethon.tl.functions.upload import GetFileRequest
 from telethon.tl.types import InputDocumentFileLocation
 
-# 512 KB per request (kelipatan wajib Telegram).
-CHUNK_SIZE = 512 * 1024
+# ------------------------------------------------------------------
+# Kelas error flood.
+#
+# FloodWaitError selalu ada. FloodPremiumWaitError baru muncul di
+# Telethon versi baru, jadi importnya dibungkus supaya modul tetap
+# jalan di versi lama.
+# ------------------------------------------------------------------
+
+from telethon.errors import FloodWaitError
+
+_FLOOD_ERRORS = [FloodWaitError]
+
+for _name in ("FloodPremiumWaitError", "FloodTestPhoneWaitError"):
+    try:
+        _FLOOD_ERRORS.append(
+            getattr(
+                __import__(
+                    "telethon.errors",
+                    fromlist=[_name],
+                ),
+                _name,
+            )
+        )
+    except (AttributeError, ImportError):
+        pass
+
+FLOOD_ERRORS = tuple(_FLOOD_ERRORS)
+
+# Cadangan terakhir: sebagian error flood hanya bisa dikenali dari
+# teksnya ("A wait of 3 seconds is required in non-premium accounts").
+_FLOOD_TEXT = re.compile(
+    r"wait of (\d+) seconds",
+    re.IGNORECASE,
+)
+
+
+# ------------------------------------------------------------------
+# Konstanta
+# ------------------------------------------------------------------
+
+# 1 MB per request. Ini batas maksimum GetFileRequest dan tetap
+# kelipatan yang sah (limit habis dibagi 4096, 1 MB habis dibagi limit).
+# Dua kali lebih besar dari 512 KB = setengah jumlah request untuk file
+# yang sama = jauh lebih jarang kena FLOOD_PREMIUM_WAIT.
+CHUNK_SIZE = 1024 * 1024
 
 # Berapa chunk yang boleh "in-flight" per koneksi.
 # Makin besar = makin cepat tapi makin boros RAM.
@@ -48,12 +112,143 @@ BATCH_MULTIPLIER = 3
 # melempar FLOOD_WAIT dan VPS kecil mulai tersengal.
 MAX_CONNECTIONS = 8
 
-# Berapa kali satu chunk dicoba ulang sebelum menyerah.
-CHUNK_RETRIES = 3
+# Berapa kali satu chunk dicoba ulang untuk error NYATA (timeout,
+# koneksi putus, dsb). Flood wait tidak memotong jatah ini.
+CHUNK_RETRIES = 5
+
+# Batas atas satu kali flood wait yang masih mau kita tunggu.
+MAX_FLOOD_WAIT = 120
+
+# Total waktu flood wait yang ditolerir untuk satu chunk sebelum
+# menyerah. Melindungi dari akun yang benar-benar diblokir sementara.
+MAX_FLOOD_TOTAL = 900
+
+# Setelah sekian chunk lancar berturut-turut, izin request bersamaan
+# dinaikkan satu lagi.
+RECOVERY_STREAK = 20
 
 
 class NotEnoughDiskSpace(Exception):
     """Sisa disk tidak cukup untuk menampung file."""
+
+
+def flood_seconds(error):
+    """
+    Kembalikan lama tunggu (detik) kalau `error` adalah flood,
+    atau None kalau bukan.
+    """
+    if isinstance(error, FLOOD_ERRORS):
+        return max(1, int(getattr(error, "seconds", 1) or 1))
+
+    seconds = getattr(error, "seconds", None)
+
+    if isinstance(seconds, int) and seconds > 0:
+        return seconds
+
+    match = _FLOOD_TEXT.search(str(error))
+
+    if match:
+        return max(1, int(match.group(1)))
+
+    return None
+
+
+class _FloodGate:
+    """
+    Palang buka-tutup bersama. Begitu satu chunk kena flood, palang
+    ditutup untuk SEMUA koneksi selama durasi yang diminta Telegram.
+
+    Ini inti perbaikannya: dulu koneksi lain tetap menembak selama satu
+    koneksi menunggu, jadi Telegram menaikkan hukumannya terus.
+    """
+
+    def __init__(self):
+        self._open_at = 0.0
+        self.total_paused = 0.0
+        self.flood_hits = 0
+
+    def pause(self, seconds):
+        self.flood_hits += 1
+
+        now = time.monotonic()
+
+        # Tambah jeda kecil supaya tidak menembak tepat di detik batas.
+        until = now + seconds + 0.5
+
+        # Kalau palang sudah tertutup lebih lama, biarkan.
+        if until > self._open_at:
+            self.total_paused += until - max(now, self._open_at)
+            self._open_at = until
+
+    async def wait(self):
+        while True:
+            delay = self._open_at - time.monotonic()
+
+            if delay <= 0:
+                return
+
+            # Tidur pendek-pendek supaya perpanjangan palang oleh
+            # koneksi lain langsung terbaca.
+            await asyncio.sleep(min(delay, 0.5))
+
+
+class _AdaptiveLimiter:
+    """
+    Pembatas request bersamaan yang bisa berubah saat jalan.
+
+    Kena flood -> jatah turun satu (minimal 1).
+    Lancar terus -> jatah naik satu lagi (maksimal batas awal).
+    """
+
+    def __init__(self, start, maximum):
+        self._max = max(1, int(maximum))
+        self._limit = max(1, min(int(start), self._max))
+        self._in_flight = 0
+        self._streak = 0
+        self._cond = asyncio.Condition()
+        self.min_limit_seen = self._limit
+
+    @property
+    def limit(self):
+        return self._limit
+
+    async def acquire(self):
+        async with self._cond:
+            while self._in_flight >= self._limit:
+                await self._cond.wait()
+
+            self._in_flight += 1
+
+    async def release(self):
+        async with self._cond:
+            self._in_flight -= 1
+
+            self._cond.notify(1)
+
+    async def penalize(self):
+        async with self._cond:
+            self._streak = 0
+
+            if self._limit > 1:
+                self._limit -= 1
+
+                self.min_limit_seen = min(
+                    self.min_limit_seen,
+                    self._limit,
+                )
+
+    async def reward(self):
+        async with self._cond:
+            self._streak += 1
+
+            if (
+                self._streak >= RECOVERY_STREAK
+                and self._limit < self._max
+            ):
+                self._limit += 1
+                self._streak = 0
+
+                self._cond.notify(1)
 
 
 class ParallelDownloader:
@@ -63,12 +258,15 @@ class ParallelDownloader:
         num_connections=4,
         batch_multiplier=BATCH_MULTIPLIER,
         min_free_bytes=512 * 1024 * 1024,
+        chunk_size=CHUNK_SIZE,
     ):
         """
         client          : TelegramClient yang sudah terhubung.
         num_connections : jumlah koneksi paralel (dibatasi 1..MAX_CONNECTIONS).
         batch_multiplier: chunk in-flight per koneksi. Turunkan kalau RAM tipis.
         min_free_bytes  : sisa disk yang harus tetap tersedia setelah download.
+        chunk_size      : besar satu request. Harus kelipatan 4096 dan
+                          membagi habis 1 MB.
         """
         self.client = client
         self.num_connections = max(
@@ -77,6 +275,11 @@ class ParallelDownloader:
         )
         self.batch_multiplier = max(1, int(batch_multiplier))
         self.min_free_bytes = int(min_free_bytes)
+        self.chunk_size = int(chunk_size)
+        self.chunk_retries = CHUNK_RETRIES
+
+        # Statistik ringkas, berguna buat log di worker.
+        self.last_stats = {}
 
     # --------------------------------------------------------
     # Koneksi
@@ -153,44 +356,97 @@ class ParallelDownloader:
     # Chunk
     # --------------------------------------------------------
 
-    async def _download_chunk(self, sender, location, offset, sem):
+    async def _download_chunk(
+        self,
+        sender,
+        location,
+        offset,
+        gate,
+        limiter,
+    ):
         """
-        Ambil satu chunk. `limit` selalu CHUNK_SIZE penuh -- itu kelipatan
-        standar yang diizinkan Telegram. Untuk chunk terakhir, server
-        otomatis mengembalikan lebih sedikit byte daripada yang diminta;
-        itu normal, BUKAN error. Kalau limit dikecilkan manual di sini,
+        Ambil satu chunk.
+
+        `limit` selalu chunk_size penuh -- itu kelipatan standar yang
+        diizinkan Telegram. Untuk chunk terakhir, server otomatis
+        mengembalikan lebih sedikit byte daripada yang diminta; itu
+        normal, BUKAN error. Kalau limit dikecilkan manual di sini,
         Telegram menolak dengan "invalid limit".
+
+        Flood wait TIDAK memotong jatah percobaan: itu perintah tunggu
+        dari server, bukan kegagalan. Yang memotong jatah hanya error
+        nyata (timeout, koneksi putus, dsb).
         """
+        attempt = 0
+        flood_total = 0.0
         last_error = None
 
-        for attempt in range(CHUNK_RETRIES):
+        while attempt <= self.chunk_retries:
+            # Hormati palang bersama SEBELUM ambil izin, supaya
+            # koneksi yang menunggu tidak menahan slot orang lain.
+            await gate.wait()
+            await limiter.acquire()
+
             try:
-                async with sem:
-                    result = await sender.send(
-                        GetFileRequest(
-                            location=location,
-                            offset=offset,
-                            limit=CHUNK_SIZE,
-                        )
+                result = await sender.send(
+                    GetFileRequest(
+                        location=location,
+                        offset=offset,
+                        limit=self.chunk_size,
                     )
+                )
+
+                await limiter.release()
+                await limiter.reward()
 
                 return offset, result.bytes
 
-            except FloodWaitError as error:
-                # Telegram minta kita berhenti sejenak. Patuhi.
-                last_error = error
-
-                await asyncio.sleep(error.seconds + 1)
-
             except Exception as error:
+                await limiter.release()
+
                 last_error = error
 
-                # Backoff sederhana: 1s, 2s, 4s.
-                await asyncio.sleep(2 ** attempt)
+                seconds = flood_seconds(error)
+
+                if seconds is None:
+                    # Error nyata: potong jatah, backoff dengan jitter
+                    # supaya semua koneksi tidak bangun serempak.
+                    attempt += 1
+
+                    if attempt > self.chunk_retries:
+                        break
+
+                    await asyncio.sleep(
+                        (2 ** (attempt - 1))
+                        + random.uniform(0, 0.5)
+                    )
+
+                    continue
+
+                # Flood: turunkan jatah paralel dan tutup palang untuk
+                # SEMUA koneksi selama durasi yang diminta Telegram.
+                if seconds > MAX_FLOOD_WAIT:
+                    last_error = RuntimeError(
+                        f"Telegram minta tunggu {seconds} detik "
+                        f"(batas toleransi {MAX_FLOOD_WAIT} detik)."
+                    )
+                    break
+
+                flood_total += seconds
+
+                if flood_total > MAX_FLOOD_TOTAL:
+                    last_error = RuntimeError(
+                        f"Total flood wait {flood_total:.0f} detik "
+                        f"melewati batas {MAX_FLOOD_TOTAL} detik."
+                    )
+                    break
+
+                await limiter.penalize()
+
+                gate.pause(seconds)
 
         raise RuntimeError(
-            f"Chunk offset {offset} gagal setelah "
-            f"{CHUNK_RETRIES} percobaan: {last_error}"
+            f"Chunk offset {offset} gagal: {last_error}"
         )
 
     # --------------------------------------------------------
@@ -202,9 +458,9 @@ class ParallelDownloader:
 
         os.makedirs(target_dir, exist_ok=True)
 
-        free_bytes = os.statvfs(target_dir).f_bavail * os.statvfs(
-            target_dir
-        ).f_frsize
+        stat = os.statvfs(target_dir)
+
+        free_bytes = stat.f_bavail * stat.f_frsize
 
         needed = file_size + self.min_free_bytes
 
@@ -254,15 +510,21 @@ class ParallelDownloader:
             thumb_size="",
         )
 
-        total_chunks = math.ceil(file_size / CHUNK_SIZE)
-        offsets = [i * CHUNK_SIZE for i in range(total_chunks)]
+        total_chunks = math.ceil(file_size / self.chunk_size)
+        offsets = [i * self.chunk_size for i in range(total_chunks)]
 
         batch_size = self.num_connections * self.batch_multiplier
 
+        gate = _FloodGate()
+        limiter = _AdaptiveLimiter(
+            self.num_connections,
+            self.num_connections,
+        )
+
         senders, same_dc = await self._get_dc_senders(dc_id)
-        sem = asyncio.Semaphore(self.num_connections)
 
         downloaded = 0
+        started_at = time.monotonic()
 
         try:
             # File dibuka sekali; tiap batch langsung ditulis lalu
@@ -276,12 +538,29 @@ class ParallelDownloader:
                             senders[index % len(senders)],
                             location,
                             offset,
-                            sem,
+                            gate,
+                            limiter,
                         )
                         for index, offset in enumerate(batch)
                     ]
 
-                    batch_results = await asyncio.gather(*tasks)
+                    # return_exceptions=True supaya tugas lain dalam batch
+                    # tetap tuntas sebelum kita melempar error. Tanpa ini,
+                    # ada task menggantung yang masih memakai sender saat
+                    # sender-nya sudah diputus di blok finally.
+                    batch_results = await asyncio.gather(
+                        *tasks,
+                        return_exceptions=True,
+                    )
+
+                    failed = [
+                        item
+                        for item in batch_results
+                        if isinstance(item, BaseException)
+                    ]
+
+                    if failed:
+                        raise failed[0]
 
                     # Urutkan supaya penulisan tetap berurutan.
                     batch_results.sort(key=lambda item: item[0])
@@ -312,5 +591,15 @@ class ParallelDownloader:
 
         finally:
             await self._release_senders(senders, same_dc)
+
+        self.last_stats = {
+            "bytes": downloaded,
+            "seconds": time.monotonic() - started_at,
+            "flood_hits": gate.flood_hits,
+            "flood_seconds": round(gate.total_paused, 1),
+            "connections_start": self.num_connections,
+            "connections_min": limiter.min_limit_seen,
+            "connections_end": limiter.limit,
+        }
 
         return out_path
