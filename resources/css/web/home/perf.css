@@ -1,0 +1,107 @@
+/*
+|--------------------------------------------------------------------------
+| Pemolesan performa — dimuat paling akhir
+|--------------------------------------------------------------------------
+| Berkas ini tidak menambah gaya baru. Isinya hanya mematikan pekerjaan yang
+| harus diulang browser di SETIAP frame ketika halaman digulir di ponsel.
+| Semuanya berscope sisi web; panel admin tidak memuat berkas ini.
+|
+| Kalau ada yang terasa berbeda dan ingin dikembalikan, cukup hapus blok yang
+| bersangkutan di sini — berkas sumbernya tidak diubah sama sekali.
+*/
+
+/* ==========================================================================
+   1. Efek :hover pada perangkat sentuh
+   ==========================================================================
+   Di ponsel tidak ada kursor, jadi :hover baru menyala SETELAH kartu disentuh
+   lalu menempel di sana sampai ada sentuhan lain — kartu yang tadi diketuk
+   tetap terangkat dan bercahaya. Selain salah secara tampilan, tiap transisi
+   transform + box-shadow memaksa browser menggambar ulang kartunya.
+
+   Aturan hover-nya sendiri tidak dihapus; hanya dibatasi ke perangkat yang
+   benar-benar punya kursor. Di desktop persis seperti sebelumnya. */
+@media (hover: none) {
+    body:not(.admin-body) .dv-card:hover .dv-poster,
+    body:not(.admin-body) .drama-card:hover,
+    body:not(.admin-body) .drama-card:hover .drama-poster {
+        transform: none;
+        box-shadow: var(--dv-sh, 0 10px 30px -18px rgba(0, 0, 0, .8));
+    }
+
+    body:not(.admin-body) .btn:hover,
+    body:not(.admin-body) .btn-primary:hover,
+    body:not(.admin-body) .btn-ghost:hover {
+        transform: none;
+    }
+
+    /* Tanpa hover, properti transisinya tidak pernah terpakai. Menyimpannya
+       tetap membuat browser menyiapkan lapisan komposit untuk tiap kartu. */
+    body:not(.admin-body) .dv-poster,
+    body:not(.admin-body) .drama-card,
+    body:not(.admin-body) .drama-poster {
+        transition: none;
+    }
+}
+
+/* ==========================================================================
+   2. Bilah navigasi bawah — blur yang tidak terlihat
+   ==========================================================================
+   Latarnya rgba(12, 9, 18, .97): praktis buram total, jadi blur di belakangnya
+   tidak menghasilkan apa pun yang bisa dilihat mata. Tetapi karena elemennya
+   position:fixed, browser wajib mengambil ulang isi layar di belakangnya dan
+   mem-blur-nya setiap frame selama halaman digulir. Ini pekerjaan paling mahal
+   yang ada di jalur gulir mini app, dan hasilnya nol.
+
+   Warnanya dinaikkan ke 1 supaya sama sekali tidak ada perbedaan yang terlihat
+   antara sebelum dan sesudah. */
+body:not(.admin-body) .mobile-nav {
+    background: #0C0912;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+
+/* ==========================================================================
+   3. Label kecil di poster (.dv-tag)
+   ==========================================================================
+   Setiap label "BARU" / "VIP" / "EP 01" punya backdrop-filter sendiri. Satu
+   layar bisa memuat 12-20 kartu, jadi 12-20 blur terpisah harus dihitung ulang
+   tiap frame saat daftar digeser — penyebab utama gulir tersendat di ponsel
+   kelas menengah.
+
+   Di layar lebar blur-nya dibiarkan. Di ponsel blur diganti latar yang sedikit
+   lebih pekat (.74 -> .84) supaya keterbacaan di atas poster terang tetap
+   setara. Ini satu-satunya aturan di berkas ini yang mengubah tampilan, dan
+   perbedaannya hanya pada tingkat keburaman di belakang label. */
+@media (max-width: 900px) {
+    body:not(.admin-body) .dv-tag {
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        background: rgba(8, 6, 13, .84);
+    }
+
+    body:not(.admin-body) .dv-tag-new,
+    body:not(.admin-body) .dv-tag-top,
+    body:not(.admin-body) .dv-tag-vip {
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+    }
+}
+
+/* ==========================================================================
+   4. Daftar mendatar (.rail)
+   ==========================================================================
+   overscroll-behavior menahan gulir horizontal supaya tidak "menular" ke
+   halaman ketika daftar sudah mentok di ujung. Di Telegram Mini App efeknya
+   terasa: tanpa ini, geseran yang melewati ujung daftar diteruskan ke webview
+   dan sempat terbaca sebagai gestur tutup jendela. */
+body:not(.admin-body) .rail {
+    overscroll-behavior-x: contain;
+    overscroll-behavior-y: auto;
+}
+
+/* Poster sudah overflow:hidden, jadi apa pun di dalamnya mustahil menggambar
+   keluar kotaknya. Memberitahu browser hal itu secara eksplisit membuatnya
+   boleh melewatkan kartu di luar layar saat menghitung ulang gambaran. */
+body:not(.admin-body) .dv-poster {
+    contain: paint;
+}

@@ -23,6 +23,12 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    {{-- SDK Telegram baru diminta di akhir <body> (lihat partials/miniapp).
+         Membuka koneksinya dari sini membuat DNS + TLS sudah beres saat
+         giliran unduhnya tiba — di jaringan seluler itu ratusan milidetik
+         yang tidak perlu ditunggu sebelum login otomatis bisa mulai. --}}
+    <link rel="preconnect" href="https://telegram.org" crossorigin>
     {{-- Font baru: Outfit (judul) + Plus Jakarta Sans (teks).
          Hanya 2 keluarga, dimuat non-blocking. --}}
     <link rel="stylesheet"

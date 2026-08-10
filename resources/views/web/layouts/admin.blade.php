@@ -11,7 +11,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    {{-- Entry khusus admin: app.css/app.js + modul admin. --}}
+    @vite(['resources/css/admin.css', 'resources/js/admin-entry.js'])
 </head>
 <body class="admin-body">
 

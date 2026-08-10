@@ -1,0 +1,171 @@
+/*
+ * DIHASILKAN OTOMATIS — JANGAN DIEDIT TANGAN.
+ * Sumber : resources/css/web/admin/admin.css, resources/css/web/admin/panel-spacing.css, resources/css/web/admin/action-layout.css
+ * Pembuat: tools/extract-shared-admin-css.mjs (jalan lewat "npm run build")
+ * Posisi : diimpor app.css sebelum vintage.css, sama seperti berkas aslinya dulu.
+ *
+ * Isinya hanya aturan CSS admin yang masih mungkin cocok dengan markup halaman
+ * publik. Sisanya tetap tinggal di berkas admin dan hanya dimuat lewat
+ * resources/css/admin.css. Ubah gayanya di berkas sumber, bukan di sini.
+ */
+
+/* ===== resources/css/web/admin/admin.css ===== */
+.table-wrap{ overflow-x:auto; border-radius:var(--radius-m); }
+.cell-empty{ color:var(--text-muted); }
+.badge{
+    display:inline-block;
+    padding:3px 9px;
+    border-radius:999px;
+    font-family:var(--font-mono);
+    font-size:10px; letter-spacing:.4px;
+    border:1px solid var(--border);
+}
+.badge-on{ color:var(--gold-bright); border-color:rgba(217,175,110,.35); background:rgba(217,175,110,.08); }
+.btn-danger:hover{ border-color:var(--crimson); color:var(--crimson); background:transparent; }
+.inline-form{ display:inline-block; }
+.btn.btn-danger{
+    background:var(--crimson); color:#fff; border:0;
+}
+.btn.btn-danger:hover{ background:#a83450; transform:translateY(-1px); box-shadow:none; }
+.panel{
+    border:1px solid var(--border-soft);
+    border-radius:var(--radius-l);
+    background:var(--bg-card);
+    overflow:hidden;
+}
+.panel-head{
+    display:flex; align-items:center; justify-content:space-between;
+    gap:var(--space-2);
+    padding:var(--space-3) var(--space-4);
+    border-bottom:1px solid var(--border-soft);
+}
+.panel-head h2{ font-family:var(--font-display); font-size:15px; font-weight:600; }
+.panel .data-table{ border:0; border-radius:0; }
+.panel .data-table th{ background:transparent; }
+.panel .empty-state{ margin:0; border:0; }
+.detail-body-admin{ padding:var(--space-4); }
+.detail-body-admin code{
+    font-family:var(--font-mono);
+    font-size:12px;
+    padding:2px 6px;
+    border-radius:4px;
+    background:var(--bg-secondary);
+    color:var(--gold-bright);
+}
+.badge-pending{
+    color:var(--text-secondary);
+    border-color:var(--border);
+    background:rgba(155,147,166,.06);
+}
+.btn-primary {
+    background: var(--gold);
+    color: #000;
+    border: 0;
+}
+.btn-danger {
+    border-color: rgba(200,60,70,.4);
+    color: var(--crimson);
+}
+.btn-danger:hover {
+    background: rgba(200,60,70,.1);
+}
+.panel > .table-wrap {
+    padding: 0 24px 24px !important;
+}
+.panel > .table-wrap > .data-table {
+    border-radius: var(--radius-m) !important;
+    overflow: hidden !important;
+}
+@media (max-width: 760px) {
+.panel > .table-wrap {
+        padding: 0 16px 18px !important;
+    }
+}
+
+/* ===== resources/css/web/admin/panel-spacing.css ===== */
+.panel{
+    min-width:0;
+}
+.panel-head{
+    align-items:flex-start;
+    flex-wrap:wrap;
+    gap:10px 16px;
+    padding:clamp(16px, 2vw, 22px) clamp(18px, 2.5vw, 28px);
+}
+.panel-head > *{
+    min-width:0;
+}
+.panel-head h2{
+    line-height:1.35;
+    margin:0;
+}
+.page-subtitle code,
+.detail-body-admin code,
+.data-table code {
+    display:inline;
+    max-width:100%;
+    white-space:normal;
+    overflow-wrap:anywhere;
+    word-break:break-word;
+    line-height:1.55;
+}
+.panel > .detail-body-admin {
+    padding:clamp(18px, 2.4vw, 28px);
+}
+.detail-body-admin{
+    line-height:1.7;
+}
+.detail-body-admin p,
+.detail-body-admin li,
+.page-subtitle{
+    line-height:1.7;
+}
+.detail-body-admin ol,
+.detail-body-admin ul{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    margin:0;
+    padding-left:1.25rem;
+}
+.table-wrap{
+    max-width:100%;
+}
+.panel > .table-wrap .data-table{
+    width:100%;
+}
+.panel > .table-wrap .data-table th,
+.panel > .table-wrap .data-table td{
+    padding:13px 16px;
+    vertical-align:top;
+    line-height:1.55;
+}
+.data-table th{
+    white-space:nowrap;
+}
+.data-table td{
+    overflow-wrap:anywhere;
+}
+.data-table td br + span,
+.data-table td br + code,
+.data-table td br + .badge {
+    display:inline-block;
+    margin-top:6px;
+}
+.badge,
+.cell-empty {
+    line-height:1.45;
+}
+.page-subtitle {
+    line-height:1.65;
+}
+@media (max-width: 640px) {
+.panel-head,
+.panel > .detail-body-admin {
+        padding:16px;
+}
+.panel > .table-wrap .data-table th,
+    .panel > .table-wrap .data-table td{
+        padding:11px 12px;
+    }
+}

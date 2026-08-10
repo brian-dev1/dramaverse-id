@@ -1,0 +1,10 @@
+/*
+ * DIHASILKAN OTOMATIS — JANGAN DIEDIT TANGAN.
+ * Sumber : resources/css/web/admin/admin-refine.css, resources/css/web/admin/referral-admin.css
+ * Pembuat: tools/extract-shared-admin-css.mjs (jalan lewat "npm run build")
+ * Posisi : diimpor app.css sesudah vintage.css, sama seperti berkas aslinya dulu.
+ *
+ * Isinya hanya aturan CSS admin yang masih mungkin cocok dengan markup halaman
+ * publik. Sisanya tetap tinggal di berkas admin dan hanya dimuat lewat
+ * resources/css/admin.css. Ubah gayanya di berkas sumber, bukan di sini.
+ */

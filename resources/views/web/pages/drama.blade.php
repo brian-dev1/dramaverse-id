@@ -13,7 +13,10 @@
 
             <div class="detail-poster {{ $drama->gradient ?? 'g1' }}">
                 @if ($drama->poster_url)
-                    <img src="{{ $drama->poster_url }}" alt="{{ $drama->title }}">
+                    {{-- Gambar terbesar di halaman ini dan yang menentukan kapan
+                         halaman terasa selesai dimuat, jadi diberi prioritas. --}}
+                    <img src="{{ $drama->poster_url }}" alt="{{ $drama->title }}"
+                         fetchpriority="high" decoding="async">
                 @else
                     <span class="detail-poster-title">{{ $drama->title }}</span>
                 @endif

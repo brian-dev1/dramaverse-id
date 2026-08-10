@@ -3,6 +3,7 @@
     "private": true,
     "type": "module",
     "scripts": {
+        "prebuild": "node tools/extract-shared-admin-css.mjs",
         "build": "vite build",
         "dev": "vite"
     },

@@ -8,7 +8,7 @@
             :href="route('web.continue-watching')" />
 
         <div class="rail">
-            @foreach ($histories as $history)
+            @foreach ($histories as $index => $history)
                 @php
                     // `progress` sudah disimpan sebagai persen (0-100).
                     $percent = max(0, min(100, (int) $history->progress));
@@ -18,7 +18,10 @@
                     :drama="$history->drama"
                     variant="continue"
                     :episode="$history->episode->episode_number"
-                    :progress="$percent" />
+                    :progress="$percent"
+                    {{-- Bagian teratas beranda: tiga poster pertama diunduh
+                         lebih awal, sisanya tetap menunggu digulir. --}}
+                    :priority="$index < 3" />
             @endforeach
         </div>
 

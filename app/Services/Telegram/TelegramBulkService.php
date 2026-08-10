@@ -159,6 +159,10 @@ class TelegramBulkService
      *
      * Tidak menyentuh Telegram sama sekali — yang dikerjakan hanya
      * menyegarkan keadaan di sisi kita.
+     *
+     * Termasuk menutup catatan masalah yang sudah tidak berlaku: baris yang
+     * berstatus Tersinkron dan punya file_id tidak sedang bermasalah, dan
+     * peringatannya di panel hanya sisa dari kegagalan yang sudah lewat.
      */
     public function refresh(array $ids): array
     {
@@ -169,6 +173,13 @@ class TelegramBulkService
         foreach ($this->take($ids) as $video) {
 
             $this->cache->forget($video->episode_id);
+
+            if ($video->isSyncedToTelegram() && $video->hasActiveIssue()) {
+                $video->resolveIssue(
+                    'Ditutup saat status disegarkan: video berstatus Tersinkron '
+                    .'dan file_id-nya tersimpan.'
+                );
+            }
 
             if ($video->sync_status === TelegramSyncStatus::PROCESSING
                 && $video->updated_at?->lt($batas)) {

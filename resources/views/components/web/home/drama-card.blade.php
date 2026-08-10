@@ -4,6 +4,11 @@
     'rank'     => null,
     'progress' => null,
     'episode'  => null,
+
+    // Poster yang sudah pasti terlihat begitu halaman dibuka. Diberikan hanya
+    // pada beberapa kartu pertama di bagian teratas beranda. Sisanya tetap
+    // `lazy`: itu justru yang membuat halaman ringan.
+    'priority' => false,
 ])
 
 {{--
@@ -17,9 +22,17 @@
     <div class="dv-poster {{ $drama->gradient ?? 'g1' }}">
 
         @if ($drama->poster_url)
+            {{--
+                `loading="lazy"` menunda unduhan sampai browser selesai
+                menghitung tata letak. Untuk poster di bawah layar itu tepat,
+                tapi untuk poster yang langsung terlihat ia justru menambah satu
+                putaran tunggu sebelum gambar pertama muncul. Kartu teratas
+                karena itu diminta lebih dulu dan diberi prioritas tinggi.
+            --}}
             <img src="{{ $drama->poster_url }}"
                  alt=""
-                 loading="lazy"
+                 loading="{{ $priority ? 'eager' : 'lazy' }}"
+                 @if ($priority) fetchpriority="high" @endif
                  decoding="async"
                  width="300" height="450">
         @endif

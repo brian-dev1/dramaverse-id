@@ -14,10 +14,13 @@
 
     <x-web.home.continue-watching :histories="$continueWatching" />
 
+    {{-- Rail teratas yang pasti ada isinya: posternya jadi gambar pertama yang
+         dilihat pengguna, jadi tiga di antaranya tidak ditunda. --}}
     <x-web.home.rail
         :dramas="$trending"
         title="Trending Minggu Ini"
         variant="rank"
+        :priority="true"
         :href="route('web.trending')" />
 
     <x-web.home.grid

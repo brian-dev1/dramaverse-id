@@ -197,18 +197,61 @@ class TelegramAutomation extends Command
             $video->reportIssue($sebab);
         }
 
+        $basi = $this->reconcileResolvedIssues();
+
         $berkas = $this->purgeTempFiles();
 
         $this->log('auto.cleanup', [
             'tersangkut'   => $tersangkut->count(),
+            'masalah_basi' => $basi,
             'berkas_hapus' => $berkas,
         ]);
 
         $this->components->info(sprintf(
-            '%d baris tersangkut dilepaskan, %d berkas sementara dihapus.',
+            '%d baris tersangkut dilepaskan, %d catatan masalah basi ditutup, '
+            .'%d berkas sementara dihapus.',
             $tersangkut->count(),
+            $basi,
             $berkas
         ));
+    }
+
+    /**
+     * Tutup catatan masalah yang sudah tidak berlaku.
+     *
+     * Video berstatus Tersinkron yang punya `telegram_file_id` tidak sedang
+     * bermasalah — apa pun yang gagal sebelumnya sudah terbukti selesai oleh
+     * sinkronisasi yang berhasil. Baris seperti ini pernah tertinggal dengan
+     * `issue_resolved_at` kosong karena jalur sukses tidak menutupnya, dan
+     * panel terus memasang tanda peringatan pada baris yang justru beres.
+     *
+     * Dijalankan tiap cleanup supaya keadaan lama ikut sembuh sendiri, bukan
+     * hanya baris yang lewat sesudah perbaikannya dipasang.
+     *
+     * @return int jumlah catatan yang ditutup
+     */
+    private function reconcileResolvedIssues(): int
+    {
+        $ditutup = 0;
+
+        EpisodeVideo::query()
+            ->where('sync_status', TelegramSyncStatus::SYNCED->value)
+            ->whereNotNull('telegram_file_id')
+            ->whereNotNull('issue_message')
+            ->whereNull('issue_resolved_at')
+            ->chunkById(200, function ($videos) use (&$ditutup) {
+
+                foreach ($videos as $video) {
+                    $video->resolveIssue(
+                        'Ditutup otomatis: video berstatus Tersinkron dan file_id-nya '
+                        .'tersimpan, jadi masalah yang tercatat sudah tidak berlaku.'
+                    );
+
+                    $ditutup++;
+                }
+            });
+
+        return $ditutup;
     }
 
     /** @return int jumlah berkas yang dihapus */

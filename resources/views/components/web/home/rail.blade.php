@@ -4,6 +4,10 @@
     'href'    => null,
     'count'   => null,
     'variant' => 'default',
+
+    // Diaktifkan hanya untuk bagian paling atas halaman: tiga poster pertama
+    // diunduh lebih awal supaya layar tidak kosong dulu sebelum terisi.
+    'priority' => false,
 ])
 
 @if ($dramas->isNotEmpty())
@@ -21,7 +25,8 @@
                     <x-web.home.drama-card
                         :drama="$drama"
                         :variant="$variant"
-                        :rank="$index + 1" />
+                        :rank="$index + 1"
+                        :priority="$priority && $index < 3" />
                 @endforeach
             </div>
 

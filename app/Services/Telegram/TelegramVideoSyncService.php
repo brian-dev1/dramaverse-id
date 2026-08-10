@@ -105,6 +105,15 @@ class TelegramVideoSyncService
     {
         // Idempotency guard: jangan ubah video yang sudah sukses menjadi FAILED.
         if ($video->isSyncedToTelegram()) {
+            // Berkasnya sudah punya file_id yang sah. Kalau masih ada catatan
+            // masalah lama yang menempel, itu sisa dari percobaan sebelumnya
+            // dan bukan keadaan sekarang — ditutup di sini, supaya panel
+            // tidak memasang tanda peringatan pada baris yang sudah beres.
+            $video->resolveIssue(
+                'Video sudah tersinkron dengan file_id yang sah saat permintaan '
+                .'sinkronisasi berikutnya diperiksa.'
+            );
+
             $this->log('info', 'sync.already_synced', $video);
 
             return $video->refresh();
@@ -179,6 +188,11 @@ class TelegramVideoSyncService
     {
         // Retry terhadap video yang sudah punya file_id harus menjadi no-op.
         if ($video->isSyncedToTelegram()) {
+            $video->resolveIssue(
+                'Percobaan ulang dilewati karena video sudah tersinkron dengan '
+                .'file_id yang sah.'
+            );
+
             $this->log('info', 'sync.retry_skipped_already_synced', $video);
 
             return $video->refresh();
@@ -274,6 +288,19 @@ class TelegramVideoSyncService
             'synced_at'               => now(),
             'last_error'              => null,
         ])->save();
+
+        /*
+         * Sinkronisasi yang berhasil ADALAH bukti sehat.
+         *
+         * Telegram menerima berkasnya dan mengembalikan file_id baru — tidak
+         * ada lagi yang tersisa dari kegagalan sebelumnya untuk dibuktikan.
+         * Sebelum ini catatan masalahnya dibiarkan terbuka dan panel terus
+         * memasang "⚠ Masih ada masalah" pada baris yang justru baru saja
+         * selesai, sampai ada yang menekan Verifikasi file_id secara manual.
+         */
+        $video->resolveIssue(
+            'Sinkronisasi ulang berhasil dan Telegram mengembalikan file_id baru.'
+        );
 
         $this->log('info', 'sync.success', $video, [
             'duration_ms' => $response->durationMs,

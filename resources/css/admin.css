@@ -2,18 +2,16 @@
 
 /*
 |--------------------------------------------------------------------------
-| DramaVerse ID — Entry Stylesheet (SISI WEB / MINI APP)
+| DramaVerse ID — Entry Stylesheet (PANEL ADMIN)
 |--------------------------------------------------------------------------
-| Token dan modul dimuat berurutan: token -> tata letak -> komponen.
-| Modul untuk sprint berikutnya menunggu di resources/views/_staging/css
-| dan ditarik ke sini saat fiturnya dikerjakan.
+| Isinya sengaja SAMA PERSIS dengan resources/css/app.css, hanya ditambah
+| modul admin pada posisi aslinya. Urutan tidak boleh diubah: modul admin
+| duduk sebelum vintage.css (supaya tema masih bisa menimpanya) dan
+| admin-refine/toolbar-fix duduk sesudahnya (supaya admin menang).
 |
-| PENTING: berkas ini TIDAK memuat CSS panel admin. Panel admin punya entry
-| sendiri di resources/css/admin.css yang isinya persis berkas ini ditambah
-| modul admin, dengan urutan yang sama. Pemisahan itu memotong ~66 KB CSS
-| yang dulu ikut terunduh setiap kali orang membuka mini app di ponsel.
-| Kalau menambah modul sisi web di sini, tambahkan juga di admin.css pada
-| posisi yang sama — urutan menentukan siapa yang menimpa siapa.
+| Dipisah dari app.css karena panel admin hanya dibuka di desktop, sementara
+| CSS-nya ~66 KB dan dulu ikut terunduh di setiap halaman mini app.
+| Menambah modul sisi web? Tambahkan di kedua berkas, di posisi yang sama.
 */
 
 /* --- Token & dasar --- */
@@ -35,18 +33,16 @@
 @import "./web/detail/detail.css";
 @import "./web/detail/episode.css";
 @import "./web/player/player.css";
-
-/* --- Sisa CSS admin yang masih dipakai halaman publik ---
-   Halaman invoice, profil, dan membership memakai .panel/.data-table/.badge,
-   dan warna .btn-primary seluruh situs juga berasal dari sini. Dihasilkan
-   otomatis oleh tools/extract-shared-admin-css.mjs, diimpor di posisi yang
-   sama persis dengan admin.css dulu supaya urutan menimpa tidak berubah. */
-@import "./web/shared/admin-shared-1.css";
+@import "./web/admin/admin.css";
+@import "./web/admin/panel-spacing.css";
+@import "./web/admin/action-layout.css";
 
 /* --- Lapisan tema (menimpa komponen) --- */
 @import "./web/home/vintage.css";
 
-@import "./web/shared/admin-shared-2.css";
+/* --- Panel admin (setelah tema, agar admin punya aturannya sendiri) --- */
+@import "./web/admin/admin-refine.css";
+@import "./web/admin/referral-admin.css";
 
 /* --- Paginasi minimalis --- */
 @import "./web/pager.css";
@@ -58,16 +54,14 @@
 @import "./web/home/elegant.css";
 @import "./web/detail/responsive.css";
 
-@import "./web/shared/admin-shared-3.css";
+/* --- Perbaikan toolbar admin (wajib menang untuk admin) --- */
+@import "./web/admin/toolbar-fix.css";
 
 /* --- Redesign 2026 (khusus sisi web, tidak menyentuh admin) --- */
 @import "./web/home/redesign.css";
 
-/* --- Penyelarasan gaya mini app --- */
+/* --- Penyelarasan gaya mini app (paling akhir) --- */
 @import "./web/home/miniapp-polish.css";
-
-/* --- Pemolesan performa (paling akhir, hanya mematikan kerja per-frame) --- */
-@import "./web/home/perf.css";
 
 /*
 |--------------------------------------------------------------------------
