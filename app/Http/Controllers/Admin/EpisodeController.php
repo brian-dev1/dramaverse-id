@@ -8,6 +8,7 @@ use App\Services\Admin\MediaService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use App\Services\Admin\ActivityLogger;
+use App\Support\AdminReturnUrl;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -121,6 +122,29 @@ class EpisodeController extends AdminCrudController
             'title'   => 'Episode',
             'keyword' => $keyword,
         ]);
+    }
+
+    /**
+     * Form tambah episode datang dengan drama dan nomor yang sudah terisi.
+     *
+     * Admin selalu sampai ke sini dari daftar yang sudah menyaring satu drama
+     * (?drama_id=), jadi memintanya memilih ulang drama itu — lalu mengingat
+     * sendiri episode terakhirnya nomor berapa — hanya memindahkan pekerjaan
+     * yang sudah diketahui server ke kepala admin. Keduanya tetap bisa diubah;
+     * yang dihilangkan adalah keharusan mengisinya dari nol tiap kali.
+     */
+    protected function newRecord(Request $request): Model
+    {
+        $episode = new Episode();
+
+        if ($dramaId = $request->integer('drama_id')) {
+            $episode->drama_id = $dramaId;
+
+            $episode->episode_number = (int) (Episode::where('drama_id', $dramaId)
+                ->max('episode_number') ?? 0) + 1;
+        }
+
+        return $episode;
     }
 
     protected function formData(?Model $model = null): array
@@ -365,8 +389,13 @@ class EpisodeController extends AdminCrudController
             $message .= " {$skipped} nomor dilewati karena sudah ada.";
         }
 
+        // Admin biasanya datang dari daftar drama dan hendak melanjutkan ke
+        // drama berikutnya di baris yang sama. Kalau daftar itu menitipkan
+        // alamatnya, ke sanalah ia dikembalikan — lengkap dengan halaman dan
+        // pencarian yang sedang dipakai.
         return redirect()
-            ->route('admin.episode.index', ['drama_id' => $drama->id])
+            ->to(AdminReturnUrl::current($request)
+                ?? route('admin.episode.index', ['drama_id' => $drama->id]))
             ->with('status', $message);
     }
 

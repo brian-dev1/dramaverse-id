@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Services\Admin\ActivityLogger;
+use App\Support\AdminReturnUrl;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -195,9 +196,21 @@ abstract class AdminCrudController extends Controller
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * Record kosong untuk form tambah.
+     *
+     * Disediakan sebagai hook supaya turunan dapat mengisi nilai awal dari
+     * konteks tempat admin menekan Tambah — mis. drama yang sedang disaring —
+     * tanpa perlu menimpa create() seluruhnya.
+     */
+    protected function newRecord(Request $request): Model
+    {
+        return new ($this->model());
+    }
+
     public function create(): View
     {
-        $model = new ($this->model());
+        $model = $this->newRecord(request());
 
         return view($this->formView(), array_merge([
             'record'   => $model,
@@ -250,7 +263,7 @@ abstract class AdminCrudController extends Controller
         app(ActivityLogger::class)->log('dibuat', $this->routeKey(), $record);
 
         return redirect()
-            ->route('admin.'.$this->routeKey().'.index')
+            ->to($this->redirectAfterSave($request))
             ->with('status', $this->label().' berhasil ditambahkan.');
     }
 
@@ -273,7 +286,7 @@ abstract class AdminCrudController extends Controller
         app(ActivityLogger::class)->log('diubah', $this->routeKey(), $record);
 
         return redirect()
-            ->route('admin.'.$this->routeKey().'.index')
+            ->to($this->redirectAfterSave($request))
             ->with('status', $this->label().' berhasil diperbarui.');
     }
 
@@ -362,6 +375,19 @@ abstract class AdminCrudController extends Controller
     | Pembantu
     |--------------------------------------------------------------------------
     */
+
+    /**
+     * Ke mana admin dikembalikan setelah simpan.
+     *
+     * Daftar menitipkan alamatnya sendiri lewat `?kembali=`, jadi simpan dari
+     * halaman 2 (atau dari hasil pencarian, atau dari daftar drama induk)
+     * mendarat kembali di sana — bukan di halaman 1 daftar modul ini.
+     */
+    protected function redirectAfterSave(Request $request): string
+    {
+        return AdminReturnUrl::current($request)
+            ?? route('admin.'.$this->routeKey().'.index');
+    }
 
     protected function findOrFail(int $id): Model
     {

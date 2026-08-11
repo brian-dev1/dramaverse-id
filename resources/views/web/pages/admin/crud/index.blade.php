@@ -27,6 +27,14 @@
     $hasAction  = $canEdit || $canDelete || $canEnable || $canDisable
         || $canDefault || $canTest;
     $colspan    = count($columns) + ($canBulk ? 1 : 0) + ($hasAction ? 1 : 0);
+
+    /*
+    | Setiap tautan yang membawa admin keluar dari daftar ini menitipkan
+    | alamat daftar apa adanya — lengkap dengan halaman, kata kunci, filter,
+    | dan urutan. Form di ujung sana mengembalikannya setelah Simpan, jadi
+    | admin mendarat di baris yang sedang ia kerjakan, bukan di halaman 1.
+    */
+    $kembali = \App\Support\AdminReturnUrl::param();
 @endphp
 
 @section('content')
@@ -64,7 +72,7 @@
 
         <div class="toolbar-actions">
             @if ($routeKey === 'episode' && Route::has('admin.episode.batch'))
-                <a href="{{ route('admin.episode.batch', request()->only('drama_id')) }}" class="btn btn-ghost btn-sm">
+                <a href="{{ route('admin.episode.batch', request()->only('drama_id') + $kembali) }}" class="btn btn-ghost btn-sm">
                     <x-web.home.icon name="list" :size="14" />
                     Tambah massal
                 </a>
@@ -78,7 +86,10 @@
             @endif
 
             @if ($canCreate)
-                <a href="{{ route('admin.'.$routeKey.'.create') }}" class="btn btn-primary btn-sm">
+                {{-- drama_id ikut dibawa agar form tambah episode datang
+                     dengan drama dan nomornya sudah terisi. --}}
+                <a href="{{ route('admin.'.$routeKey.'.create', request()->only('drama_id') + $kembali) }}"
+                   class="btn btn-primary btn-sm">
                     <x-web.home.icon name="plus" :size="14" />
                     Tambah
                 </a>
@@ -359,7 +370,7 @@
                                         @endif
 
                                         @if ($canEdit && ! $isProtectedRoot)
-                                            <a href="{{ route('admin.'.$routeKey.'.edit', $record->id) }}"
+                                            <a href="{{ route('admin.'.$routeKey.'.edit', ['id' => $record->id] + $kembali) }}"
                                                class="btn-icon" title="Ubah" aria-label="Ubah">
                                                 <x-web.home.icon name="edit" :size="15" />
                                             </a>

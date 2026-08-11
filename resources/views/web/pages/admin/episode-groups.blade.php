@@ -17,6 +17,14 @@
         'Judul'  => 'title',
         'Negara' => 'country.name',
     ];
+
+    /*
+    | Daftar ini panjang dan admin mengisinya drama demi drama. Tombol +
+    | menitipkan alamat halaman ini apa adanya — nomor halaman dan kata
+    | kunci ikut terbawa — supaya setelah Simpan admin kembali ke baris
+    | yang sedang ia kerjakan, bukan diseret ulang ke halaman 1.
+    */
+    $kembali = \App\Support\AdminReturnUrl::param();
 @endphp
 
 @section('content')
@@ -35,7 +43,7 @@
         @endif
 
         <div class="toolbar-actions">
-            <a href="{{ route('admin.episode.batch') }}" class="btn btn-primary btn-sm">
+            <a href="{{ route('admin.episode.batch', $kembali) }}" class="btn btn-primary btn-sm">
                 <x-web.home.icon name="plus" :size="14" />
                 Tambah episode
             </a>
@@ -119,7 +127,7 @@
                             </td>
 
                             <td class="col-actions">
-                                <a href="{{ route('admin.episode.batch', ['drama_id' => $drama->id]) }}"
+                                <a href="{{ route('admin.episode.batch', ['drama_id' => $drama->id] + $kembali) }}"
                                    class="btn-icon" title="Tambah episode" aria-label="Tambah episode">
                                     <x-web.home.icon name="plus" :size="15" />
                                 </a>

@@ -7,17 +7,47 @@
     | Rentang yang dirender saat halaman dibuka. Setelah validasi gagal,
     | yang ditampilkan adalah isian admin sendiri — bukan contoh bawaan,
     | supaya tidak ada pekerjaan yang hilang saat form dikembalikan.
+    |
+    | Nomor awal disiapkan di server, bukan menunggu admin menyentuh dropdown.
+    |
+    | Pengisi nomor otomatis di sisi klien hanya berjalan pada event `change`.
+    | Padahal jalur yang paling sering dipakai — tombol + di daftar drama —
+    | datang dengan drama SUDAH terpilih, jadi event itu tidak pernah terjadi
+    | dan form tampil dengan contoh 1–1 dan 2–5. Untuk drama yang episodenya
+    | sudah terisi, seluruh rentang itu dilewati sebagai duplikat: admin
+    | menekan Simpan dan tidak ada satu pun episode yang bertambah.
+    |
+    | Karena itu nomor berikutnya dihitung di sini. Drama yang belum punya
+    | episode tetap mendapat contoh dua baris (episode 1 gratis sebagai umpan,
+    | sisanya VIP) — pola itu memang berguna untuk drama baru.
     */
-    $rentang = old('ranges', [
-        ['from' => 1, 'to' => 1,  'is_vip' => 0, 'status' => 'published'],
-        ['from' => 2, 'to' => 5,  'is_vip' => 1, 'status' => 'published'],
-    ]);
+    $mulai = $dramaId ? (int) ($nextNumbers[$dramaId] ?? 1) : 1;
+
+    $bawaan = $mulai > 1
+        ? [['from' => $mulai, 'to' => $mulai, 'is_vip' => 1, 'status' => 'published']]
+        : [
+            ['from' => 1, 'to' => 1, 'is_vip' => 0, 'status' => 'published'],
+            ['from' => 2, 'to' => 5, 'is_vip' => 1, 'status' => 'published'],
+        ];
+
+    $rentang = old('ranges', $bawaan);
+
+    // Alamat daftar yang mengirim admin ke sini, dititipkan lagi ke server
+    // supaya Simpan mengembalikannya ke halaman itu — bukan ke halaman 1.
+    $kembali = \App\Support\AdminReturnUrl::current();
+
+    $batal = $kembali
+        ?? route('admin.episode.index', ['drama_id' => old('drama_id', $dramaId)]);
 @endphp
 
 @section('content')
 
     <form method="POST" action="{{ route('admin.episode.batch.store') }}" class="admin-form">
         @csrf
+
+        @if ($kembali)
+            <input type="hidden" name="{{ \App\Support\AdminReturnUrl::KEY }}" value="{{ $kembali }}">
+        @endif
 
         <div class="form-grid form-grid-narrow">
 
@@ -112,7 +142,7 @@
         </div>
 
         <div class="form-actions">
-            <a href="{{ route('admin.episode.index', ['drama_id' => old('drama_id', $dramaId)]) }}" class="btn btn-ghost">Batal</a>
+            <a href="{{ $batal }}" class="btn btn-ghost">Batal</a>
             <button type="submit" class="btn btn-primary">Buat episode</button>
         </div>
     </form>

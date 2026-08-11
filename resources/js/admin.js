@@ -157,12 +157,27 @@ function autoEpisodeNumber() {
         map = JSON.parse(select.dataset.nextNumbers || '{}');
     } catch { return; }
 
+    // Pada form tambah massal, nomor otomatis itu adalah kolom "Dari nomor".
+    // Kolom "Sampai nomor" di baris yang sama harus ikut bergerak: rentang
+    // 12–5 yang tertinggal dari drama sebelumnya bukan nilai awal yang masuk
+    // akal, dan validasinya baru menolak setelah admin menekan Simpan.
+    const row = number.closest('[data-range-row]');
+    const until = row?.querySelector('input[name$="[to]"]') ?? null;
+
     select.addEventListener('change', () => {
         // Jangan timpa nilai yang sudah diisi manusia.
         if (number.value && number.dataset.touched === 'true') return;
 
-        number.value = map[select.value] ?? 1;
+        const next = map[select.value] ?? 1;
+
+        number.value = next;
+
+        if (until && until.dataset.touched !== 'true') {
+            until.value = next;
+        }
     });
+
+    until?.addEventListener('input', () => { until.dataset.touched = 'true'; });
 
     number.addEventListener('input', () => { number.dataset.touched = 'true'; });
 }
