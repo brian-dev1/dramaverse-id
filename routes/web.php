@@ -199,6 +199,49 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         /*
         |----------------------------------------------------------------------
+        | Pratinjau halaman galat
+        |----------------------------------------------------------------------
+        |
+        | Halaman galat satu-satunya bagian situs yang tidak bisa diperiksa
+        | tanpa merusak sesuatu lebih dulu. Route ini membukanya langsung:
+        |
+        |   /admin/pratinjau-galat/419   /admin/pratinjau-galat/500
+        |   /admin/pratinjau-galat/404   /admin/pratinjau-galat/403
+        |
+        | Berlaku juga di produksi — sengaja, karena pengembangan situs ini
+        | dilakukan langsung di server dan halaman yang tidak pernah bisa
+        | dilihat adalah halaman yang tidak pernah diperbaiki.
+        |
+        | Yang membuatnya aman bukan environment, melainkan siapa yang boleh
+        | membukanya: sudah lolos `auth` + `admin` dari grup di atas, lalu
+        | dibatasi lagi ke Super Admin. Isinya sendiri tidak sensitif — hanya
+        | markup statis, tanpa satu pun data nyata — tapi tetap dikunci supaya
+        | tidak ada yang menemukannya lalu mengira situsnya benar-benar rusak.
+        |
+        | Status HTTP-nya sengaja 200, bukan kode aslinya. Mengembalikan 500
+        | di sini berarti pratinjau ikut tercatat sebagai galat di monitoring
+        | dan memicu notifikasi untuk sesuatu yang sedang sengaja dilihat.
+        |
+        */
+        Route::get('/pratinjau-galat/{kode}', function (string $kode) {
+            abort_unless(in_array($kode, ['403', '404', '419', '500'], true), 404);
+
+            abort_unless(
+                request()->user()?->hasPermission('role.manage') ?? false,
+                403,
+                'Pratinjau halaman galat hanya untuk Super Admin.'
+            );
+
+            return response()->view("errors.{$kode}", [
+                'exception' => new \Symfony\Component\HttpKernel\Exception\HttpException(
+                    (int) $kode,
+                    'Contoh pesan: Anda tidak memiliki izin untuk membuka halaman ini.'
+                ),
+            ]);
+        })->name('pratinjau-galat');
+
+        /*
+        |----------------------------------------------------------------------
         | CRUD
         |
         | Semua entitas memakai AdminCrudController, jadi pola rutenya sama.
@@ -826,3 +869,4 @@ Route::prefix('admin')->name('admin.')->group(function () {
             });
     });
 });
+
