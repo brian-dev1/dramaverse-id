@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Services\Admin\ActivityLogger;
 use App\Services\Admin\MediaService;
 use App\Services\Admin\SettingService;
+use App\Support\ChannelTemplates;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -24,6 +25,12 @@ class SettingController extends Controller
             'groups'  => SettingService::GROUPS,
             'schema'  => $this->settings->grouped(),
             'values'  => $this->settings->all(),
+
+            // Template channel siap pakai. Dikirim ke view supaya bisa
+            // ditempelkan ke kolomnya dengan satu klik, tanpa perjalanan ke
+            // server — kolomnya baru tersimpan saat tombol Simpan ditekan,
+            // sama seperti pengaturan lain di halaman ini.
+            'channelTemplates' => ChannelTemplates::all(),
         ]);
     }
 

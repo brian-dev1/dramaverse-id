@@ -121,6 +121,49 @@ function confirmDialog() {
     });
 }
 
+/**
+ * Template channel siap pakai.
+ *
+ * Menempelkan isi template ke kolom-kolomnya. TIDAK menyimpan: penyimpanan
+ * tetap lewat tombol Simpan yang sama dengan pengaturan lain, supaya tidak
+ * ada dua jalur simpan untuk satu kolom — dan supaya admin masih bisa
+ * menyunting hasilnya, atau membatalkannya dengan menutup halaman.
+ */
+function templatePicker() {
+    const tombol = document.querySelectorAll('[data-tpl]');
+
+    if (!tombol.length) return;
+
+    const isi = (nama, nilai) => {
+        const el = document.getElementById('field-' + nama);
+
+        if (!el) return;
+
+        el.value = nilai;
+
+        // Beri tahu peramban dan skrip lain bahwa isinya berubah — kalau
+        // tidak, textarea yang tingginya menyesuaikan isi tidak ikut tumbuh.
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+
+    tombol.forEach((b) => {
+        b.addEventListener('click', () => {
+            isi('channel_template', b.dataset.tplTemplate);
+            isi('channel_line', b.dataset.tplBaris);
+            isi('channel_free_mark', b.dataset.tplGratis);
+            isi('channel_vip_mark', b.dataset.tplVip);
+
+            document.querySelectorAll('[data-tpl]').forEach((lain) => {
+                lain.classList.toggle('btn-primary', lain === b);
+            });
+
+            const kolom = document.getElementById('field-channel_template');
+
+            if (kolom) kolom.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
+    });
+}
+
 function uploadPreview() {
     document.querySelectorAll('[data-upload]').forEach((box) => {
         const input   = box.querySelector('[data-input]');
@@ -344,6 +387,7 @@ export default function admin() {
     episodeRanges();
     dismissToast();
     lockedMenu();
+    templatePicker();
     charts();
     reorderTable();
     videoUpload();
