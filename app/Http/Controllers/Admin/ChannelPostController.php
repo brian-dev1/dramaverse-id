@@ -31,8 +31,10 @@ class ChannelPostController extends Controller
 
     public function index(Request $request): View
     {
+        // `genres` dan `country` dipakai template caption. Dimuat di sini agar
+        // pratinjau tidak memicu query per placeholder.
         $drama = $request->filled('drama_id')
-            ? Drama::with('country:id,name')->find((int) $request->query('drama_id'))
+            ? Drama::with(['country:id,name', 'genres:id,name'])->find((int) $request->query('drama_id'))
             : null;
 
         $dari   = $request->filled('from') ? max(1, (int) $request->query('from')) : null;
@@ -81,7 +83,7 @@ class ChannelPostController extends Controller
             return back()->with('error', $alasan);
         }
 
-        $drama = Drama::findOrFail($data['drama_id']);
+        $drama = Drama::with(['country:id,name', 'genres:id,name'])->findOrFail($data['drama_id']);
 
         $dari   = $data['from'] ?? null;
         $sampai = $data['to'] ?? null;

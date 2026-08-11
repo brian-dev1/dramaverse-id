@@ -294,6 +294,12 @@
     <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="modal-title">
         <h2 id="modal-title" data-modal-title>Konfirmasi</h2>
         <p data-modal-message></p>
+        {{-- Label dan warna tombolnya diisi JavaScript dari form pemanggil.
+             Dialog ini dulu hanya dipakai penghapusan, jadi "Hapus" merah
+             ditulis langsung di sini — dan begitu ia dipakai untuk hal lain,
+             tombol "Kirim ke channel" berubah jadi tombol merah bertuliskan
+             Hapus. Bacaan yang menakutkan untuk tindakan yang tidak menghapus
+             apa pun. --}}
         <div class="modal-actions">
             <button type="button" class="btn btn-ghost" data-modal-close>Batal</button>
             <button type="button" class="btn btn-danger" data-modal-confirm>Hapus</button>

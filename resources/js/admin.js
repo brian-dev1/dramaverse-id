@@ -95,6 +95,26 @@ function confirmDialog() {
             pending = form;
             titleEl.textContent = form.dataset.confirmTitle || 'Konfirmasi';
             msgEl.textContent   = form.dataset.confirmMessage || '';
+
+            /*
+            | Label tombolnya mengikuti form, bukan dipatok "Hapus".
+            |
+            | Dialog ini semula hanya melayani penghapusan, jadi tombolnya
+            | ditulis merah bertuliskan Hapus. Begitu ia dipakai untuk tindakan
+            | lain — mengirim postingan ke channel, misalnya — yang dibaca
+            | admin adalah tombol merah bertuliskan Hapus untuk tindakan yang
+            | tidak menghapus apa pun. Orang yang membacanya dengan benar akan
+            | menekan Batal.
+            |
+            | Warnanya ikut menyesuaikan: merah hanya untuk yang merusak.
+            */
+            okBtn.textContent = form.dataset.confirmOk || 'Hapus';
+
+            const merusak = !form.dataset.confirmOk;
+
+            okBtn.classList.toggle('btn-danger', merusak);
+            okBtn.classList.toggle('btn-primary', !merusak);
+
             modal.hidden = false;
             okBtn.focus();
         });

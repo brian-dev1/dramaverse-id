@@ -133,6 +133,7 @@
                           style="margin-top:16px"
                           data-confirm
                           data-confirm-title="Kirim ke channel?"
+                          data-confirm-ok="Kirim sekarang"
                           data-confirm-message="{{ $episodes->count() }} episode {{ $drama->title }} akan diposting ke channel dan langsung terlihat semua pelanggan. Postingan tidak bisa ditarik dari panel.">
                         @csrf
                         <input type="hidden" name="drama_id" value="{{ $drama->id }}">

@@ -52,7 +52,7 @@ class PostDramaToChannel implements ShouldQueue
 
     public function handle(ChannelPostService $channel): void
     {
-        $drama = Drama::find($this->dramaId);
+        $drama = Drama::with(['country:id,name', 'genres:id,name'])->find($this->dramaId);
 
         if ($drama === null) {
             return;

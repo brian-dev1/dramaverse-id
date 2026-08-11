@@ -145,13 +145,62 @@ class ChannelPostService
         // untuk baris episode bisa dihitung dari panjang sebenarnya.
         $kepala = strtr($template, [
             '{judul}'          => e($drama->title),
-            '{sinopsis}'       => e((string) $drama->synopsis),
+            '{sinopsis}'       => e($this->sinopsis($drama)),
             '{negara}'         => e((string) ($drama->country?->name ?? '')),
+            '{genre}'          => e($drama->genres->pluck('name')->take(3)->join(', ')),
             '{total_episode}'  => (string) ($drama->total_episode ?: $episodes->count()),
+            '{tautan_drama}'   => e((string) (TelegramDeepLink::drama($drama) ?? '')),
+            '{tautan_vip}'     => e((string) (TelegramDeepLink::subscribe() ?? '')),
             '{daftar}'         => '',
         ]);
 
-        return $this->potong($kepala, $baris);
+        return $this->potong($this->rapikan($kepala), $baris);
+    }
+
+    /**
+     * Sinopsis yang sudah dipangkas.
+     *
+     * Caption foto dibatasi 1024 karakter, dan sinopsis panjang memakan jatah
+     * yang seharusnya jadi baris episode — hal yang justru bisa ditekan
+     * pembaca. Batasnya bisa diubah admin di Pengaturan.
+     */
+    private function sinopsis(Drama $drama): string
+    {
+        $teks = trim((string) $drama->synopsis);
+
+        if ($teks === '') {
+            return '';
+        }
+
+        $batas = max(0, (int) $this->settings->get('channel_sinopsis_max', 180));
+
+        return $batas === 0 ? '' : \Illuminate\Support\Str::limit($teks, $batas);
+    }
+
+    /**
+     * Bersihkan sisa baris kosong dari placeholder yang tidak terisi.
+     *
+     * Drama tanpa genre atau tanpa sinopsis meninggalkan baris kosong dan
+     * tanda pemisah yang menggantung — postingan yang terlihat seperti
+     * template yang lupa diisi. Tiga baris kosong berturut-turut dipadatkan
+     * jadi satu.
+     */
+    private function rapikan(string $teks): string
+    {
+        // Baris "Korea • 4 Episode • " — genre kosong meninggalkan pemisah
+        // menggantung di ujung. Dibersihkan di kedua ujung setiap baris.
+        $teks = preg_replace('/[ \t]*[•·|]+[ \t]*$/m', '', $teks) ?? $teks;
+        $teks = preg_replace('/^[ \t]*[•·|]+[ \t]*/m', '', $teks) ?? $teks;
+
+        // Baris yang isinya tinggal pemisah saja dibuang seluruhnya.
+        $teks = preg_replace('/^[ \t]*[•·|-]+[ \t]*$/m', '', $teks) ?? $teks;
+
+        // Blockquote kosong terjadi pada drama tanpa sinopsis. Yang tampil di
+        // Telegram adalah kotak kutipan kosong — bekas template, bukan isi.
+        $teks = str_replace("<blockquote></blockquote>\n", '', $teks);
+        $teks = str_replace('<blockquote></blockquote>', '', $teks);
+
+        return trim(preg_replace('/\n{3,}/', "\n\n", $teks) ?? $teks);
     }
 
     /** Satu baris episode, sudah jadi HTML siap kirim. */
@@ -258,10 +307,10 @@ class ChannelPostService
         ]);
 
         if ($alasan = $this->penghalang()) {
-            return tap($catatan)->forceFill([
+            return $this->simpan($catatan, [
                 'status' => ChannelPost::STATUS_FAILED,
                 'error'  => $alasan,
-            ])->save();
+            ]);
         }
 
         $potongan = $this->susun($drama, $dari, $sampai);
@@ -291,11 +340,11 @@ class ChannelPostService
                 }
             }
 
-            return tap($catatan)->forceFill([
+            return $this->simpan($catatan, [
                 'message_ids'   => $ids,
                 'episode_count' => $jumlahEpisode,
                 'status'        => ChannelPost::STATUS_SENT,
-            ])->save();
+            ]);
 
         } catch (Throwable $e) {
 
@@ -305,11 +354,30 @@ class ChannelPostService
                 'sebab'    => $e->getMessage(),
             ]);
 
-            return tap($catatan)->forceFill([
+            return $this->simpan($catatan, [
                 'status' => ChannelPost::STATUS_FAILED,
                 'error'  => $e->getMessage(),
-            ])->save();
+            ]);
         }
+    }
+
+    /**
+     * Simpan catatan lalu kembalikan modelnya.
+     *
+     * Ada karena `tap($m)->forceFill([...])->save()` — bentuk yang sekilas
+     * terbaca benar — sebenarnya mengembalikan bool dari `save()`, bukan
+     * modelnya. `tap()` mengembalikan targetnya hanya untuk pemanggilan
+     * pertama; sesudah itu rantainya berjalan di atas model biasa.
+     *
+     * Akibatnya setiap pengiriman melempar TypeError sebelum satu pesan pun
+     * sampai ke Telegram, dan yang terlihat admin hanya baris "Gagal" di
+     * riwayat.
+     */
+    private function simpan(ChannelPost $catatan, array $nilai): ChannelPost
+    {
+        $catatan->forceFill($nilai)->save();
+
+        return $catatan;
     }
 
     /**

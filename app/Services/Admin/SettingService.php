@@ -15,6 +15,44 @@ class SettingService
 {
     private const CACHE_KEY = 'settings:all';
 
+    /**
+     * Caption bawaan untuk postingan channel.
+     *
+     * Disimpan sebagai konstanta, bukan ditulis langsung di SCHEMA, karena
+     * migrasi `refresh_channel_template` perlu membandingkannya dengan nilai
+     * yang sudah tersimpan — untuk memperbarui pemasangan yang templatenya
+     * masih bawaan tanpa menimpa yang sudah disunting admin.
+     *
+     * ## Kenapa bentuknya begini
+     *
+     * Yang membaca postingan ini sedang menggulir cepat di antara puluhan
+     * channel lain. Tiga detik pertama menentukan ia berhenti atau lewat,
+     * jadi urutannya: judul yang menonjol, alasan untuk tertarik, baru
+     * daftar episodenya.
+     *
+     * Baris keterangan penanda ada karena 🆓 dan 💎 tidak menjelaskan diri
+     * sendiri kepada orang yang baru pertama kali melihat channel ini.
+     *
+     * Tautan "semua episode" di penutup penting untuk drama panjang: daftar
+     * di caption terpotong pada episode ke sekian, dan tanpa satu tautan yang
+     * membawa ke daftar utuh di bot, sisanya jadi tidak terjangkau dari
+     * postingan ini.
+     */
+    public const TEMPLATE_BAWAAN = <<<'CAPTION'
+        🎬 <b>{judul}</b>
+        {negara} • {total_episode} Episode • {genre}
+
+        <blockquote>{sinopsis}</blockquote>
+
+        ━━━━━━━━━━━━━━━
+        {daftar}
+        ━━━━━━━━━━━━━━━
+
+        🆓 Gratis   💎 Khusus VIP
+        📺 <a href="{tautan_drama}">Lihat semua episode</a>
+        ⭐ <a href="{tautan_vip}">Buka akses VIP</a>
+        CAPTION;
+
     /** Definisi lengkap: kunci => [grup, label, tipe, bawaan, keterangan]. */
     public const SCHEMA = [
         // --- Umum ---
@@ -54,11 +92,14 @@ class SettingService
         'channel_vip_mark'  => ['channel', 'Penanda episode VIP', 'text', '💎', null],
         'channel_cta'       => ['channel', 'Teks tautan', 'text', 'Tonton Sekarang', 'Kata yang jadi tautan ke bot di setiap baris.'],
         'channel_template'  => ['channel', 'Template caption', 'textarea',
-            "『 {judul} 』\n\n{daftar}",
-            'Placeholder: {judul}, {daftar}, {sinopsis}, {negara}, {total_episode}. Baris {daftar} diisi otomatis satu baris per episode.'],
+            self::TEMPLATE_BAWAAN,
+            'Placeholder: {judul}, {daftar}, {sinopsis}, {negara}, {genre}, {total_episode}, {tautan_drama}, {tautan_vip}. '
+            .'Boleh memakai tag HTML Telegram: <b>, <i>, <u>, <s>, <code>, <blockquote>, <tg-spoiler>.'],
         'channel_line'      => ['channel', 'Format satu baris', 'text',
-            '➤ Part {nomor} | {tanda} → {tautan}',
+            '➤ <b>Part {nomor}</b> | {tanda} → {tautan}',
             'Placeholder: {nomor}, {tanda}, {tautan}, {judul_episode}.'],
+        'channel_sinopsis_max' => ['channel', 'Batas panjang sinopsis', 'text', '180',
+            'Caption foto Telegram maksimal 1024 karakter. Sinopsis yang panjang memakan jatah baris episode.'],
 
         // --- Sistem ---
         'footer_text'      => ['system', 'Teks footer', 'text', null, 'Kosongkan untuk memakai bawaan.'],
