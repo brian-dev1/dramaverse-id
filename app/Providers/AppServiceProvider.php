@@ -67,6 +67,7 @@ use Illuminate\Http\Request;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -256,6 +257,29 @@ class AppServiceProvider extends ServiceProvider
      */
     private function registerRateLimiters(): void
     {
+        /*
+        |----------------------------------------------------------------------
+        | Paksa https bila APP_URL memang https
+        |----------------------------------------------------------------------
+        |
+        | Situs berada di belakang proxy yang menyudahi TLS. Yang sampai ke
+        | PHP adalah permintaan http biasa, jadi Laravel menyusun seluruh URL
+        | dengan skema http — termasuk yang dipakai `fetch()`.
+        |
+        | Tautan biasa tidak terganggu: diklik, lalu diarahkan ulang ke https
+        | tanpa ada yang menyadarinya. Tapi `fetch('http://...')` dari halaman
+        | https diblokir peramban sebagai konten campuran, diam-diam, dan
+        | fitur yang bergantung padanya mati tanpa satu pun pesan galat.
+        |
+        | Dituntun oleh APP_URL, bukan `app()->isProduction()`: lingkungan
+        | lokal yang memang berjalan di http tidak boleh ikut dipaksa https,
+        | dan syarat itu terbaca langsung dari setelannya sendiri.
+        |
+        */
+        if (str_starts_with((string) config('app.url'), 'https://')) {
+            URL::forceScheme('https');
+        }
+
         RateLimiter::for('admin-login', fn (Request $request) => [
             Limit::perMinute(5)->by($request->input('email').'|'.$request->ip()),
             Limit::perMinute(20)->by($request->ip()),

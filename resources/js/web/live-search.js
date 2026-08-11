@@ -38,7 +38,23 @@ function buatPencari(form, endpoint) {
     return (kata, onHasil, onGalat) => {
         const ini = ++nomor;
 
-        const url = new URL(endpoint, window.location.origin);
+        /*
+        | Hanya JALUR-nya yang dipakai, host-nya dibuang.
+        |
+        | `endpoint` datang dari route() di Blade, yang menyusun URL lengkap
+        | memakai APP_URL. Kalau APP_URL tertinggal di domain lama — hal yang
+        | wajar terjadi setelah pindah domain, dan tidak pernah terasa karena
+        | seluruh tautan biasa relatif — fetch ini jadi lintas domain, ditolak
+        | CORS, dan pencarian langsung mati tanpa satu pun pesan galat yang
+        | menjelaskan sebabnya.
+        |
+        | Menyusunnya ulang terhadap origin halaman membuat permintaan selalu
+        | menuju host yang sedang dibuka pengguna, apa pun isi APP_URL.
+        */
+        const asal = new URL(endpoint, window.location.origin);
+
+        const url = new URL(asal.pathname, window.location.origin);
+
         url.searchParams.set('q', kata);
 
         // Filter yang sedang dipilih ikut terbawa, supaya hasil langsung dan
