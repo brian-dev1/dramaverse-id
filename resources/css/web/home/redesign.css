@@ -639,3 +639,105 @@ body:not(.admin-body) .mobile-nav { display: none; }
     body:not(.admin-body) .navbar,
     body:not(.admin-body) .mobile-nav { background: rgba(10, 7, 16, .97); }
 }
+
+/* --- Hasil pencarian langsung di navbar ---
+   Panelnya duduk DI DALAM form supaya fokus tidak lepas saat diklik, tapi
+   diangkat keluar alur dengan position:absolute — kalau tidak, ia jadi item
+   flex di samping kolom input dan merusak tinggi 42px form-nya. */
+
+body:not(.admin-body) .nav-search form { position: relative; }
+
+body:not(.admin-body) .nav-results {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    z-index: 60;
+    max-height: min(70vh, 460px);
+    overflow-y: auto;
+    padding: 6px;
+    border-radius: 14px;
+    border: 1px solid var(--dv-line);
+    background: #1A0F09;
+    box-shadow: 0 18px 44px rgba(0, 0, 0, .55);
+}
+
+body:not(.admin-body) .nav-result {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    color: var(--dv-text);
+    text-decoration: none;
+}
+
+body:not(.admin-body) .nav-result:hover {
+    background: rgba(255, 178, 56, .09);
+}
+
+body:not(.admin-body) .nav-result img {
+    width: 38px;
+    height: 54px;
+    flex-shrink: 0;
+    object-fit: cover;
+    border-radius: 6px;
+}
+
+body:not(.admin-body) .nav-result span {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    flex: 1;
+}
+
+body:not(.admin-body) .nav-result strong {
+    font-size: 13.5px;
+    font-weight: 500;
+    /* Judul panjang dipotong, tidak dibungkus: baris yang tingginya berubah-
+       ubah membuat daftar melompat saat hasilnya berganti. */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+body:not(.admin-body) .nav-result small {
+    font-size: 11.5px;
+    color: var(--dv-dim, #9A7B63);
+}
+
+body:not(.admin-body) .nav-result-vip {
+    flex-shrink: 0;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: rgba(255, 178, 56, .16);
+    color: #FFCE73;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: .06em;
+}
+
+body:not(.admin-body) .nav-results-msg {
+    padding: 14px 12px;
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--dv-dim, #9A7B63);
+    text-align: center;
+}
+
+body:not(.admin-body) .nav-results-cta {
+    display: block;
+    margin: 4px 6px 6px;
+    padding: 10px;
+    border-radius: 10px;
+    background: linear-gradient(90deg, rgba(200, 16, 46, .35), rgba(255, 106, 26, .2));
+    color: #FFE9D6;
+    font-size: 13px;
+    font-weight: 500;
+    text-align: center;
+    text-decoration: none;
+}
+
+body:not(.admin-body) .nav-results-cta:hover { color: #fff; }

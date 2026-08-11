@@ -86,9 +86,9 @@
         </div>
 
         <div class="live-state" data-live-empty>
-            <p><strong>Drama tidak tersedia?</strong></p>
-            <p>Tidak ada yang cocok dengan <span data-live-keyword></span>. Kirim judulnya
-               ke kami — Anda akan diberi tahu lewat Telegram begitu dramanya ada.</p>
+            <p><strong>Drama yang dicari tidak tersedia</strong></p>
+            <p>Tidak ada yang cocok dengan <span data-live-keyword></span>. Silakan request
+               bila perlu — Anda akan diberi tahu lewat Telegram begitu dramanya ada.</p>
 
             {{-- Kata kuncinya dibawa ke form request lewat ?q= supaya kolom
                  judulnya sudah terisi. Menyuruh orang mengetik ulang judul
@@ -122,13 +122,13 @@
              ditepati kepada orang yang tidak dikenali. --}}
         @auth
             <x-web.home.empty-state
-                title="Drama tidak tersedia?"
-                message="Tidak ada drama yang cocok. Kirim judulnya ke kami — Anda akan diberi tahu begitu dramanya ada."
+                title="Drama yang dicari tidak tersedia"
+                message="Silakan request bila perlu — Anda akan diberi tahu lewat Telegram begitu dramanya ada."
                 :href="route('web.request.index', ['q' => $keyword])" action="Request Drama" />
         @else
             <x-web.home.empty-state
-                title="Drama tidak tersedia?"
-                message="Tidak ada drama yang cocok. Masuk lewat Telegram untuk meminta drama ini, dan kami beri tahu begitu tersedia."
+                title="Drama yang dicari tidak tersedia"
+                message="Masuk lewat Telegram untuk meminta drama ini, dan kami beri tahu begitu tersedia."
                 :href="route('web.home')" action="Kembali ke Beranda" />
         @endauth
     @else

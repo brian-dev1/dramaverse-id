@@ -19,14 +19,32 @@
 
         {{-- Pencarian di tengah --}}
         <div class="nav-search">
-            <form action="{{ route('web.search') }}" method="GET" role="search">
+            {{--
+                Tujuannya `web.search.result`, BUKAN `web.search`.
+
+                Sebelumnya mengarah ke `web.search` — halaman pencarian yang
+                belum mencari apa pun. Akibatnya mengetik "cinta" lalu menekan
+                Enter membawa orang ke halaman bertuliskan "Mulai mencari",
+                dengan kata kuncinya sudah terisi tapi tanpa satu pun hasil.
+                Kelihatan seperti "tidak ada drama berjudul cinta", padahal
+                pencariannya memang belum pernah dijalankan.
+            --}}
+            <form action="{{ route('web.search.result') }}" method="GET" role="search"
+                  data-navsearch
+                  data-endpoint="{{ route('api.v1.search') }}"
+                  data-request-url="{{ route('web.request.index') }}">
                 <x-web.home.icon name="search" :size="16" />
                 <input type="search"
                        name="q"
                        value="{{ request('q') }}"
                        placeholder="Cari drama..."
                        autocomplete="off"
-                       aria-label="Cari drama">
+                       aria-label="Cari drama"
+                       data-navsearch-input>
+
+                {{-- Panel hasil melayang. Diisi skrip; kosong saat dirender
+                     supaya tidak ada ruang menggantung sebelum diketik. --}}
+                <div class="nav-results" data-navsearch-panel hidden></div>
             </form>
         </div>
 

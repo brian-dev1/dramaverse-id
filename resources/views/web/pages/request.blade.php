@@ -27,30 +27,24 @@
             @csrf
 
             <div class="request-field">
-                <label for="req-title">Judul drama <span aria-hidden="true">*</span></label>
-                {{-- Judul diisi apa adanya. Yang diketik pengguna bisa judul
-                     Inggris, judul aslinya, atau terjemahan bebas — tidak ada
-                     gunanya memaksanya cocok dengan katalog, karena kalau
-                     sudah cocok ia tidak akan memintanya. --}}
+                <label for="req-title">Judul drama</label>
+                {{--
+                    Satu kolom saja, dan itu disengaja.
+
+                    Tahun dan catatan sempat ada di sini sebagai kolom
+                    opsional. Kolom opsional tetap menambah panjang form, dan
+                    form yang panjang membuat orang berhenti di tengah — untuk
+                    permintaan yang sebenarnya cuma butuh satu baris teks.
+
+                    Judul diisi apa adanya: bisa judul Inggris, judul aslinya,
+                    atau terjemahan bebas. Tidak ada gunanya memaksanya cocok
+                    dengan katalog, karena kalau sudah cocok ia tidak akan
+                    memintanya.
+                --}}
                 <input type="text" id="req-title" name="title" required maxlength="200"
                        value="{{ old('title', request('q')) }}"
-                       placeholder="Contoh: Reply 1988" class="control">
+                       placeholder="Contoh: Reply 1988" class="control" autofocus>
                 @error('title')<span class="field-error">{{ $message }}</span>@enderror
-            </div>
-
-            <div class="request-field">
-                <label for="req-year">Tahun tayang <span class="field-optional">opsional</span></label>
-                <input type="text" id="req-year" name="year" maxlength="10"
-                       value="{{ old('year') }}" placeholder="2015" class="control">
-                @error('year')<span class="field-error">{{ $message }}</span>@enderror
-            </div>
-
-            <div class="request-field">
-                <label for="req-note">Catatan <span class="field-optional">opsional</span></label>
-                <textarea id="req-note" name="note" rows="3" maxlength="500"
-                          placeholder="Pemain utamanya, negara asal, atau apa pun yang membantu kami menemukannya."
-                          class="control">{{ old('note') }}</textarea>
-                @error('note')<span class="field-error">{{ $message }}</span>@enderror
             </div>
 
             <button type="submit" class="btn btn-primary" @disabled($terbuka >= $batas)>

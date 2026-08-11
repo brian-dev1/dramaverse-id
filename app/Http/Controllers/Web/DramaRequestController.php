@@ -43,14 +43,13 @@ class DramaRequestController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        // Hanya judul. Kolom tahun dan catatan sengaja dihapus dari form —
+        // kolomnya masih ada di tabel supaya permintaan lama tidak kehilangan
+        // isinya, dan supaya admin bisa mengisinya sendiri bila perlu.
         $data = $request->validate([
             'title' => ['required', 'string', 'min:2', 'max:200'],
-            'year'  => ['nullable', 'string', 'max:10'],
-            'note'  => ['nullable', 'string', 'max:500'],
         ], [], [
             'title' => 'judul drama',
-            'year'  => 'tahun',
-            'note'  => 'catatan',
         ]);
 
         $user = Auth::user();
@@ -96,8 +95,6 @@ class DramaRequestController extends Controller
         DramaRequest::create([
             'user_id' => $user->id,
             'title'   => trim($data['title']),
-            'year'    => $data['year'] ?? null,
-            'note'    => $data['note'] ?? null,
             'status'  => DramaRequestStatus::PENDING,
         ]);
 
