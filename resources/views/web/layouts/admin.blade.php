@@ -42,8 +42,16 @@
             ['route' => 'admin.batch.form',    'icon' => 'plus',   'label' => 'Batch Upload', 'can' => ['upload.manage', 'episode.manage']],
         ]],
         ['group' => 'Anggota', 'items' => [
-            ['route' => 'admin.membership.index',  'icon' => 'card',  'label' => 'Membership', 'can' => 'membership.manage'],
-            ['route' => 'admin.subscription.index','icon' => 'card',  'label' => 'Langganan',  'can' => 'membership.manage'],
+            // `lock => true` berarti: bila izinnya tidak dipegang, menu TETAP
+            // ditampilkan — dengan gembok, tidak bisa diklik, dan memunculkan
+            // pemberitahuan saat disentuh. Bedanya dengan menyembunyikan menu
+            // adalah admin jadi tahu fitur itu ada dan tahu harus meminta ke
+            // siapa, alih-alih mengira panelnya rusak atau menunya hilang.
+            //
+            // Ini semata soal tampilan. Route-nya tetap dijaga middleware izin,
+            // jadi mengetik URL-nya langsung tetap ditolak 403.
+            ['route' => 'admin.membership.index',  'icon' => 'card',  'label' => 'Membership', 'can' => 'membership.manage', 'lock' => true],
+            ['route' => 'admin.subscription.index','icon' => 'card',  'label' => 'Langganan',  'can' => 'membership.manage', 'lock' => true],
             ['route' => 'admin.user.index',        'icon' => 'users', 'label' => 'Pengguna',   'can' => 'user.view'],
             ['route' => 'admin.admin-account.index', 'icon' => 'users', 'label' => 'Akun Admin', 'can' => 'admin.manage'],
             ['route' => 'admin.telegram',          'icon' => 'send',  'label' => 'Telegram',   'can' => 'telegram.manage'],
@@ -53,12 +61,12 @@
             // Ditaruh di atas Tagihan dengan sengaja: inilah halaman
             // pembayaran yang dibuka setiap hari, sementara daftar Tagihan
             // dibuka saat ada yang perlu ditelusuri.
-            ['route' => 'admin.manual-approval.index',   'icon' => 'check',    'label' => 'ACC Manual',       'can' => 'membership.manage'],
-            ['route' => 'admin.invoice.index',           'icon' => 'card',     'label' => 'Tagihan',          'can' => 'membership.manage'],
-            ['route' => 'admin.payment-provider.index',  'icon' => 'settings', 'label' => 'Metode Bayar',     'can' => 'membership.manage'],
-            ['route' => 'admin.payment-log.index',       'icon' => 'file',     'label' => 'Log Pembayaran',   'can' => 'membership.manage'],
-            ['route' => 'admin.telegram-retention.index','icon' => 'film',     'label' => 'Penarikan Video',  'can' => 'membership.manage'],
-            ['route' => 'admin.referral.index',          'icon' => 'users',    'label' => 'Affiliate',        'can' => 'membership.manage'],
+            ['route' => 'admin.manual-approval.index',   'icon' => 'check',    'label' => 'ACC Manual',       'can' => 'payment.manage', 'lock' => true],
+            ['route' => 'admin.invoice.index',           'icon' => 'card',     'label' => 'Tagihan',          'can' => 'finance.view',   'lock' => true],
+            ['route' => 'admin.payment-provider.index',  'icon' => 'settings', 'label' => 'Metode Bayar',     'can' => 'payment.manage', 'lock' => true],
+            ['route' => 'admin.payment-log.index',       'icon' => 'file',     'label' => 'Log Pembayaran',   'can' => 'finance.view',   'lock' => true],
+            ['route' => 'admin.telegram-retention.index','icon' => 'film',     'label' => 'Penarikan Video',  'can' => 'payment.manage', 'lock' => true],
+            ['route' => 'admin.referral.index',          'icon' => 'users',    'label' => 'Affiliate',        'can' => 'payment.manage', 'lock' => true],
             ['route' => 'admin.monitoring.index',    'icon' => 'activity', 'label' => 'Monitoring',  'can' => 'setting.manage'],
             ['route' => 'admin.system-log.index',    'icon' => 'file', 'label' => 'Log Sistem',      'can' => 'log.view'],
         ]],
@@ -99,22 +107,31 @@
         <nav class="admin-nav" aria-label="Menu admin">
             @foreach ($menu as $section)
                 @php
-                    // Sembunyikan seluruh kelompok bila tidak ada satu pun
-                    // menu di dalamnya yang boleh diakses.
+                    // Setiap menu berakhir di salah satu dari tiga keadaan:
+                    //
+                    //   terbuka  — izin dipegang, tautan biasa.
+                    //   terkunci — izin tidak dipegang tapi `lock => true`:
+                    //              tetap tampil, bergembok, tidak bisa diklik.
+                    //   hilang   — izin tidak dipegang dan tanpa `lock`.
                     //
                     // `can` boleh berupa string atau array. Array berarti salah
                     // satu izin sudah cukup — semantik yang sama dengan
                     // middleware `permission:a,b` pada route-nya.
-                    $visible = collect($section['items'])->filter(function ($i) {
-                        if (! isset($i['can'])) {
-                            return true;
-                        }
+                    $user = auth()->user();
 
-                        $user = auth()->user();
+                    $visible = collect($section['items'])->map(function ($i) use ($user) {
+                        $boleh = ! isset($i['can'])
+                            || ($user !== null && collect((array) $i['can'])
+                                ->contains(fn ($izin) => $user->can($izin)));
 
-                        return $user !== null && collect((array) $i['can'])
-                            ->contains(fn ($izin) => $user->can($izin));
-                    });
+                        $i['terkunci'] = ! $boleh;
+
+                        return $i;
+                    })->reject(fn ($i) => $i['terkunci'] && ! ($i['lock'] ?? false));
+
+                    // Kelompok yang seluruh isinya terkunci tetap ditampilkan —
+                    // itulah maksudnya: admin melihat fitur yang ada tapi belum
+                    // jadi haknya. Yang disembunyikan hanya kelompok kosong.
                 @endphp
 
                 @continue($visible->isEmpty())
@@ -122,15 +139,29 @@
                 <p class="admin-nav-group">{{ $section['group'] }}</p>
 
                 @foreach ($visible as $item)
-                    @php
-                        $base   = Str::beforeLast($item['route'], '.');
-                        $active = request()->routeIs($item['route'])
-                            || (Str::endsWith($item['route'], '.index') && request()->routeIs($base.'.*'));
-                    @endphp
-                    <a href="{{ route($item['route']) }}" class="{{ $active ? 'active' : '' }}">
-                        <x-web.home.icon :name="$item['icon']" :size="17" />
-                        <span>{{ $item['label'] }}</span>
-                    </a>
+                    @if ($item['terkunci'])
+                        {{-- <button>, bukan <a href="#">: tanpa href tidak ada
+                             yang bisa dibuka di tab baru, disalin lewat klik
+                             kanan, atau di-hover untuk mengintip URL-nya. --}}
+                        <button type="button" class="admin-nav-locked" data-locked
+                                data-locked-label="{{ $item['label'] }}"
+                                aria-disabled="true"
+                                title="{{ $item['label'] }} — hanya untuk Super Admin">
+                            <x-web.home.icon :name="$item['icon']" :size="17" />
+                            <span>{{ $item['label'] }}</span>
+                            <x-web.home.icon name="lock" :size="14" />
+                        </button>
+                    @else
+                        @php
+                            $base   = Str::beforeLast($item['route'], '.');
+                            $active = request()->routeIs($item['route'])
+                                || (Str::endsWith($item['route'], '.index') && request()->routeIs($base.'.*'));
+                        @endphp
+                        <a href="{{ route($item['route']) }}" class="{{ $active ? 'active' : '' }}">
+                            <x-web.home.icon :name="$item['icon']" :size="17" />
+                            <span>{{ $item['label'] }}</span>
+                        </a>
+                    @endif
                 @endforeach
             @endforeach
         </nav>

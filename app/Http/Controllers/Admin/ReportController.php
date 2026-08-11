@@ -40,6 +40,8 @@ class ReportController extends Controller
 
     public function index(Request $request): View
     {
+        $bolehKeuangan = $request->user()?->can('finance.view') ?? false;
+
         [$type, $from, $to] = $this->params($request);
 
         $rows = $this->reports->rows($type, $from, $to);
@@ -47,17 +49,24 @@ class ReportController extends Controller
         // Grafik pendamping dibaca dari AnalyticsService, sumber yang sama
         // dengan dashboard. Menghitungnya sendiri di sini akan menghasilkan
         // dua angka pendapatan berbeda di dua halaman.
-        $keuangan = $this->analytics->financial(AnalyticsPeriod::MONTH);
+        //
+        // Tanpa `finance.view` grafik ini tidak dihitung sama sekali — bukan
+        // sekadar disembunyikan di view. Menghitungnya lalu tidak menampilkan
+        // berarti belasan query agregat berjalan untuk data yang memang tidak
+        // boleh dilihat.
+        $keuangan = $bolehKeuangan
+            ? $this->analytics->financial(AnalyticsPeriod::MONTH)['perPeriod']
+            : null;
 
         return view('web.pages.admin.report', [
-            'types'   => ReportService::TYPES,
+            'types'   => $this->reports->typesFor($bolehKeuangan),
             'type'    => $type,
             'from'    => $from,
             'to'      => $to,
             'rows'    => $rows->take((int) config('analytics.report.preview_rows', 100)),
             'headers' => $this->reports->headers($type),
             'total'   => $rows->count(),
-            'revenue' => $keuangan['perPeriod'],
+            'revenue' => $keuangan,
         ]);
     }
 
@@ -113,6 +122,12 @@ class ReportController extends Controller
      * yang jenisnya sudah dihapus lebih baik membuka laporan bawaan daripada
      * memberi halaman galat kepada orang yang cuma membuka bookmark.
      *
+     * Jenis laporan keuangan diperlakukan sama: tanpa `finance.view` ia jatuh
+     * ke `watch`. Penyaringan diletakkan di sini, bukan di `index()`, karena
+     * `export()` dan `print()` memanggil pembantu yang sama — menyaring di
+     * halaman saja akan menyisakan dua jalur unduh yang masih memberikan
+     * seluruh nominalnya lewat ?type=revenue.
+     *
      * @return array{0:string,1:Carbon,2:Carbon}
      */
     private function params(Request $request): array
@@ -120,6 +135,10 @@ class ReportController extends Controller
         $type = (string) $request->query('type', 'watch');
 
         if (! $this->reports->exists($type)) {
+            $type = 'watch';
+        }
+
+        if ($this->reports->isFinancial($type) && ! ($request->user()?->can('finance.view') ?? false)) {
             $type = 'watch';
         }
 

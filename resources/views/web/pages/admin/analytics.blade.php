@@ -51,7 +51,19 @@
                 </div>
                 <div class="detail-body-admin">
                     <dl class="settings-meta">
-                        @foreach (['user' => 'Pengguna baru', 'subscription' => 'Langganan', 'revenue' => 'Pendapatan'] as $k => $label)
+                        {{-- Baris Pendapatan hanya ada bila controller tidak
+                             membuangnya, yaitu bila pengguna punya
+                             `finance.view`. Daftar dibangun dari kunci yang
+                             benar-benar ada, bukan dari daftar tetap, supaya
+                             tidak ada "Undefined array key" saat disaring. --}}
+                        @php
+                            $labelPertumbuhan = array_intersect_key([
+                                'user'         => 'Pengguna baru',
+                                'subscription' => 'Langganan',
+                                'revenue'      => 'Pendapatan',
+                            ], $data['growth']);
+                        @endphp
+                        @foreach ($labelPertumbuhan as $k => $label)
                             <dt>{{ $label }}</dt>
                             <dd>
                                 <span class="badge {{ $data['growth'][$k]['persen'] >= 0 ? 'badge-on' : 'badge-off' }}">
@@ -71,14 +83,16 @@
                 <div class="panel-head"><h2>Ringkasan</h2></div>
                 <div class="detail-body-admin">
                     <dl class="settings-meta">
-                        <dt>Pendapatan total</dt>
-                        <dd>Rp {{ number_format($data['revenue']['total'], 0, ',', '.') }}</dd>
+                        @can('finance.view')
+                            <dt>Pendapatan total</dt>
+                            <dd>Rp {{ number_format($data['revenue']['total'], 0, ',', '.') }}</dd>
 
-                        <dt>Bulan ini</dt>
-                        <dd>Rp {{ number_format($data['revenue']['bulan_ini'], 0, ',', '.') }}</dd>
+                            <dt>Bulan ini</dt>
+                            <dd>Rp {{ number_format($data['revenue']['bulan_ini'], 0, ',', '.') }}</dd>
 
-                        <dt>Hari ini</dt>
-                        <dd>Rp {{ number_format($data['revenue']['hari_ini'], 0, ',', '.') }}</dd>
+                            <dt>Hari ini</dt>
+                            <dd>Rp {{ number_format($data['revenue']['hari_ini'], 0, ',', '.') }}</dd>
+                        @endcan
 
                         <dt>Pengguna Telegram</dt>
                         <dd>{{ number_format($data['users']['telegram']) }}</dd>

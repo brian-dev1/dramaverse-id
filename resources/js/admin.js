@@ -253,6 +253,66 @@ function dismissToast() {
     });
 }
 
+/**
+ * Menu bergembok: jelaskan kenapa tidak terbuka.
+ *
+ * Tombol yang diklik lalu tidak terjadi apa-apa membuat orang mengira
+ * panelnya rusak, dan lima menit kemudian mengirim pesan menanyakannya.
+ * Satu kalimat di sini menjawab pertanyaan itu sebelum sempat ditanyakan.
+ *
+ * Ini murni penjelasan di layar. Penjagaannya sendiri ada di middleware izin
+ * pada route — mengetik URL-nya langsung tetap ditolak 403.
+ */
+function lockedMenu() {
+    const nav = document.querySelector('.admin-nav');
+
+    if (!nav) return;
+
+    nav.addEventListener('click', (e) => {
+        const tombol = e.target.closest('[data-locked]');
+
+        if (!tombol) return;
+
+        e.preventDefault();
+
+        const label = tombol.dataset.lockedLabel || 'Menu ini';
+
+        showToast(
+            `${label} hanya bisa dibuka Super Admin. Hubungi Super Admin bila Anda memerlukan aksesnya.`
+        );
+    });
+}
+
+/**
+ * Toast yang dibuat dari JavaScript, untuk pesan yang tidak lewat session.
+ *
+ * Memakai kelas dan atribut yang sama dengan toast dari server supaya
+ * tampilannya identik dan `dismissToast()` di atas tidak perlu tahu asalnya.
+ */
+function showToast(pesan) {
+    const induk = document.querySelector('.admin-main') || document.body;
+
+    // Ganti toast terkunci yang masih tampil, jangan menumpuknya. Mengklik
+    // beberapa menu terkunci berturut-turut adalah hal yang wajar dilakukan
+    // orang yang sedang mencari tahu mana yang boleh dibuka.
+    induk.querySelector('[data-toast-locked]')?.remove();
+
+    const toast = document.createElement('div');
+
+    toast.className = 'toast toast-error';
+    toast.setAttribute('role', 'alert');
+    toast.dataset.toast = '';
+    toast.dataset.toastLocked = '';
+    toast.textContent = pesan;
+
+    const topbar = induk.querySelector('.admin-topbar');
+
+    topbar ? topbar.after(toast) : induk.prepend(toast);
+
+    setTimeout(() => toast.classList.add('is-hiding'), 4000);
+    setTimeout(() => toast.remove(), 4400);
+}
+
 export default function admin() {
     if (!document.body.classList.contains('admin-body')) return;
 
@@ -263,6 +323,7 @@ export default function admin() {
     autoEpisodeNumber();
     episodeRanges();
     dismissToast();
+    lockedMenu();
     charts();
     reorderTable();
     videoUpload();

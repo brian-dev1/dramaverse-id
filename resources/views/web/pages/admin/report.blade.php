@@ -43,10 +43,14 @@
         @endif
     </form>
 
-    <div class="chart-grid">
-        <x-admin.chart id="rep-revenue" title="Pendapatan 12 bulan terakhir" color="#EAC98C" money
-                       :labels="$revenue['labels']" :values="$revenue['values']" />
-    </div>
+    {{-- `$revenue` bernilai null bila pengguna tidak punya `finance.view`;
+         controller tidak menghitungnya sama sekali dalam kasus itu. --}}
+    @if ($revenue)
+        <div class="chart-grid">
+            <x-admin.chart id="rep-revenue" title="Pendapatan 12 bulan terakhir" color="#EAC98C" money
+                           :labels="$revenue['labels']" :values="$revenue['values']" />
+        </div>
+    @endif
 
     <section class="panel">
         <div class="panel-head">

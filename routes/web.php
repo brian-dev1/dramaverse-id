@@ -453,10 +453,18 @@ Route::prefix('admin')->name('admin.')->group(function () {
         });
 
         // --- Langganan: aksi tambahan di luar CRUD standar ---
-        Route::post('/subscription/{id}/renew', [Admin\SubscriptionController::class, 'renew'])
-            ->name('subscription.renew')->whereNumber('id');
-        Route::post('/subscription/{id}/cancel', [Admin\SubscriptionController::class, 'cancel'])
-            ->name('subscription.cancel')->whereNumber('id');
+        //
+        // Dua route ini sebelumnya tidak memakai middleware izin sama sekali:
+        // cukup lolos `admin` saja. Artinya siapa pun yang bisa membuka panel
+        // dapat memperpanjang atau membatalkan langganan orang lain dengan satu
+        // POST, tanpa pernah membuka halaman Langganan. Disamakan dengan CRUD
+        // -nya di atas (`membership.manage`).
+        Route::middleware('permission:membership.manage')->group(function () {
+            Route::post('/subscription/{id}/renew', [Admin\SubscriptionController::class, 'renew'])
+                ->name('subscription.renew')->whereNumber('id');
+            Route::post('/subscription/{id}/cancel', [Admin\SubscriptionController::class, 'cancel'])
+                ->name('subscription.cancel')->whereNumber('id');
+        });
 
         // --- Telegram ---
         Route::middleware('permission:telegram.manage')->group(function () {
@@ -502,12 +510,23 @@ Route::prefix('admin')->name('admin.')->group(function () {
         |----------------------------------------------------------------------
         | Pembayaran (Phase 10)
         |
-        | Memakai izin `membership.manage` yang sudah ada -- pembayaran dan
-        | membership dikelola orang yang sama, dan izin baru berarti RoleSeeder
-        | wajib dijalankan ulang di setiap pemasangan.
+        | Dulu satu blok `membership.manage` untuk semuanya. Dipecah menjadi
+        | dua izin karena isinya dua hal yang berbeda beratnya:
+        |
+        |   payment.manage — konfigurasi metode bayar (berisi kredensial
+        |                    provider) dan tindakan yang memindahkan uang:
+        |                    verifikasi transaksi, ACC manual, batal tagihan.
+        |
+        |   finance.view   — membaca nominal: daftar tagihan, log pembayaran.
+        |
+        | Keduanya sensitif dan tidak diberikan RoleSeeder ke peran mana pun
+        | selain super-admin. Setelah pembaruan ini WAJIB menjalankan
+        | `php artisan db:seed --class=RoleSeeder` di server; tanpa itu izinnya
+        | belum ada di database dan halaman-halaman ini 403 untuk semua orang
+        | kecuali Root Owner dan super admin.
         |----------------------------------------------------------------------
         */
-        Route::middleware('permission:membership.manage')->group(function () {
+        Route::middleware('permission:payment.manage')->group(function () {
 
             Route::get('/payment/provider', [Admin\PaymentProviderController::class, 'index'])
                 ->name('payment-provider.index');
@@ -524,19 +543,13 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::delete('/payment/provider/{id}', [Admin\PaymentProviderController::class, 'destroy'])
                 ->name('payment-provider.destroy')->whereNumber('id');
 
-            Route::get('/payment/invoice', [Admin\InvoiceController::class, 'index'])
-                ->name('invoice.index');
-            Route::get('/payment/invoice/export', [Admin\InvoiceController::class, 'export'])
-                ->name('invoice.export');
-            Route::get('/payment/invoice/{number}', [Admin\InvoiceController::class, 'show'])
-                ->name('invoice.show');
+            // Membatalkan tagihan dan memverifikasi transaksi mengubah status
+            // pembayaran, jadi keduanya ikut `payment.manage` — bukan
+            // `finance.view` yang hanya untuk membaca.
             Route::post('/payment/invoice/{number}/cancel', [Admin\InvoiceController::class, 'cancel'])
                 ->name('invoice.cancel');
             Route::post('/payment/transaction/{id}/verify', [Admin\InvoiceController::class, 'verify'])
                 ->name('invoice.verify')->whereNumber('id');
-
-            Route::get('/payment/log', [Admin\PaymentLogController::class, 'index'])
-                ->name('payment-log.index');
 
             /*
             |------------------------------------------------------------------
@@ -573,6 +586,28 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 ->name('manual-approval.approve')->whereNumber('id');
             Route::post('/payment/acc/{id}/reject', [Admin\ManualApprovalController::class, 'rejectProof'])
                 ->name('manual-approval.reject')->whereNumber('id');
+        });
+
+        /*
+        |----------------------------------------------------------------------
+        | Membaca angka: tagihan dan log pembayaran
+        |
+        | Dipisahkan dari `payment.manage` supaya super admin bisa memberi
+        | seseorang akses baca laporan keuangan tanpa sekaligus memberi kunci
+        | ke kredensial provider pembayaran.
+        |----------------------------------------------------------------------
+        */
+        Route::middleware('permission:finance.view')->group(function () {
+
+            Route::get('/payment/invoice', [Admin\InvoiceController::class, 'index'])
+                ->name('invoice.index');
+            Route::get('/payment/invoice/export', [Admin\InvoiceController::class, 'export'])
+                ->name('invoice.export');
+            Route::get('/payment/invoice/{number}', [Admin\InvoiceController::class, 'show'])
+                ->name('invoice.show');
+
+            Route::get('/payment/log', [Admin\PaymentLogController::class, 'index'])
+                ->name('payment-log.index');
         });
 
         Route::get('/logs', [Admin\LogController::class, 'index'])
@@ -751,13 +786,15 @@ Route::prefix('admin')->name('admin.')->group(function () {
         | Program Affiliate
         |----------------------------------------------------------------------
         |
-        | Memakai izin `membership.manage` — orang yang sama yang mengurus
-        | tagihan dan langganan. Izin baru tidak dipakai supaya modul ini
-        | langsung terlihat setelah deploy tanpa menjalankan ulang RoleSeeder.
+        | Memakai `payment.manage`, bukan `membership.manage`. Halaman ini
+        | memutuskan komisi dibayar atau tidak dan memproses penarikan dana —
+        | uang keluar, sama seperti ACC manual. Persentase komisi dan saldo
+        | afiliasi juga termasuk angka yang ingin disembunyikan dari admin
+        | biasa.
         |
         */
         Route::prefix('referral')->name('referral.')
-            ->middleware('permission:membership.manage')
+            ->middleware('permission:payment.manage')
             ->controller(Admin\ReferralController::class)
             ->group(function () {
                 Route::get('/', 'index')->name('index');

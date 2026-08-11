@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Providers\AuthServiceProvider;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -181,6 +182,11 @@ class User extends Authenticatable
      * Untuk kompatibilitas dengan sistem lama, akun admin tanpa role tetap
      * diperlakukan sebagai Super Admin. Perilaku ini dapat diperketat nanti
      * setelah seluruh akun admin dikelola melalui Admin Account Management.
+     *
+     * Kelonggaran itu berhenti di izin sensitif (`AuthServiceProvider::
+     * SENSITIVE`): pendapatan, metode bayar, dan paket langganan. Kalau tidak,
+     * membuat akun admin tanpa role — jalur termudah yang ada — otomatis
+     * membuka seluruh angka keuangan, dan pembatasan ini tidak berarti apa-apa.
      */
     public function hasPermission(string $slug): bool
     {
@@ -197,7 +203,7 @@ class User extends Authenticatable
             : $this->roles()->with('permissions')->get();
 
         if ($roles->isEmpty()) {
-            return true;
+            return ! AuthServiceProvider::isSensitive($slug);
         }
 
         if ($roles->contains(fn (Role $role) => $role->isSuperAdmin())) {

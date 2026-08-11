@@ -18,7 +18,9 @@
         <x-admin.stat-card label="Anggota Premium" :value="$summary['premiumMembers']" icon="card" :href="route('admin.subscription.index')" />
         <x-admin.stat-card label="Total tontonan"  :value="$summary['totalViews']"     icon="chart" />
         <x-admin.stat-card label="Tontonan hari ini" :value="$summary['watchToday']"   icon="clock" />
-        <x-admin.stat-card label="Pendapatan aktif" :value="$summary['revenue']"       icon="card" money />
+        @can('finance.view')
+            <x-admin.stat-card label="Pendapatan aktif" :value="$summary['revenue']"   icon="card" money />
+        @endcan
     </div>
 
     {{-- Grafik --}}

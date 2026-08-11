@@ -28,8 +28,15 @@ class RoleSeeder extends Seeder
         ],
         'moderator' => [
             'Moderator',
-            'Mengelola pengguna dan langganan, tanpa mengubah katalog.',
-            ['user.view', 'user.manage', 'membership.manage', 'telegram.manage', 'report.view', 'log.view'],
+            'Mengelola pengguna dan bot Telegram. Tidak melihat data keuangan.',
+            // `membership.manage` DICABUT dari moderator. Halaman paket,
+            // langganan, metode bayar, dan tagihan memuat harga dan konfigurasi
+            // pembayaran — informasi yang hanya boleh dipegang super admin.
+            //
+            // `report.view` tetap ada: laporan tontonan, konten, dan Telegram
+            // bukan data keuangan. Angka rupiah di dalamnya disaring terpisah
+            // lewat `finance.view`.
+            ['user.view', 'user.manage', 'telegram.manage', 'report.view', 'log.view'],
         ],
         'viewer' => [
             'Pengamat',
@@ -37,6 +44,17 @@ class RoleSeeder extends Seeder
             ['drama.view', 'episode.view', 'user.view', 'report.view', 'log.view'],
         ],
     ];
+
+    /**
+     * Izin yang dicabut dari peran bawaan non-super-admin saat seeder diulang.
+     *
+     * `permissions()->sync()` sudah menghapus izin yang tidak lagi terdaftar,
+     * jadi daftar ini bukan untuk peran bawaan — melainkan pengingat eksplisit
+     * bahwa peran buatan sendiri (dibuat lewat halaman Peran & Izin) TIDAK
+     * disentuh seeder. Super admin yang pernah memberi `membership.manage` ke
+     * peran kustom harus mencabutnya sendiri.
+     */
+    private const SENSITIF = ['finance.view', 'payment.manage', 'membership.manage'];
 
     public function run(): void
     {
@@ -63,5 +81,34 @@ class RoleSeeder extends Seeder
 
             $role->permissions()->sync($ids);
         }
+
+        $this->peringatkanPeranKustom();
+    }
+
+    /**
+     * Laporkan peran buatan sendiri yang masih memegang izin sensitif.
+     *
+     * Seeder tidak mencabutnya otomatis — peran kustom adalah keputusan sadar
+     * super admin, dan menghapusnya diam-diam saat deploy akan membuat orang
+     * kehilangan akses tanpa tahu sebabnya. Cukup ditampilkan supaya keputusan
+     * itu ditinjau ulang.
+     */
+    private function peringatkanPeranKustom(): void
+    {
+        $bawaan = array_keys(self::ROLES);
+
+        $peran = Role::query()
+            ->whereNotIn('slug', $bawaan)
+            ->whereHas('permissions', fn ($q) => $q->whereIn('slug', self::SENSITIF))
+            ->pluck('name');
+
+        if ($peran->isEmpty()) {
+            return;
+        }
+
+        $this->command?->warn(
+            'Peran berikut masih memegang izin sensitif (pendapatan/metode bayar): '
+            .$peran->join(', ').'. Tinjau di Admin → Peran & Izin.'
+        );
     }
 }

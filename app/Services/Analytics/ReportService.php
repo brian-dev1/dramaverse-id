@@ -42,9 +42,37 @@ class ReportService
         'storage'    => 'Laporan penyimpanan',
     ];
 
+    /**
+     * Laporan yang memuat nominal rupiah.
+     *
+     * `membership` ikut masuk meski namanya bukan soal uang: kolom Harga ada
+     * di setiap barisnya, dan menjumlahkan satu kolom di Excel adalah cara
+     * termudah mendapatkan angka pendapatan yang justru disembunyikan.
+     *
+     * @var list<string>
+     */
+    public const FINANCIAL = ['revenue', 'invoice', 'membership'];
+
     public function exists(string $type): bool
     {
         return array_key_exists($type, self::TYPES);
+    }
+
+    public function isFinancial(string $type): bool
+    {
+        return in_array($type, self::FINANCIAL, true);
+    }
+
+    /**
+     * Daftar jenis laporan yang boleh dipilih seseorang.
+     *
+     * @return array<string,string>
+     */
+    public function typesFor(bool $bolehKeuangan): array
+    {
+        return $bolehKeuangan
+            ? self::TYPES
+            : array_diff_key(self::TYPES, array_flip(self::FINANCIAL));
     }
 
     public function label(string $type): string

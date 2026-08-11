@@ -60,6 +60,31 @@
 }
 .admin-nav a.active .icon{ color:var(--gold); }
 
+/* --- Menu terkunci ---
+   Fitur yang ada tapi bukan hak akun ini. Sengaja tetap terbaca, bukan
+   dibuat samar sampai tak terbaca: tujuannya memberi tahu fitur itu ada,
+   bukan menyembunyikannya. Gembok di ujung kanan yang membawa pesannya,
+   dibantu warna yang lebih redup dan kursor "tidak boleh". */
+.admin-nav .admin-nav-locked{
+    display:flex; align-items:center; gap:11px;
+    width:100%;
+    padding:9px 11px;
+    border:0; border-radius:var(--radius-s);
+    background:transparent;
+    font:inherit; font-size:13.5px; text-align:left;
+    color:var(--text-muted);
+    cursor:not-allowed;
+    transition:background .18s ease, color .18s ease;
+}
+.admin-nav .admin-nav-locked span{ flex:1; }
+.admin-nav .admin-nav-locked .icon{ flex-shrink:0; opacity:.75; }
+.admin-nav .admin-nav-locked:hover{
+    background:var(--bg-card);
+    color:var(--text-secondary);
+}
+/* Gembok — ikon terakhir di dalam tombol. */
+.admin-nav .admin-nav-locked .icon:last-child{ opacity:.9; color:var(--text-muted); }
+
 .admin-logout{
     padding:var(--space-2);
     border-top:1px solid var(--border-soft);
