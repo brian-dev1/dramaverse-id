@@ -77,6 +77,37 @@
 
         if (!a) return;
 
+        /*
+        | Pintasan "Tonton Sekarang"
+        | --------------------------
+        | Tombol tonton di situs menyimpan alamat halaman biasa di href, dan
+        | tautan botnya di data-tg-href. Alasannya ada di
+        | App\Support\TelegramDeepLink::attribute(): situs yang sama juga
+        | dibuka dari browser desktop, dan di sana melempar orang keluar ke
+        | Telegram begitu menekan tombol pertama adalah pengusiran, bukan
+        | pintasan.
+        |
+        | Blok ini hanya berjalan di dalam Telegram — berkas ini sendiri
+        | keluar lebih awal bila window.Telegram.WebApp tidak ada. Jadi
+        | pemilihan tujuannya terjadi di sini, bukan saat halaman dirender,
+        | dan satu HTML yang sama melayani kedua tempat.
+        */
+        var pintasan = a.getAttribute('data-tg-href');
+
+        if (pintasan && tg.openTelegramLink) {
+            e.preventDefault();
+
+            try {
+                tg.openTelegramLink(pintasan);
+            } catch (err) {
+                // Biarkan tombolnya tetap berguna: jatuh kembali ke halaman
+                // episode di situs, bukan diam saja.
+                window.location.href = a.href;
+            }
+
+            return;
+        }
+
         var href = a.getAttribute('href') || '';
 
         if (!/^(https?:\/\/(t\.me|telegram\.me)\/|tg:\/\/)/i.test(href)) return;

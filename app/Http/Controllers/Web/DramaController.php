@@ -20,6 +20,15 @@ class DramaController extends Controller
                 'id', 'drama_id', 'episode_number', 'title',
                 'thumbnail', 'is_vip', 'air_date',
             ]),
+
+            // Dibutuhkan halaman ini untuk memutuskan baris episode mana yang
+            // boleh membawa pintasan ke Telegram. Wajib eager load: tanpa
+            // baris ini setiap baris episode memicu query-nya sendiri, dan
+            // drama dengan 60 episode berubah menjadi 61 query.
+            //
+            // Kolomnya dibatasi karena tabel episode_videos memuat object key,
+            // checksum, dan URL publik — tidak satu pun dipakai di sini.
+            'episodes.video:id,episode_id,sync_status,telegram_file_id',
         ]);
 
         // Drama lain dengan genre yang bersinggungan.

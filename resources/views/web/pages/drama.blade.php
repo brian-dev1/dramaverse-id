@@ -60,9 +60,25 @@
                 <div class="hero-actions">
 
                     @if ($drama->episodes->isNotEmpty())
-                        <a href="{{ route('web.episode.show', $drama->episodes->first()->id) }}" class="btn btn-primary">
+                        @php
+                            $episodePertama = $drama->episodes->first();
+
+                            // Pintasan ke bot hanya dipasang bila videonya
+                            // memang sudah ada di Telegram. Bila belum, tombol
+                            // ini kembali ke perilaku lamanya — membuka halaman
+                            // episode, yang sudah tahu cara mengatakan "video
+                            // belum siap". Melempar orang ke bot untuk dijawab
+                            // dengan penolakan adalah dead link yang kebetulan
+                            // berpindah aplikasi dulu.
+                            $tgEpisodePertama = $episodePertama->video?->isSyncedToTelegram()
+                                ? \App\Support\TelegramDeepLink::attribute($episodePertama)
+                                : '';
+                        @endphp
+
+                        <a href="{{ route('web.episode.show', $episodePertama->id) }}"
+                           class="btn btn-primary" {{ $tgEpisodePertama }}>
                             <x-web.home.icon name="play" :size="15" />
-                            Tonton Episode 1
+                            Tonton Episode {{ $episodePertama->episode_number }}
                         </a>
                     @endif
 
@@ -102,7 +118,14 @@
         @else
             <div class="episode-list">
                 @foreach ($drama->episodes as $episode)
-                    <a href="{{ route('web.episode.show', $episode->id) }}" class="episode-item">
+                    {{-- Setiap baris ikut membawa pintasan, jadi di Mini App
+                         satu tap dari daftar ini langsung memutar videonya.
+                         Baris yang videonya belum tersinkron tetap membuka
+                         halaman episode seperti biasa. --}}
+                    <a href="{{ route('web.episode.show', $episode->id) }}" class="episode-item"
+                       {{ $episode->video?->isSyncedToTelegram()
+                            ? \App\Support\TelegramDeepLink::attribute($episode)
+                            : '' }}>
                         <span class="episode-number">{{ str_pad($episode->episode_number, 2, '0', STR_PAD_LEFT) }}</span>
                         <span class="episode-title">{{ $episode->title ?: 'Episode '.$episode->episode_number }}</span>
                         <span class="episode-meta">

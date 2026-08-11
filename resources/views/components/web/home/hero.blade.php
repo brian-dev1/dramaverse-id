@@ -11,6 +11,14 @@
             'subtitle' => $d->synopsis,
             'image'    => $d->poster_url,
             'href'     => route('web.drama.show', $d->slug),
+            // Di dalam Mini App tombol ini melompat langsung ke bot, yang
+            // membuka daftar episode drama tersebut. Di browser biasa
+            // atributnya diabaikan dan `href` di atas yang berlaku.
+            //
+            // Yang dituju daftar episode, bukan episode 1: banyak yang
+            // menekan tombol ini saat sudah menonton sampai episode belasan,
+            // dan dikirim balik ke episode 1 terasa seperti kemunduran.
+            'tg'       => \App\Support\TelegramDeepLink::attribute($d),
             'cta'      => 'Tonton Sekarang',
             'meta'     => array_filter([
                 $d->country?->name,
@@ -24,6 +32,9 @@
             'subtitle' => $b->subtitle,
             'image'    => $b->image_url,
             'href'     => $b->link ?: route('web.trending'),
+            // Banner menunjuk tautan bebas yang diisi admin, bukan drama
+            // tertentu, jadi tidak ada episode yang bisa dituju di bot.
+            'tg'       => '',
             'cta'      => $b->button_text ?: 'Tonton Sekarang',
             'meta'     => [],
         ]);
@@ -55,7 +66,11 @@
                 @endif
 
                 <div class="hero-actions">
-                    <a href="{{ $slide->href }}" class="btn btn-primary">
+                    {{-- Hanya tombol utama yang membawa pintasan Telegram.
+                         "Lihat Detail" memang harus tetap di situs — dua
+                         tombol bersebelahan yang tujuannya sama persis
+                         membuat salah satunya tidak ada gunanya. --}}
+                    <a href="{{ $slide->href }}" class="btn btn-primary" {{ $slide->tg }}>
                         <x-web.home.icon name="play" :size="15" />
                         {{ $slide->cta }}
                     </a>

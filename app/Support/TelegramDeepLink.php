@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\Drama;
 use App\Models\Episode;
+use Illuminate\Support\HtmlString;
 
 /**
  * Menyusun dan membaca tautan `t.me/<bot>?start=<parameter>`.
@@ -69,6 +70,44 @@ class TelegramDeepLink
     public static function referral(string $code): ?string
     {
         return self::build(self::REF.$code);
+    }
+
+    /**
+     * Atribut `data-tg-href` untuk tombol tonton di situs.
+     *
+     * ## Kenapa atribut, bukan langsung dipasang di href
+     *
+     * Video hanya bisa diputar di dalam Telegram, tapi situs ini juga dibuka
+     * dari browser biasa. Kalau `href` diisi tautan t.me, pengunjung desktop
+     * yang menekan "Tonton Sekarang" dilempar keluar ke Telegram sebelum
+     * sempat melihat sinopsisnya.
+     *
+     * Karena itu `href` tetap berisi alamat halaman biasa, dan tautan
+     * Telegram menumpang di atribut terpisah. Di dalam Mini App, JavaScript
+     * pada `partials/miniapp` mencegat kliknya dan membuka Telegram; di luar
+     * itu — termasuk saat JavaScript mati — tombolnya bekerja seperti
+     * biasa. Tidak ada keadaan di mana tombolnya menjadi mati.
+     *
+     * Mengembalikan HtmlString, bukan string biasa, supaya di Blade cukup
+     * ditulis `{{ ... }}`. Blade tidak meng-escape ulang objek Htmlable, jadi
+     * tanda kutip atributnya selamat tanpa perlu `{!! !!}` — dan `{!! !!}` di
+     * dalam tag HTML adalah tempat lubang XSS biasanya masuk.
+     *
+     * `int` sengaja tidak diterima. Sebuah angka telanjang tidak menjelaskan
+     * dirinya drama atau episode, dan menebaknya berarti suatu saat tombol
+     * episode 12 mengantar ke drama nomor 12.
+     */
+    public static function attribute(Drama|Episode|null $tujuan): HtmlString
+    {
+        $tautan = match (true) {
+            $tujuan instanceof Episode => self::watch($tujuan),
+            $tujuan instanceof Drama   => self::drama($tujuan),
+            default                    => null,
+        };
+
+        return new HtmlString(
+            $tautan === null ? '' : 'data-tg-href="'.e($tautan).'"'
+        );
     }
 
     /**
