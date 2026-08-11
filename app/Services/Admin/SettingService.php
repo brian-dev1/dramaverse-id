@@ -49,8 +49,13 @@ class SettingService
         ━━━━━━━━━━━━━━━
 
         🆓 Gratis   💎 Khusus VIP
-        📺 <a href="{tautan_drama}">Lihat semua episode</a>
+
+        📺 <a href="{tautan_drama}">Semua episode drama ini</a>
+        🔍 <a href="{tautan_cari}">Cari judul lain</a>
         ⭐ <a href="{tautan_vip}">Buka akses VIP</a>
+
+        ⚠️ <b>Judul yang dicari tidak ada?</b>
+        📝 <a href="{tautan_request}">Kirim request di sini</a> — kami beri tahu lewat bot begitu dramanya tersedia.
         CAPTION;
 
     /** Definisi lengkap: kunci => [grup, label, tipe, bawaan, keterangan]. */
@@ -93,8 +98,10 @@ class SettingService
         'channel_cta'       => ['channel', 'Teks tautan', 'text', 'Tonton Sekarang', 'Kata yang jadi tautan ke bot di setiap baris.'],
         'channel_template'  => ['channel', 'Template caption', 'textarea',
             self::TEMPLATE_BAWAAN,
-            'Placeholder: {judul}, {daftar}, {sinopsis}, {negara}, {genre}, {total_episode}, {tautan_drama}, {tautan_vip}. '
-            .'Boleh memakai tag HTML Telegram: <b>, <i>, <u>, <s>, <code>, <blockquote>, <tg-spoiler>.'],
+            'Placeholder: {judul}, {daftar}, {sinopsis}, {negara}, {genre}, {total_episode}, '
+            .'{tautan_drama}, {tautan_vip}, {tautan_cari}, {tautan_request}, {tautan_situs}. '
+            .'Boleh memakai tag HTML Telegram: <b>, <i>, <u>, <s>, <code>, <blockquote>, <tg-spoiler>. '
+            .'Username channel lain, kontak admin, dan pengumuman tetap boleh diketik langsung di sini.'],
         'channel_line'      => ['channel', 'Format satu baris', 'text',
             '➤ <b>Part {nomor}</b> | {tanda} → {tautan}',
             'Placeholder: {nomor}, {tanda}, {tautan}, {judul_episode}.'],

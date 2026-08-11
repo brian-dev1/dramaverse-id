@@ -151,6 +151,20 @@ class ChannelPostService
             '{total_episode}'  => (string) ($drama->total_episode ?: $episodes->count()),
             '{tautan_drama}'   => e((string) (TelegramDeepLink::drama($drama) ?? '')),
             '{tautan_vip}'     => e((string) (TelegramDeepLink::subscribe() ?? '')),
+
+            /*
+            | Tiga tautan berikut menuju SITUS, bukan bot.
+            |
+            | Mencari judul dan mengetik permintaan sama-sama butuh kolom teks
+            | dan daftar hasil — dua hal yang di dalam chat bot berarti
+            | percakapan bolak-balik, sementara di halaman biasa cukup satu
+            | layar. Pembacanya sudah berada di Telegram, jadi keduanya akan
+            | terbuka sebagai Mini App tanpa berpindah aplikasi.
+            */
+            '{tautan_cari}'    => e(route('web.search')),
+            '{tautan_request}' => e(route('web.request.index')),
+            '{tautan_situs}'   => e(route('web.home')),
+
             '{daftar}'         => '',
         ]);
 
