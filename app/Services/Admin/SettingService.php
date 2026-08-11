@@ -37,6 +37,29 @@ class SettingService
         'social_twitter'   => ['social', 'X / Twitter', 'text', null, 'URL lengkap.'],
         'social_youtube'   => ['social', 'YouTube', 'text', null, 'URL lengkap.'],
 
+        /*
+        |----------------------------------------------------------------------
+        | Channel Telegram
+        |----------------------------------------------------------------------
+        |
+        | Postingan katalog ke channel publik. Dipisahkan dari
+        | TELEGRAM_STORAGE_CHAT_ID di .env dengan sengaja: yang itu gudang
+        | video privat yang tidak boleh berganti, yang ini etalase yang bisa
+        | saja dipindah ke channel baru tanpa deploy.
+        |
+        */
+        'channel_chat_id'  => ['channel', 'Chat ID channel', 'text', null, 'Contoh: -1001234567890 untuk channel, atau @namachannel. Bot harus jadi admin di sana.'],
+        'channel_auto_post' => ['channel', 'Kirim otomatis saat drama dipublikasikan', 'boolean', '0', 'Satu drama hanya dikirim sekali; kiriman berikutnya harus lewat tombol manual.'],
+        'channel_free_mark' => ['channel', 'Penanda episode gratis', 'text', '🆓', null],
+        'channel_vip_mark'  => ['channel', 'Penanda episode VIP', 'text', '💎', null],
+        'channel_cta'       => ['channel', 'Teks tautan', 'text', 'Tonton Sekarang', 'Kata yang jadi tautan ke bot di setiap baris.'],
+        'channel_template'  => ['channel', 'Template caption', 'textarea',
+            "『 {judul} 』\n\n{daftar}",
+            'Placeholder: {judul}, {daftar}, {sinopsis}, {negara}, {total_episode}. Baris {daftar} diisi otomatis satu baris per episode.'],
+        'channel_line'      => ['channel', 'Format satu baris', 'text',
+            '➤ Part {nomor} | {tanda} → {tautan}',
+            'Placeholder: {nomor}, {tanda}, {tautan}, {judul_episode}.'],
+
         // --- Sistem ---
         'footer_text'      => ['system', 'Teks footer', 'text', null, 'Kosongkan untuk memakai bawaan.'],
         'maintenance_mode' => ['system', 'Mode pemeliharaan', 'boolean', '0', 'Situs publik ditutup, panel admin tetap bisa diakses.'],
@@ -49,6 +72,7 @@ class SettingService
         'seo'     => 'SEO',
         'contact' => 'Kontak',
         'social'  => 'Media sosial',
+        'channel' => 'Channel Telegram',
         'system'  => 'Sistem',
     ];
 

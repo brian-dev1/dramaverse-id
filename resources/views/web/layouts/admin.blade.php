@@ -58,6 +58,7 @@
             ['route' => 'admin.telegram-menu.index', 'icon' => 'list', 'label' => 'Menu Telegram', 'can' => 'telegram.manage'],
             ['route' => 'admin.telegram-sync.index', 'icon' => 'film', 'label' => 'Sinkron Telegram', 'can' => 'telegram.manage'],
             ['route' => 'admin.telegram-log.index',  'icon' => 'file', 'label' => 'Log Telegram',    'can' => 'telegram.manage'],
+            ['route' => 'admin.channel-post.index',  'icon' => 'send', 'label' => 'Kirim ke Channel', 'can' => 'telegram.manage'],
             // Ditaruh di atas Tagihan dengan sengaja: inilah halaman
             // pembayaran yang dibuka setiap hari, sementara daftar Tagihan
             // dibuka saat ada yang perlu ditelusuri.

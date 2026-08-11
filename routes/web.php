@@ -547,6 +547,22 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
             Route::get('/telegram/log', [Admin\TelegramLogController::class, 'index'])
                 ->name('telegram-log.index');
+
+            /*
+            |------------------------------------------------------------------
+            | Kirim katalog ke channel
+            |
+            | Memakai `telegram.manage`, izin yang sama dengan Broadcast.
+            | Keduanya mengirim pesan atas nama bot ke banyak orang sekaligus,
+            | dan tidak ada alasan seseorang boleh melakukan yang satu tapi
+            | tidak yang lain.
+            |------------------------------------------------------------------
+            */
+            Route::get('/channel-post', [Admin\ChannelPostController::class, 'index'])
+                ->name('channel-post.index');
+
+            Route::post('/channel-post', [Admin\ChannelPostController::class, 'send'])
+                ->name('channel-post.send');
         });
 
         /*
