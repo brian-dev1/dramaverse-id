@@ -37,6 +37,10 @@
             // storage dan menunggu dipasangkan ke episode. Diletakkan tepat
             // setelah Upload Queue karena satu alur kerja.
             ['route' => 'admin.video-inbox.index', 'icon' => 'inbox', 'label' => 'Video Inbox', 'can' => 'episode.manage'],
+            // Diletakkan di Katalog, bukan Anggota: yang membukanya adalah
+            // orang yang sedang memutuskan drama apa yang akan diunggah
+            // berikutnya, bukan yang sedang mengurus pengguna.
+            ['route' => 'admin.drama-request.index', 'icon' => 'inbox', 'label' => 'Request Drama', 'can' => 'drama.manage'],
             // Batch Upload duduk di sebelah Upload Queue karena keduanya satu
             // alur: unggah banyak berkas di sini, lihat nasibnya di sana.
             ['route' => 'admin.batch.form',    'icon' => 'plus',   'label' => 'Batch Upload', 'can' => ['upload.manage', 'episode.manage']],

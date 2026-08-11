@@ -278,6 +278,25 @@ class AppServiceProvider extends ServiceProvider
 
         /*
         |----------------------------------------------------------------------
+        | Permintaan drama
+        |----------------------------------------------------------------------
+        |
+        | Longgar per menit, ketat per hari. Orang yang baru menemukan fiturnya
+        | wajar mengirim tiga atau empat judul berturut-turut, dan menolaknya
+        | di permintaan kedua terasa seperti kerusakan.
+        |
+        | Yang dijaga batas hariannya: satu orang yang mengirim dua ratus judul
+        | membuat daftar admin tidak bisa dipakai, dan permintaan orang lain
+        | tenggelam di bawahnya.
+        |
+        */
+        RateLimiter::for('drama-request', fn (Request $request) => [
+            Limit::perMinute(5)->by($request->user()?->id ?: $request->ip()),
+            Limit::perDay(20)->by($request->user()?->id ?: $request->ip()),
+        ]);
+
+        /*
+        |----------------------------------------------------------------------
         | Pembayaran
         |----------------------------------------------------------------------
         |

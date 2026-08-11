@@ -39,9 +39,37 @@ class WebSearchController extends Controller
         ]);
     }
 
-    /** Endpoint realtime untuk pencarian saat mengetik. */
+    /**
+     * Endpoint realtime untuk pencarian saat mengetik.
+     *
+     * ## Kenapa bentuknya disusun sendiri, bukan paginator mentah
+     *
+     * Mengembalikan paginator apa adanya mengirim seluruh kolom model ke
+     * peramban — termasuk yang tidak dipakai tampilan — dan `poster` di sana
+     * masih berupa jalur penyimpanan, bukan URL yang bisa dipasang di `src`.
+     * Halaman jadi harus menyusun URL-nya sendiri, dan aturan penyusunan itu
+     * lalu ada di dua tempat.
+     *
+     * Bentuk ringkas ini juga membuat jawabannya kecil. Endpoint ini dipanggil
+     * setiap kali orang berhenti mengetik sesaat, jadi selisih beberapa
+     * kilobyte per panggilan terasa di kuota pengguna ponsel.
+     */
     public function ajax(Request $request): JsonResponse
     {
-        return response()->json($this->service->search($request));
+        $hasil = $this->service->search($request);
+
+        return response()->json([
+            'query' => trim((string) $request->get('q', '')),
+            'total' => $hasil->total(),
+            'items' => collect($hasil->items())->map(fn ($d) => [
+                'title'    => $d->title,
+                'url'      => route('web.drama.show', $d->slug),
+                'poster'   => $d->poster_url,
+                'gradient' => $d->gradient,
+                'country'  => $d->country?->name,
+                'episodes' => $d->total_episode,
+                'vip'      => (bool) $d->is_vip,
+            ])->all(),
+        ]);
     }
 }

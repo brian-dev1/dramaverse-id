@@ -25,6 +25,26 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\CaptureReferral::class,
         ]);
 
+        /*
+        |----------------------------------------------------------------------
+        | Ke mana tamu diarahkan
+        |----------------------------------------------------------------------
+        |
+        | Bawaan Laravel mengarahkan ke route bernama `login`. Route itu TIDAK
+        | ADA di proyek ini: satu-satunya form login bernama `admin.login`, dan
+        | pengguna biasa tidak login lewat form sama sekali — mereka masuk
+        | otomatis lewat Telegram.
+        |
+        | Akibatnya setiap halaman ber-middleware `auth` yang dibuka tamu
+        | menjawab 500 RouteNotFoundException, bukan mengarahkan ke mana pun.
+        | Selama halaman itu hanya Favorit dan Riwayat — yang tidak pernah
+        | ditautkan kepada tamu — kesalahannya tidak pernah terlihat. Halaman
+        | Request Drama mengubahnya: tombolnya muncul di hasil pencarian
+        | kosong, dan pencarian bisa dilakukan siapa saja.
+        |
+        */
+        $middleware->redirectGuestsTo(fn () => route('web.home').'?masuk=1');
+
         $middleware->alias([
             'admin'  => EnsureUserIsAdmin::class,
             'active' => EnsureUserIsActive::class,

@@ -25,6 +25,7 @@ import navbar from './web/navbar';
 import heroSlider from './web/hero-slider';
 import animation from './web/animation';
 import railArrows from './web/rail-arrows';
+import liveSearch from './web/live-search';
 import player from './player';
 
 function mulai() {
@@ -32,6 +33,7 @@ function mulai() {
     heroSlider();
     animation();
     railArrows();
+    liveSearch();
     player();
 }
 

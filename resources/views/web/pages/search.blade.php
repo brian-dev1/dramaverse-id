@@ -12,10 +12,23 @@
 
     <section class="section section-pad">
 
-        <form method="GET" action="{{ route('web.search.result') }}" class="search-form">
+        {{--
+            Form tetap berupa form sungguhan yang bisa dikirim.
+
+            Pencarian langsung ditambahkan di atasnya sebagai lapisan, bukan
+            sebagai pengganti: tanpa JavaScript — atau selama skripnya belum
+            selesai dimuat — menekan Enter tetap membawa ke halaman hasil
+            seperti sebelumnya. Yang berubah hanya bahwa menunggu Enter tidak
+            lagi diperlukan.
+        --}}
+        <form method="GET" action="{{ route('web.search.result') }}" class="search-form"
+              data-live-search
+              data-endpoint="{{ route('api.v1.search') }}"
+              data-request-url="{{ route('web.request.index') }}">
 
             <input type="search" name="q" value="{{ $keyword }}"
-                   placeholder="Judul drama..." class="search-input" autofocus>
+                   placeholder="Judul drama..." class="search-input" autofocus
+                   autocomplete="off" data-live-input>
 
             <select name="genre" class="search-select">
                 <option value="">Semua Genre</option>
@@ -58,20 +71,71 @@
 
     </section>
 
+    {{--
+        Wadah hasil pencarian langsung.
+
+        Selama kosong, bagian di bawahnya — hasil yang dirender server —
+        tetap terlihat seperti biasa. Begitu pengguna mengetik, skrip
+        menyembunyikan yang bawah dan mengisi yang ini.
+    --}}
+    <section class="section section-pad" data-live-wrap hidden>
+
+        <div class="live-state" data-live-loading>
+            <p class="live-dots"><span></span><span></span><span></span></p>
+            <p class="live-hint">Mencari…</p>
+        </div>
+
+        <div class="live-state" data-live-empty>
+            <p><strong>Drama tidak tersedia?</strong></p>
+            <p>Tidak ada yang cocok dengan <span data-live-keyword></span>. Kirim judulnya
+               ke kami — Anda akan diberi tahu lewat Telegram begitu dramanya ada.</p>
+
+            {{-- Kata kuncinya dibawa ke form request lewat ?q= supaya kolom
+                 judulnya sudah terisi. Menyuruh orang mengetik ulang judul
+                 yang baru saja ia ketik adalah cara termudah membuatnya
+                 mengurungkan niat. --}}
+            <a href="{{ route('web.request.index') }}" class="btn btn-primary" data-live-request>
+                <x-web.home.icon name="send" :size="15" />
+                Request Drama Ini
+            </a>
+        </div>
+
+        <div class="live-state" data-live-error>
+            <p>Pencarian sedang bermasalah. Tekan Enter untuk mencari dengan cara biasa.</p>
+        </div>
+
+        <div data-live-results></div>
+    </section>
+
+    <div data-server-results>
     @if ($dramas === null)
         <x-web.home.empty-state
             title="Mulai mencari"
             message="Ketik judul drama atau pilih filter di atas."
             :href="route('web.trending')" action="Lihat Trending" />
     @elseif ($dramas->isEmpty())
-        <x-web.home.empty-state
-            title="Tidak ada hasil"
-            message="Tidak ada drama yang cocok dengan pencarian Anda."
-            :href="route('web.search')" action="Ulangi Pencarian" />
+        {{-- Hasil kosong mengarah ke request, bukan cuma "ulangi pencarian"
+             yang tidak menyelesaikan apa pun.
+
+             Tamu diarahkan ke beranda: permintaan butuh pemilik, karena
+             janjinya adalah "Anda akan diberi tahu" — dan itu tidak bisa
+             ditepati kepada orang yang tidak dikenali. --}}
+        @auth
+            <x-web.home.empty-state
+                title="Drama tidak tersedia?"
+                message="Tidak ada drama yang cocok. Kirim judulnya ke kami — Anda akan diberi tahu begitu dramanya ada."
+                :href="route('web.request.index', ['q' => $keyword])" action="Request Drama" />
+        @else
+            <x-web.home.empty-state
+                title="Drama tidak tersedia?"
+                message="Tidak ada drama yang cocok. Masuk lewat Telegram untuk meminta drama ini, dan kami beri tahu begitu tersedia."
+                :href="route('web.home')" action="Kembali ke Beranda" />
+        @endauth
     @else
         <x-web.home.grid :dramas="$dramas" :title="'Hasil: '.$dramas->total().' drama'" />
 
         <div class="section-pad pagination-wrap">{{ $dramas->links() }}</div>
     @endif
+    </div>
 
 @endsection

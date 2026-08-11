@@ -137,6 +137,29 @@ Route::middleware(['auth', 'active'])->group(function () {
 
     /*
     |--------------------------------------------------------------------------
+    | Permintaan drama
+    |--------------------------------------------------------------------------
+    |
+    | Butuh login dengan sengaja. Permintaan tanpa pemilik tidak ada gunanya:
+    | fitur ini janjinya adalah "Anda akan diberi tahu saat dramanya ada", dan
+    | janji itu tidak bisa ditepati kepada orang yang tidak dikenali.
+    |
+    | Pengiriman dibatasi lajunya sendiri. Kolom teks bebas yang bisa dikirim
+    | tanpa batas adalah kolom yang suatu saat dipakai membanjiri panel admin.
+    |
+    */
+    Route::get('/request', [Web\DramaRequestController::class, 'index'])
+        ->name('web.request.index');
+
+    Route::post('/request', [Web\DramaRequestController::class, 'store'])
+        ->name('web.request.store')
+        ->middleware('throttle:drama-request');
+
+    Route::delete('/request/{id}', [Web\DramaRequestController::class, 'destroy'])
+        ->name('web.request.destroy')->whereNumber('id');
+
+    /*
+    |--------------------------------------------------------------------------
     | Program Affiliate
     |--------------------------------------------------------------------------
     |
@@ -480,6 +503,27 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
                 Route::delete('/{source}/{id}', 'destroy')->name('destroy')
                     ->middleware('permission:storage.manage,setting.manage');
+            });
+
+        /*
+        |----------------------------------------------------------------------
+        | Permintaan drama
+        |----------------------------------------------------------------------
+        |
+        | Memakai izin `drama.manage`: yang menindaklanjuti permintaan adalah
+        | orang yang bisa menambahkan dramanya ke katalog. Memberikannya ke
+        | peran yang tidak bisa membuat drama berarti ia hanya bisa membaca
+        | daftar keinginan tanpa bisa memenuhinya.
+        |
+        */
+        Route::controller(Admin\DramaRequestController::class)
+            ->prefix('drama-request')->name('drama-request.')
+            ->middleware('permission:drama.manage')
+            ->group(function () {
+                Route::get('/', 'index')->name('index');
+                Route::put('/{id}', 'update')->name('update')->whereNumber('id');
+                Route::post('/{id}/renotify', 'renotify')->name('renotify')->whereNumber('id');
+                Route::delete('/{id}', 'destroy')->name('destroy')->whereNumber('id');
             });
 
         // --- Pengguna: daftar, detail, dan tindakan ---

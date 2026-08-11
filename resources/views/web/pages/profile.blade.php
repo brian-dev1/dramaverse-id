@@ -110,6 +110,16 @@
                 <x-web.home.icon name="arrow-right" :size="16" class="pf-menu-arrow" />
             </a>
 
+            {{-- Pintu masuk kedua ke Request Drama. Yang pertama muncul saat
+                 pencarian tidak menemukan apa pun, tapi orang yang sudah
+                 pernah mengirim permintaan datang ke sini untuk mengecek
+                 statusnya — bukan mengulang pencarian yang gagal. --}}
+            <a href="{{ route('web.request.index') }}" class="pf-menu-item">
+                <span class="pf-menu-ico bg-blue"><x-web.home.icon name="inbox" :size="16" /></span>
+                <span class="pf-menu-label">Request Drama</span>
+                <x-web.home.icon name="arrow-right" :size="16" class="pf-menu-arrow" />
+            </a>
+
             <a href="{{ route('web.notifications') }}" class="pf-menu-item">
                 <span class="pf-menu-ico bg-green"><x-web.home.icon name="send" :size="16" /></span>
                 <span class="pf-menu-label">Notifikasi</span>
