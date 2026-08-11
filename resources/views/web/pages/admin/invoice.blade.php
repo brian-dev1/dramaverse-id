@@ -14,16 +14,32 @@
     <section class="panel">
         <div class="panel-head">
             <h2>Pendapatan</h2>
-            <span class="panel-meta">Dihitung dari tagihan berstatus Lunas</span>
+            <span class="panel-meta">
+                Dihitung dari tagihan berstatus Lunas, dipisah per mata uang
+            </span>
         </div>
 
         <div class="detail-body-admin">
+            {{--
+                Sengaja TIDAK dijumlahkan jadi satu angka. Menggabungkan
+                Rupiah dan Ringgit butuh kurs, dan kurs butuh jawaban atas
+                "kurs tanggal berapa" yang belum diputuskan. Sampai saat itu,
+                dua baris yang benar lebih berguna daripada satu baris yang
+                salah.
+            --}}
             <dl class="settings-meta">
-                <dt>Sepanjang waktu</dt>
-                <dd>Rp {{ number_format($stats['revenue'], 0, ',', '.') }}</dd>
+                @forelse ($stats['per_currency'] as $mataUang => $jumlah)
+                    <dt>Sepanjang waktu — {{ $mataUang }}</dt>
+                    <dd>{{ \App\Support\Uang::format($jumlah, $mataUang) }}</dd>
+                @empty
+                    <dt>Sepanjang waktu</dt>
+                    <dd><span class="cell-empty">Belum ada tagihan lunas.</span></dd>
+                @endforelse
 
-                <dt>30 hari terakhir</dt>
-                <dd>Rp {{ number_format($stats['revenue_30d'], 0, ',', '.') }}</dd>
+                @foreach ($stats['per_currency_30d'] as $mataUang => $jumlah)
+                    <dt>30 hari terakhir — {{ $mataUang }}</dt>
+                    <dd>{{ \App\Support\Uang::format($jumlah, $mataUang) }}</dd>
+                @endforeach
             </dl>
         </div>
     </section>
@@ -105,7 +121,7 @@
                                     {{ $invoice->plan_name }}
                                     <br><span class="cell-empty">{{ $invoice->plan_duration }} hari</span>
                                 </td>
-                                <td>Rp {{ number_format((float) $invoice->total, 0, ',', '.') }}</td>
+                                <td>{{ \App\Support\Uang::invoice($invoice) }}</td>
                                 <td>
                                     {{ $invoice->latestTransaction?->provider?->name ?? '—' }}
                                     @if ($invoice->latestTransaction?->provider?->isSandbox())

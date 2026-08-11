@@ -2,6 +2,7 @@
 
 namespace App\Repositories;
 
+use App\Enums\PaymentRegion;
 use App\Enums\SubscriptionStatus;
 use App\Models\MembershipPlan;
 use App\Models\Subscription;
@@ -18,9 +19,12 @@ use Illuminate\Database\Eloquent\Collection;
  */
 class MembershipRepository implements MembershipRepositoryInterface
 {
-    public function plans(): Collection
+    public function plans(?PaymentRegion $region = null): Collection
     {
-        return MembershipPlan::query()->active()->get();
+        return MembershipPlan::query()
+            ->active()
+            ->when($region !== null, fn ($q) => $q->region($region))
+            ->get();
     }
 
     public function active(User $user): ?Subscription

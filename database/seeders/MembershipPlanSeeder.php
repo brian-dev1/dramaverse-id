@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Enums\PaymentRegion;
 use App\Models\MembershipPlan;
 use Illuminate\Database\Seeder;
 
@@ -45,7 +46,20 @@ class MembershipPlanSeeder extends Seeder
         foreach ($plans as $plan) {
             MembershipPlan::updateOrCreate(
                 ['slug' => $plan['slug']],
-                $plan + ['is_active' => true]
+                // Wilayah dan mata uang ditulis eksplisit, tidak diserahkan
+                // ke nilai bawaan kolom. Paket bawaan ini memang untuk pasar
+                // Indonesia, dan menyatakannya di sini membuat seeder tetap
+                // benar seandainya nilai bawaan kolomnya suatu saat berubah.
+                //
+                // Paket wilayah luar Indonesia TIDAK diseed: harganya
+                // keputusan bisnis yang berbeda per pemasangan, dan menebaknya
+                // di seeder berarti ada yang menjual dengan angka karangan.
+                // Buat lewat Admin -> Membership.
+                $plan + [
+                    'region'    => PaymentRegion::ID->value,
+                    'currency'  => 'IDR',
+                    'is_active' => true,
+                ]
             );
         }
     }

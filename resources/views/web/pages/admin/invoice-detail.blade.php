@@ -21,13 +21,13 @@
                     <dd>{{ $invoice->plan_name }} ({{ $invoice->plan_duration }} hari)</dd>
 
                     <dt>Subtotal</dt>
-                    <dd>Rp {{ number_format((float) $invoice->subtotal, 0, ',', '.') }}</dd>
+                    <dd>{{ \App\Support\Uang::invoice($invoice, 'subtotal') }}</dd>
 
                     <dt>Biaya layanan</dt>
-                    <dd>Rp {{ number_format((float) $invoice->fee, 0, ',', '.') }}</dd>
+                    <dd>{{ \App\Support\Uang::invoice($invoice, 'fee') }}</dd>
 
                     <dt>Total</dt>
-                    <dd><strong>Rp {{ number_format((float) $invoice->total, 0, ',', '.') }}</strong></dd>
+                    <dd><strong>{{ \App\Support\Uang::invoice($invoice) }}</strong></dd>
 
                     <dt>Status</dt>
                     <dd>
@@ -127,7 +127,7 @@
                                 @endif
                             </td>
                             <td>
-                                Rp {{ number_format((float) $tx->amount, 0, ',', '.') }}
+                                {{ \App\Support\Uang::format($tx->amount, $invoice->currency) }}
 
                                 {{-- Bukti bayar dari bot; lihat PaymentProofHandler. --}}
                                 @if ($tx->hasProof())

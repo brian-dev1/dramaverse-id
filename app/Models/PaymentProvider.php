@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\PaymentDriver;
+use App\Enums\PaymentRegion;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -23,6 +24,7 @@ class PaymentProvider extends Model
     protected $fillable = [
         'name',
         'slug',
+        'region',
         'driver',
         'credentials',
         'mode',
@@ -37,6 +39,7 @@ class PaymentProvider extends Model
 
     protected $casts = [
         'driver'      => PaymentDriver::class,
+        'region'      => PaymentRegion::class,
         'credentials' => 'encrypted:array',
         'is_active'   => 'boolean',
         'is_default'  => 'boolean',
@@ -53,6 +56,14 @@ class PaymentProvider extends Model
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true)->orderBy('sort_order')->orderBy('id');
+    }
+
+    /** Provider satu wilayah saja. */
+    public function scopeRegion(Builder $query, PaymentRegion|string $region): Builder
+    {
+        $nilai = $region instanceof PaymentRegion ? $region->value : $region;
+
+        return $query->where('region', $nilai);
     }
 
     /** Satu nilai kredensial. */

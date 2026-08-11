@@ -2,6 +2,7 @@
 
 namespace App\Telegram\Handlers;
 
+use App\Enums\PaymentRegion;
 use App\Models\Invoice;
 use App\Models\MembershipPlan;
 use App\Models\PaymentProvider;
@@ -17,6 +18,7 @@ use App\Support\Waktu;
 use Illuminate\Support\Facades\Log;
 use SplFileInfo;
 use Throwable;
+use App\Support\Uang;
 
 /**
  * Penawaran paket dan pembuatan tagihan — seluruhnya di dalam bot.
@@ -58,6 +60,13 @@ class PremiumHandler
     /** State percakapan saat bot menunggu foto bukti bayar. */
     public const STATE_PROOF = 'PAY_PROOF';
 
+    /**
+     * Awalan callback tombol pilihan wilayah pembayaran.
+     *
+     * Argumennya nilai `PaymentRegion` — 'ID' atau 'INTL'.
+     */
+    public const REGION = 'payreg';
+
     public function __construct(
         protected TelegramServiceInterface $telegram,
         protected MembershipService $membership,
@@ -73,6 +82,24 @@ class PremiumHandler
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * Layar pertama: dari mana pengguna membayar.
+     *
+     * ## Kenapa ditanyakan, bukan ditebak
+     *
+     * Yang menentukan bukan kewarganegaraan atau bahasa Telegram-nya,
+     * melainkan alat bayar yang ada di tangannya. Orang Indonesia yang bekerja
+     * di Johor memegang aplikasi bank Malaysia; orang Malaysia yang kuliah di
+     * Jakarta memegang QRIS. `language_code` tidak tahu apa-apa soal itu, dan
+     * menebak salah berarti orang tersebut menerima kode QR yang ditolak
+     * aplikasinya — kegagalan yang baru ketahuan setelah ia berniat membayar.
+     *
+     * ## Kenapa dilewati bila cuma ada satu wilayah
+     *
+     * Pemasangan yang hanya melayani Indonesia tidak boleh mendapat satu
+     * ketukan tambahan hanya karena fiturnya ada. Pertanyaan yang jawabannya
+     * cuma satu bukan pertanyaan.
+     */
     public function handle(array $callback, ?User $user = null): void
     {
         $chatId = $callback['message']['chat']['id'];
@@ -106,7 +133,7 @@ class PremiumHandler
                 ->rows([
                     'Nomor' => $tertunda->number,
                     'Paket' => $tertunda->plan_name,
-                    'Sisa'  => 'Rp '.number_format($tertunda->outstanding(), 0, ',', '.'),
+                    'Sisa'  => Uang::format($tertunda->outstanding(), $tertunda->currency),
                     'Bayar sebelum' => $tertunda->due_at !== null
                         ? Waktu::lengkapRelatif($tertunda->due_at)
                         : null,
@@ -131,9 +158,9 @@ class PremiumHandler
             return;
         }
 
-        $plans = $this->membership->plans();
+        $wilayah = $this->wilayahTersedia();
 
-        if ($plans->isEmpty()) {
+        if ($wilayah->isEmpty()) {
 
             $pesan->text('Belum ada paket yang ditawarkan. Coba lagi nanti.');
 
@@ -142,7 +169,90 @@ class PremiumHandler
             return;
         }
 
-        $pesan->section('🗂', 'Paket yang tersedia');
+        // Lebih dari satu wilayah punya paket: tanyakan dulu. Satu wilayah
+        // saja: langsung ke daftar paketnya, tanpa ketukan tambahan.
+        if ($wilayah->count() > 1) {
+            $this->tanyaWilayah($chatId, $pesan, $wilayah);
+
+            return;
+        }
+
+        $this->daftarPaket($chatId, $wilayah->first(), $pesan);
+    }
+
+    /**
+     * Wilayah yang benar-benar siap melayani pembayaran.
+     *
+     * Syaratnya dua-duanya: ada paket aktif DAN ada provider yang bisa
+     * dipakai. Wilayah yang paketnya ada tapi metode bayarnya belum diisi
+     * tidak ditawarkan — tombolnya akan mengantar ke penolakan, dan tombol
+     * semacam itu lebih buruk daripada tombol yang tidak ada.
+     *
+     * @return \Illuminate\Support\Collection<int,PaymentRegion>
+     */
+    private function wilayahTersedia(): \Illuminate\Support\Collection
+    {
+        return collect(PaymentRegion::cases())
+            ->filter(fn (PaymentRegion $r) =>
+                $this->membership->plans($r)->isNotEmpty()
+                && $this->gateways->usable($r)->isNotEmpty())
+            ->values();
+    }
+
+    /** Layar pilihan wilayah. */
+    private function tanyaWilayah(int|string $chatId, Notice $pesan, \Illuminate\Support\Collection $wilayah): void
+    {
+        $pesan->section('🌏', 'Anda membayar dari mana?')
+            ->bullets(
+                $wilayah->map(fn (PaymentRegion $r) => $r->label().' — '.$r->keterangan())->all()
+            )
+            ->note('Pilihan ini menentukan harga dan metode pembayaran yang '
+                .'ditampilkan. Salah pilih tinggal tekan /premium lagi.');
+
+        $this->telegram->sendMessage($chatId, $pesan->render(), [
+            'reply_markup' => [
+                'inline_keyboard' => $wilayah->map(fn (PaymentRegion $r) => [[
+                    'text'          => $r->tombol(),
+                    'callback_data' => self::REGION.':'.$r->value,
+                ]])->all(),
+            ],
+        ]);
+    }
+
+    /**
+     * Pengguna menekan salah satu tombol wilayah.
+     *
+     * Pilihannya TIDAK disimpan ke profil. Ia hanya berlaku untuk satu
+     * pembelian: orang yang bulan lalu membayar dari Malaysia bisa saja bulan
+     * ini sudah pulang, dan mengingat pilihan lamanya berarti menawarkan
+     * harga Ringgit kepada orang yang sekarang memegang QRIS.
+     */
+    public function chooseRegion(array $callback, ?User $user, string $region): void
+    {
+        $chatId = $callback['message']['chat']['id'];
+
+        $this->daftarPaket(
+            $chatId,
+            PaymentRegion::fromAny($region),
+            Notice::make('💎', 'Premium')->lead($this->statusLine($user))
+        );
+    }
+
+    /** Daftar paket satu wilayah beserta tombol belinya. */
+    private function daftarPaket(int|string $chatId, PaymentRegion $region, Notice $pesan): void
+    {
+        $plans = $this->membership->plans($region);
+
+        if ($plans->isEmpty()) {
+
+            $pesan->text('Belum ada paket untuk wilayah '.$region->label().'. Coba lagi nanti.');
+
+            $this->telegram->sendMessage($chatId, $pesan->render());
+
+            return;
+        }
+
+        $pesan->section('🗂', 'Paket yang tersedia — '.$region->label());
 
         $tombol = [];
 
@@ -150,7 +260,7 @@ class PremiumHandler
 
         foreach ($plans as $plan) {
 
-            $harga = 'Rp '.number_format((float) $plan->price, 0, ',', '.');
+            $harga = Uang::format($plan->price, $plan->currency);
 
             // Satu paket, satu baris. Dipecah jadi tiga baris seperti
             // sebelumnya, membandingkan dua paket berarti melompat naik turun
@@ -224,7 +334,11 @@ class PremiumHandler
         }
 
         try {
-            $provider = $this->gateways->default();
+            // Provider diambil dari wilayah PAKETNYA, bukan dari pilihan
+            // tombol tadi. Keduanya biasanya sama, tapi tombol wilayah bisa
+            // ditekan berjam-jam kemudian dari pesan lama — sementara paket
+            // yang ditunjuknya adalah kebenaran yang tidak bisa basi.
+            $provider = $this->gateways->default($plan->region);
 
             $transaction = $this->checkout->start($user, $plan, $provider);
 
@@ -333,7 +447,7 @@ class PremiumHandler
                 ->lead('Kirim foto struk atau tangkapan layar transfer ke chat ini.')
                 ->rows([
                     'Tagihan' => $invoice->number,
-                    'Nominal' => 'Rp '.number_format((float) $invoice->total, 0, ',', '.'),
+                    'Nominal' => Uang::invoice($invoice),
                 ])
                 ->text('Pastikan nominal dan waktunya terbaca.')
                 ->note('Bukti yang masuk langsung tampil di panel admin. Membership '
@@ -421,7 +535,7 @@ class PremiumHandler
         return Notice::make('🧾', 'Scan QRIS untuk bayar')
             ->rows([
                 'Paket'         => $invoice->plan_name.' — '.(int) $invoice->plan_duration.' hari',
-                'Nominal'       => 'Rp '.number_format((float) $invoice->total, 0, ',', '.'),
+                'Nominal'       => Uang::invoice($invoice),
                 'Nomor tagihan' => $invoice->number,
                 'Atas nama'     => filled($merchant = $provider->credential('merchant_name'))
                     ? $merchant
@@ -457,7 +571,7 @@ class PremiumHandler
         $pesan = Notice::make('🧾', 'Tagihan dibuat')
             ->rows([
                 'Paket' => $invoice->plan_name.' — '.(int) $invoice->plan_duration.' hari',
-                'Total' => 'Rp '.number_format((float) $invoice->total, 0, ',', '.'),
+                'Total' => Uang::invoice($invoice),
                 'Nomor' => $invoice->number,
                 'Bayar sebelum' => $invoice->due_at !== null
                     ? Waktu::lengkapRelatif($invoice->due_at)
@@ -504,8 +618,7 @@ class PremiumHandler
             $pesan->section('🔢', 'Kirim salah satu')->rows(
                 collect(array_slice($saran, 0, 4))
                     ->mapWithKeys(fn (array $u) => [
-                        $u['jumlah'].' '.$u['nama'] => 'Rp '
-                            .number_format($u['total'], 0, ',', '.')
+                        $u['jumlah'].' '.$u['nama'] => Uang::format($u['total'], $invoice->currency)
                             .($u['pas'] ? '  ✅ pas' : ''),
                     ])
                     ->all()

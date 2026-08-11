@@ -8,6 +8,7 @@ use App\Models\Invoice;
 use App\Models\MembershipPlan;
 use App\Models\PaymentProvider;
 use App\Models\User;
+use App\Services\Payments\Exceptions\PaymentException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -34,10 +35,27 @@ class InvoiceService
      * Nama, durasi, dan harga paket DISALIN ke invoice. Harga paket bisa
      * berubah dan paketnya bisa dihapus; invoice lama harus tetap menunjukkan
      * apa yang benar-benar dibeli, bukan keadaan paket hari ini.
+     *
+     * Mata uang ikut disalin dari paketnya, bukan dibaca dari
+     * `config('payment.currency')` seperti sebelumnya. Sejak ada paket
+     * berharga Ringgit, satu nilai global tidak lagi bisa menjawab pertanyaan
+     * "tagihan ini dalam mata uang apa" — dan salah menjawabnya berarti
+     * tagihan RM 15 tercatat sebagai Rp 15.
      */
     public function create(User $user, MembershipPlan $plan, PaymentProvider $provider): Invoice
     {
         $subtotal = (float) $plan->price;
+
+        // Paket dan provider harus sewilayah. Kalau tidak, yang tercipta
+        // adalah tagihan berharga Ringgit dengan QRIS Indonesia — sah menurut
+        // database, mustahil dibayar menurut aplikasi bank mana pun.
+        //
+        // Diperiksa di sini, di satu-satunya tempat tagihan dibuat, bukan di
+        // masing-masing pemanggil: pemanggil berikutnya (mis. tombol
+        // perpanjang, atau checkout dari website) tidak akan ingat memeriksanya.
+        if ($plan->region !== $provider->region) {
+            throw PaymentException::regionMismatch($plan->region, $provider->region);
+        }
 
         $fee = $provider->feeFor($subtotal);
 
@@ -50,7 +68,7 @@ class InvoiceService
             'subtotal'           => $subtotal,
             'fee'                => $fee,
             'total'              => $subtotal + $fee,
-            'currency'           => config('payment.currency', 'IDR'),
+            'currency'           => $plan->currency ?: config('payment.currency', 'IDR'),
             'status'             => PaymentStatus::PENDING,
             'due_at'             => now()->addMinutes((int) config('payment.invoice_ttl', 1440)),
         ]);

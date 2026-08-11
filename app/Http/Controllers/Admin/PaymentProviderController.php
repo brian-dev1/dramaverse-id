@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Enums\PaymentDriver;
+use App\Enums\PaymentRegion;
 use App\Http\Controllers\Controller;
 use App\Models\PaymentProvider;
 use App\Services\Admin\ActivityLogger;
@@ -28,11 +29,16 @@ class PaymentProviderController extends Controller
     public function index(): View
     {
         return view('web.pages.admin.payment-provider', [
+            // Dikelompokkan per wilayah supaya jelas wilayah mana yang belum
+            // punya provider sama sekali — penyebab paling sering paketnya
+            // tidak muncul di bot.
             'providers' => PaymentProvider::query()
                 ->withCount('transactions')
+                ->orderBy('region')
                 ->orderBy('sort_order')
                 ->orderBy('id')
                 ->get(),
+            'regions' => PaymentRegion::options(),
             'drivers' => PaymentDriver::options(),
             'fields'  => collect(PaymentDriver::cases())
                 ->mapWithKeys(fn (PaymentDriver $d) => [$d->value => $d->credentialFields()])
@@ -44,6 +50,7 @@ class PaymentProviderController extends Controller
     {
         $data = $request->validate([
             'name'        => ['required', 'string', 'max:60'],
+            'region'      => ['required', Rule::enum(PaymentRegion::class)],
             'driver'      => ['required', Rule::enum(PaymentDriver::class)],
             'mode'        => ['required', 'in:sandbox,live'],
             'fee_percent' => ['nullable', 'string', 'max:30'],
@@ -58,6 +65,7 @@ class PaymentProviderController extends Controller
         $provider = PaymentProvider::create([
             'name'        => $data['name'],
             'slug'        => $this->uniqueSlug($data['name']),
+            'region'      => $data['region'],
             'driver'      => $data['driver'],
             'mode'        => $data['mode'],
             'fee_percent' => $data['fee_percent'] ?? 0,
@@ -91,6 +99,7 @@ class PaymentProviderController extends Controller
 
         $data = $request->validate([
             'name'          => ['required', 'string', 'max:60'],
+            'region'        => ['required', Rule::enum(PaymentRegion::class)],
             'mode'          => ['required', 'in:sandbox,live'],
             'fee_percent'   => ['nullable', 'string', 'max:30'],
             'fee_flat'      => ['nullable', 'string', 'max:30'],
@@ -140,8 +149,16 @@ class PaymentProviderController extends Controller
             );
         }
 
+        // Wilayah berpindah berarti provider ini berhenti melayani paket-paket
+        // wilayah lamanya. Statusnya default dilepas supaya wilayah lama tidak
+        // ditinggal memegang default yang sudah tidak ada di sana — keadaan yang
+        // membuat checkout jatuh ke cadangan tanpa ada yang tahu sebabnya.
+        $pindahWilayah = $provider->region->value !== $data['region'];
+
         $provider->update([
             'name'        => $data['name'],
+            'region'      => $data['region'],
+            'is_default'  => $pindahWilayah ? false : $provider->is_default,
             'mode'        => $data['mode'],
             'fee_percent' => $data['fee_percent'] ?? 0,
             'fee_flat'    => $data['fee_flat'] ?? 0,
@@ -216,16 +233,25 @@ class PaymentProviderController extends Controller
 
         DB::transaction(function () use ($provider) {
 
-            PaymentProvider::query()->lockForUpdate()->get();
+            // Default berlaku PER WILAYAH, bukan satu untuk seluruh sistem.
+            // Sebelum ada wilayah kedua, baris ini mengosongkan default semua
+            // provider — dan setelah ada, menjadikan QRIS Malaysia sebagai
+            // utama akan mencabut default milik Indonesia sekaligus. Pembayaran
+            // Indonesia lalu jatuh ke provider aktif pertama yang kebetulan ada
+            // di daftar, tanpa satu pun pesan yang menjelaskan.
+            $sewilayah = PaymentProvider::query()->region($provider->region);
 
-            PaymentProvider::query()->update(['is_default' => false]);
+            (clone $sewilayah)->lockForUpdate()->get();
+
+            (clone $sewilayah)->update(['is_default' => false]);
 
             $provider->forceFill(['is_default' => true, 'is_active' => true])->save();
         });
 
         app(ActivityLogger::class)->log('default', 'payment-provider', $provider);
 
-        return back()->with('status', "{$provider->name} jadi metode pembayaran utama.");
+        return back()->with('status',
+            "{$provider->name} jadi metode pembayaran utama untuk {$provider->region->label()}.");
     }
 
     public function destroy(int $id): RedirectResponse

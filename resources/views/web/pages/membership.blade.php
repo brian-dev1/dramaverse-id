@@ -21,7 +21,7 @@
                 @foreach ($plans as $plan)
                     <article class="plan-card">
                         <h3>{{ $plan->name }}</h3>
-                        <p class="plan-price">Rp {{ number_format((float) $plan->price, 0, ',', '.') }}</p>
+                        <p class="plan-price">{{ $plan->hargaTampil() }}</p>
                         <p class="plan-duration">{{ $plan->duration }} hari</p>
 
                         @if ($plan->description)
@@ -71,7 +71,8 @@
                         @foreach ($subscriptions as $sub)
                             <tr>
                                 <td>{{ $sub->plan?->name ?? '—' }}</td>
-                                <td>Rp {{ number_format((float) $sub->price, 0, ',', '.') }}</td>
+                                {{-- Langganan menyimpan harga saat dibeli; mata uangnya mengikuti paketnya. --}}
+                                <td>{{ \App\Support\Uang::format($sub->price, $sub->plan?->currency) }}</td>
                                 <td>{{ $sub->started_at?->ringkas() ?? '—' }}</td>
                                 <td>{{ $sub->expired_at?->ringkas() ?? '—' }}</td>
                                 <td>{{ ucfirst($sub->status) }}</td>

@@ -16,11 +16,28 @@
                 <x-admin.field name="slug" label="Slug" :value="$record->slug"
                                hint="Penanda tetap yang dipakai statistik. Jangan diubah setelah dipakai." />
 
-                <x-admin.field name="price" label="Harga (Rupiah)" type="text"
-                               inputmode="numeric"
-                               :value="$record->exists ? number_format((float) $record->price, 0, ',', '.') : null"
+                {{--
+                    Wilayah menentukan siapa yang melihat paket ini dan lewat
+                    metode bayar mana ia ditagih. Paket wilayah Indonesia tidak
+                    pernah muncul untuk orang yang memilih "bayar dari luar
+                    Indonesia" di bot, dan sebaliknya.
+                --}}
+                <x-admin.field name="region" label="Wilayah pembayaran" type="select"
+                               :options="$regionOptions"
+                               :value="$record->exists ? $record->region?->value : 'ID'"
                                required
-                               hint="Boleh isi bebas seperti 1500, 1.500, 1.234, atau Rp 1.234." />
+                               hint="Harus ada metode bayar aktif di wilayah yang sama, kalau tidak paket ini tidak akan ditawarkan." />
+
+                <x-admin.field name="currency" label="Mata uang" type="select"
+                               :options="$currencyOptions"
+                               :value="$record->exists ? $record->currency : 'IDR'"
+                               required />
+
+                <x-admin.field name="price" label="Harga" type="text"
+                               inputmode="decimal"
+                               :value="$record->exists ? \App\Support\Uang::format($record->price, $record->currency) : null"
+                               required
+                               hint="Boleh isi bebas: 1500, 1.500, Rp 1.234, atau RM 14,90. Rupiah dibulatkan tanpa sen; mata uang lain menyimpan dua desimal." />
 
                 <x-admin.field name="duration" label="Durasi (hari)" type="number"
                                :value="$record->duration" min="1" required

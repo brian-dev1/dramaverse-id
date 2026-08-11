@@ -79,6 +79,7 @@ class AnalyticsRepository implements AnalyticsRepositoryInterface
 
                 'revenue' => (float) Invoice::query()
                     ->where('status', PaymentStatus::PAID->value)
+                    ->where('currency', $this->mataUangPokok())
                     ->whereBetween('paid_at', [$dari, $sampai])
                     ->sum('total'),
 
@@ -248,9 +249,37 @@ class AnalyticsRepository implements AnalyticsRepositoryInterface
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * Mata uang pokok laporan.
+     *
+     * Seluruh angka pendapatan dihitung HANYA dari tagihan bermata uang ini.
+     *
+     * ## Kenapa disaring, bukan dijumlahkan semua
+     *
+     * `SUM(total)` tanpa syarat mata uang menjumlahkan angka yang tidak
+     * sejenis. Satu tagihan RM 15 dan satu tagihan Rp 50.000 menghasilkan
+     * 50.015 — bilangan yang bukan Rupiah, bukan Ringgit, dan tidak berarti
+     * apa pun. Yang membuatnya berbahaya adalah ia tetap terlihat masuk akal
+     * di kartu dashboard, jadi tidak ada yang curiga.
+     *
+     * Menjumlahkannya dengan benar butuh kurs, dan kurs butuh tanggal, sumber,
+     * serta jawaban atas "pakai kurs kapan — saat ditagih atau saat dibayar".
+     * Sampai pertanyaan itu dijawab, angka yang lebih sempit tapi benar lebih
+     * berguna daripada angka lengkap yang salah.
+     *
+     * Pendapatan mata uang lain TIDAK hilang: halaman Tagihan merinci per
+     * mata uang. Lihat InvoiceController::stats().
+     */
+    private function mataUangPokok(): string
+    {
+        return (string) config('payment.currency', 'IDR');
+    }
+
     public function revenueTotals(): array
     {
-        $lunas = fn (): Builder => Invoice::query()->where('status', PaymentStatus::PAID->value);
+        $lunas = fn (): Builder => Invoice::query()
+            ->where('status', PaymentStatus::PAID->value)
+            ->where('currency', $this->mataUangPokok());
 
         return [
             'total'     => (float) $lunas()->sum('total'),
@@ -263,7 +292,9 @@ class AnalyticsRepository implements AnalyticsRepositoryInterface
     public function revenuePerPeriod(AnalyticsPeriod $period): Collection
     {
         return $this->bucket(
-            Invoice::query()->where('status', PaymentStatus::PAID->value),
+            Invoice::query()
+                ->where('status', PaymentStatus::PAID->value)
+                ->where('currency', $this->mataUangPokok()),
             'paid_at',
             $period,
             'COALESCE(SUM(total), 0)'
@@ -350,6 +381,7 @@ class AnalyticsRepository implements AnalyticsRepositoryInterface
     {
         return Invoice::query()
             ->where('status', PaymentStatus::PAID->value)
+            ->where('currency', $this->mataUangPokok())
             ->select('plan_name')
             ->selectRaw('COUNT(*) as jumlah')
             ->selectRaw('COALESCE(SUM(total), 0) as pendapatan')

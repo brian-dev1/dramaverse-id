@@ -275,12 +275,40 @@ class InvoiceController extends Controller
     {
         $lunas = Invoice::where('status', PaymentStatus::PAID->value);
 
+        /*
+        |----------------------------------------------------------------------
+        | Pendapatan dirinci per mata uang
+        |----------------------------------------------------------------------
+        |
+        | Halaman inilah satu-satunya tempat pendapatan mata uang selain
+        | Rupiah terlihat utuh. Dashboard dan Analytics sengaja hanya
+        | menghitung mata uang pokok — menjumlahkan Rupiah dengan Ringgit
+        | menghasilkan bilangan yang bukan keduanya (lihat
+        | AnalyticsRepository::mataUangPokok()).
+        |
+        | Karena itu di sini keduanya dipisah, bukan dijumlahkan. Satu baris
+        | per mata uang: apa adanya, tanpa kurs, tanpa asumsi.
+        |
+        */
+        $perMataUang = (clone $lunas)
+            ->selectRaw('currency, COALESCE(SUM(total), 0) as jumlah')
+            ->groupBy('currency')
+            ->orderBy('currency')
+            ->pluck('jumlah', 'currency');
+
+        $perMataUang30h = (clone $lunas)
+            ->where('paid_at', '>=', now()->subDays(30))
+            ->selectRaw('currency, COALESCE(SUM(total), 0) as jumlah')
+            ->groupBy('currency')
+            ->orderBy('currency')
+            ->pluck('jumlah', 'currency');
+
         return [
             'total'       => Invoice::count(),
             'pending'     => Invoice::where('status', PaymentStatus::PENDING->value)->count(),
             'paid'        => (clone $lunas)->count(),
-            'revenue'     => (float) (clone $lunas)->sum('total'),
-            'revenue_30d' => (float) (clone $lunas)->where('paid_at', '>=', now()->subDays(30))->sum('total'),
+            'per_currency'     => $perMataUang,
+            'per_currency_30d' => $perMataUang30h,
             'active'      => DB::table('subscriptions')
                 ->where('status', 'active')
                 ->where(fn ($q) => $q->whereNull('expired_at')->orWhere('expired_at', '>', now()))

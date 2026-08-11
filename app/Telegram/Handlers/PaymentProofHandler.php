@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Throwable;
+use App\Support\Uang;
 
 /**
  * Menerima foto bukti bayar yang dikirim pengguna ke bot.
@@ -150,7 +151,7 @@ class PaymentProofHandler
                 ->lead('Admin akan mencocokkannya dengan mutasi rekening.')
                 ->rows([
                     'Tagihan' => $invoice->number,
-                    'Nominal' => 'Rp '.number_format((float) $invoice->total, 0, ',', '.'),
+                    'Nominal' => Uang::invoice($invoice),
                     'Diterima' => Waktu::ringkas(now()),
                 ])
                 ->text('Anda mendapat pesan lagi begitu membership aktif.')

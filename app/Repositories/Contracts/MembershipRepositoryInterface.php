@@ -2,6 +2,7 @@
 
 namespace App\Repositories\Contracts;
 
+use App\Enums\PaymentRegion;
 use App\Models\Subscription;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
@@ -23,7 +24,13 @@ use Illuminate\Database\Eloquent\Collection;
 interface MembershipRepositoryInterface
 {
     /** Paket yang sedang ditawarkan, urut tampilan. */
-    public function plans(): Collection;
+    /**
+     * Paket aktif, boleh disaring per wilayah pembayaran.
+     *
+     * Argumennya opsional supaya pemanggil lama — mis. halaman membership di
+     * website — tetap mendapat seluruh paket tanpa diubah.
+     */
+    public function plans(?PaymentRegion $region = null): Collection;
 
     /**
      * Langganan yang sedang memberi akses, atau null.

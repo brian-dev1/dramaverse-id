@@ -52,6 +52,30 @@ class PaymentException extends RuntimeException
         return $e;
     }
 
+    /**
+     * Paket dan metode pembayarannya berasal dari wilayah berbeda.
+     *
+     * Bukan kesalahan pengguna, melainkan pengaturan yang belum lengkap —
+     * biasanya wilayah baru yang paketnya sudah dibuat tetapi metode
+     * bayarnya belum. Pesannya tetap ditandai aman ditampilkan karena
+     * pengguna yang menekan tombol beli harus tahu kenapa ia berhenti, bukan
+     * mendapat "terjadi kesalahan" yang tidak bisa ditindaklanjuti.
+     */
+    public static function regionMismatch(
+        \App\Enums\PaymentRegion $paket,
+        \App\Enums\PaymentRegion $provider
+    ): self {
+        $e = new self(
+            'Metode pembayaran untuk wilayah '.$paket->label().' belum siap '
+            .'(yang tersedia baru '.$provider->label().'). Hubungi admin — '
+            .'ini bukan kesalahan Anda.'
+        );
+
+        $e->userSafe = true;
+
+        return $e;
+    }
+
     public static function alreadyPaid(string $number): self
     {
         $e = new self("Tagihan {$number} sudah lunas.");

@@ -8,6 +8,7 @@ use App\Services\Telegram\Contracts\TelegramServiceInterface;
 use App\Support\Concerns\LogsPaymentEvents;
 use App\Support\Telegram\Notice;
 use Throwable;
+use App\Support\Uang;
 
 /**
  * Memberi tahu pengguna lewat bot bahwa pembayarannya diterima.
@@ -61,7 +62,7 @@ class PaymentNotifier
             ->lead('Terima kasih. Membership Anda sudah AKTIF.')
             ->rows([
                 'Paket'   => $invoice->plan_name,
-                'Dibayar' => 'Rp '.number_format((float) $invoice->total, 0, ',', '.'),
+                'Dibayar' => Uang::invoice($invoice),
                 'Tagihan' => $invoice->number,
                 'Waktu'   => Waktu::ringkas($invoice->paid_at ?? now()),
                 // Tanggal saja memunculkan pertanyaan "jam berapa persisnya
@@ -97,11 +98,11 @@ class PaymentNotifier
         $pesan = Notice::make('💰', 'Pembayaran diterima sebagian')
             ->lead('Membership aktif otomatis begitu jumlahnya cukup.')
             ->rows([
-                'Masuk'     => 'Rp '.number_format($masuk, 0, ',', '.'),
-                'Terkumpul' => 'Rp '.number_format((float) $invoice->paid_amount, 0, ',', '.')
-                    .' / Rp '.number_format((float) $invoice->total, 0, ',', '.')
+                'Masuk'     => Uang::format($masuk, $invoice->currency),
+                'Terkumpul' => Uang::invoice($invoice, 'paid_amount')
+                    .' / '.Uang::invoice($invoice)
                     .' ('.$invoice->paidPercent().'%)',
-                'Kurang'    => 'Rp '.number_format($invoice->outstanding(), 0, ',', '.'),
+                'Kurang'    => Uang::format($invoice->outstanding(), $invoice->currency),
             ])
             ->text('Kirim sisanya dengan nomor tagihan yang sama:')
             ->code($invoice->number);

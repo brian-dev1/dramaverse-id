@@ -120,6 +120,15 @@ class CallbackHandler
 
                 return;
 
+            case PremiumHandler::REGION:
+                app(PremiumHandler::class)->chooseRegion(
+                    $callback,
+                    $user,
+                    (string) ($argumen[0] ?? '')
+                );
+
+                return;
+
             case PremiumHandler::BUY:
                 app(PremiumHandler::class)->buy($callback, $user, (int) ($argumen[0] ?? 0));
 

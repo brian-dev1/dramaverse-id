@@ -70,6 +70,7 @@
                     <thead>
                         <tr>
                             <th>Nama</th>
+                            <th>Wilayah</th>
                             <th>Driver</th>
                             <th>QRIS</th>
                             <th>Mode</th>
@@ -86,6 +87,11 @@
                                 <td>
                                     {{ $p->name }}
                                     <br><span class="cell-empty">{{ $p->slug }}</span>
+                                </td>
+                                <td>
+                                    <span class="chip {{ $p->region === \App\Enums\PaymentRegion::ID ? '' : 'gold' }}">
+                                        {{ $p->region->label() }}
+                                    </span>
                                 </td>
                                 <td>
                                     {{ $p->driver->label() }}
@@ -132,7 +138,9 @@
                                         {{ $p->is_active ? 'Aktif' : 'Nonaktif' }}
                                     </span>
                                     @if ($p->is_default)
-                                        <br><span class="badge badge-on">utama</span>
+                                        {{-- "utama" berlaku per wilayah, bukan
+                                             satu untuk seluruh sistem. --}}
+                                        <br><span class="badge badge-on">utama {{ $p->region->label() }}</span>
                                     @endif
                                     @if ($alasan = $p->blocker())
                                         <br><span class="queue-error">{{ $alasan }}</span>
@@ -201,6 +209,11 @@
 
                 <x-admin.field name="name" label="Nama" :value="old('name', $editingProvider->name)" required />
 
+                <x-admin.field name="region" label="Wilayah" type="select" required
+                               :value="old('region', $editingProvider->region?->value)"
+                               :options="$regions"
+                               hint="Provider ini hanya dipakai untuk paket di wilayah yang sama. Memindahkannya melepas status 'utama'." />
+
                 <x-admin.field name="mode" label="Mode" type="select" required
                                :value="old('mode', $editingProvider->mode)"
                                :options="['sandbox' => 'Sandbox (uji coba)', 'live' => 'Live (sungguhan)']"
@@ -267,6 +280,10 @@
 
             <x-admin.field name="name" label="Nama" :value="old('name')" required
                            hint="Yang dilihat pengguna di halaman pembayaran." />
+
+            <x-admin.field name="region" label="Wilayah" type="select" required
+                           :value="old('region', 'ID')" :options="$regions"
+                           hint="Indonesia untuk QRIS dan bank lokal; Luar Indonesia untuk DuitNow dan sejenisnya." />
 
             <x-admin.field name="driver" label="Driver" type="select" required
                            :value="old('driver')" :options="$drivers"

@@ -2,6 +2,7 @@
 
 namespace App\Services\Membership;
 
+use App\Enums\PaymentRegion;
 use App\Support\Concerns\LogsPaymentEvents;
 use App\Enums\SubscriptionStatus;
 use App\Models\Invoice;
@@ -53,9 +54,9 @@ class MembershipService
     */
 
     /** @return Collection<int,MembershipPlan> */
-    public function plans(): Collection
+    public function plans(?PaymentRegion $region = null): Collection
     {
-        return $this->repository->plans();
+        return $this->repository->plans($region);
     }
 
     /** Langganan aktif milik pengguna, atau null. */

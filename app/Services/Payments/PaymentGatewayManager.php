@@ -2,6 +2,7 @@
 
 namespace App\Services\Payments;
 
+use App\Enums\PaymentRegion;
 use App\Models\PaymentProvider;
 use App\Services\Payments\Contracts\PaymentGatewayInterface;
 use App\Services\Payments\Exceptions\PaymentException;
@@ -41,9 +42,12 @@ class PaymentGatewayManager
      *
      * @throws PaymentException
      */
-    public function default(): PaymentProvider
+    public function default(?PaymentRegion $region = null): PaymentProvider
     {
+        $region ??= PaymentRegion::ID;
+
         $provider = PaymentProvider::query()
+            ->region($region)
             ->where('is_default', true)
             ->where('is_active', true)
             ->first();
@@ -55,7 +59,13 @@ class PaymentGatewayManager
         // Default yang tidak bisa dipakai lebih buruk daripada tidak ada
         // default: pengguna sampai di checkout lalu ditolak. Jatuh ke provider
         // aktif pertama yang benar-benar siap.
-        $cadangan = $this->usable()->first();
+        //
+        // Cadangannya WAJIB dari wilayah yang sama. Jatuh ke wilayah lain
+        // berarti orang yang memilih membayar dari Malaysia diberi QRIS
+        // Indonesia — tagihan yang tidak mungkin ia bayar, dan ia baru tahu
+        // setelah membuka aplikasi banknya. Lebih baik ditolak sekarang
+        // dengan pesan yang jelas.
+        $cadangan = $this->usable($region)->first();
 
         if ($cadangan === null) {
             throw PaymentException::noProvider();
@@ -73,10 +83,11 @@ class PaymentGatewayManager
      *
      * @return Collection<int,PaymentProvider>
      */
-    public function usable(): Collection
+    public function usable(?PaymentRegion $region = null): Collection
     {
         return PaymentProvider::query()
             ->active()
+            ->when($region !== null, fn ($q) => $q->region($region))
             ->get()
             ->filter(fn (PaymentProvider $p) => $p->isUsable())
             ->values();

@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\PaymentRegion;
 use App\Models\MembershipPlan;
+use App\Support\Uang;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -31,7 +33,9 @@ class MembershipController extends AdminCrudController
         return [
             'Nama'          => 'name',
             'Slug'          => 'slug',
+            'Wilayah'       => 'region',
             'Harga'         => 'price',
+            'Mata uang'     => 'currency',
             'Durasi (hari)' => 'duration',
             'Badge'         => 'badge',
             'Langganan'     => 'subscriptions_count',
@@ -62,6 +66,10 @@ class MembershipController extends AdminCrudController
                 'label'   => 'Status',
                 'options' => [1 => 'Aktif', 0 => 'Nonaktif'],
             ],
+            'region' => [
+                'label'   => 'Wilayah',
+                'options' => PaymentRegion::options(),
+            ],
         ];
     }
 
@@ -71,7 +79,9 @@ class MembershipController extends AdminCrudController
             'name'        => ['required', 'string', 'max:100'],
             'slug'        => ['nullable', 'string', 'max:50', 'alpha_dash',
                               Rule::unique('membership_plans', 'slug')->ignore($model?->getKey())],
+            'region'      => ['required', Rule::enum(PaymentRegion::class)],
             'price'       => ['required', 'string', 'max:30'],
+            'currency'    => ['required', 'string', 'size:3', Rule::in(array_keys(Uang::PILIHAN))],
             'duration'    => ['required', 'integer', 'min:1', 'max:36500'],
             'description' => ['nullable', 'string', 'max:500'],
             'benefits'    => ['nullable', 'string', 'max:1000'],
@@ -87,7 +97,9 @@ class MembershipController extends AdminCrudController
             ? Str::slug($data['slug'])
             : Str::slug($data['name']);
 
-        $data['price'] = $this->normalizeRupiah($data['price'] ?? 0);
+        $data['currency'] = strtoupper(trim((string) ($data['currency'] ?? 'IDR')));
+
+        $data['price'] = $this->normalizeHarga($data['price'] ?? 0, $data['currency']);
 
         $data['is_active'] = $request->boolean('is_active');
 
@@ -103,10 +115,28 @@ class MembershipController extends AdminCrudController
 
 
     /**
-     * Terima harga rupiah bebas dari admin:
-     * 1500, 1.500, 1.234, Rp 1.234 -> 1500 / 1234.
+     * Terima harga yang diketik bebas oleh admin.
+     *
+     * ## Kenapa tidak lagi "buang semua yang bukan angka"
+     *
+     * Versi sebelumnya menghapus setiap karakter non-digit, dan itu benar
+     * selama harga hanya pernah Rupiah: "Rp 1.500" jadi 1500, titik ribuannya
+     * hilang tanpa merugikan siapa pun.
+     *
+     * Begitu ada paket Ringgit, aturan yang sama menghancurkan harga.
+     * "RM 14.90" menjadi 1490 — seratus kali lipat, tersimpan diam-diam,
+     * dan baru ketahuan ketika ada yang menerima tagihan RM 1.490.
+     *
+     * Sekarang: Rupiah tetap bilangan bulat (sen Rupiah tidak dipakai di mana
+     * pun), sedangkan mata uang lain menyimpan dua desimal.
+     *
+     * Pemisah desimalnya ditentukan dari POSISI, bukan dari jenis tandanya.
+     * Baik "14.90" maupun "14,90" berarti empat belas koma sembilan puluh,
+     * karena tanda terakhir diikuti tepat dua digit. Sebaliknya "1.234"
+     * dan "1,234" sama-sama seribu dua ratus tiga puluh empat, karena tiga
+     * digit di belakang tanda tidak pernah berarti pecahan.
      */
-    private function normalizeRupiah(mixed $value): int
+    private function normalizeHarga(mixed $value, string $currency): float
     {
         $raw = trim((string) ($value ?? ''));
 
@@ -114,15 +144,35 @@ class MembershipController extends AdminCrudController
             return 0;
         }
 
-        $digits = preg_replace('/[^\d]/', '', $raw);
+        // Buang huruf dan simbol mata uang, sisakan digit dan pemisah.
+        $bersih = preg_replace('/[^\d.,]/', '', $raw) ?? '';
 
-        return max(0, (int) ($digits ?: 0));
+        if ($bersih === '') {
+            return 0;
+        }
+
+        if (strtoupper($currency) === 'IDR') {
+            return (float) max(0, (int) preg_replace('/\D/', '', $bersih));
+        }
+
+        // Tanda pemisah terakhir yang diikuti satu atau dua digit adalah
+        // pemisah desimal; sisanya pemisah ribuan yang tinggal dibuang.
+        if (preg_match('/^(.*)[.,](\d{1,2})$/', $bersih, $cocok) === 1) {
+            $bulat   = preg_replace('/\D/', '', $cocok[1]) ?: '0';
+            $pecahan = str_pad($cocok[2], 2, '0');
+
+            return max(0, (float) ($bulat.'.'.$pecahan));
+        }
+
+        return (float) max(0, (int) preg_replace('/\D/', '', $bersih));
     }
     protected function formData(?Model $model = null): array
     {
         return [
             // Textarea menampilkan benefit satu per baris.
             'benefitsText' => $model?->benefits ? implode("\n", $model->benefits) : '',
+            'regionOptions'   => PaymentRegion::options(),
+            'currencyOptions' => Uang::PILIHAN,
         ];
     }
 

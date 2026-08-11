@@ -12,6 +12,7 @@ use App\Services\WatchHistoryService;
 use App\Support\Telegram\Notice;
 use App\Support\Waktu;
 use App\Telegram\Keyboards\EpisodeKeyboard;
+use App\Support\Uang;
 
 /**
  * Halaman profil pengguna di dalam bot.
@@ -153,13 +154,13 @@ class ProfileHandler
             $pesan->section('🧾', 'Tagihan menunggu pembayaran')->rows([
                 'Nomor'       => $tagihan->number,
                 'Paket'       => $tagihan->plan_name,
-                'Total'       => 'Rp '.number_format((float) $tagihan->total, 0, ',', '.'),
+                'Total'       => Uang::invoice($tagihan),
                 'Sudah masuk' => $adaCicilan
-                    ? 'Rp '.number_format((float) $tagihan->paid_amount, 0, ',', '.')
+                    ? Uang::invoice($tagihan, 'paid_amount')
                         .' ('.$tagihan->paidPercent().'%)'
                     : null,
                 'Kurang'      => $adaCicilan
-                    ? 'Rp '.number_format($tagihan->outstanding(), 0, ',', '.')
+                    ? Uang::format($tagihan->outstanding(), $tagihan->currency)
                     : null,
                 'Jatuh tempo' => $tagihan->due_at !== null
                     ? Waktu::lengkapRelatif($tagihan->due_at)
