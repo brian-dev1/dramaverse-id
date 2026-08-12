@@ -794,7 +794,131 @@
 
 
 /* ==========================================================================
-   7. JARING PENGAMAN
+   7. PERFORMA
+
+   Panel ini terasa berat di ponsel bukan karena banyaknya elemen,
+   melainkan karena tiga hal yang bekerja ULANG DI SETIAP FRAME selama
+   halaman digulir. Diurutkan dari yang paling mahal.
+   ========================================================================== */
+
+@media (max-width: 860px){
+
+    /* ----------------------------------------------------------------------
+       1. Latar yang menempel pada layar.
+
+       admin-refine.css memberi .admin-body dua lapis background sekaligus
+       dengan `background-attachment:fixed`. "Fixed" berarti latarnya diam
+       sementara isinya bergerak — dan karena itu browser tidak bisa
+       memakai jalur cepat menggeser piksel yang sudah dilukis. Ia harus
+       melukis ulang seluruh latar setiap frame.
+
+       Lapis keduanya memperburuk: `repeating-linear-gradient` berperiode
+       3px, artinya ratusan garis harus dihitung ulang setiap kali.
+
+       Di ponsel keduanya nyaris tak terlihat. Yang disisakan hanya cahaya
+       lembut di kepala halaman, dilukis sekali setinggi 420px.
+       ---------------------------------------------------------------------- */
+    .admin-body{
+        background-attachment:scroll !important;
+        background-repeat:no-repeat !important;
+        background-size:100% 420px !important;
+        background-image:radial-gradient(
+            ellipse 70% 60% at 50% -10%,
+            rgba(255,106,26,.07),
+            transparent
+        ) !important;
+    }
+
+    /* ----------------------------------------------------------------------
+       2. Sisa efek buram.
+
+       Topbar TIDAK ada di sini: elegant.css sudah mematikan
+       backdrop-filter untuk .admin-topbar, .admin-shell, .admin-main,
+       .admin-content, dan .navbar di bawah 900px — lengkap dengan latar
+       padat penggantinya. Menuliskannya ulang di sini hanya akan
+       menduplikasi aturan yang sudah benar, dan berisiko menggeser
+       warnanya.
+
+       Yang belum tercakup adalah dua ini. `.btn-ghost` memakai blur 6px
+       dan jumlahnya banyak — toolbar, kaki kartu, aksi detail — dan tiap
+       elemen ber-backdrop-filter meminta lapisan komposit sendiri.
+       `.modal-backdrop` hanya hidup saat dialog terbuka, tapi justru di
+       situlah blur paling terasa: ia menutupi seluruh layar.
+       ---------------------------------------------------------------------- */
+    .admin-body .btn-ghost,
+    .admin-body .modal-backdrop,
+    .admin-body .admin-scrim{
+        -webkit-backdrop-filter:none !important;
+        backdrop-filter:none !important;
+    }
+
+    /* ----------------------------------------------------------------------
+       3. Bayangan berdiameter besar.
+
+       Bayangan yang lembut itu mahal: biayanya tumbuh mengikuti luas
+       area blur, bukan ukuran elemennya. `0 0 60px` pada sidebar setinggi
+       layar dihitung ulang sepanjang animasi laci membuka.
+
+       Panel dan kartu memakai `0 12px 28px -18px`. Satu-dua tidak terasa;
+       pada daftar berisi belasan panel, terasa.
+       ---------------------------------------------------------------------- */
+    .admin-shell:not(.sidebar-collapsed) .admin-sidebar{
+        box-shadow:0 0 20px rgba(0,0,0,.55) !important;
+    }
+    .admin-body .panel,
+    .admin-body .form-card,
+    .admin-body .chart-card,
+    .admin-body .stat-card,
+    .admin-body .admin-form,
+    .admin-body .table-wrap,
+    .admin-body .data-table tr{
+        box-shadow:none !important;
+    }
+
+    /* ----------------------------------------------------------------------
+       4. Kartu di luar layar tidak perlu dilukis.
+
+       `content-visibility:auto` memberi tahu browser bahwa isi kartu boleh
+       dilewati selama ia belum mendekati layar — tata letak, gaya, dan
+       pelukisannya ditunda. Pada daftar 20-50 baris, ini yang paling
+       terasa saat menggulir cepat.
+
+       `contain-intrinsic-size` memberi tinggi perkiraan supaya bilah
+       gulir tidak melompat-lompat. Kata kunci `auto` membuat browser
+       mengingat tinggi sebenarnya setelah kartu itu sekali terlihat, jadi
+       angka 170px hanya dipakai untuk tebakan pertama.
+
+       Browser yang belum mengenal properti ini mengabaikannya. Tidak ada
+       yang rusak, hanya tidak ikut lebih ringan.
+       ---------------------------------------------------------------------- */
+    .admin-body .data-table tbody tr{
+        content-visibility:auto;
+        contain-intrinsic-size:auto 170px;
+    }
+
+    /* ----------------------------------------------------------------------
+       5. Animasi yang berjalan tanpa henti.
+
+       Wordmark di kepala laci menganimasikan setiap huruf ("DramaVerse" =
+       10 elemen) plus satu lapisan kilau, keduanya `infinite`. Saat laci
+       tertutup ia display:none sehingga tidak berbiaya — tapi selama laci
+       terbuka, sebelas animasi berjalan tepat di atas daftar yang sedang
+       digulir.
+       ---------------------------------------------------------------------- */
+    .admin-body .brand-letter,
+    .admin-body .brand-shine{
+        animation:none !important;
+    }
+
+    /* Transisi lebar kolom grid tidak lagi punya arti begitu .admin-shell
+       jadi blok biasa, tapi deklarasinya masih memaksa browser mengawasi
+       properti yang tidak akan pernah berubah. */
+    .admin-body .admin-shell{ transition:none !important; }
+}
+
+
+/* ==========================================================================
+   8. JARING PENGAMAN
 
    Apa pun yang lolos dari aturan di atas tidak boleh membuat halaman bisa
    digeser ke samping, dan tidak boleh ada kotak yang lebih lebar dari
@@ -849,7 +973,7 @@
     | sebagai "330px, kecuali kalau layarnya lebih sempit".
     |
     | .form-grid dan .chart-grid tidak ada di sini karena sudah dipaksa
-    | satu kolom di bagian 5 dan 6.
+    | satu kolom di bagian 5 dan 6 di atas.
     */
     .admin-body .admin-grid{
         grid-template-columns:repeat(auto-fit, minmax(min(100%, 260px), 1fr)) !important;

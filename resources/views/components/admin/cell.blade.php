@@ -37,7 +37,12 @@
 
 @if ($isImage)
     @if ($value)
-        <img src="{{ asset('storage/'.$value) }}" alt="" class="cell-thumb" loading="lazy">
+        {{-- `decoding="async"` melepaskan penguraian gambar dari utas utama.
+             Tanpa itu, poster yang baru masuk layar saat digulir diurai di
+             utas yang sama dengan yang menggerakkan gulirannya — dan pada
+             daftar berisi 20 poster, itu terasa sebagai tersendat. --}}
+        <img src="{{ asset('storage/'.$value) }}" alt="" class="cell-thumb"
+             loading="lazy" decoding="async" width="40" height="57">
     @else
         <span class="cell-thumb cell-thumb-empty"><x-web.home.icon name="image" :size="14" /></span>
     @endif
