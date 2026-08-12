@@ -41,6 +41,37 @@
 }
 
 @media (max-width: 1024px){
+
+    /* ----------------------------------------------------------------------
+       Kerangka halaman: grid dibongkar jadi satu aliran biasa.
+
+       INI PERBAIKAN HALAMAN HITAM POLOS.
+
+       .admin-shell adalah grid dua kolom: `0` untuk sidebar, `1fr` untuk
+       isi. Susunan itu bergantung pada sidebar tetap menjadi item grid
+       pertama — dan di bawah 900px, elegant.css menyembunyikannya dengan
+       `display:none !important`. Elemen yang display:none berhenti jadi
+       item grid, sehingga .admin-main naik menempati kolom pertama, yang
+       lebarnya nol. elegant.css juga memasang `overflow-x:clip` pada
+       .admin-shell, .admin-main, dan .admin-content, jadi seluruh isi yang
+       meluber dari kolom selebar 0px itu dipotong habis. Halaman tampak
+       kosong sepenuhnya, padahal markup-nya lengkap.
+
+       Dalam mode laci, sidebar sudah position:fixed dan tidak lagi
+       menempati ruang apa pun. Jadi tidak ada yang perlu dibagi dua: satu
+       aliran blok biasa lebih tepat, sekaligus menghilangkan seluruh
+       kemungkinan salah penempatan otomatis.
+       ---------------------------------------------------------------------- */
+    .admin-body .admin-shell{
+        display:block !important;
+        grid-template-columns:none !important;
+    }
+    .admin-body .admin-main{
+        width:100%;
+        min-width:0;
+        margin-left:0 !important;
+    }
+
     /* Latar hanya hidup ketika laci terbuka. `visibility` yang dipakai,
        bukan `display`, supaya transisi opasitasnya sempat berjalan. */
     .admin-scrim{
