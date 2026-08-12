@@ -135,6 +135,18 @@ function tableLabels() {
                 const label = heads[i];
 
                 /*
+                | Sel bergambar (sampul drama, avatar) ditandai supaya CSS
+                | bisa mengapungkannya ke kiri kartu. Tanpa itu, poster
+                | berdiri sendiri sebagai satu baris setinggi 54px di atas
+                | data — padahal di sebelah kanannya kosong melompong.
+                */
+                if (!td.textContent.trim() && td.querySelector('img')) {
+                    td.classList.add('is-card-media');
+
+                    return;
+                }
+
+                /*
                 | Sel pertama yang berisi data sungguhan jadi JUDUL kartu:
                 | tampil besar tanpa label, seperti nama baris.
                 |
@@ -144,12 +156,20 @@ function tableLabels() {
                 | slug dan tanggal. Dengan judul diangkat, sisanya boleh
                 | dirender jauh lebih kecil.
                 |
+                | Syarat `td.textContent.trim()` itu yang sebelumnya hilang,
+                | dan akibatnya terlihat jelas: kolom sampul terpilih jadi
+                | judul karena ia kolom pertama yang punya nama di <th>,
+                | sehingga JUDUL yang sebenarnya tetap dirender kecil dan
+                | berlabel. Judul harus punya teks, bukan sekadar nama
+                | kolom.
+                |
                 | Kolom centang dan kolom aksi dilewati: keduanya kontrol,
                 | bukan isi.
                 */
                 if (
                     !judulSudahAda &&
                     label &&
+                    td.textContent.trim() &&
                     !td.classList.contains('col-check') &&
                     !td.classList.contains('col-actions')
                 ) {

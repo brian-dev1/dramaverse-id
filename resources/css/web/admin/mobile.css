@@ -27,9 +27,30 @@
    1. KERANGKA — grid dibongkar, laci diberi latar dan kunci gulir
    ========================================================================== */
 
+/*
+| Lapisan.
+|
+| Angka-angka ini harus dibaca bersama, karena satu di antaranya tidak
+| berada di tempat yang terlihat jelas:
+|
+|   admin.css        .admin-sidebar          z-index:60   (0,1,0)
+|   admin-refine.css .admin-body .admin-sidebar  z-index:40   (0,2,0)  ← menang
+|   elegant.css      .admin-topbar           z-index:40
+|   admin.css        .modal                  z-index:100
+|
+| Yang berlaku pada sidebar adalah 40, bukan 60: kekhususan dua kelas
+| mengalahkan satu kelas, dan media query tidak menambah kekhususan.
+| Latar gelap yang semula dipasang di 55 karena itu justru menyelubungi
+| lacinya sendiri — brand meredup, dan menggeser daftar menu hanya
+| menampilkan lebih banyak area gelap.
+|
+| Karena itu keduanya ditetapkan ulang di sini secara eksplisit, dengan
+| !important pada sidebar supaya tidak kalah lagi dari admin-refine.css.
+| Dialog konfirmasi (100) tetap di atas segalanya.
+*/
 .admin-scrim{
     display:none;
-    position:fixed; inset:0; z-index:55;
+    position:fixed; inset:0; z-index:80;
     background:rgba(0,0,0,.6);
     opacity:0;
     transition:opacity .25s var(--ease-out);
@@ -85,7 +106,11 @@
        gelap menggulir daftar di belakangnya dan posisi baca hilang. */
     body.admin-drawer-open{ overflow:hidden; }
 
-    .admin-sidebar{ overscroll-behavior:contain; }
+    /* Laci HARUS di atas latar gelapnya. Lihat catatan lapisan di atas. */
+    .admin-body .admin-sidebar{
+        z-index:90 !important;
+        overscroll-behavior:contain;
+    }
 
     /* Target sentuh di laci. Ini satu-satunya tempat yang tetap longgar:
        daftarnya panjang dan salah ketuk berarti pindah halaman. */
@@ -243,8 +268,12 @@
 
     .admin-body .data-table thead{ display:none; }
 
+    /* `flow-root`, bukan `block`: sel bergambar di bawah mengapung ke
+       kiri, dan hanya BFC yang menjamin tinggi kartu ikut menghitung
+       tinggi gambar itu. Tanpa ini, poster bisa menyembul keluar kartu. */
     .admin-body .data-table tr{
         position:relative;
+        display:flow-root;
         border:1px solid var(--border-soft);
         border-radius:var(--radius-m);
         background:var(--bg-secondary);
@@ -254,12 +283,19 @@
     .admin-body .data-table tr:last-child{ margin-bottom:0; }
     .admin-body .data-table tbody tr:hover td{ background:transparent; }
 
-    /* --- Baris biasa: label kiri, nilai kanan --- */
+    /* --- Baris biasa: label kiri, nilai kanan ---
+       `max-width:none` membatalkan `max-width:340px` dari admin-refine.css.
+       Batas itu masuk akal untuk sel tabel yang tidak boleh melar melewati
+       tetangganya, tapi dalam bentuk kartu ia membuat isi baris berhenti
+       di 340px sementara kartunya selebar layar — sisi kanan kartu jadi
+       menganga kosong. */
     .admin-body .data-table td{
         display:grid;
         grid-template-columns:72px minmax(0, 1fr);
         align-items:baseline;
         gap:10px;
+        width:100%;
+        max-width:none !important;
         padding:4px 0 !important;
         border:0 !important;
         font-size:12px;
@@ -288,13 +324,26 @@
     .admin-body .data-table td.is-card-title::before{ display:none; }
     .admin-body .data-table td.is-card-title a{ color:var(--gold-bright); }
 
-    /* --- Sel tanpa label (mis. sampul) --- */
-    .admin-body .data-table td:not([data-label]){
+    /* --- Sel bergambar: mengapung di kiri, data duduk di sebelahnya ---
+       Ditandai admin.js sebagai .is-card-media. Judul dan baris data
+       berikutnya adalah kotak grid, dan kotak grid tidak menembus float —
+       ia menyusut dan berdiri di sebelah kanannya. Persis yang
+       diinginkan: poster kiri, keterangan kanan. */
+    .admin-body .data-table td.is-card-media{
+        float:left;
+        display:block;
+        width:auto !important;
+        padding:2px 10px 4px 0 !important;
+    }
+    .admin-body .data-table td.is-card-media::before{ display:none; }
+    .admin-body .data-table td .cell-thumb{
+        width:40px; height:57px;
+    }
+
+    /* Sel tanpa label dan tanpa gambar: tanpa lajur label yang menganga. */
+    .admin-body .data-table td:not([data-label]):not(.is-card-media):not(.col-check){
         display:block;
         padding:0 0 6px !important;
-    }
-    .admin-body .data-table td .cell-thumb{
-        width:38px; height:54px;
     }
 
     /* --- Baris "belum ada data": satu sel colspan, melebar penuh --- */
@@ -306,45 +355,90 @@
     }
     .admin-body .data-table td[colspan]::before{ display:none; }
 
-    /* --- Kolom centang --- */
+    /* --- Kolom centang: ke pojok kartu, bukan baris tersendiri ---
+       Sebagai baris penuh ia memakan ~28px per kartu hanya untuk sebuah
+       kotak 18px. Di pojok kanan atas ia tetap mudah dijangkau ibu jari
+       dan tidak memakan tinggi sama sekali. */
     .admin-body .data-table td.col-check{
-        display:flex; align-items:center; gap:8px;
-        padding:0 0 6px !important;
-        font-size:10px;
+        position:absolute;
+        top:8px; right:10px;
+        width:auto !important;
+        padding:0 !important;
+        margin:0;
+        display:block;
+        z-index:1;
     }
+    .admin-body .data-table td.col-check::before{ display:none; }
     .admin-body .data-table td.col-check input[type="checkbox"]{
         width:18px; height:18px;
     }
+    /* Ruang supaya judul tidak menabrak kotak centang itu. */
+    .admin-body .data-table tr:has(td.col-check) td.is-card-title{
+        padding-right:30px !important;
+    }
 
-    /* --- Kolom aksi: satu baris tombol di kaki kartu --- */
+    /* --- Kolom aksi: satu baris tombol di kaki kartu ---
+       `flex:0 0 auto` dan bukan `flex:1 1 84px`. Dengan basis 84px,
+       action-layout.css yang memberi kolom ini `min-width:148px` hanya
+       memuat satu tombol per baris — tiga ikon berjajar jadi tiga baris.
+       Ukuran alami tidak punya masalah itu: tiga ikon 34px hanya butuh
+       114px. */
     .admin-body .data-table td.col-actions{
+        clear:both;
         display:flex !important;
-        flex-wrap:wrap;
+        flex-direction:row !important;
+        flex-wrap:wrap !important;
+        align-items:center !important;
         justify-content:flex-start !important;
-        gap:6px;
-        width:auto;
+        gap:6px !important;
+        width:100% !important;
+        max-width:100% !important;
         min-width:0 !important;
         margin-top:8px;
-        padding-top:8px !important;
+        padding:8px 0 0 !important;
         border-top:1px solid var(--border-soft) !important;
-        text-align:left;
+        text-align:left !important;
     }
     .admin-body .data-table td.col-actions::before{ display:none; }
+
+    /* Semua anak langsung — <form class="inline-form">, <a class="btn">,
+       <button> — dipaksa jadi kotak inline berukuran alami. Ini yang
+       menjamin barisnya tetap satu baris walau salah satu aturan lain
+       menang di properti display. */
+    .admin-body .data-table td.col-actions > *,
     .admin-body .data-table td.col-actions .inline-form{
-        flex:1 1 84px; display:flex;
+        flex:0 0 auto !important;
+        display:inline-flex !important;
+        align-items:center !important;
+        width:auto !important;
+        min-width:0 !important;
+        margin:0 !important;
     }
+
     .admin-body .data-table td.col-actions .btn,
     .admin-body .data-table td.col-actions button.btn,
     .admin-body .data-table td.col-actions a.btn{
-        flex:1 1 84px;
         min-height:34px !important;
-        padding:7px 10px !important;
+        padding:7px 11px !important;
         font-size:11.5px !important;
         justify-content:center !important;
         white-space:nowrap;
     }
     .admin-body .data-table td.col-actions .btn-icon{
-        flex:0 0 auto; width:34px; height:34px;
+        width:34px !important; height:34px !important;
+        padding:0 !important;
+        flex:0 0 auto !important;
+    }
+
+    /* admin-refine.css memberi tiap tombol di kolom aksi `margin-left:5px`
+       karena dulu jaraknya diatur margin, bukan gap. Ditumpuk dengan gap
+       6px di atas, jaraknya jadi 11px di antara tombol tapi 6px setelah
+       tombol yang membungkus form — tidak rata. */
+    .admin-body .data-table td.col-actions .btn-icon,
+    .admin-body .data-table td.col-actions .btn,
+    .admin-body .data-table td.col-actions a,
+    .admin-body .data-table td.col-actions button{
+        margin:0 !important;
     }
 
     /* Seret-lepas urutan episode tidak dipakai di sentuh: isyaratnya
@@ -555,7 +649,8 @@
 
     .admin-body .checkbox-item{ min-height:34px; font-size:12.5px; }
     .admin-body .checkbox-item input{ width:18px; height:18px; }
-    .admin-body .checkbox-grid{ grid-template-columns:1fr 1fr; gap:6px; }
+    /* Kolomnya diatur di bagian 7 bersama grid halaman lain. */
+    .admin-body .checkbox-grid{ gap:6px; }
     .admin-body .radio-row{ gap:12px; }
 
     /*
@@ -741,5 +836,30 @@
     .admin-body .panel > *,
     .admin-body .field > *{
         min-width:0;
+    }
+
+    /*
+    | Grid halaman lain: pakai `min(100%, Npx)` sebagai batas bawah track.
+    |
+    | `repeat(auto-fit, minmax(330px, 1fr))` sering dikira aman karena
+    | auto-fit "menyesuaikan sendiri". Yang disesuaikan hanya JUMLAH
+    | kolomnya. Batas bawah 330px tetap dihormati walau kolomnya tinggal
+    | satu — jadi di layar 320px, kotaknya lebih lebar 34px dari layarnya
+    | dan halaman bisa digeser ke samping. `min(100%, 330px)` membacanya
+    | sebagai "330px, kecuali kalau layarnya lebih sempit".
+    |
+    | .form-grid dan .chart-grid tidak ada di sini karena sudah dipaksa
+    | satu kolom di bagian 5 dan 6.
+    */
+    .admin-body .admin-grid{
+        grid-template-columns:repeat(auto-fit, minmax(min(100%, 260px), 1fr)) !important;
+    }
+    .admin-body .asset-grid,
+    .admin-body .file-grid{
+        grid-template-columns:repeat(auto-fill, minmax(min(100%, 140px), 1fr)) !important;
+        gap:8px !important;
+    }
+    .admin-body .checkbox-grid{
+        grid-template-columns:repeat(auto-fill, minmax(min(100%, 120px), 1fr)) !important;
     }
 }
