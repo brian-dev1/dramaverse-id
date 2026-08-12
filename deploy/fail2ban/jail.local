@@ -35,11 +35,37 @@
 
 [DEFAULT]
 
-# Jaringan yang tidak pernah diblokir. Tambahkan IP rumah/kantor Anda di sini
-# SEBELUM menyalakan fail2ban — kesalahan paling umum saat memasang ini adalah
-# mengunci diri sendiri keluar dari SSH, dan satu-satunya jalan pulih adalah
-# konsol VPS lewat panel Rumahweb.
-ignoreip = 127.0.0.1/8 ::1
+# -----------------------------------------------------------------------------
+# Jaringan yang tidak pernah diblokir
+# -----------------------------------------------------------------------------
+#
+# Tambahkan IP rumah/kantor Anda di sini SEBELUM menyalakan fail2ban —
+# kesalahan paling umum saat memasang ini adalah mengunci diri sendiri keluar
+# dari SSH, dan satu-satunya jalan pulih adalah konsol VPS lewat panel
+# Rumahweb.
+#
+# ## Kenapa rentang Docker ikut
+#
+# Webhook Telegram di server ini tidak datang langsung dari internet: ia
+# diteruskan sebuah container, dan yang terlihat nginx adalah `172.17.0.2` —
+# alamat jaringan bridge Docker.
+#
+# Tanpa pengecualian ini, satu gangguan sesaat pada jalur webhook menjadi
+# kerusakan permanen. Contoh nyata yang sudah terjadi: aturan nginx yang salah
+# membuat sepuluh webhook beruntun dijawab 444. Jail `nginx-probe` menghitung
+# 444 dan ambangnya 15 dalam 10 menit — beberapa menit lagi container itu
+# masuk daftar blokir firewall.
+#
+# Yang membuatnya berbahaya adalah cara ia gagal. Setelah diblokir di lapis
+# paket, permintaan container tidak lagi muncul di access log nginx sama
+# sekali — bukan sebagai 444, bukan sebagai apa pun. Penyebab yang tadinya
+# terbaca jelas di log berubah menjadi keheningan total, dan bot yang mati
+# tidak meninggalkan satu pun petunjuk tentang kenapa.
+#
+# 172.16.0.0/12 mencakup seluruh rentang bawaan Docker, bukan hanya bridge
+# 172.17.0.0/16, supaya jaringan container tambahan ikut aman.
+#
+ignoreip = 127.0.0.1/8 ::1 172.16.0.0/12
 
 # Jendela pengamatan dan lama blokir.
 findtime  = 10m
