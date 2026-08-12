@@ -34,19 +34,34 @@ class DramaRepository implements DramaRepositoryInterface
             ->get();
     }
 
+    /**
+     * Cari drama berdasarkan judul.
+     *
+     * Kata kunci dipotong dan wildcard-nya diloloskan dengan alasan yang sama
+     * seperti di WebSearchRepository: `%` yang dibiarkan apa adanya membuat
+     * pencarian satu karakter cocok dengan seluruh tabel, dan pola sepanjang
+     * ribuan karakter membuat setiap baris dibandingkan dengan harga penuh.
+     * Keduanya bisa dipicu tanpa login.
+     */
     public function search(string $keyword): Collection
     {
+        $pola = '%'.str_replace(
+            ['\\', '%', '_'],
+            ['\\\\', '\\%', '\\_'],
+            mb_substr(trim($keyword), 0, 100)
+        ).'%';
+
         return Drama::query()
             ->with([
                 'country',
                 'genres',
             ])
-            ->where(function ($query) use ($keyword) {
+            ->where(function ($query) use ($pola) {
 
                 $query->where(
                     'title',
                     'LIKE',
-                    "%{$keyword}%"
+                    $pola
                 );
 
             })

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\BlockProbeRequests;
 use App\Http\Middleware\EnsureHasPermission;
 use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\CheckMaintenanceMode;
@@ -18,6 +19,24 @@ return Application::configure(basePath: dirname(__DIR__))
         health:   '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        /*
+        |----------------------------------------------------------------------
+        | Penolak pemindai — dijalankan paling awal
+        |----------------------------------------------------------------------
+        |
+        | `prepend` ke grup global, bukan ke grup `web`. Bedanya penting:
+        | permintaan ke `/wp-admin/setup-config.php` tidak cocok dengan route
+        | mana pun, jadi ia tidak pernah masuk grup `web` — ia langsung jatuh
+        | ke penangan 404. Middleware yang dipasang di `web` tidak akan pernah
+        | melihatnya, dan pemindai tetap bebas mengetuk ribuan kali.
+        |
+        | Di grup global ia berjalan sebelum route dicocokkan, sebelum sesi
+        | dibuka, dan sebelum satu query pun jalan. Itu memang tujuannya:
+        | permintaan yang pasti ditolak harus semurah mungkin ditolaknya.
+        |
+        */
+        $middleware->prepend(BlockProbeRequests::class);
+
         // Berlaku untuk seluruh permintaan web.
         $middleware->web(append: [
             SecurityHeaders::class,

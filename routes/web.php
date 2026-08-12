@@ -27,15 +27,34 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
-Route::middleware('maintenance')->group(function () {
+/*
+| `throttle:publik` menutup lubang yang paling lebar di situs ini. Seluruh
+| halaman di grup ini bisa dibuka tanpa akun, tanpa token, dan tanpa satu pun
+| syarat — dan sebelum ini juga tanpa batas laju. Sebuah skrip yang mengulang
+| GET ke `/trending` menghabiskan worker php-fpm dalam hitungan detik, dan
+| ketika worker habis seluruh situs ikut mati: pembayaran, admin, webhook
+| Telegram. Batas di halaman lain tidak menolong bila antreannya sudah penuh
+| lebih dulu.
+|
+| Dipasang di grup, bukan per route, supaya halaman publik yang ditambahkan
+| nanti ikut terlindungi tanpa harus diingat.
+*/
+Route::middleware(['maintenance', 'throttle:publik'])->group(function () {
 
 Route::get('/', Web\HomeController::class)->name('web.home');
 
-// --- Pencarian ---
-Route::controller(Web\WebSearchController::class)->group(function () {
-    Route::get('/search', 'index')->name('web.search');
-    Route::get('/search/result', 'result')->name('web.search.result');
-});
+/*
+| Pencarian dapat batasnya sendiri yang lebih ketat. `LIKE '%kata%'` tidak
+| bisa memakai indeks, jadi satu permintaan pencarian memindai seluruh tabel
+| drama — jauh lebih mahal daripada halaman katalog di sebelahnya. Menyamakan
+| batasnya berarti membayar harga termahal dengan jatah termurah.
+*/
+Route::controller(Web\WebSearchController::class)
+    ->middleware('throttle:pencarian')
+    ->group(function () {
+        Route::get('/search', 'index')->name('web.search');
+        Route::get('/search/result', 'result')->name('web.search.result');
+    });
 
 // --- Katalog ---
 Route::controller(Web\CatalogController::class)->group(function () {

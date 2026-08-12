@@ -344,5 +344,61 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('checkout', fn (Request $request) =>
             Limit::perMinute(10)->by($request->user()?->id ?: $request->ip())
         );
+
+        /*
+        |----------------------------------------------------------------------
+        | Halaman publik
+        |----------------------------------------------------------------------
+        |
+        | Beranda, katalog, halaman drama, dan halaman episode adalah satu-
+        | satunya bagian situs yang bisa dibuka tanpa login — dan sekaligus
+        | yang paling mahal: setiap permintaan menyentuh database, memuat
+        | relasi, lalu merender view. Selama ini tidak ada batas sama sekali
+        | di sana.
+        |
+        | Itu bukan celah teoretis. Serangan lapis-7 yang paling murah adalah
+        | mengulang GET ke satu URL katalog: tidak butuh akun, tidak butuh
+        | token, tidak butuh POST. Beberapa ratus permintaan per detik sudah
+        | cukup membuat php-fpm kehabisan worker, dan begitu worker habis
+        | seluruh situs mati — termasuk halaman yang batasnya sudah rapi.
+        |
+        | Angkanya sengaja longgar. Orang yang membuka situs sungguhan
+        | memuat satu halaman lalu membaca; 120 per menit memberi ruang untuk
+        | klik cepat, tombol kembali, dan prefetch peramban tanpa pernah
+        | menyentuh batas. Yang tersaring hanyalah lalu lintas yang memang
+        | tidak berperilaku seperti manusia.
+        |
+        | Dibatasi per IP, bukan per pengguna: justru tamu yang jadi sasaran
+        | pembatasan ini, dan tamu tidak punya id.
+        |
+        | Penting: batas ini hanya sekuat ketepatan `$request->ip()`. Bila
+        | Cloudflare atau proxy lain dipasang di depan tanpa `real_ip` di
+        | nginx, seluruh pengunjung terlihat datang dari segelintir IP proxy
+        | dan mereka berbagi satu jatah. Lihat docs/KEAMANAN.md bagian nginx.
+        |
+        */
+        RateLimiter::for('publik', fn (Request $request) =>
+            Limit::perMinute(120)->by($request->ip())
+        );
+
+        /*
+        |----------------------------------------------------------------------
+        | Pencarian
+        |----------------------------------------------------------------------
+        |
+        | Lebih ketat daripada halaman publik biasa karena harganya berbeda.
+        | Pencarian memakai `LIKE '%kata%'`, dan awalan wildcard membuat MySQL
+        | tidak bisa memakai indeks apa pun — setiap permintaan adalah
+        | pemindaian tabel penuh. Satu halaman katalog yang di-cache dan satu
+        | pencarian bukan beban yang setara, jadi batasnya juga tidak setara.
+        |
+        | 30 per menit tetap nyaman untuk pencarian ketik-langsung: pemanggilan
+        | dari UI sudah ditahan debounce, jadi mengetik satu judul penuh
+        | menghasilkan beberapa permintaan, bukan puluhan.
+        |
+        */
+        RateLimiter::for('pencarian', fn (Request $request) =>
+            Limit::perMinute(30)->by($request->user()?->id ?: $request->ip())
+        );
     }
 }

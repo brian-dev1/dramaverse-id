@@ -1,0 +1,154 @@
+# =============================================================================
+# fail2ban — dracinverse.cloud
+# =============================================================================
+#
+# Salin ke /etc/fail2ban/jail.local
+#
+# ## Apa yang dikerjakan lapis ini, yang tidak dikerjakan lapis lain
+#
+# Nginx dan Laravel menolak per permintaan. Keduanya menjawab dengan sopan
+# 429 atau 444, lalu menunggu permintaan berikutnya — dan penyerang mengirim
+# permintaan berikutnya. Penolakan itu murah, tapi tidak gratis: TCP handshake,
+# TLS handshake, satu slot koneksi nginx. Seratus ribu penolakan per menit
+# tetap membebani mesin meskipun tidak satu pun menyentuh PHP.
+#
+# fail2ban bekerja di lapis yang berbeda: ia membaca log, mengenali IP yang
+# berulang kali ditolak, lalu memasukkannya ke firewall. Setelah itu paket
+# dari IP tersebut dibuang kernel sebelum nginx tahu ada yang mengetuk.
+# Biayanya turun dari "satu koneksi TLS" menjadi "satu perbandingan di tabel
+# nftables".
+#
+# ## Batasnya, supaya jelas
+#
+# Ini efektif melawan satu atau beberapa sumber yang gigih: pemindai, brute
+# force, scraper. Ia TIDAK menghentikan DDoS terdistribusi sungguhan — puluhan
+# ribu IP yang masing-masing hanya mengirim beberapa permintaan tidak akan
+# pernah menyentuh ambang mana pun, dan daftar blokir sebesar itu justru
+# membebani firewall. Untuk kasus itu, penyaringnya harus di luar VPS: lihat
+# bagian Cloudflare di docs/KEAMANAN.md.
+#
+# Pasang:
+#   apt install -y fail2ban
+#   cp jail.local filter.d/*.conf ke tempatnya
+#   systemctl enable --now fail2ban
+#   fail2ban-client status
+
+[DEFAULT]
+
+# Jaringan yang tidak pernah diblokir. Tambahkan IP rumah/kantor Anda di sini
+# SEBELUM menyalakan fail2ban — kesalahan paling umum saat memasang ini adalah
+# mengunci diri sendiri keluar dari SSH, dan satu-satunya jalan pulih adalah
+# konsol VPS lewat panel Rumahweb.
+ignoreip = 127.0.0.1/8 ::1
+
+# Jendela pengamatan dan lama blokir.
+findtime  = 10m
+bantime   = 1h
+maxretry  = 5
+
+# Naikkan lama blokir untuk pelanggar berulang. IP yang diblokir lalu kembali
+# melakukan hal yang sama bukan salah paham — ia memang sedang mencoba, dan
+# tidak ada gunanya melepasnya setiap jam.
+bantime.increment = true
+bantime.factor    = 2
+bantime.maxtime   = 1w
+
+# nftables, bukan iptables. Debian 12 / Ubuntu 24.04 memakai nftables sebagai
+# bawaan, dan lapisan kompatibilitas iptables-nya kadang tidak terpasang.
+banaction = nftables-multiport
+backend   = systemd
+
+
+# -----------------------------------------------------------------------------
+# SSH
+# -----------------------------------------------------------------------------
+#
+# Pertama karena paling penting. VPS baru mulai menerima percobaan login SSH
+# dalam hitungan menit setelah IP-nya hidup, terus-menerus, selamanya.
+[sshd]
+enabled  = true
+port     = ssh
+maxretry = 3
+bantime  = 24h
+
+
+# -----------------------------------------------------------------------------
+# Banjir permintaan — dibaca dari 429 yang dikeluarkan nginx
+# -----------------------------------------------------------------------------
+#
+# Menyambung langsung ke `limit_req` di nginx: nginx yang memutuskan siapa
+# yang terlalu cepat, fail2ban yang memutuskan siapa yang terlalu sering
+# terlalu cepat.
+#
+# Ambangnya sengaja longgar (100 dalam 5 menit). Pengunjung sungguhan sesekali
+# kena 429 — jaringan seluler yang membagi satu IP untuk banyak pelanggan
+# membuat ini rutin di Indonesia. Yang dicari di sini adalah pola yang tidak
+# mungkin datang dari orang: ratusan penolakan beruntun tanpa jeda.
+[nginx-banjir]
+enabled  = true
+port     = http,https
+filter   = nginx-banjir
+logpath  = /var/log/nginx/dracinverse-access.log
+findtime = 5m
+maxretry = 100
+bantime  = 2h
+
+
+# -----------------------------------------------------------------------------
+# Pemindai — dibaca dari log keamanan Laravel
+# -----------------------------------------------------------------------------
+#
+# Sumbernya storage/logs/keamanan.log, yang ditulis middleware
+# BlockProbeRequests. Ambangnya ketat: satu permintaan ke /wp-admin bisa saja
+# tautan lama yang salah, lima dalam sepuluh menit adalah pemindaian.
+#
+# Perhatikan bahwa nginx juga memblokir jalur yang sama dengan 444. Bila
+# konfigurasi nginx yang baru sudah dipasang, log ini akan hampir kosong —
+# dan itu tanda keduanya bekerja, bukan tanda jail ini sia-sia. Ia menunggu
+# hari ketika konfigurasi nginx-nya hilang.
+[laravel-pemindai]
+enabled  = true
+port     = http,https
+filter   = laravel-pemindai
+logpath  = /var/www/dramaverse/storage/logs/keamanan-*.log
+findtime = 10m
+maxretry = 5
+bantime  = 24h
+
+
+# -----------------------------------------------------------------------------
+# Pemindai — dibaca dari 444/403/404 beruntun di nginx
+# -----------------------------------------------------------------------------
+#
+# Lapis kedua untuk hal yang sama, dibaca dari sisi nginx. Ada karena nginx
+# menolak dengan 444 sebelum Laravel sempat mencatat apa pun — tanpa jail ini,
+# justru pemindai yang berhasil disaring nginx yang tidak pernah diblokir di
+# firewall.
+[nginx-probe]
+enabled  = true
+port     = http,https
+filter   = nginx-probe
+logpath  = /var/log/nginx/dracinverse-access.log
+findtime = 10m
+maxretry = 15
+bantime  = 24h
+
+
+# -----------------------------------------------------------------------------
+# Gagal login admin
+# -----------------------------------------------------------------------------
+#
+# Laravel sudah membatasi 5 percobaan per menit per (email + IP). Yang tidak
+# ditangkap batas itu: penyerang yang mencoba satu password terhadap ribuan
+# email berbeda. Tiap kombinasi hanya dicoba sekali, jadi tidak ada satu pun
+# yang menyentuh batas per-email — sementara total percobaannya ribuan.
+#
+# Jail ini menghitung per IP tanpa peduli emailnya, jadi pola itu terlihat.
+[laravel-login]
+enabled  = true
+port     = http,https
+filter   = laravel-login
+logpath  = /var/www/dramaverse/storage/logs/keamanan-*.log
+findtime = 30m
+maxretry = 10
+bantime  = 24h

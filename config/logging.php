@@ -73,6 +73,37 @@ return [
             'replace_placeholders' => true,
         ],
 
+        /*
+        |----------------------------------------------------------------------
+        | Keamanan
+        |----------------------------------------------------------------------
+        |
+        | Berkas terpisah, bukan channel di dalam `stack`. Dua alasan, dan
+        | keduanya praktis.
+        |
+        | Pertama, fail2ban membaca berkas ini baris demi baris untuk mencari
+        | IP yang berulang. Bercampur dengan galat aplikasi biasa, polanya
+        | harus dipisahkan lagi dengan regex yang rapuh — dan setiap kali
+        | format log aplikasi berubah, jail-nya diam-diam berhenti bekerja.
+        |
+        | Kedua, log keamanan justru paling dibutuhkan saat log aplikasi
+        | paling ramai. Serangan dan lonjakan galat datang bersamaan; kalau
+        | keduanya menulis ke berkas yang sama, jejak yang dicari tenggelam
+        | tepat pada saat dibutuhkan.
+        |
+        | Disimpan 30 hari, lebih lama daripada log biasa: serangan sering
+        | baru disadari berminggu-minggu setelah percobaan pertamanya, dan
+        | log yang sudah dirotasi tidak bisa dibaca ulang.
+        |
+        */
+        'keamanan' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/keamanan.log'),
+            'level' => 'info',
+            'days' => env('LOG_KEAMANAN_DAYS', 30),
+            'replace_placeholders' => true,
+        ],
+
         'slack' => [
             'driver' => 'slack',
             'url' => env('LOG_SLACK_WEBHOOK_URL'),
