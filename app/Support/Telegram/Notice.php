@@ -43,6 +43,18 @@ namespace App\Support\Telegram;
 final class Notice
 {
     /**
+     * Garis pemisah antarbagian.
+     *
+     * Telegram tidak punya elemen pemisah, jadi dipakai huruf gambar kotak.
+     * Panjangnya sengaja tidak selebar layar: garis yang terlalu panjang
+     * membungkus ke baris kedua di ponsel sempit dan justru terlihat berantakan.
+     */
+    private const GARIS = '━━━━━━━━━━━━━━━━━━';
+
+    /** Garis pemisah antarbutir di dalam satu bagian; sengaja lebih tipis. */
+    private const GARIS_TIPIS = '──────────────────';
+
+    /**
      * Blok isi, masing-masing berpasangan [jenis, teks].
      *
      * Jenisnya disimpan karena jarak antarblok tidak seragam: sub-judul
@@ -138,6 +150,78 @@ final class Notice
         return $this;
     }
 
+    /**
+     * Daftar butir bertingkat: judul, keterangan pendek, lalu uraian.
+     *
+     * ## Kenapa bukan `bullets()`
+     *
+     * Butir berpoin cocok untuk kalimat pendek. Paket berlangganan bukan
+     * kalimat pendek — namanya, harganya, masa berlakunya, dan penjelasannya
+     * dijejalkan ke satu baris yang lalu membungkus dua sampai tiga kali di
+     * ponsel. Hasilnya, batas antarpaket hilang: mata tidak bisa lagi
+     * membedakan baris kedua paket pertama dari baris pertama paket kedua,
+     * dan seluruh daftar terbaca sebagai satu paragraf.
+     *
+     * Di sini tiap butir mendapat tiga baris dengan peran tetap dan sebuah
+     * garis pemisah, sehingga membandingkan dua paket cukup dengan melompati
+     * garis, bukan menghitung ulang di mana satu paket berakhir.
+     *
+     * Baris kosong TIDAK dipakai sebagai pemisah: Telegram merapatkan jarak
+     * antarbaris, jadi satu baris kosong terlihat hampir sama dengan jarak
+     * biasa — sementara garis terlihat sebagai batas pada pandangan pertama.
+     *
+     * @param  array<int,array{judul:string,meta?:string|null,teks?:string|null}>  $item
+     */
+    public function cards(array $item): self
+    {
+        $kartu = [];
+
+        foreach ($item as $satu) {
+
+            $judul = trim((string) ($satu['judul'] ?? ''));
+
+            if ($judul === '') {
+                continue;
+            }
+
+            $baris = ['<b>'.e($judul).'</b>'];
+
+            foreach (['meta', 'teks'] as $bagian) {
+
+                $nilai = trim((string) ($satu[$bagian] ?? ''));
+
+                if ($nilai !== '') {
+                    $baris[] = $bagian === 'meta'
+                        ? '<code>'.e($nilai).'</code>'
+                        : e($nilai);
+                }
+            }
+
+            $kartu[] = implode("\n", $baris);
+        }
+
+        if ($kartu === []) {
+            return $this;
+        }
+
+        $this->blok[] = ['cards', implode("\n".self::GARIS_TIPIS."\n", $kartu)];
+
+        return $this;
+    }
+
+    /**
+     * Garis pemisah yang dipasang sendiri.
+     *
+     * Sub-judul sudah mendapat garisnya secara otomatis, jadi ini hanya untuk
+     * memisahkan dua blok yang sama-sama tanpa judul.
+     */
+    public function divider(): self
+    {
+        $this->blok[] = ['divider', self::GARIS];
+
+        return $this;
+    }
+
     /** Paragraf biasa. Boleh dipanggil berkali-kali. */
     public function text(string $teks): self
     {
@@ -175,7 +259,36 @@ final class Notice
         $keluar = $judul;
         $sebelumnya = 'judul';
 
-        foreach ($this->blok as [$jenis, $teks]) {
+        foreach ($this->blok as $urutan => [$jenis, $teks]) {
+
+            /*
+            |------------------------------------------------------------------
+            | Setiap sub-judul didahului garis
+            |------------------------------------------------------------------
+            |
+            | Pesan bot sering memuat tiga sampai empat bagian sekaligus —
+            | status, tagihan, daftar paket, catatan. Dipisah baris kosong
+            | saja, keempatnya terbaca sebagai satu tumpukan panjang dan
+            | pengguna harus memilah sendiri mana milik mana.
+            |
+            | Garisnya dipasang di sini, bukan diserahkan ke pemanggil, karena
+            | konsistensi bentuk itulah yang membuat pemisahnya berguna: garis
+            | yang kadang ada kadang tidak berhenti menjadi penanda.
+            |
+            | Kecuali bila sub-judulnya blok pertama — di situ judul pesan
+            | sudah menjadi batas, dan garis tepat di bawahnya cuma pagar
+            | ganda.
+            |
+            */
+
+            if ($jenis === 'section' && $urutan > 0 && $sebelumnya !== 'divider') {
+
+                $keluar .= "\n\n".self::GARIS;
+
+                // Ditandai 'section' supaya judulnya menempel pada garisnya,
+                // bukan mengambang satu baris kosong di bawahnya.
+                $sebelumnya = 'section';
+            }
 
             // Sub-judul menempel pada blok sesudahnya; sisanya diberi napas.
             $keluar .= ($sebelumnya === 'section' ? "\n" : "\n\n").$teks;

@@ -194,8 +194,35 @@ class PremiumHandler
     {
         return collect(PaymentRegion::cases())
             ->filter(fn (PaymentRegion $r) =>
-                $this->membership->plans($r)->isNotEmpty()
+                $this->paketBerbayar($r)->isNotEmpty()
                 && $this->gateways->usable($r)->isNotEmpty())
+            ->values();
+    }
+
+    /**
+     * Paket satu wilayah, tanpa yang gratis.
+     *
+     * ## Kenapa paket gratis dibuang dari layar ini
+     *
+     * Layar ini adalah layar membeli. Paket Rp 0 tidak bisa dibeli: menekan
+     * tombolnya membuat tagihan senilai nol yang tidak punya cara dibayar,
+     * dan pengguna berakhir memandang QRIS tanpa nominal.
+     *
+     * Lebih dari itu, ia menyesatkan. Paket gratis bukan pilihan yang diambil
+     * seseorang, melainkan keadaan awal setiap orang yang belum membayar —
+     * mencantumkannya sejajar dengan paket berbayar membuatnya tampak seperti
+     * sesuatu yang perlu dipilih dulu.
+     *
+     * Barisnya dibuang di sini, bukan di basis data. Paket gratis tetap
+     * dibutuhkan sebagai acuan hak akses bawaan; yang tidak dibutuhkan hanya
+     * penampakannya di etalase.
+     *
+     * @return \Illuminate\Support\Collection<int,MembershipPlan>
+     */
+    private function paketBerbayar(PaymentRegion $region): \Illuminate\Support\Collection
+    {
+        return $this->membership->plans($region)
+            ->reject(fn (MembershipPlan $plan) => $plan->isFree())
             ->values();
     }
 
@@ -241,7 +268,7 @@ class PremiumHandler
     /** Daftar paket satu wilayah beserta tombol belinya. */
     private function daftarPaket(int|string $chatId, PaymentRegion $region, Notice $pesan): void
     {
-        $plans = $this->membership->plans($region);
+        $plans = $this->paketBerbayar($region);
 
         if ($plans->isEmpty()) {
 
@@ -262,15 +289,19 @@ class PremiumHandler
 
             $harga = Uang::format($plan->price, $plan->currency);
 
-            // Satu paket, satu baris. Dipecah jadi tiga baris seperti
-            // sebelumnya, membandingkan dua paket berarti melompat naik turun
-            // alih-alih membaca ke bawah.
+            // Satu paket, satu kartu: nama di baris sendiri, harga dan masa
+            // aktif di baris kedua, penjelasan di baris ketiga. Diperas jadi
+            // satu baris seperti sebelumnya, kalimatnya membungkus dua sampai
+            // tiga kali di ponsel dan batas antarpaket ikut hilang bersamanya.
             //
             // Sengaja bukan tabel <pre>: deskripsi paket panjangnya bebas, dan
             // di layar ponsel blok monospace yang lebih lebar dari layar
             // menimbulkan geser samping, bukan kolom yang rapi.
-            $daftar[] = $plan->name.' — '.$harga.' / '.(int) $plan->duration.' hari'
-                .(filled($plan->description) ? ' · '.$plan->description : '');
+            $daftar[] = [
+                'judul' => $plan->name,
+                'meta'  => $harga.'  ·  '.(int) $plan->duration.' hari',
+                'teks'  => $plan->description,
+            ];
 
             $tombol[] = [[
                 'text'          => $plan->name.' — '.$harga,
@@ -278,7 +309,7 @@ class PremiumHandler
             ]];
         }
 
-        $pesan->bullets($daftar)
+        $pesan->cards($daftar)
             ->note('Pilih paket di bawah. Bot akan membuatkan tagihan beserta '
                 .'tautan pembayarannya.');
 
