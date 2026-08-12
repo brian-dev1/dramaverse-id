@@ -7,13 +7,12 @@ use App\Models\Invoice;
 use App\Models\PaymentTransaction;
 use App\Models\User;
 use App\Services\Monitoring\AlertService;
+use App\Services\Payments\PaymentProofStore;
 use App\Services\Telegram\Contracts\TelegramServiceInterface;
 use App\Services\UserSessionService;
 use App\Support\Telegram\Notice;
 use App\Support\Waktu;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Throwable;
 use App\Support\Uang;
@@ -43,19 +42,21 @@ use App\Support\Uang;
  * token bot, sehingga panel admin tidak bisa menampilkannya sebagai gambar
  * biasa tanpa memproksikan setiap permintaan lewat aplikasi.
  *
- * Jadi berkasnya diunduh sekali dan disimpan di disk `public`. `file_id`-nya
+ * Jadi berkasnya diunduh sekali dan disimpan di disk privat kita, lalu
+ * disajikan ke panel lewat route admin yang memeriksa izin. `file_id`-nya
  * tetap ikut dicatat sebagai cadangan — lihat migrasi
  * `add_payment_proof_to_payment_transactions_table`.
+ *
+ * Seluruh urusan berkas itu milik `PaymentProofStore`, bukan kelas ini. Yang
+ * tersisa di sini hanya percakapannya dengan pengguna.
  */
 class PaymentProofHandler
 {
-    /** Ukuran maksimum bukti yang mau diunduh, dalam byte. */
-    private const MAX_BYTES = 8 * 1024 * 1024;
-
     public function __construct(
         protected TelegramServiceInterface $telegram,
         protected UserSessionService $sessions,
-        protected AlertService $alerts
+        protected AlertService $alerts,
+        protected PaymentProofStore $proofs
     ) {
     }
 
@@ -126,7 +127,7 @@ class PaymentProofHandler
             return;
         }
 
-        $path = $this->unduh($fileId, $invoice->number);
+        $path = $this->proofs->simpan($fileId, $invoice->number);
 
         $transaction->forceFill([
             'proof_path'        => $path,
@@ -190,66 +191,6 @@ class PaymentProofHandler
         }
 
         return $query->latest('id')->first();
-    }
-
-    /**
-     * Salin berkas dari Telegram ke disk `public`.
-     *
-     * Kegagalannya dikembalikan sebagai null, bukan dilempar. `file_id`-nya
-     * sudah tersimpan di baris transaksi apa pun yang terjadi di sini, jadi
-     * bukti yang gagal diunduh masih bisa ditarik ulang belakangan — dan
-     * membatalkan seluruh penerimaan bukti karena unduhan gagal berarti
-     * pengguna disuruh mengirim ulang sesuatu yang sebenarnya sudah sampai.
-     */
-    private function unduh(string $fileId, string $invoiceNumber): ?string
-    {
-        try {
-            $berkas = $this->telegram->getFile($fileId);
-
-            $filePath = (string) $berkas->get('file_path', '');
-
-            if ($filePath === '') {
-                return null;
-            }
-
-            if ((int) $berkas->get('file_size', 0) > self::MAX_BYTES) {
-
-                Log::warning('payment.proof.too_large', [
-                    'invoice' => $invoiceNumber,
-                    'bytes'   => $berkas->get('file_size'),
-                ]);
-
-                return null;
-            }
-
-            $respon = Http::timeout(30)->get($this->telegram->downloadUrl($filePath));
-
-            if (! $respon->successful()) {
-                return null;
-            }
-
-            // Ekstensi diambil dari path Telegram, bukan dari nama yang
-            // dikirim klien: yang pertama sudah ditentukan server Telegram,
-            // yang kedua datang dari perangkat pengguna.
-            $ext = strtolower(pathinfo($filePath, PATHINFO_EXTENSION) ?: 'jpg');
-
-            $ext = in_array($ext, ['jpg', 'jpeg', 'png', 'webp'], true) ? $ext : 'jpg';
-
-            $tujuan = 'payment/proof/'.now()->format('Ym').'/'.Str::uuid()->toString().'.'.$ext;
-
-            Storage::disk('public')->put($tujuan, $respon->body());
-
-            return $tujuan;
-
-        } catch (Throwable $e) {
-
-            Log::warning('payment.proof.download_failed', [
-                'invoice' => $invoiceNumber,
-                'sebab'   => $e->getMessage(),
-            ]);
-
-            return null;
-        }
     }
 
     /**

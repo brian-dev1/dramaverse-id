@@ -12,6 +12,7 @@ use App\Services\Membership\MembershipService;
 use App\Services\Payments\Exceptions\PaymentException;
 use App\Services\Payments\PaymentAlertService;
 use App\Services\Payments\PaymentCallbackService;
+use App\Services\Payments\PaymentProofStore;
 use App\Services\Payments\PaymentResult;
 use App\Services\Telegram\Contracts\TelegramServiceInterface;
 use App\Support\Telegram\Notice;
@@ -21,6 +22,8 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
 
 /**
@@ -60,8 +63,69 @@ class ManualApprovalController extends Controller
     public function __construct(
         protected PaymentCallbackService $callbacks,
         protected MembershipService $membership,
-        protected PaymentAlertService $alerts
+        protected PaymentAlertService $alerts,
+        protected PaymentProofStore $proofs
     ) {
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Bukti bayar
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Sajikan gambar bukti bayar ke panel.
+     *
+     * ## Kenapa lewat PHP, bukan berkas statis
+     *
+     * Ini yang memperbaiki bukti yang tidak pernah muncul. Sebelumnya panel
+     * menunjuk `asset('storage/...')`, yang menuntut tiga hal benar sekaligus
+     * di server: symlink `public/storage` terpasang, `storage/app/public` bisa
+     * ditulis php-fpm, dan nginx mau menembus symlink. Satu saja meleset,
+     * yang terlihat admin adalah bingkai kosong — bukan galat, bukan pesan,
+     * jadi tidak ada yang bisa ditelusuri.
+     *
+     * Membacanya lewat aplikasi menghapus ketiga syarat itu sekaligus. Kalau
+     * berkasnya benar-benar tidak ada, `PaymentProofStore` menariknya ulang
+     * dari Telegram memakai `file_id` yang tersimpan, jadi kegagalan unduh
+     * saat bukti masuk pun masih bisa ditambal di sini.
+     *
+     * ## Kenapa penting bahwa ia berada di balik login
+     *
+     * Bukti bayar adalah tangkapan layar mutasi rekening. Di disk publik ia
+     * bisa dibuka siapa pun yang memegang URL-nya, tanpa login — dan URL bocor
+     * lewat riwayat peramban, log proksi, dan tombol bagikan. Di sini ia
+     * melewati middleware admin dan pemeriksaan izin, sama seperti halaman
+     * yang menampilkannya.
+     */
+    public function proof(int $id): StreamedResponse
+    {
+        $tx = PaymentTransaction::with('invoice')->findOrFail($id);
+
+        $berkas = $this->proofs->berkas($tx);
+
+        if ($berkas === null) {
+
+            // 404 dengan sebab yang jelas. "Not found" polos akan membuat
+            // admin mengira halamannya yang rusak, lalu memuat ulang
+            // berkali-kali atas berkas yang memang sudah tidak ada.
+            abort(404, 'Berkas buktinya tidak tersimpan dan tidak bisa ditarik '
+                .'ulang dari Telegram. Minta pengguna mengirimkannya lagi.');
+        }
+
+        return Storage::disk($berkas['disk'])->response(
+            $berkas['path'],
+            'bukti-'.($tx->invoice?->number ?? $tx->id).'.'
+                .pathinfo($berkas['path'], PATHINFO_EXTENSION),
+            [
+                'Content-Type'  => $berkas['mime'],
+                // inline supaya tampil sebagai gambar di panel, bukan terunduh.
+                'Cache-Control' => 'private, max-age=0, no-store',
+                'X-Robots-Tag'  => 'noindex, nofollow',
+            ],
+            'inline'
+        );
     }
 
     /*
@@ -260,6 +324,12 @@ class ManualApprovalController extends Controller
         ]);
 
         $alasan = trim((string) ($data['reason'] ?? '')) ?: 'bukti tidak cocok dengan mutasi';
+
+        // Berkasnya ikut dibuang, bukan cuma dilepas dari barisnya. Sebelum
+        // ini tangkapan layar mutasi rekening tertinggal di disk tanpa ada
+        // satu pun baris yang merujuknya — dan karena tidak dirujuk, tidak
+        // pernah ada yang menghapusnya.
+        $this->proofs->hapus($tx);
 
         $tx->forceFill([
             'proof_path'        => null,

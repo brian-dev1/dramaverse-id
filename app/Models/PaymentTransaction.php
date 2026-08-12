@@ -60,11 +60,30 @@ class PaymentTransaction extends Model
         return filled($this->proof_path) || filled($this->proof_file_id);
     }
 
-    /** URL bukti bayar yang bisa dibuka admin, atau null. */
+    /**
+     * URL bukti bayar yang bisa dibuka admin, atau null.
+     *
+     * ## Kenapa route, bukan `asset('storage/...')`
+     *
+     * Dua sebab, dan yang pertama adalah bug yang membuat bukti tidak pernah
+     * terlihat di panel: URL statis hanya bekerja bila symlink `public/storage`
+     * ada dan folder tujuannya bisa ditulis php-fpm. Salah satu saja tidak
+     * terpenuhi, hasilnya bingkai gambar kosong tanpa satu pun galat.
+     *
+     * Yang kedua, bukti bayar memuat nomor rekening dan saldo. Berkas di bawah
+     * `public/` bisa dibuka siapa saja yang tahu URL-nya, tanpa login. Route
+     * ini melewati middleware admin dan pemeriksaan izin seperti halaman
+     * lainnya.
+     *
+     * Syaratnya `hasProof()`, bukan `proof_path`: bukti yang salinan lokalnya
+     * gagal ditulis masih punya `file_id`, dan route-nya akan menariknya ulang
+     * dari Telegram saat dibuka. Menyembunyikan tautannya karena path-nya
+     * kosong justru membuang satu-satunya salinan yang tersisa.
+     */
     public function proofUrl(): ?string
     {
-        return filled($this->proof_path)
-            ? asset('storage/'.$this->proof_path)
+        return $this->hasProof() && $this->exists
+            ? route('admin.manual-approval.proof', $this->id)
             : null;
     }
 

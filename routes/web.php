@@ -712,6 +712,25 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         /*
         |----------------------------------------------------------------------
+        | Gambar bukti bayar
+        |
+        | Di LUAR grup `payment.manage` dengan sengaja. Buktinya tampil di dua
+        | halaman yang izinnya berbeda — ACC Manual (payment.manage) dan detail
+        | Tagihan (finance.view) — jadi menaruhnya di salah satu grup membuat
+        | gambarnya 403 di halaman yang satunya, dan 403 pada tag <img> terlihat
+        | persis seperti berkas yang hilang.
+        |
+        | Berkasnya TIDAK disajikan sebagai berkas statis; lihat docblock
+        | ManualApprovalController::proof(). Singkatnya: bukti bayar memuat
+        | nomor rekening, dan berkas di bawah public/ bisa dibuka tanpa login.
+        |----------------------------------------------------------------------
+        */
+        Route::get('/payment/proof/{id}', [Admin\ManualApprovalController::class, 'proof'])
+            ->middleware('permission:payment.manage,finance.view')
+            ->name('manual-approval.proof')->whereNumber('id');
+
+        /*
+        |----------------------------------------------------------------------
         | Membaca angka: tagihan dan log pembayaran
         |
         | Dipisahkan dari `payment.manage` supaya super admin bisa memberi
