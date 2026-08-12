@@ -289,12 +289,69 @@ class PremiumHandler
         // menekannya beberapa jam kemudian akan melewati pemeriksaan pertama.
         if ($tertunda = $this->pendingInvoice($user)) {
 
+            /*
+            |------------------------------------------------------------------
+            | Ketukan kedua pada tombol yang sama
+            |------------------------------------------------------------------
+            |
+            | Tombol paket tidak hilang setelah ditekan, dan tagihan butuh
+            | sedetik dua detik untuk jadi. Selama jeda itu orang menekannya
+            | lagi — begitu juga Telegram, yang mengirim ulang callback yang
+            | belum sempat dijawab.
+            |
+            | Ketukan kedua itu dulu dijawab "Anda masih punya tagihan X yang
+            | belum dibayar, selesaikan dulu yang itu" — menyebut nomor tagihan
+            | yang BARU SAJA dikirim bot sendiri, satu pesan di atasnya.
+            | Kalimatnya menuduh pengguna melalaikan sesuatu yang bahkan belum
+            | sempat ia lihat, dan sebagian orang berhenti di situ karena
+            | mengira ada tagihan lain yang tersangkut entah di mana.
+            |
+            | Kalau tagihannya memang baru dan memang untuk paket yang sama,
+            | tidak ada yang perlu dikatakan: QRIS-nya masih terpampang di
+            | layar. Diam adalah jawaban yang benar.
+            |
+            */
+
+            $baru = $tertunda->created_at !== null
+                && $tertunda->created_at->gt(now()->subMinutes(2));
+
+            if ($baru && (int) $tertunda->membership_plan_id === $planId) {
+                return;
+            }
+
+            /*
+            | Tagihan lama, atau paket yang berbeda. Di sini pengguna memang
+            | perlu diberi tahu — tetapi disertai tagihannya, bukan cuma
+            | nomornya. Pesan lama sudah tergulir jauh ke atas, dan menyuruh
+            | orang mencarinya sendiri adalah cara paling mudah membuat
+            | tagihan tidak pernah dibayar.
+            */
+
             $this->telegram->sendMessage(
                 $chatId,
-                "Anda masih punya tagihan <code>".e($tertunda->number)."</code> yang "
-                .'belum dibayar. Selesaikan dulu yang itu.',
-                ['reply_markup' => ['inline_keyboard' => $this->tombolBayar($tertunda)]]
+                Notice::make('🧾', 'Selesaikan tagihan ini dulu')
+                    ->lead('Satu tagihan dulu, ya. Setelah yang ini lunas, Anda '
+                        .'bisa memilih paket lain.')
+                    ->rows([
+                        'Nomor' => $tertunda->number,
+                        'Paket' => $tertunda->plan_name,
+                        'Sisa'  => Uang::format($tertunda->outstanding(), $tertunda->currency),
+                        'Bayar sebelum' => $tertunda->due_at !== null
+                            ? Waktu::lengkapRelatif($tertunda->due_at)
+                            : null,
+                    ])
+                    ->render()
             );
+
+            $provider = $tertunda->latestTransaction()->with('provider')->first()?->provider;
+
+            if ($provider !== null) {
+                $this->kirimTagihan($chatId, $tertunda, $provider);
+            } else {
+                $this->telegram->sendMessage($chatId, 'Tekan tombol di bawah untuk melanjutkan.', [
+                    'reply_markup' => ['inline_keyboard' => $this->tombolBayar($tertunda)],
+                ]);
+            }
 
             return;
         }

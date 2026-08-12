@@ -256,6 +256,25 @@ class ManualApprovalController extends Controller
             return back()->with('error', 'Transaksi ini tidak menunjuk tagihan mana pun.');
         }
 
+        /*
+        |----------------------------------------------------------------------
+        | Keadaan SEBELUM, dicatat sebelum apa pun berubah
+        |----------------------------------------------------------------------
+        |
+        | `apply()` idempoten: transaksi yang statusnya sudah PAID dijawab
+        | berhasil tanpa mengerjakan apa pun — tidak ada aktivasi, tidak ada
+        | pesan ke pengguna. Itu perilaku yang benar untuk callback provider
+        | yang datang berulang, tetapi salah untuk dilaporkan sebagai "membership
+        | aktif dan pengguna diberi tahu".
+        |
+        | Admin yang menerima kalimat itu berhenti memeriksa. Ia baru tahu tidak
+        | ada yang terjadi setelah pengguna mengeluh — dan pada saat itu yang
+        | terlihat di panel adalah tagihan lunas, yang membuat keluhannya
+        | terdengar seperti salah paham.
+        |
+        */
+        $sudahLunas = $tx->status === PaymentStatus::PAID;
+
         try {
             $this->callbacks->apply(
                 $tx,
@@ -304,8 +323,44 @@ class ManualApprovalController extends Controller
         |
         */
 
+        /*
+        |----------------------------------------------------------------------
+        | Laporkan apa yang BENAR-BENAR terjadi
+        |----------------------------------------------------------------------
+        |
+        | Tiga akhir yang mungkin, dan ketiganya dulu dilaporkan dengan kalimat
+        | yang sama. Yang paling merugikan adalah dua yang terakhir: keduanya
+        | meninggalkan membership mati sambil memberi tahu admin bahwa ia hidup.
+        |
+        */
+
+        $invoice = $tx->invoice->refresh();
+
+        if ($sudahLunas) {
+
+            return back()->with('error',
+                'Transaksi '.$tx->reference.' SUDAH berstatus lunas sebelum tombol '
+                .'ini ditekan, jadi tidak ada yang dikerjakan dan pengguna tidak '
+                .'menerima pesan apa pun. Periksa status membership-nya di kolom '
+                .'pencarian; bila memang belum aktif, laporkan nomor tagihan '
+                .$invoice->number.'.');
+        }
+
+        if ($invoice->status !== PaymentStatus::PAID) {
+
+            // Driver bertahap (Trakteer): satu pembayaran diterima, tetapi
+            // jumlahnya belum menutup tagihan. Membership memang belum boleh
+            // aktif — yang salah cuma kalau admin tidak diberi tahu.
+            return back()->with('error',
+                'Pembayaran dicatat, TETAPI tagihan '.$invoice->number.' belum lunas: '
+                .'baru terkumpul '.\App\Support\Uang::invoice($invoice, 'paid_amount')
+                .' dari '.\App\Support\Uang::invoice($invoice).'. Membership belum '
+                .'aktif, dan pengguna menerima pesan sisa tagihan — bukan pesan '
+                .'aktivasi.');
+        }
+
         return back()->with('status',
-            'Tagihan '.$tx->invoice->number.' di-ACC. Membership aktif dan pengguna diberi tahu.');
+            'Tagihan '.$invoice->number.' di-ACC. Membership aktif dan pengguna diberi tahu.');
     }
 
     /**
