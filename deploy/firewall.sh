@@ -69,6 +69,34 @@ ufw allow 80/tcp   comment 'HTTP'
 ufw allow 443/tcp  comment 'HTTPS'
 
 # -----------------------------------------------------------------------------
+# Jalur container Docker
+# -----------------------------------------------------------------------------
+#
+# Server ini menjalankan `telegram-bot-api` — server Bot API Telegram lokal.
+# Ia bukan pelengkap: Bot API publik membatasi berkas di 20 MB, sedangkan
+# server lokal menaikkannya ke 2000 MB, dan itulah yang membuat video drama
+# bisa melewati Telegram sama sekali.
+#
+# Container itu memanggil nginx di host lewat jembatan docker0, dan yang
+# terlihat nginx adalah 172.17.0.2. Bagi ufw, paket itu adalah lalu lintas
+# MASUK ke host — persis kategori yang kebijakan dasarnya `deny`.
+#
+# `ufw allow 443/tcp` di atas sebenarnya sudah mencakupnya karena tidak
+# membatasi antarmuka. Aturan eksplisit ini ditulis untuk dua hal yang tidak
+# diberikan aturan umum itu: ia bertahan bila kelak seseorang mempersempit
+# aturan 443 ke antarmuka publik saja, dan ia membuat ketergantungan ini
+# terbaca oleh siapa pun yang membaca `ufw status` tanpa tahu ada container
+# di sini.
+#
+# Bila container mati, bot mati — dan gejalanya di sisi Laravel hanyalah
+# webhook yang tidak pernah datang.
+if ip link show docker0 >/dev/null 2>&1; then
+    echo ">> docker0 terdeteksi — mengizinkan jalur container ke nginx"
+    ufw allow in on docker0 to any port 80,443 proto tcp \
+        comment 'telegram-bot-api container -> nginx'
+fi
+
+# -----------------------------------------------------------------------------
 # Yang sengaja TIDAK dibuka
 # -----------------------------------------------------------------------------
 #
@@ -147,8 +175,56 @@ EOF
 
 sysctl --system
 
+# -----------------------------------------------------------------------------
+# Pemeriksaan setelah firewall menyala
+# -----------------------------------------------------------------------------
+
 echo
-echo "Selesai. Periksa:"
-echo "  ufw status verbose"
-echo "  sysctl net.ipv4.tcp_syncookies    # harus = 1"
-echo "  ss -tlnp | grep -E '3306|6379'    # harus 127.0.0.1, bukan 0.0.0.0"
+echo ">> Memeriksa hasil"
+
+echo
+echo "--- Port yang mendengarkan ke publik (harus hanya 22, 80, 443) ---"
+ss -tlnp | awk 'NR==1 || $4 !~ /^(127\.0\.0\.1|\[::1\])/'
+
+echo
+echo "--- syncookies (harus 1) ---"
+sysctl -n net.ipv4.tcp_syncookies
+
+echo
+echo "--- Container masih hidup? ---"
+docker ps --format '  {{.Names}}  {{.Status}}' 2>/dev/null || echo "  (docker tidak ada)"
+
+echo
+echo "--- Nginx masih menjawab? ---"
+curl -s -o /dev/null -w "  localhost: %{http_code}\n" -H 'Host: dracinverse.cloud' http://127.0.0.1/ || true
+
+cat <<'PESAN'
+
+=============================================================================
+BELUM SELESAI — dua hal harus dibuktikan sekarang, bukan nanti
+=============================================================================
+
+1. SSH BARU MASIH BISA MASUK
+   Dari komputer Anda, buka jendela terminal BARU:
+
+       ssh root@IP_VPS
+
+   Sesi yang sedang berjalan tidak membuktikan apa-apa — ia sudah terhubung
+   sebelum firewall menyala, dan koneksi yang sudah mapan tidak diperiksa
+   ulang. Yang diuji adalah koneksi baru.
+
+2. WEBHOOK TELEGRAM MASIH SAMPAI
+   Kirim satu pesan ke bot Anda di Telegram, lalu:
+
+       grep 'telegram/webhook' /var/log/nginx/dracinverse-access.log | tail -3
+
+   Harus 200. Kalau tidak ada baris baru sama sekali, jalur container ke
+   nginx terputus — itu gejalanya, karena paket yang dibuang firewall tidak
+   meninggalkan jejak di log nginx.
+
+Kalau salah satu gagal, matikan firewall lalu laporkan:
+
+    ufw disable
+
+=============================================================================
+PESAN
