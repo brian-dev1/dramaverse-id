@@ -90,4 +90,13 @@ interface TelegramClientInterface
      * server saja, lalu buang.
      */
     public function downloadUrl(string $filePath): string;
+
+    /**
+     * Letak berkas di disk mesin ini, bila Local Bot API Server menyimpannya
+     * di sini. Null berarti harus diunduh lewat downloadUrl().
+     *
+     * Berbeda dengan downloadUrl(), nilai ini AMAN dicatat di log: ia tidak
+     * memuat token.
+     */
+    public function localPath(string $filePath): ?string;
 }

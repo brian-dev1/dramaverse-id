@@ -155,6 +155,11 @@ class TelegramService implements TelegramServiceInterface
         return $this->client->downloadUrl($filePath);
     }
 
+    public function localPath(string $filePath): ?string
+    {
+        return $this->client->localPath($filePath);
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Pembantu

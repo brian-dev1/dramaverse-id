@@ -204,4 +204,12 @@ interface TelegramServiceInterface
      * log, atau disimpan di database.
      */
     public function downloadUrl(string $filePath): string;
+
+    /**
+     * Letak berkas di disk mesin ini, bila Local Bot API Server menyimpannya
+     * di sini. Null berarti harus diunduh lewat downloadUrl().
+     *
+     * Berbeda dengan downloadUrl(), nilai ini aman dicatat di log.
+     */
+    public function localPath(string $filePath): ?string;
 }

@@ -69,6 +69,53 @@ class TelegramClient implements TelegramClientInterface
         return $this->baseUrl().'/file/bot'.$this->token().'/'.ltrim($filePath, '/');
     }
 
+    /**
+     * Letak berkas di disk mesin ini, bila memang ada di sini.
+     *
+     * Lihat `config/telegram.php` kunci `api_dir` untuk alasannya. Ringkasnya:
+     * Local Bot API Server menyimpan berkas di mesin yang sama, dan membacanya
+     * langsung tidak bisa gagal karena endpoint HTTP-nya menjawab 404.
+     *
+     * Null berarti "tidak ada di sini, pakai HTTP" — bukan kesalahan. Itu
+     * jawaban yang benar untuk api.telegram.org.
+     */
+    public function localPath(string $filePath): ?string
+    {
+        // Mode `--local` menjawab dengan path absolut; tidak perlu digabung
+        // dengan apa pun.
+        if (str_starts_with($filePath, '/')) {
+            return $this->berkasTerbaca($filePath);
+        }
+
+        $dir = (string) config('telegram.api_dir', '');
+
+        if ($dir === '') {
+            return null;
+        }
+
+        /*
+        | Susunan folder Local Bot API Server: <dir>/<token>/<file_path>.
+        |
+        | `file_path` datang dari Bot API server kita sendiri, bukan dari
+        | pengguna. Tetap saja ia dipakai sebagai path, jadi ".." ditolak
+        | mentah-mentah — penjagaan yang harganya satu baris, dan yang
+        | ketiadaannya berarti satu jawaban API yang aneh bisa membaca berkas
+        | mana pun yang terjangkau www-data.
+        */
+
+        if (str_contains($filePath, '..')) {
+            return null;
+        }
+
+        return $this->berkasTerbaca($dir.'/'.$this->token().'/'.ltrim($filePath, '/'));
+    }
+
+    /** Path itu sendiri bila ia berkas biasa yang terbaca, atau null. */
+    private function berkasTerbaca(string $path): ?string
+    {
+        return is_file($path) && is_readable($path) ? $path : null;
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Pengiriman

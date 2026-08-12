@@ -99,6 +99,38 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Folder kerja Local Bot API Server
+    |--------------------------------------------------------------------------
+    |
+    | Diisi hanya bila `api_url` menunjuk Local Bot API Server yang berjalan di
+    | MESIN YANG SAMA — nilainya sama dengan argumen `--dir` server itu,
+    | misalnya `/var/lib/telegram-bot-api`.
+    |
+    | ## Kenapa perlu, padahal sudah ada endpoint HTTP
+    |
+    | Karena endpoint itu tidak selalu menjawab. Server lokal menyimpan berkas
+    | di `<dir>/<token>/<file_path>` dan menyajikannya di
+    | `/file/bot<token>/<file_path>` — tetapi penyajian HTTP-nya bergantung
+    | pada mode dan versi server, dan bila ia menolak, jawabannya 404 polos
+    | yang tidak bisa dibedakan dari berkas yang memang tidak ada.
+    |
+    | Itulah yang terjadi pada bukti bayar: `getFile` berhasil, `file_path`
+    | benar, unduhannya 404 berkali-kali, dan tidak ada satu pun bukti yang
+    | pernah tersimpan.
+    |
+    | Membaca disk menghapus seluruh ketergantungan itu. Berkasnya toh sudah
+    | ada di mesin ini; memutarnya lewat jaringan cuma menambah satu hal yang
+    | bisa gagal. HTTP tetap dipakai sebagai cadangan, dan tetap satu-satunya
+    | jalan kalau `api_url` menunjuk api.telegram.org.
+    |
+    | Syaratnya user php-fpm (www-data) boleh MEMBACA folder itu.
+    |
+    */
+
+    'api_dir' => rtrim((string) env('TELEGRAM_API_DIR', ''), '/'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Webhook
     |--------------------------------------------------------------------------
     |

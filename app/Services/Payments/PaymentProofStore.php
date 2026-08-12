@@ -220,19 +220,21 @@ class PaymentProofStore
         |
         */
 
-        if (str_starts_with($filePath, '/') && is_file($filePath) && is_readable($filePath)) {
+        $lokal = $this->telegram->localPath($filePath);
 
-            if (filesize($filePath) > self::MAX_BYTES) {
+        if ($lokal !== null) {
+
+            if (filesize($lokal) > self::MAX_BYTES) {
 
                 Log::warning('payment.proof.too_large', [
                     'invoice' => $invoiceNumber,
-                    'bytes'   => filesize($filePath),
+                    'bytes'   => filesize($lokal),
                 ]);
 
                 return null;
             }
 
-            $isi = @file_get_contents($filePath);
+            $isi = @file_get_contents($lokal);
 
             if ($isi !== false) {
                 return $isi;
@@ -240,7 +242,7 @@ class PaymentProofStore
 
             Log::warning('payment.proof.local_read_failed', [
                 'invoice'   => $invoiceNumber,
-                'file_path' => $filePath,
+                'file_path' => $lokal,
                 'petunjuk'  => 'Berkas ada tapi tidak terbaca. Periksa izin baca '
                     .'folder Local Bot API Server untuk user www-data.',
             ]);
@@ -268,15 +270,17 @@ class PaymentProofStore
         | biasanya soal izin folder, bukan soal Telegram.
         */
 
+        $lokalDipakai = filled(config('telegram.api_dir'))
+            || ! str_contains((string) config('telegram.api_url'), 'api.telegram.org');
+
         Log::warning('payment.proof.download_rejected', [
             'invoice'   => $invoiceNumber,
             'status'    => $respon->status(),
             'file_path' => $filePath,
-            'absolut'   => str_starts_with($filePath, '/'),
-            'petunjuk'  => str_starts_with($filePath, '/')
-                ? 'file_path berupa path absolut, jadi berkasnya seharusnya dibaca '
-                    .'dari disk. Ia tidak ditemukan atau tidak terbaca oleh PHP — '
-                    .'periksa izin folder Local Bot API Server.'
+            'petunjuk'  => $lokalDipakai
+                ? 'Bot API server lokal dipakai tapi berkasnya tidak terbaca dari '
+                    .'disk. Isi TELEGRAM_API_DIR dengan argumen --dir server itu, '
+                    .'dan pastikan www-data boleh membacanya.'
                 : 'Periksa TELEGRAM_API_URL dan TELEGRAM_BOT_TOKEN.',
         ]);
 
