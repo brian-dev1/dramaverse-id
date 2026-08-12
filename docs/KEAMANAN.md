@@ -343,6 +343,23 @@ composer update --no-dev
 apt update && apt upgrade
 ```
 
+### Penambalan otomatis
+
+`/etc/apt/apt.conf.d/51-reboot-otomatis` menyalakan reboot otomatis pukul
+04:00 setelah pembaruan keamanan yang membutuhkannya.
+
+Ini menutup akar masalah, bukan gejalanya. `unattended-upgrades` sudah aktif
+sejak awal dan memang memasang pembaruan keamanan termasuk kernel — tapi ia
+tidak pernah reboot. Paket kernel menumpuk di disk sementara yang berjalan
+tetap yang lama, dan tidak ada peringatan apa pun karena dari sisi `apt`
+semuanya memang sudah terpasang. Begitulah kernel di server ini sempat
+tertinggal 105 revisi.
+
+Reboot dilewati bila ada yang sedang login lewat SSH
+(`Automatic-Reboot-WithUsers "false"`), supaya server tidak mati di tengah
+pekerjaan. Konsekuensinya: kalau sesi SSH sering ditinggal terbuka semalaman,
+reboot-nya tidak pernah jalan. Periksa `/var/run/reboot-required` sesekali.
+
 **Bila ada yang salah blokir** — pengguna melapor tidak bisa membuka situs:
 
 ```bash
