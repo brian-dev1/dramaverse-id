@@ -120,14 +120,18 @@ class CallbackHandler
 
                 return;
 
-            case PremiumHandler::REGION:
-                app(PremiumHandler::class)->chooseRegion(
-                    $callback,
-                    $user,
-                    (string) ($argumen[0] ?? '')
-                );
-
-                return;
+            /*
+            |------------------------------------------------------------------
+            | Tombol wilayah pembayaran sudah tidak ada
+            |------------------------------------------------------------------
+            |
+            | Pertanyaan "Anda membayar dari mana?" pindah ke halaman VIP di
+            | website bersama daftar paketnya. Tombol `payreg:ID` yang masih
+            | menempel di pesan-pesan lama sengaja tidak diberi cabang sendiri:
+            | awalannya tidak dikenali, jatuh ke bagian menu di bawah, dan
+            | berakhir di menu utama — jawaban yang benar untuk tombol usang.
+            |
+            */
 
             case PremiumHandler::BUY:
                 app(PremiumHandler::class)->buy($callback, $user, (int) ($argumen[0] ?? 0));

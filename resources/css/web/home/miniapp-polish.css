@@ -51,30 +51,51 @@ body:not(.admin-body) .mobile-nav {
     box-shadow: none;
 }
 
+/*
+| Ikon saja, tanpa label.
+|
+| Empat tujuan dengan lambang yang sudah lazim — rumah, jam, mahkota, orang —
+| dan pada empat kolom setiap ikon mendapat ruang cukup lebar untuk berdiri
+| sendiri. Labelnya tetap ada di HTML sebagai .sr-only; yang dihapus hanya
+| penampakannya, bukan keterangannya.
+|
+| Yang aktif ditandai kapsul berisi, bukan sekadar warna teks. Perbedaan
+| warna sendirian terlalu tipis di layar ponsel yang terkena matahari, dan
+| bentuk terbaca lebih dulu daripada rona.
+*/
 body:not(.admin-body) .mobile-nav a {
+    position: relative;
     flex: 1 1 0;
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 4px;
+    gap: 0;
     width: auto;
-    height: auto;
+    height: 44px;
     min-width: 0;
-    padding: 4px 2px;
-    border-radius: 10px;
+    padding: 0;
+    border-radius: var(--dv-pill, 999px);
     background: none;
     box-shadow: none;
     color: var(--dv-dim, #9C93A6);
-    font-size: 10.5px;
-    font-weight: 500;
-    line-height: 1.2;
-    letter-spacing: .01em;
-    white-space: nowrap;
     transition: color .18s ease;
 }
 
+/* Kapsulnya dipasang pada elemen semu supaya lebarnya mengikuti ikon, bukan
+   seluruh kolom — kapsul selebar seperempat layar terlihat seperti tombol
+   yang salah ukuran. */
+body:not(.admin-body) .mobile-nav a::before {
+    content: "";
+    position: absolute;
+    width: 46px;
+    height: 34px;
+    border-radius: var(--dv-pill, 999px);
+    background: transparent;
+    transition: background .18s ease, box-shadow .18s ease;
+}
+
 body:not(.admin-body) .mobile-nav a svg {
+    position: relative;
     width: 21px;
     height: 21px;
     flex: none;
@@ -83,9 +104,28 @@ body:not(.admin-body) .mobile-nav a svg {
 body:not(.admin-body) .mobile-nav a:hover { color: #fff; }
 
 body:not(.admin-body) .mobile-nav a.active {
-    color: var(--dv-accent, #F5811F);
+    color: #fff;
     background: none;
     box-shadow: none;
+}
+
+body:not(.admin-body) .mobile-nav a.active::before {
+    background: linear-gradient(135deg, var(--dv-accent, #FF6A1A), #FF9445);
+    box-shadow: 0 8px 20px -10px var(--dv-accent, #FF6A1A);
+}
+
+/* Mahkota dibedakan bahkan saat tidak aktif: ia satu-satunya tujuan di bilah
+   ini yang berujung pada pembayaran, dan menyamarkannya di antara tiga ikon
+   navigasi biasa membuatnya tidak pernah ditemukan. */
+body:not(.admin-body) .mobile-nav a.is-vip { color: var(--dv-accent-2, #FFB84D); }
+
+body:not(.admin-body) .mobile-nav a.is-vip.active {
+    color: #fff;
+}
+
+body:not(.admin-body) .mobile-nav a.is-vip.active::before {
+    background: linear-gradient(135deg, #7B5CF0, #9C7BFF);
+    box-shadow: 0 8px 20px -10px #7B5CF0;
 }
 
 /* Ruang supaya kartu terakhir tidak tertutup bilah */

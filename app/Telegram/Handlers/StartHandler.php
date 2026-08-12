@@ -55,6 +55,36 @@ class StartHandler
                 return;
             }
 
+            /*
+            |------------------------------------------------------------------
+            | Paket yang dipilih di website
+            |------------------------------------------------------------------
+            |
+            | Daftar paket tidak lagi ada di dalam bot; harganya dilihat di
+            | halaman VIP website. Yang menyeberang ke sini hanya id paket
+            | yang ditekan, dan langkah berikutnya persis langkah yang sudah
+            | ada sejak dulu: `PremiumHandler::buy()` membuat tagihan lewat
+            | CheckoutService dan mengirim QRIS beserta nomornya.
+            |
+            | Jadi yang berpindah ke web cuma layar memilih harga. Pembayaran,
+            | tagihan, bukti bayar, dan aktivasinya tidak bergeser sedikit pun.
+            |
+            | Diletakkan sebelum pembacaan kode affiliate: lihat
+            | TelegramDeepLink::planId().
+            |
+            */
+
+            if ($planId = TelegramDeepLink::planId($parameter)) {
+
+                app(PremiumHandler::class)->buy(
+                    ['message' => ['chat' => $message['chat']], 'id' => null],
+                    $user,
+                    $planId
+                );
+
+                return;
+            }
+
             if ($episodeId = TelegramDeepLink::episodeId($parameter)) {
                 app(WatchHandler::class)->handle($chatId, $user, $episodeId);
 

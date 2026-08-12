@@ -21,26 +21,36 @@ use Throwable;
 use App\Support\Uang;
 
 /**
- * Penawaran paket dan pembuatan tagihan — seluruhnya di dalam bot.
+ * Pembuatan tagihan dan penagihannya — tetap di dalam bot.
  *
- * ## Kenapa berlangganan pindah ke sini
+ * ## Pembagian tugas sekarang
  *
- * Website tidak lagi menerima pembayaran. Alurnya jadi satu jalan saja:
- * pengguna memilih paket di bot, bot membuat tagihan, bot memberi tautan
- * Trakteer beserta nomor tagihannya.
+ * **Website** memajang harga. Satu layar memuat seluruh paket sekaligus,
+ * lengkap dengan harga per harinya, dan orang bisa membandingkannya sambil
+ * menggulir — sesuatu yang tidak pernah bisa dilakukan deretan tombol inline
+ * yang harus dibaca satu per satu.
  *
- * Alasannya praktis. Trakteer menyambungkan pembayaran ke tagihan lewat pesan
- * yang diketik pendukung, dan nomor tagihan itu harus sampai ke tangan
- * pengguna tepat sebelum ia menekan tautannya. Di bot, keduanya ada dalam satu
- * percakapan yang bisa digulir ulang; di website, nomornya tertinggal di tab
- * yang sudah ditutup.
+ * **Bot** menerima pilihannya lewat `?start=vip_<id>` (lihat
+ * `TelegramDeepLink::PLAN`), membuat tagihan, mengirim QRIS beserta nomor
+ * tagihannya, lalu menerima bukti bayarnya.
+ *
+ * ## Kenapa pembayarannya TIDAK ikut pindah
+ *
+ * Trakteer menyambungkan pembayaran ke tagihan lewat pesan yang diketik
+ * pendukung, dan nomor tagihan itu harus ada di tangan pengguna tepat sebelum
+ * ia menekan tautannya. Di bot keduanya ada dalam satu percakapan yang bisa
+ * digulir ulang berhari-hari kemudian; di web, nomornya tertinggal di tab yang
+ * sudah ditutup.
+ *
+ * Karena itu yang berpindah ke website hanya layar memilih harga. Semua yang
+ * berikutnya — tagihan, QRIS, bukti bayar, aktivasi — tetap di sini, lewat
+ * jalan yang sama persis seperti sebelumnya.
  *
  * ## Yang TIDAK berubah
  *
  * Aturan bisnisnya sama sekali tidak disalin ke sini. Tagihan dibuat lewat
  * `CheckoutService`, provider dipilih `PaymentGatewayManager`, status
- * membership dibaca `MembershipService` — ketiganya service yang sama yang
- * dipakai website sebelum ini. Yang berpindah hanya tampilannya.
+ * membership dibaca `MembershipService`.
  */
 class PremiumHandler
 {
@@ -60,13 +70,6 @@ class PremiumHandler
     /** State percakapan saat bot menunggu foto bukti bayar. */
     public const STATE_PROOF = 'PAY_PROOF';
 
-    /**
-     * Awalan callback tombol pilihan wilayah pembayaran.
-     *
-     * Argumennya nilai `PaymentRegion` — 'ID' atau 'INTL'.
-     */
-    public const REGION = 'payreg';
-
     public function __construct(
         protected TelegramServiceInterface $telegram,
         protected MembershipService $membership,
@@ -78,27 +81,21 @@ class PremiumHandler
 
     /*
     |--------------------------------------------------------------------------
-    | Daftar paket
+    | Antar ke etalase
     |--------------------------------------------------------------------------
     */
 
     /**
-     * Layar pertama: dari mana pengguna membayar.
+     * `/vip`, `/premium`, dan tombol mahkota di menu.
      *
-     * ## Kenapa ditanyakan, bukan ditebak
+     * Tidak lagi menampilkan daftar paket. Harganya ada di halaman VIP
+     * website, dan handler ini tinggal mengantar ke sana — kecuali bila ada
+     * tagihan yang belum dibayar, yang tetap didahulukan di sini.
      *
-     * Yang menentukan bukan kewarganegaraan atau bahasa Telegram-nya,
-     * melainkan alat bayar yang ada di tangannya. Orang Indonesia yang bekerja
-     * di Johor memegang aplikasi bank Malaysia; orang Malaysia yang kuliah di
-     * Jakarta memegang QRIS. `language_code` tidak tahu apa-apa soal itu, dan
-     * menebak salah berarti orang tersebut menerima kode QR yang ditolak
-     * aplikasinya — kegagalan yang baru ketahuan setelah ia berniat membayar.
-     *
-     * ## Kenapa dilewati bila cuma ada satu wilayah
-     *
-     * Pemasangan yang hanya melayani Indonesia tidak boleh mendapat satu
-     * ketukan tambahan hanya karena fiturnya ada. Pertanyaan yang jawabannya
-     * cuma satu bukan pertanyaan.
+     * Perintahnya sengaja TIDAK dihapus dari router. Orang yang terbiasa
+     * mengetik /vip harus mendapat jalan, bukan balasan "command tidak
+     * dikenali"; dan tombol Batal saat mengunggah bukti bayar mendarat di
+     * fungsi ini juga — lihat `confirmPaid()`.
      */
     public function handle(array $callback, ?User $user = null): void
     {
@@ -158,9 +155,7 @@ class PremiumHandler
             return;
         }
 
-        $wilayah = $this->wilayahTersedia();
-
-        if ($wilayah->isEmpty()) {
+        if ($this->wilayahTersedia()->isEmpty()) {
 
             $pesan->text('Belum ada paket yang ditawarkan. Coba lagi nanti.');
 
@@ -169,15 +164,55 @@ class PremiumHandler
             return;
         }
 
-        // Lebih dari satu wilayah punya paket: tanyakan dulu. Satu wilayah
-        // saja: langsung ke daftar paketnya, tanpa ketukan tambahan.
-        if ($wilayah->count() > 1) {
-            $this->tanyaWilayah($chatId, $pesan, $wilayah);
+        $this->antarKeEtalase($chatId, $pesan);
+    }
 
-            return;
-        }
+    /**
+     * Kirim tautan halaman VIP di website.
+     *
+     * Dibuka sebagai Mini App bila situsnya sudah HTTPS: harganya tampil di
+     * dalam Telegram, tanpa berpindah aplikasi, dan tombol paket di sana
+     * kembali ke bot ini lewat `?start=vip_<id>`. Bila belum HTTPS — Telegram
+     * menolak Mini App non-HTTPS — tombolnya turun jadi tautan biasa, bukan
+     * hilang.
+     */
+    private function antarKeEtalase(int|string $chatId, Notice $pesan): void
+    {
+        $pesan->section('💳', 'Harga paket ada di website')
+            ->bullets([
+                'Semua paket beserta harga per harinya muat dalam satu layar.',
+                'Tekan paket yang Anda mau — Anda kembali ke chat ini.',
+                'Tagihan, QRIS, dan bukti bayarnya tetap di sini seperti biasa.',
+            ])
+            ->note('Pembayarannya tidak berubah sama sekali. Yang pindah ke '
+                .'website hanya layar memilih harganya.');
 
-        $this->daftarPaket($chatId, $wilayah->first(), $pesan);
+        $this->telegram->sendMessage($chatId, $pesan->render(), [
+            'reply_markup' => ['inline_keyboard' => [
+                [$this->tombolEtalase()],
+            ]],
+        ]);
+    }
+
+    /**
+     * Tombol yang membuka halaman VIP.
+     *
+     * @return array<string,mixed>
+     */
+    private function tombolEtalase(): array
+    {
+        $teks = '👑 Lihat harga paket';
+
+        // Alamat Mini App dipakai bila ada; `route()` di dalam pekerjaan bot
+        // mengikuti APP_URL, dan di server yang APP_URL-nya masih localhost
+        // itu menghasilkan tautan yang tidak bisa dibuka siapa pun.
+        $pangkal = rtrim((string) (config('telegram.miniapp_url') ?: config('app.url')), '/');
+
+        $url = $pangkal.'/membership';
+
+        return str_starts_with($url, 'https://')
+            ? ['text' => $teks, 'web_app' => ['url' => $url]]
+            : ['text' => $teks, 'url' => $url];
     }
 
     /**
@@ -224,98 +259,6 @@ class PremiumHandler
         return $this->membership->plans($region)
             ->reject(fn (MembershipPlan $plan) => $plan->isFree())
             ->values();
-    }
-
-    /** Layar pilihan wilayah. */
-    private function tanyaWilayah(int|string $chatId, Notice $pesan, \Illuminate\Support\Collection $wilayah): void
-    {
-        $pesan->section('🌏', 'Anda membayar dari mana?')
-            ->bullets(
-                $wilayah->map(fn (PaymentRegion $r) => $r->label().' — '.$r->keterangan())->all()
-            )
-            ->note('Pilihan ini menentukan harga dan metode pembayaran yang '
-                .'ditampilkan. Salah pilih tinggal tekan /premium lagi.');
-
-        $this->telegram->sendMessage($chatId, $pesan->render(), [
-            'reply_markup' => [
-                'inline_keyboard' => $wilayah->map(fn (PaymentRegion $r) => [[
-                    'text'          => $r->tombol(),
-                    'callback_data' => self::REGION.':'.$r->value,
-                ]])->all(),
-            ],
-        ]);
-    }
-
-    /**
-     * Pengguna menekan salah satu tombol wilayah.
-     *
-     * Pilihannya TIDAK disimpan ke profil. Ia hanya berlaku untuk satu
-     * pembelian: orang yang bulan lalu membayar dari Malaysia bisa saja bulan
-     * ini sudah pulang, dan mengingat pilihan lamanya berarti menawarkan
-     * harga Ringgit kepada orang yang sekarang memegang QRIS.
-     */
-    public function chooseRegion(array $callback, ?User $user, string $region): void
-    {
-        $chatId = $callback['message']['chat']['id'];
-
-        $this->daftarPaket(
-            $chatId,
-            PaymentRegion::fromAny($region),
-            Notice::make('💎', 'Premium')->lead($this->statusLine($user))
-        );
-    }
-
-    /** Daftar paket satu wilayah beserta tombol belinya. */
-    private function daftarPaket(int|string $chatId, PaymentRegion $region, Notice $pesan): void
-    {
-        $plans = $this->paketBerbayar($region);
-
-        if ($plans->isEmpty()) {
-
-            $pesan->text('Belum ada paket untuk wilayah '.$region->label().'. Coba lagi nanti.');
-
-            $this->telegram->sendMessage($chatId, $pesan->render());
-
-            return;
-        }
-
-        $pesan->section('🗂', 'Paket yang tersedia — '.$region->label());
-
-        $tombol = [];
-
-        $daftar = [];
-
-        foreach ($plans as $plan) {
-
-            $harga = Uang::format($plan->price, $plan->currency);
-
-            // Satu paket, satu kartu: nama di baris sendiri, harga dan masa
-            // aktif di baris kedua, penjelasan di baris ketiga. Diperas jadi
-            // satu baris seperti sebelumnya, kalimatnya membungkus dua sampai
-            // tiga kali di ponsel dan batas antarpaket ikut hilang bersamanya.
-            //
-            // Sengaja bukan tabel <pre>: deskripsi paket panjangnya bebas, dan
-            // di layar ponsel blok monospace yang lebih lebar dari layar
-            // menimbulkan geser samping, bukan kolom yang rapi.
-            $daftar[] = [
-                'judul' => $plan->name,
-                'meta'  => $harga.'  ·  '.(int) $plan->duration.' hari',
-                'teks'  => $plan->description,
-            ];
-
-            $tombol[] = [[
-                'text'          => $plan->name.' — '.$harga,
-                'callback_data' => self::BUY.':'.$plan->id,
-            ]];
-        }
-
-        $pesan->cards($daftar)
-            ->note('Pilih paket di bawah. Bot akan membuatkan tagihan beserta '
-                .'tautan pembayarannya.');
-
-        $this->telegram->sendMessage($chatId, $pesan->render(), [
-            'reply_markup' => ['inline_keyboard' => $tombol],
-        ]);
     }
 
     /*

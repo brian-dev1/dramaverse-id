@@ -42,7 +42,10 @@ class TelegramCommandsSync extends Command
         return [
             ['command' => 'start', 'description' => 'Buka menu utama'],
             ['command' => 'status', 'description' => 'Cek status akun dan VIP'],
-            ['command' => 'vip', 'description' => 'Lihat paket VIP'],
+            // Daftar paketnya sendiri sudah pindah ke halaman VIP website;
+            // perintah ini membuka halaman itu. Keterangannya diubah supaya
+            // tidak menjanjikan daftar harga yang muncul di dalam chat.
+            ['command' => 'vip', 'description' => 'Buka halaman harga VIP'],
             ['command' => 'search', 'description' => 'Cari drama'],
             ['command' => 'lanjut', 'description' => 'Lanjut menonton'],
             ['command' => 'favorit', 'description' => 'Daftar favorit'],

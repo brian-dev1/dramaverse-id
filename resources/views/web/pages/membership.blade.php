@@ -1,67 +1,166 @@
 @extends('web.layouts.app')
 
-@section('title', 'Membership')
-@section('description', 'Paket VIP dan Premium DramaVerse ID.')
+@section('title', 'Upgrade ke VIP')
+@section('description', 'Paket VIP DramaVerse ID — akses semua film dan series tanpa batas.')
 
 @section('content')
 
-    <section class="page-head section-pad">
-        <h1 class="page-title">Pilih Paket Anda</h1>
-        <p class="page-subtitle">Akses penuh katalog, tanpa iklan, kualitas hingga 4K.</p>
+    {{--
+        Etalase harga.
+
+        Tombol setiap paket adalah tautan t.me biasa. Di dalam Mini App,
+        JavaScript pada partials/miniapp mencegatnya dan memanggil
+        openTelegramLink() — di webview Telegram, <a href="t.me/..."> yang
+        tidak dicegat memang diam saja. Di peramban biasa tautannya bekerja
+        seperti tautan mana pun. Satu HTML untuk kedua tempat.
+    --}}
+
+    <section class="vip-head">
+        <span class="vip-crest" aria-hidden="true">
+            <x-web.home.icon name="crown" :size="30" />
+        </span>
+
+        <h1 class="vip-title">Upgrade ke VIP</h1>
+
+        <p class="vip-sub">Bebas akses semua film tanpa batas</p>
+
+        @if ($status && $status['status'] === 'premium')
+            <p class="vip-status is-active">
+                VIP aktif{{ $status['plan'] ? ' — '.$status['plan'] : '' }}.
+                Membeli lagi menambah masa aktif, bukan menggantinya.
+            </p>
+        @elseif ($status && $status['status'] === 'expired')
+            <p class="vip-status is-expired">
+                Masa VIP Anda sudah habis. Perpanjang untuk membuka episode premium lagi.
+            </p>
+        @endif
     </section>
 
-    <section class="section section-pad">
+    @if ($wilayah->count() > 1)
+        {{--
+            Pilihan wilayah hanya muncul kalau memang ada dua. Pertanyaan yang
+            jawabannya cuma satu bukan pertanyaan — dan pemasangan yang hanya
+            melayani Indonesia tidak perlu satu ketukan tambahan.
+        --}}
+        <div class="vip-region" role="tablist" aria-label="Wilayah pembayaran">
+            @foreach ($wilayah as $r)
+                <a href="{{ route('web.membership', ['wilayah' => $r->value]) }}"
+                   class="{{ $terpilih === $r ? 'active' : '' }}"
+                   role="tab" aria-selected="{{ $terpilih === $r ? 'true' : 'false' }}">
+                    {{ $r->label() }}
+                </a>
+            @endforeach
+        </div>
+    @endif
+
+    <section class="vip-section">
+
+        <div class="vip-section-head">
+            <h2>Pilih Paket</h2>
+            <span>Tidak berlangganan otomatis.</span>
+        </div>
+
         @if ($plans->isEmpty())
+
             <x-web.home.empty-state
                 title="Paket belum tersedia"
-                message="Admin belum menambahkan paket membership."
+                message="Admin belum menambahkan paket, atau metode pembayarannya belum diatur."
                 :href="route('web.home')" action="Kembali ke Beranda" />
-        @else
-            <div class="plan-grid">
-                @foreach ($plans as $plan)
-                    <article class="plan-card">
-                        <h3>{{ $plan->name }}</h3>
-                        <p class="plan-price">{{ $plan->hargaTampil() }}</p>
-                        <p class="plan-duration">{{ $plan->duration }} hari</p>
 
-                        @if ($plan->description)
-                            <p class="plan-desc">{{ $plan->description }}</p>
+        @else
+
+            <ul class="vip-plans">
+                @foreach ($plans as $plan)
+                    <li class="vip-plan @if ($plan['badge']) has-badge @endif">
+
+                        @if ($plan['badge'])
+                            <span class="vip-badge">{{ $plan['badge'] }}</span>
                         @endif
 
                         {{--
-                            Berlangganan dipindahkan sepenuhnya ke bot Telegram.
-
-                            Alasannya bukan penyederhanaan: Trakteer
-                            menyambungkan pembayaran ke tagihan lewat pesan yang
-                            diketik pendukung, dan nomor tagihan itu harus ada di
-                            tangan pengguna tepat sebelum ia menekan tautannya.
-                            Di bot keduanya ada dalam satu percakapan yang bisa
-                            digulir ulang; di web, nomornya tertinggal di tab yang
-                            sudah ditutup.
-
-                            Halaman ini tinggal etalase. Tombolnya tidak dirender
-                            bila TELEGRAM_BOT_USERNAME belum diisi -- tautan t.me
-                            tanpa nama bot tidak menuju ke mana pun, dan aturan
-                            nomor 4 proyek ini melarang tombol semacam itu.
+                            Tanpa tautan, kartunya tetap dirender sebagai
+                            <div> — bukan <a> yang tidak menuju ke mana pun.
+                            Terjadi hanya bila TELEGRAM_BOT_USERNAME kosong.
                         --}}
-                        @if ($botLink)
-                            <a href="{{ $botLink }}" class="btn btn-primary"
-                               target="_blank" rel="noopener">
-                                Berlangganan lewat Telegram
+                        @if ($plan['tautan'])
+                            <a class="vip-plan-body" href="{{ $plan['tautan'] }}"
+                               rel="noopener"
+                               aria-label="Beli {{ $plan['nama'] }} seharga {{ $plan['harga'] }}">
+                        @else
+                            <div class="vip-plan-body">
+                        @endif
+
+                            <span class="vip-plan-mark" aria-hidden="true">
+                                <x-web.home.icon name="crown" :size="18" />
+                            </span>
+
+                            <span class="vip-plan-main">
+                                <span class="vip-plan-name">{{ $plan['nama'] }}</span>
+                                <span class="vip-plan-rate">≈ {{ $plan['harian'] }}/hari</span>
+                            </span>
+
+                            <span class="vip-plan-side">
+                                <span class="vip-plan-price">{{ $plan['harga'] }}</span>
+                                <span class="vip-plan-days">{{ $plan['durasi'] }} hari</span>
+                            </span>
+
+                            <span class="vip-plan-go" aria-hidden="true">
+                                <x-web.home.icon name="arrow-right" :size="16" />
+                            </span>
+
+                        @if ($plan['tautan'])
                             </a>
                         @else
-                            <span class="btn btn-ghost">Berlangganan lewat bot Telegram</span>
+                            </div>
                         @endif
-                    </article>
+
+                    </li>
                 @endforeach
-            </div>
+            </ul>
+
+            <p class="vip-note">
+                Pembayaran diproses lewat Telegram seperti biasa. Menekan paket
+                membuka chat bot, dan tagihan beserta QRIS-nya dikirim di sana.
+            </p>
+
         @endif
+
+    </section>
+
+    <section class="vip-section">
+
+        <div class="vip-section-head">
+            <h2>Kenapa VIP?</h2>
+        </div>
+
+        <ul class="vip-perks">
+            @foreach ([
+                ['film',     'Akses Semua Film & Series', 'Ribuan judul, tonton tanpa batas'],
+                ['play',     'Tanpa Buffering',           'Kualitas HD, langsung diputar di Telegram'],
+                ['no-ads',   'Tanpa Iklan',               'Tidak ada jeda di tengah episode'],
+                ['download', 'Simpan & Tonton Ulang',     'Video tetap ada di chat Anda'],
+            ] as [$ikon, $judul, $teks])
+                <li class="vip-perk">
+                    <span class="vip-perk-icon" aria-hidden="true">
+                        <x-web.home.icon :name="$ikon" :size="18" />
+                    </span>
+                    <span>
+                        <strong>{{ $judul }}</strong>
+                        <small>{{ $teks }}</small>
+                    </span>
+                </li>
+            @endforeach
+        </ul>
+
     </section>
 
     @auth
         @if ($subscriptions->isNotEmpty())
-            <section class="section section-pad">
-                <x-web.home.section-header title="Riwayat Pembelian" />
+            <section class="vip-section">
+
+                <div class="vip-section-head">
+                    <h2>Riwayat Pembelian</h2>
+                </div>
 
                 <table class="data-table">
                     <thead>
@@ -80,6 +179,7 @@
                         @endforeach
                     </tbody>
                 </table>
+
             </section>
         @endif
     @endauth

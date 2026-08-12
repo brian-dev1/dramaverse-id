@@ -66,6 +66,10 @@
 /* --- Penyelarasan gaya mini app --- */
 @import "./web/home/miniapp-polish.css";
 
+/* --- Halaman VIP (setelah miniapp-polish: memakai token --dv-* dan
+       menimpa gaya .plan-* lama) --- */
+@import "./web/home/vip.css";
+
 /* --- Pemolesan performa (paling akhir, hanya mematikan kerja per-frame) --- */
 @import "./web/home/perf.css";
 

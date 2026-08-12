@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\Drama;
 use App\Models\Episode;
+use App\Models\MembershipPlan;
 use Illuminate\Support\HtmlString;
 
 /**
@@ -29,6 +30,21 @@ class TelegramDeepLink
 
     /** Membuka penawaran paket di bot. */
     public const SUBSCRIBE = 'subscribe';
+
+    /**
+     * Membuat tagihan untuk satu paket: `?start=vip_12`.
+     *
+     * Inilah jembatan yang menggantikan daftar paket di dalam bot. Harganya
+     * dipilih di website — di sana satu layar muat memuat seluruh paket
+     * sekaligus, sesuatu yang tidak pernah bisa dilakukan deretan tombol
+     * inline — lalu id paketnya dititipkan ke bot lewat parameter ini.
+     *
+     * Yang menyeberang hanya id-nya. Harga, masa aktif, dan wilayah
+     * pembayaran tetap dibaca ulang dari basis data oleh
+     * `PremiumHandler::buy()`, jadi tautan lama yang tersimpan di riwayat chat
+     * seseorang tidak bisa membeli paket dengan harga kemarin.
+     */
+    public const PLAN = 'vip_';
 
     /** Tautan affiliate: `?start=ref_<kode>`. */
     public const REF = 'ref_';
@@ -64,6 +80,19 @@ class TelegramDeepLink
     public static function subscribe(): ?string
     {
         return self::build(self::SUBSCRIBE);
+    }
+
+    /**
+     * Tautan "beli paket ini" untuk satu kartu harga di website.
+     *
+     * Null bila bot belum diatur — dan kartu tanpa tautan sebaiknya memang
+     * tidak dirender sebagai tombol. Lihat `build()`.
+     */
+    public static function buyPlan(MembershipPlan|int $plan): ?string
+    {
+        $id = $plan instanceof MembershipPlan ? $plan->id : $plan;
+
+        return self::build(self::PLAN.$id);
     }
 
     /** Tautan affiliate seseorang. Null bila bot belum diatur. */
@@ -168,6 +197,19 @@ class TelegramDeepLink
     public static function dramaId(string $parameter): ?int
     {
         return self::idAfter($parameter, self::DRAMA);
+    }
+
+    /**
+     * Ambil id paket dari `vip_12`.
+     *
+     * Harus dibaca SEBELUM `referralCode()` di StartHandler. Bukan karena
+     * keduanya bisa bentrok hari ini — garis bawah membuat `vip_12` gagal
+     * pada regex kode affiliate — melainkan karena urutan itu adalah
+     * satu-satunya yang tetap benar bila suatu saat regexnya dilonggarkan.
+     */
+    public static function planId(string $parameter): ?int
+    {
+        return self::idAfter($parameter, self::PLAN);
     }
 
     private static function idAfter(string $parameter, string $prefix): ?int

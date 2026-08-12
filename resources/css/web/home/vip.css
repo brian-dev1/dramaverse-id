@@ -1,0 +1,317 @@
+/*
+|--------------------------------------------------------------------------
+| Halaman VIP — etalase harga
+|--------------------------------------------------------------------------
+|
+| Baris, bukan kartu berdampingan. Alasannya bukan selera: paket bisa ada
+| tujuh, dan grid tiga kolom di layar ponsel memaksa orang menggulir sambil
+| membandingkan angka yang tidak sejajar. Satu paket satu baris membuat
+| seluruh kolom harga berdiri lurus di sisi kanan — mata cukup turun sekali
+| untuk membandingkan semuanya.
+|
+| Token diambil dari redesign.css (--dv-*). Nilai cadangan ditulis di setiap
+| var() supaya berkas ini tetap benar bila dimuat lebih dulu.
+*/
+
+/* ---------- Kepala halaman ---------- */
+
+.vip-head {
+    padding: 26px var(--dv-gut, 18px) 20px;
+    text-align: center;
+}
+
+.vip-crest {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 62px;
+    height: 62px;
+    margin-bottom: 14px;
+    border-radius: 50%;
+    color: #fff;
+    background: linear-gradient(135deg, var(--dv-accent, #FF6A1A), #FF9445);
+    box-shadow: 0 14px 30px -14px var(--dv-accent, #FF6A1A);
+}
+
+.vip-title {
+    margin: 0;
+    font-family: var(--font-display, sans-serif);
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: .01em;
+    color: var(--dv-text, #F6F2FB);
+}
+
+.vip-sub {
+    margin: 6px 0 0;
+    font-size: 13.5px;
+    color: var(--dv-dim, #A79BB8);
+}
+
+.vip-status {
+    margin: 14px auto 0;
+    max-width: 460px;
+    padding: 10px 14px;
+    border-radius: var(--dv-r, 14px);
+    font-size: 12.5px;
+    line-height: 1.5;
+}
+
+.vip-status.is-active {
+    color: #7FE0A6;
+    background: rgba(64, 200, 128, .10);
+    border: 1px solid rgba(64, 200, 128, .22);
+}
+
+.vip-status.is-expired {
+    color: var(--dv-accent-2, #FFB84D);
+    background: rgba(255, 184, 77, .10);
+    border: 1px solid rgba(255, 184, 77, .22);
+}
+
+/* ---------- Pemilih wilayah ---------- */
+
+.vip-region {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    padding: 0 var(--dv-gut, 18px) 4px;
+}
+
+.vip-region a {
+    padding: 8px 16px;
+    border: 1px solid var(--dv-line, rgba(255, 255, 255, .08));
+    border-radius: var(--dv-pill, 999px);
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--dv-dim, #A79BB8);
+    text-decoration: none;
+    transition: color .18s ease, border-color .18s ease;
+}
+
+.vip-region a.active {
+    color: #fff;
+    border-color: transparent;
+    background: linear-gradient(135deg, var(--dv-accent, #FF6A1A), #FF9445);
+}
+
+/* ---------- Kerangka seksi ---------- */
+
+.vip-section {
+    padding: 18px var(--dv-gut, 18px) 4px;
+}
+
+.vip-section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.vip-section-head h2 {
+    margin: 0;
+    font-family: var(--font-display, sans-serif);
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--dv-text, #F6F2FB);
+}
+
+.vip-section-head span {
+    font-size: 11.5px;
+    color: var(--dv-dim, #A79BB8);
+}
+
+/* ---------- Daftar paket ---------- */
+
+.vip-plans {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.vip-plan {
+    position: relative;
+}
+
+.vip-plan-body {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 14px;
+    border: 1px solid var(--dv-line, rgba(255, 255, 255, .08));
+    border-radius: var(--dv-r, 14px);
+    background: var(--dv-glass, rgba(20, 15, 28, .78));
+    color: inherit;
+    text-decoration: none;
+    transition: border-color .18s ease, background .18s ease, transform .18s ease;
+}
+
+a.vip-plan-body:hover {
+    border-color: rgba(255, 106, 26, .40);
+    background: rgba(255, 106, 26, .07);
+}
+
+a.vip-plan-body:active { transform: scale(.99); }
+
+/*
+| Cakram ikon.
+|
+| Warnanya berputar per baris lewat :nth-child supaya deretan paket tidak
+| terbaca sebagai satu blok abu-abu panjang. Murni penanda posisi — tidak ada
+| arti yang melekat pada warnanya, jadi tidak ada keterangan yang hilang bagi
+| orang yang tidak bisa membedakannya.
+*/
+.vip-plan-mark {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    color: #fff;
+    background: linear-gradient(135deg, #7B5CF0, #9C7BFF);
+}
+
+.vip-plan:nth-child(2)  .vip-plan-mark { background: linear-gradient(135deg, #17A673, #2FD69B); }
+.vip-plan:nth-child(3)  .vip-plan-mark { background: linear-gradient(135deg, #1D7FE0, #46A6FF); }
+.vip-plan:nth-child(4)  .vip-plan-mark { background: linear-gradient(135deg, #D63E5A, #FF6F87); }
+.vip-plan:nth-child(5)  .vip-plan-mark { background: linear-gradient(135deg, #B23FD0, #DE73F5); }
+.vip-plan:nth-child(6)  .vip-plan-mark { background: linear-gradient(135deg, #5D4BE0, #8C7BFF); }
+.vip-plan:nth-child(7n) .vip-plan-mark { background: linear-gradient(135deg, #17A673, #2FD69B); }
+
+.vip-plan-main {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.vip-plan-name {
+    font-size: 14.5px;
+    font-weight: 700;
+    color: var(--dv-text, #F6F2FB);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.vip-plan-rate {
+    font-size: 11.5px;
+    color: var(--dv-dim, #A79BB8);
+}
+
+.vip-plan-side {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    flex: none;
+    text-align: right;
+}
+
+.vip-plan-price {
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--dv-text, #F6F2FB);
+    white-space: nowrap;
+}
+
+.vip-plan-days {
+    font-size: 11px;
+    color: var(--dv-dim, #A79BB8);
+    white-space: nowrap;
+}
+
+.vip-plan-go {
+    flex: none;
+    display: inline-flex;
+    color: var(--dv-dim, #A79BB8);
+}
+
+a.vip-plan-body:hover .vip-plan-go { color: var(--dv-accent, #FF6A1A); }
+
+/* ---------- Label TERLARIS / HEMAT ---------- */
+
+.vip-plan.has-badge { margin-top: 8px; }
+
+.vip-badge {
+    position: absolute;
+    top: -8px;
+    left: 12px;
+    z-index: 1;
+    padding: 3px 9px;
+    border-radius: var(--dv-pill, 999px);
+    font-size: 9.5px;
+    font-weight: 800;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: #2A1400;
+    background: linear-gradient(135deg, var(--dv-accent-2, #FFB84D), #FFD68A);
+    box-shadow: 0 4px 12px -6px rgba(0, 0, 0, .9);
+}
+
+/* ---------- Catatan ---------- */
+
+.vip-note {
+    margin: 14px 0 0;
+    font-size: 11.5px;
+    line-height: 1.6;
+    color: var(--dv-dim, #A79BB8);
+}
+
+/* ---------- Kenapa VIP ---------- */
+
+.vip-perks {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.vip-perk {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border: 1px solid var(--dv-line, rgba(255, 255, 255, .08));
+    border-radius: var(--dv-r, 14px);
+    background: var(--dv-glass, rgba(20, 15, 28, .78));
+}
+
+.vip-perk-icon {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    color: #2A1400;
+    background: linear-gradient(135deg, var(--dv-accent-2, #FFB84D), #FFD68A);
+}
+
+.vip-perk strong {
+    display: block;
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--dv-text, #F6F2FB);
+}
+
+.vip-perk small {
+    display: block;
+    margin-top: 2px;
+    font-size: 11.5px;
+    color: var(--dv-dim, #A79BB8);
+}
+
+/* ---------- Riwayat ---------- */
+
+.vip-section .data-table { width: 100%; }

@@ -67,6 +67,10 @@
 /* --- Penyelarasan gaya mini app --- */
 @import "./web/home/miniapp-polish.css";
 
+/* --- Halaman VIP (posisi sama seperti di app.css; panel admin tidak
+       memakainya, tapi urutan kedua berkas ini sengaja dijaga cermin) --- */
+@import "./web/home/vip.css";
+
 /* --- Tampilan mobile panel admin (paling akhir: harus menang atas
        toolbar-fix.css yang penuh !important) --- */
 @import "./web/admin/mobile.css";
