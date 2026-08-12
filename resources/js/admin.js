@@ -129,14 +129,47 @@ function tableLabels() {
             // mobile.css merendernya melebar penuh dan rata tengah.
             if (cells.length !== heads.length) return;
 
-            [...cells].forEach((td, i) => {
-                if (td.hasAttribute('data-label')) return;
+            let judulSudahAda = false;
 
+            [...cells].forEach((td, i) => {
                 const label = heads[i];
 
-                // Kolom aksi dan kolom centang punya penanganan sendiri di
-                // CSS; kolom tanpa judul (mis. sampul) tidak perlu label
-                // kosong yang menyisakan lajur menganga di kiri kartu.
+                /*
+                | Sel pertama yang berisi data sungguhan jadi JUDUL kartu:
+                | tampil besar tanpa label, seperti nama baris.
+                |
+                | Alasannya soal tinggi. Kalau setiap sel diberi label di
+                | kiri, kartu drama berisi 6 kolom menjadi 6 baris setara —
+                | dan yang paling penting (judulnya) tenggelam di antara
+                | slug dan tanggal. Dengan judul diangkat, sisanya boleh
+                | dirender jauh lebih kecil.
+                |
+                | Kolom centang dan kolom aksi dilewati: keduanya kontrol,
+                | bukan isi.
+                */
+                if (
+                    !judulSudahAda &&
+                    label &&
+                    !td.classList.contains('col-check') &&
+                    !td.classList.contains('col-actions')
+                ) {
+                    judulSudahAda = true;
+                    td.classList.add('is-card-title');
+
+                    // Judul tetap diberi data-label supaya CSS punya satu
+                    // aturan seragam bila suatu saat labelnya mau
+                    // ditampilkan lagi.
+                    if (!td.hasAttribute('data-label')) {
+                        td.setAttribute('data-label', label);
+                    }
+
+                    return;
+                }
+
+                if (td.hasAttribute('data-label')) return;
+
+                // Kolom tanpa judul (mis. sampul) tidak diberi label kosong
+                // yang hanya menyisakan lajur menganga di kiri kartu.
                 if (label) td.setAttribute('data-label', label);
             });
         });

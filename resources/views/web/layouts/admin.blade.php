@@ -304,53 +304,12 @@
             tabindex="-1" aria-label="Tutup menu"></button>
 </div>
 
-@php
-    /*
-    | Bilah navigasi bawah (≤640px).
-    |
-    | Empat tujuan yang paling sering dibuka, plus "Menu" yang membuka laci
-    | untuk sisanya. Di telepon, membuka laci untuk setiap perpindahan
-    | halaman berarti tiga ketukan; ini menjadikannya satu.
-    |
-    | Menghormati izin dengan aturan yang sama seperti laci: menu tanpa izin
-    | dibuang dari deretan, bukan ditampilkan bergembok — ruang selebar 20%
-    | layar terlalu mahal untuk memberi tahu adanya fitur yang tidak bisa
-    | dibuka. Laci tetap menampilkannya.
-    */
-    $bottomNav = collect([
-        ['route' => 'admin.dashboard',   'icon' => 'chart', 'label' => 'Dashboard'],
-        ['route' => 'admin.drama.index', 'icon' => 'film',  'label' => 'Drama',   'can' => 'drama.manage'],
-        ['route' => 'admin.episode.index','icon' => 'list', 'label' => 'Episode', 'can' => 'episode.manage'],
-        ['route' => 'admin.user.index',  'icon' => 'users', 'label' => 'Pengguna','can' => 'user.view'],
-    ])->filter(function ($i) {
-        $u = auth()->user();
+{{-- Tidak ada bilah navigasi bawah.
 
-        return ! isset($i['can'])
-            || ($u !== null && collect((array) $i['can'])->contains(fn ($p) => $u->can($p)));
-    });
-@endphp
-
-<nav class="admin-bottomnav" aria-label="Navigasi cepat">
-    @foreach ($bottomNav as $item)
-        @php
-            $base = Str::beforeLast($item['route'], '.');
-            $aktif = request()->routeIs($item['route'])
-                || (Str::endsWith($item['route'], '.index') && request()->routeIs($base.'.*'));
-        @endphp
-        <a href="{{ route($item['route']) }}" class="{{ $aktif ? 'active' : '' }}">
-            <x-web.home.icon :name="$item['icon']" :size="20" />
-            <span>{{ $item['label'] }}</span>
-        </a>
-    @endforeach
-
-    {{-- Membuka laci, tidak berpindah halaman. Tetap <a href> supaya
-         terlihat dan terjangkau sama seperti tetangganya bila JavaScript
-         belum sempat jalan — admin.js yang mencegat kliknya. --}}
-    <a href="#menu" data-sidebar-toggle>
-        <x-web.home.icon name="menu" :size="20" />
-        <span>Menu</span>
-    </a>
-</nav>
+     Sempat ada, berisi lima tujuan tersering. Dicabut karena memakan
+     ~60px tinggi layar di perangkat yang tingginya paling terbatas,
+     sementara semua tujuannya sudah ada di laci — dan tombol laci hanya
+     berjarak satu ketukan di pojok kiri atas. --}}
 
 {{-- Dialog konfirmasi, dikendalikan resources/js/admin.js --}}
 <div class="modal" data-modal hidden>
