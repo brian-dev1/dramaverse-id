@@ -5,25 +5,186 @@
 
 const SIDEBAR_KEY = 'dv-admin-sidebar';
 
+/*
+| Ambang "laci", bukan "sidebar tersembunyi".
+|
+| Di bawah lebar ini, admin.css memindahkan sidebar keluar dari alur
+| halaman dan menjadikannya lapisan melayang. Perilakunya jadi berbeda:
+| ada latar gelap, gulir halaman dikunci, dan menutupnya tidak perlu
+| diingat untuk kunjungan berikutnya. Angkanya harus sama dengan
+| @media (max-width: 1024px) di web/admin/admin.css.
+*/
+const DRAWER_MQ = '(max-width: 1024px)';
+
 function sidebar() {
     const shell = document.querySelector('[data-shell]');
     if (!shell) return;
 
-    // Di ponsel menu selalu mulai tertutup agar konten langsung terlihat.
-    const isMobile = window.matchMedia('(max-width: 900px)').matches;
+    const drawerMode = () => window.matchMedia(DRAWER_MQ).matches;
 
-    if (isMobile || localStorage.getItem(SIDEBAR_KEY) === 'collapsed') {
+    // Di ponsel menu selalu mulai tertutup agar konten langsung terlihat.
+    if (drawerMode() || localStorage.getItem(SIDEBAR_KEY) === 'collapsed') {
         shell.classList.add('sidebar-collapsed');
     }
 
+    /*
+    | Kunci gulir halaman selama laci terbuka.
+    |
+    | Tanpa ini, menggeser di area gelap menggulir daftar di belakang laci.
+    | Admin menutup laci dan mendapati dirinya di tempat lain — biasanya di
+    | pucuk halaman — tanpa pernah menyentuh apa pun yang menggulir.
+    |
+    | Hanya berlaku dalam mode laci: di desktop sidebar bagian dari alur
+    | halaman dan tidak menutupi apa-apa.
+    */
+    const sinkron = () => {
+        const terbuka = drawerMode() && !shell.classList.contains('sidebar-collapsed');
+        document.body.classList.toggle('admin-drawer-open', terbuka);
+    };
+
+    const tutup = () => {
+        shell.classList.add('sidebar-collapsed');
+        if (!drawerMode()) localStorage.setItem(SIDEBAR_KEY, 'collapsed');
+        sinkron();
+    };
+
     document.querySelectorAll('[data-sidebar-toggle]').forEach((btn) => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', (e) => {
+            // Tombol "Menu" di bilah bawah adalah <a href="#menu"> supaya
+            // tetap terlihat dan bisa disentuh sebelum JavaScript jalan.
+            // Setelah jalan, ia tidak boleh menambah #menu ke alamat.
+            if (btn.tagName === 'A') e.preventDefault();
+
             shell.classList.toggle('sidebar-collapsed');
-            localStorage.setItem(
-                SIDEBAR_KEY,
-                shell.classList.contains('sidebar-collapsed') ? 'collapsed' : 'open'
-            );
+
+            // Keadaan laci tidak diingat: pada kunjungan berikutnya laci
+            // harus tertutup lagi, apa pun yang terjadi sebelumnya. Yang
+            // layak diingat hanya pilihan melipat sidebar di desktop.
+            if (!drawerMode()) {
+                localStorage.setItem(
+                    SIDEBAR_KEY,
+                    shell.classList.contains('sidebar-collapsed') ? 'collapsed' : 'open'
+                );
+            }
+
+            sinkron();
         });
+    });
+
+    // Mengetuk latar gelap menutup laci — perilaku yang sudah diharapkan
+    // orang dari setiap laci di ponsel.
+    document.querySelectorAll('[data-sidebar-close]').forEach((el) => {
+        el.addEventListener('click', tutup);
+    });
+
+    // Memilih menu berarti pindah halaman; lacinya ditutup supaya halaman
+    // berikutnya tidak dimulai dengan layar yang tertutup lapisan gelap
+    // selama browser masih memuat.
+    document.querySelectorAll('.admin-nav a').forEach((a) => {
+        a.addEventListener('click', () => {
+            if (drawerMode()) tutup();
+        });
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && document.body.classList.contains('admin-drawer-open')) {
+            tutup();
+        }
+    });
+
+    // Memutar layar atau mengubah ukuran jendela bisa memindahkan halaman
+    // keluar dari mode laci selagi laci terbuka — dan meninggalkan gulir
+    // halaman terkunci untuk selamanya.
+    window.matchMedia(DRAWER_MQ).addEventListener('change', sinkron);
+
+    sinkron();
+}
+
+/*
+| Label sel tabel untuk tampilan kartu di layar kecil.
+|
+| Di bawah 860px, web/admin/mobile.css menyembunyikan <thead> dan mengubah
+| tiap baris jadi kartu, dengan nama kolom dirender lewat
+| `td::before { content: attr(data-label) }`. Atribut itu dipasang di sini,
+| dibaca dari <th> pada kolom yang sama.
+|
+| Dikerjakan JavaScript, bukan Blade, karena panel punya puluhan halaman
+| bertabel — Upload Queue, Tagihan, Log Telegram, Video Inbox, dan
+| seterusnya — yang masing-masing menulis <td>-nya sendiri. Satu fungsi di
+| sini menutup semuanya, termasuk halaman yang belum ditulis.
+*/
+function tableLabels() {
+    document.querySelectorAll('table.data-table').forEach((table) => {
+        const heads = [...table.querySelectorAll('thead th')].map((th) =>
+            (th.textContent || '').trim()
+        );
+
+        if (!heads.length) return;
+
+        table.querySelectorAll('tbody tr').forEach((tr) => {
+            const cells = tr.children;
+
+            // Baris "belum ada data" memakai satu <td colspan>. Ia tidak
+            // sejajar dengan kolom mana pun, jadi dibiarkan tanpa label —
+            // mobile.css merendernya melebar penuh dan rata tengah.
+            if (cells.length !== heads.length) return;
+
+            [...cells].forEach((td, i) => {
+                if (td.hasAttribute('data-label')) return;
+
+                const label = heads[i];
+
+                // Kolom aksi dan kolom centang punya penanganan sendiri di
+                // CSS; kolom tanpa judul (mis. sampul) tidak perlu label
+                // kosong yang menyisakan lajur menganga di kiri kartu.
+                if (label) td.setAttribute('data-label', label);
+            });
+        });
+    });
+}
+
+/*
+| Sheet filter pada toolbar daftar.
+|
+| Di layar sempit, deretan filter (select, checkbox "Terhapus", Terapkan,
+| Reset) memakan setengah layar pertama sebelum satu baris data pun
+| terlihat. Panelnya dilipat, disisakan tombol "Filter" di sebelah kotak
+| pencarian.
+|
+| Terbuka sendiri bila ada filter yang sedang aktif — kalau tidak, admin
+| melihat daftar yang tersaring tanpa petunjuk apa pun mengapa isinya
+| sedikit.
+*/
+function filterSheet() {
+    const mq = window.matchMedia('(max-width: 640px)');
+
+    document.querySelectorAll('[data-filter-toggle]').forEach((btn) => {
+        const panel = document.querySelector(`#${btn.getAttribute('aria-controls')}`);
+        if (!panel) return;
+
+        const terapkan = () => {
+            if (!mq.matches) {
+                // Di layar lebar panel selalu terbuka. Atribut hidden tetap
+                // dibersihkan supaya tidak ada yang tersembunyi bila jendela
+                // diperlebar selagi panel tertutup.
+                panel.hidden = false;
+                btn.setAttribute('aria-expanded', 'true');
+                return;
+            }
+
+            const aktif = btn.dataset.filterActive === '1';
+            panel.hidden = !aktif;
+            btn.setAttribute('aria-expanded', String(aktif));
+        };
+
+        btn.addEventListener('click', () => {
+            if (!mq.matches) return;
+            panel.hidden = !panel.hidden;
+            btn.setAttribute('aria-expanded', String(!panel.hidden));
+        });
+
+        mq.addEventListener('change', terapkan);
+        terapkan();
     });
 }
 
@@ -380,6 +541,8 @@ export default function admin() {
     if (!document.body.classList.contains('admin-body')) return;
 
     sidebar();
+    tableLabels();
+    filterSheet();
     bulkSelection();
     confirmDialog();
     uploadPreview();

@@ -39,36 +39,66 @@
 
 @section('content')
 
+    @php
+        /*
+        | Ada filter yang sedang dipakai?
+        |
+        | Menentukan dua hal di layar sempit: panel filter dibuka sejak awal
+        | (kalau tidak, admin melihat daftar tersaring tanpa petunjuk kenapa
+        | isinya sedikit), dan tombolnya diberi penanda.
+        */
+        $filterAktif = request()->hasAny(array_merge(['trashed'], array_keys($filters)));
+        $adaFilter   = ! empty($filters) || $softDeletes;
+    @endphp
+
     <form method="GET" class="admin-toolbar">
-        <div class="toolbar-search">
-            <x-web.home.icon name="search" :size="15" />
-            <input type="search" name="q" value="{{ $keyword }}"
-                   placeholder="Cari {{ Str::lower($title) }}..." class="control">
+
+        {{-- Baris pertama di layar sempit: pencarian + tombol Filter.
+             Di desktop pembungkus ini tidak berpengaruh apa-apa — ia
+             display:contents sampai media query mobile mengambil alih. --}}
+        <div class="toolbar-head">
+            <div class="toolbar-search">
+                <x-web.home.icon name="search" :size="15" />
+                <input type="search" name="q" value="{{ $keyword }}"
+                       placeholder="Cari {{ Str::lower($title) }}..." class="control">
+            </div>
+
+            @if ($adaFilter)
+                <button type="button" class="btn btn-ghost btn-sm toolbar-filter-toggle"
+                        data-filter-toggle
+                        data-filter-active="{{ $filterAktif ? '1' : '0' }}"
+                        aria-controls="toolbar-filters" aria-expanded="false">
+                    <x-web.home.icon name="sort" :size="14" />
+                    Filter{{ $filterAktif ? ' •' : '' }}
+                </button>
+            @endif
         </div>
 
-        @foreach ($filters as $field => $filter)
-            <select name="{{ $field }}" class="control control-sm">
-                <option value="">{{ $filter['label'] }}: semua</option>
-                @foreach ($filter['options'] as $val => $text)
-                    <option value="{{ $val }}" @selected((string) request($field) === (string) $val)>
-                        {{ $text }}
-                    </option>
-                @endforeach
-            </select>
-        @endforeach
+        <div class="toolbar-filters" id="toolbar-filters">
+            @foreach ($filters as $field => $filter)
+                <select name="{{ $field }}" class="control control-sm">
+                    <option value="">{{ $filter['label'] }}: semua</option>
+                    @foreach ($filter['options'] as $val => $text)
+                        <option value="{{ $val }}" @selected((string) request($field) === (string) $val)>
+                            {{ $text }}
+                        </option>
+                    @endforeach
+                </select>
+            @endforeach
 
-        @if ($softDeletes)
-            <label class="checkbox-item">
-                <input type="checkbox" name="trashed" value="1" @checked(request()->boolean('trashed'))>
-                Terhapus
-            </label>
-        @endif
+            @if ($softDeletes)
+                <label class="checkbox-item">
+                    <input type="checkbox" name="trashed" value="1" @checked(request()->boolean('trashed'))>
+                    Terhapus
+                </label>
+            @endif
 
-        <button type="submit" class="btn btn-ghost btn-sm">Terapkan</button>
+            <button type="submit" class="btn btn-ghost btn-sm">Terapkan</button>
 
-        @if (request()->hasAny(array_merge(['q', 'trashed'], array_keys($filters))))
-            <a href="{{ route('admin.'.$routeKey.'.index') }}" class="btn btn-ghost btn-sm">Reset</a>
-        @endif
+            @if (request()->hasAny(array_merge(['q', 'trashed'], array_keys($filters))))
+                <a href="{{ route('admin.'.$routeKey.'.index') }}" class="btn btn-ghost btn-sm">Reset</a>
+            @endif
+        </div>
 
         <div class="toolbar-actions">
             @if ($routeKey === 'episode' && Route::has('admin.episode.batch'))

@@ -245,7 +245,7 @@
             </div>
         @endif
 
-        <div class="admin-content">
+        <div class="admin-content" data-admin-content>
 
             {{--
                 Hasil tindakan yang terlalu penting untuk sebuah toast.
@@ -290,7 +290,67 @@
         </div>
 
     </div>
+
+    {{-- Latar gelap di belakang laci menu (≤1024px).
+
+         Dulu laci muncul begitu saja di atas halaman: tidak ada tanda di
+         mana ia berakhir, mengetuk di luar tidak menutupnya, dan menggeser
+         di area kosong justru menggulir daftar di belakangnya sampai posisi
+         baca hilang. Elemen ini yang menyelesaikan ketiganya sekaligus.
+
+         <button>, bukan <div>: ia memang bisa diklik, jadi keyboard dan
+         pembaca layar berhak tahu. --}}
+    <button type="button" class="admin-scrim" data-sidebar-close
+            tabindex="-1" aria-label="Tutup menu"></button>
 </div>
+
+@php
+    /*
+    | Bilah navigasi bawah (≤640px).
+    |
+    | Empat tujuan yang paling sering dibuka, plus "Menu" yang membuka laci
+    | untuk sisanya. Di telepon, membuka laci untuk setiap perpindahan
+    | halaman berarti tiga ketukan; ini menjadikannya satu.
+    |
+    | Menghormati izin dengan aturan yang sama seperti laci: menu tanpa izin
+    | dibuang dari deretan, bukan ditampilkan bergembok — ruang selebar 20%
+    | layar terlalu mahal untuk memberi tahu adanya fitur yang tidak bisa
+    | dibuka. Laci tetap menampilkannya.
+    */
+    $bottomNav = collect([
+        ['route' => 'admin.dashboard',   'icon' => 'chart', 'label' => 'Dashboard'],
+        ['route' => 'admin.drama.index', 'icon' => 'film',  'label' => 'Drama',   'can' => 'drama.manage'],
+        ['route' => 'admin.episode.index','icon' => 'list', 'label' => 'Episode', 'can' => 'episode.manage'],
+        ['route' => 'admin.user.index',  'icon' => 'users', 'label' => 'Pengguna','can' => 'user.view'],
+    ])->filter(function ($i) {
+        $u = auth()->user();
+
+        return ! isset($i['can'])
+            || ($u !== null && collect((array) $i['can'])->contains(fn ($p) => $u->can($p)));
+    });
+@endphp
+
+<nav class="admin-bottomnav" aria-label="Navigasi cepat">
+    @foreach ($bottomNav as $item)
+        @php
+            $base = Str::beforeLast($item['route'], '.');
+            $aktif = request()->routeIs($item['route'])
+                || (Str::endsWith($item['route'], '.index') && request()->routeIs($base.'.*'));
+        @endphp
+        <a href="{{ route($item['route']) }}" class="{{ $aktif ? 'active' : '' }}">
+            <x-web.home.icon :name="$item['icon']" :size="20" />
+            <span>{{ $item['label'] }}</span>
+        </a>
+    @endforeach
+
+    {{-- Membuka laci, tidak berpindah halaman. Tetap <a href> supaya
+         terlihat dan terjangkau sama seperti tetangganya bila JavaScript
+         belum sempat jalan — admin.js yang mencegat kliknya. --}}
+    <a href="#menu" data-sidebar-toggle>
+        <x-web.home.icon name="menu" :size="20" />
+        <span>Menu</span>
+    </a>
+</nav>
 
 {{-- Dialog konfirmasi, dikendalikan resources/js/admin.js --}}
 <div class="modal" data-modal hidden>

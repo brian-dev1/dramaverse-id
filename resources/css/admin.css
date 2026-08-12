@@ -9,9 +9,13 @@
 | duduk sebelum vintage.css (supaya tema masih bisa menimpanya) dan
 | admin-refine/toolbar-fix duduk sesudahnya (supaya admin menang).
 |
-| Dipisah dari app.css karena panel admin hanya dibuka di desktop, sementara
-| CSS-nya ~66 KB dan dulu ikut terunduh di setiap halaman mini app.
+| Dipisah dari app.css karena CSS panel ~66 KB dan dulu ikut terunduh di
+| setiap halaman mini app, padahal tidak sebaris pun dipakai di sana.
 | Menambah modul sisi web? Tambahkan di kedua berkas, di posisi yang sama.
+|
+| Catatan: alasan pemisahan ini dulu ditulis "panel admin hanya dibuka di
+| desktop". Sejak web/admin/mobile.css ada, itu tidak lagi benar — panel
+| dipakai juga di telepon. Yang tetap benar hanya soal ukurannya.
 */
 
 /* --- Token & dasar --- */
@@ -60,8 +64,12 @@
 /* --- Redesign 2026 (khusus sisi web, tidak menyentuh admin) --- */
 @import "./web/home/redesign.css";
 
-/* --- Penyelarasan gaya mini app (paling akhir) --- */
+/* --- Penyelarasan gaya mini app --- */
 @import "./web/home/miniapp-polish.css";
+
+/* --- Tampilan mobile panel admin (paling akhir: harus menang atas
+       toolbar-fix.css yang penuh !important) --- */
+@import "./web/admin/mobile.css";
 
 /*
 |--------------------------------------------------------------------------

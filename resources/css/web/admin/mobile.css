@@ -1,0 +1,602 @@
+/* ==========================================================================
+   PANEL ADMIN — TAMPILAN MOBILE
+
+   Dimuat PALING AKHIR di resources/css/admin.css, sesudah toolbar-fix.css.
+   Urutannya penting: toolbar-fix.css memakai !important untuk memenangi
+   admin-refine.css, jadi aturan di sini ikut memakai !important pada
+   properti yang sama — bukan karena gemar, tapi karena itu satu-satunya
+   cara menimpanya tanpa membongkar berkas yang sudah stabil di desktop.
+
+   Semua aturan di bawah terkurung dalam @media, jadi tampilan desktop
+   tidak tersentuh sama sekali.
+
+   Tiga ambang yang dipakai:
+     1024px — sidebar sudah jadi laci (diatur admin.css); di sini
+              ditambahkan latar gelap dan kunci gulir.
+      860px — tabel berubah jadi kartu. Dipilih 860 dan bukan 640 karena
+              tabel admin punya 5-8 kolom; di 700px pun sudah tidak terbaca.
+      640px — telepon: bilah navigasi bawah, sheet filter, bilah aksi
+              form yang menempel.
+   ========================================================================== */
+
+:root{
+    /* Tinggi bilah navigasi bawah. Dipakai juga sebagai jarak aman bagi
+       konten dan bilah aksi form supaya tidak ada yang tertutup. */
+    --admin-bottomnav-h:60px;
+}
+
+
+/* ==========================================================================
+   1. LACI MENU — latar gelap, kunci gulir, target sentuh
+   ========================================================================== */
+
+.admin-scrim{
+    display:none;
+    position:fixed; inset:0; z-index:55;
+    background:rgba(0,0,0,.6);
+    opacity:0;
+    transition:opacity .25s var(--ease-out);
+    border:0; padding:0;
+    -webkit-tap-highlight-color:transparent;
+}
+
+@media (max-width: 1024px){
+    /* Latar hanya hidup ketika laci terbuka. `visibility` yang dipakai,
+       bukan `display`, supaya transisi opasitasnya sempat berjalan. */
+    .admin-scrim{
+        display:block;
+        visibility:hidden;
+        transition:opacity .25s var(--ease-out), visibility .25s;
+    }
+    .admin-shell:not(.sidebar-collapsed) ~ .admin-scrim,
+    .admin-shell:not(.sidebar-collapsed) .admin-scrim{
+        visibility:visible;
+        opacity:1;
+    }
+
+    /* Kunci gulir halaman di belakang laci. Tanpa ini, menggeser di area
+       gelap menggulir daftar di belakangnya, dan posisi baca hilang. */
+    body.admin-drawer-open{ overflow:hidden; }
+
+    /* Laci mengambil hampir seluruh lebar telepon kecil supaya label menu
+       tidak terpotong, tapi tetap menyisakan sisi kanan sebagai isyarat
+       bahwa ini lapisan di atas halaman — bukan halaman baru. */
+    .admin-sidebar{
+        width:min(300px, 86vw) !important;
+        max-width:86vw;
+    }
+
+    /* Target sentuh. 9px atas-bawah menghasilkan tinggi ~35px; di bawah
+       44px, jari orang dewasa sering meleset ke menu tetangga. */
+    .admin-nav a,
+    .admin-nav .admin-nav-locked,
+    .admin-logout button{
+        min-height:44px;
+        font-size:14px;
+    }
+
+    /* Gulir laci sendiri tidak boleh merembet ke halaman di belakangnya. */
+    .admin-sidebar{ overscroll-behavior:contain; }
+}
+
+
+/* ==========================================================================
+   2. TABEL JADI KARTU
+   --------------------------------------------------------------------------
+   Label tiap sel diambil dari <th> oleh admin.js dan dipasang sebagai
+   atribut data-label. Jadi seluruh halaman bertabel di panel ikut berubah
+   tanpa satu pun blade disunting — termasuk Upload Queue, Tagihan, Log
+   Telegram, Video Inbox, dan yang menyusul nanti.
+   ========================================================================== */
+
+@media (max-width: 860px){
+
+    /* Pembungkus tidak lagi perlu menggulir ke samping: tidak ada lagi
+       yang lebih lebar dari layar. */
+    .admin-body .table-wrap,
+    .panel > .table-wrap{
+        overflow:visible !important;
+        padding:0 12px 14px !important;
+    }
+
+    /*
+    | Membatalkan penanganan mobile yang lama.
+    |
+    | web/home/elegant.css (@media max-width:900px) menjadikan tabel admin
+    | sebuah kotak yang digulir ke samping, dengan `white-space:nowrap`
+    | supaya barisnya tidak pernah patah. Itu jawaban yang masuk akal
+    | selama tabel masih berbentuk tabel — tapi begitu tiap baris jadi
+    | kartu, nowrap justru membuat isi kartu melebar keluar layar dan
+    | seluruh halaman bisa digeser ke samping.
+    |
+    | Aturannya tidak dihapus dari elegant.css karena rentang 861–900px
+    | masih memakainya, dan halaman publik ikut membacanya.
+    */
+    /*
+    | Lebar minimum tabel dibatalkan.
+    |
+    | admin-refine.css memaksa .data-table selebar minimal 720px (640px di
+    | bawah 1024px) supaya kolomnya tidak saling remuk. Selama tabel masih
+    | tabel, itu benar. Tapi begitu tiap baris jadi kartu, angka itu
+    | memaksa setiap kartu selebar 640px di layar 360px — dan seluruh
+    | halaman jadi bisa digeser ke samping. Ini penyebab tunggal yang
+    | paling mungkin membuat tata letak "keluar layar".
+    */
+    .admin-body .data-table{
+        min-width:0;
+        border-collapse:collapse;
+    }
+
+    .admin-body .admin-content table.data-table,
+    .admin-body .table-wrap table.data-table{
+        display:block;
+        width:100%;
+        min-width:0;
+        overflow-x:visible;
+        white-space:normal;
+    }
+    .admin-body .data-table tr,
+    .admin-body .data-table td,
+    .admin-body .data-table td *{
+        white-space:normal;
+    }
+
+    .admin-body .data-table,
+    .admin-body .data-table tbody,
+    .admin-body .data-table tr,
+    .admin-body .data-table td{
+        display:block;
+        width:100%;
+    }
+
+    /* Kepala tabel disembunyikan — isinya sudah pindah ke ::before tiap
+       sel. Tautan pengurutan ikut hilang; itu disengaja, pengurutan di
+       telepon ditangani lewat filter, bukan dengan mengetuk kepala kolom
+       selebar 40px. */
+    .admin-body .data-table thead{ display:none; }
+
+    .admin-body .data-table tr{
+        position:relative;
+        border:1px solid var(--border-soft);
+        border-radius:var(--radius-m);
+        background:var(--bg-secondary);
+        padding:12px 14px;
+        margin-bottom:10px;
+    }
+    .admin-body .data-table tr:last-child{ margin-bottom:0; }
+
+    .admin-body .data-table td{
+        display:grid;
+        grid-template-columns:minmax(84px, 34%) minmax(0, 1fr);
+        align-items:start;
+        gap:12px;
+        padding:8px 0 !important;
+        border:0 !important;
+        border-bottom:1px solid var(--border-soft) !important;
+        font-size:13.5px;
+        line-height:1.5;
+        overflow-wrap:anywhere;
+    }
+    .admin-body .data-table td:last-child{ border-bottom:0 !important; }
+
+    .admin-body .data-table td::before{
+        content:attr(data-label);
+        font-family:var(--font-mono);
+        font-size:10px; letter-spacing:.7px; text-transform:uppercase;
+        color:var(--text-muted);
+        line-height:1.7;
+        overflow-wrap:anywhere;
+    }
+    /* Sel tanpa label (mis. baris "tidak ada data") tidak perlu kolom
+       kosong di kiri. */
+    .admin-body .data-table td:not([data-label]){
+        display:block;
+        text-align:center;
+        color:var(--text-muted);
+    }
+
+    /* Kolom centang naik ke atas kartu sebagai satu baris tersendiri. */
+    .admin-body .data-table td.col-check{
+        display:flex; align-items:center; gap:10px;
+        border-bottom:1px solid var(--border-soft) !important;
+    }
+    .admin-body .data-table td.col-check::before{ content:attr(data-label); }
+    .admin-body .data-table td.col-check input[type="checkbox"]{
+        width:20px; height:20px;
+    }
+
+    /* Kolom aksi jadi baris tombol selebar kartu. Batas atas memisahkannya
+       dari data supaya tidak terbaca sebagai nilai kolom terakhir. */
+    .admin-body .data-table td.col-actions{
+        display:flex !important;
+        flex-wrap:wrap;
+        justify-content:stretch !important;
+        gap:8px;
+        width:auto;
+        min-width:0 !important;
+        margin-top:4px;
+        padding-top:12px !important;
+        border-top:1px solid var(--border-soft) !important;
+        text-align:left;
+    }
+    .admin-body .data-table td.col-actions::before{ display:none; }
+    .admin-body .data-table td.col-actions .inline-form{
+        flex:1 1 96px; display:flex;
+    }
+    .admin-body .data-table td.col-actions .btn,
+    .admin-body .data-table td.col-actions button.btn,
+    .admin-body .data-table td.col-actions a.btn{
+        flex:1 1 96px;
+        min-height:40px !important;
+        justify-content:center !important;
+        white-space:nowrap;
+    }
+    .admin-body .data-table td.col-actions .btn-icon{
+        flex:1 1 44px; min-height:40px; width:auto;
+    }
+
+    /* Gambar sampul: di kartu ia jadi penanda utama, jadi dibesarkan. */
+    .admin-body .data-table td .cell-thumb{
+        width:44px; height:62px;
+    }
+
+    /* Seret-lepas urutan episode tidak dipakai di sentuh — isyaratnya
+       (kursor grab) tak terlihat, dan menyeret bentrok dengan menggulir. */
+    .admin-body .data-table.is-sortable tbody tr{ cursor:default; }
+    .admin-body .dnd-hint{ display:none; }
+
+    /* Paginasi: biar tetap satu baris yang bisa digulir daripada pecah
+       jadi lima baris tombol. */
+    .admin-body .pager{
+        flex-wrap:wrap;
+        justify-content:center;
+        gap:6px;
+    }
+    .admin-body .pager-btn{ min-height:40px; min-width:40px; }
+}
+
+
+/* ==========================================================================
+   3. TOOLBAR & SHEET FILTER
+   ========================================================================== */
+
+@media (max-width: 640px){
+
+    .admin-body .admin-toolbar{
+        padding:14px 12px !important;
+        gap:10px !important;
+    }
+
+    /* Baris pertama: pencarian melebar penuh, tombol filter dan tambah
+       duduk di sebelahnya. Sisanya (select filter, checkbox terhapus,
+       Terapkan, Reset) masuk panel yang dibuka tombol Filter. */
+    /* !important dan bukan sekadar display:flex: aturan `display:contents`
+       untuk desktop ditulis lebih bawah di berkas ini, dan pada kekhususan
+       yang sama aturan terakhirlah yang menang. */
+    .admin-body .toolbar-head{
+        display:flex !important;
+        align-items:center; gap:8px;
+        width:100%;
+    }
+    .admin-body .toolbar-head .toolbar-search{
+        flex:1 1 auto !important;
+        min-width:0 !important;
+    }
+
+    /* toolbar-fix.css memberi kotak pencarian min-width:180px dan
+       flex-basis 240px. Di layar 320px, itu plus tombol Filter melebihi
+       lebar yang ada, dan baris ini meluber keluar. Di sini ia dibiarkan
+       menyusut sampai seberapa pun ruang yang tersisa. */
+    .admin-body .toolbar-head .toolbar-search .control,
+    .admin-body .toolbar-head .toolbar-search input[type="search"],
+    .admin-body .toolbar-head .toolbar-search input[name="q"]{
+        flex:1 1 auto !important;
+        width:100% !important;
+        min-width:0 !important;
+        max-width:none !important;
+        min-height:44px;
+        font-size:16px !important;
+    }
+
+    .admin-body .toolbar-filter-toggle{
+        display:inline-flex !important;
+        align-items:center; justify-content:center; gap:6px;
+        flex:0 0 auto !important;
+        min-height:44px; padding:0 14px !important;
+        white-space:nowrap;
+    }
+
+    /* Panel filter tertutup secara bawaan di telepon. Atribut hidden
+       dikelola admin.js; aturan ini yang menegakkannya walau ada
+       display:flex ber-!important dari toolbar-fix.css. */
+    .admin-body .toolbar-filters[hidden]{ display:none !important; }
+    .admin-body .toolbar-filters{
+        display:flex !important;
+        flex-direction:column;
+        align-items:stretch !important;
+        gap:10px;
+        width:100%;
+        padding-top:12px;
+        border-top:1px solid var(--border-soft);
+    }
+    .admin-body .toolbar-filters .control,
+    .admin-body .toolbar-filters select.control,
+    .admin-body .toolbar-filters select.control-sm{
+        flex:1 1 100% !important;
+        width:100% !important;
+        max-width:none !important;
+        min-width:0 !important;
+        min-height:44px;
+        /* 16px mencegah iOS memperbesar halaman saat kolom disentuh —
+           dan setelah diperbesar, halaman tidak pernah kembali sendiri. */
+        font-size:16px !important;
+    }
+    .admin-body .toolbar-filters .btn{
+        width:100% !important;
+        min-height:44px !important;
+        justify-content:center !important;
+    }
+    .admin-body .toolbar-filters .checkbox-item{
+        min-height:44px;
+        font-size:14px;
+    }
+    .admin-body .toolbar-filters .checkbox-item input{
+        width:20px; height:20px;
+    }
+
+    /* Tombol aksi kanan (Tambah, Tambah massal, Unggah video, Ekspor). */
+    .admin-body .toolbar-actions,
+    .admin-body .export-group{
+        display:flex !important;
+        flex-wrap:wrap !important;
+        gap:8px !important;
+        width:100% !important;
+        margin-left:0 !important;
+    }
+    .admin-body .toolbar-actions .btn,
+    .admin-body .export-group .btn{
+        flex:1 1 130px !important;
+        min-height:44px !important;
+        justify-content:center !important;
+    }
+
+    /* Bilah aksi massal: hitungan di atas, kontrol di bawah. */
+    /* Tanpa margin samping: bilah ini berdiri langsung di .admin-content
+       yang sudah punya padding 12px sendiri, jadi menambahkan 12px lagi
+       membuatnya menjorok masuk dibanding panel di bawahnya. */
+    .admin-body .bulk-bar{
+        flex-wrap:wrap;
+        gap:8px;
+        margin:0 0 12px;
+    }
+    .admin-body .bulk-bar .control,
+    .admin-body .bulk-bar select.control-sm{
+        flex:1 1 100%;
+        width:100%;
+        min-height:44px;
+        font-size:16px;
+    }
+    .admin-body .bulk-bar .btn{
+        flex:1 1 100%;
+        min-height:44px;
+        justify-content:center;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   Toolbar di layar lebar — tidak boleh berubah sedikit pun.
+
+   .toolbar-head dan .toolbar-filters adalah pembungkus baru yang hanya ada
+   demi layar sempit. `display:contents` membuat keduanya lenyap dari
+   perhitungan tata letak, sehingga anak-anaknya kembali jadi anak langsung
+   .admin-toolbar dan seluruh aturan di toolbar-fix.css tetap mengenainya
+   persis seperti sebelum pembungkus ini ada.
+
+   Ditulis di luar @media supaya tidak ada kedipan sebelum media query
+   terbaca browser.
+   -------------------------------------------------------------------------- */
+.admin-body .toolbar-head,
+.admin-body .toolbar-filters,
+.admin-body .toolbar-filters[hidden]{
+    display:contents;
+}
+
+/* Tombol filter tidak ada gunanya di desktop: semua filternya sudah
+   terlihat. */
+.admin-body .toolbar-filter-toggle{ display:none; }
+
+
+/* ==========================================================================
+   4. BILAH NAVIGASI BAWAH
+   ========================================================================== */
+
+.admin-bottomnav{ display:none; }
+
+@media (max-width: 640px){
+    .admin-bottomnav{
+        display:flex;
+        position:fixed; left:0; right:0; bottom:0; z-index:50;
+        background:var(--bg-secondary);
+        border-top:1px solid var(--border-soft);
+        /* Ruang untuk bilah beranda iPhone dan bilah gestur Android. */
+        padding-bottom:env(safe-area-inset-bottom, 0px);
+    }
+    .admin-bottomnav a{
+        flex:1 1 0;
+        display:flex; flex-direction:column; align-items:center; justify-content:center;
+        gap:3px;
+        min-width:0;
+        min-height:var(--admin-bottomnav-h);
+        padding:8px 4px;
+        font-size:10px;
+        color:var(--text-muted);
+        text-align:center;
+        -webkit-tap-highlight-color:transparent;
+    }
+    .admin-bottomnav a span{
+        max-width:100%;
+        overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    }
+    .admin-bottomnav a.active{ color:var(--gold-bright); }
+    .admin-bottomnav a.active .icon{ color:var(--gold); }
+
+    /* Konten terakhir tidak boleh tersembunyi di balik bilah. */
+    .admin-main{
+        padding-bottom:calc(var(--admin-bottomnav-h) + env(safe-area-inset-bottom, 0px));
+    }
+
+    /* Saat laci terbuka, bilah bawah menghalangi menu paling bawah. */
+    body.admin-drawer-open .admin-bottomnav{ display:none; }
+}
+
+
+/* ==========================================================================
+   5. FORM — satu kolom, bilah simpan yang menempel
+   ========================================================================== */
+
+@media (max-width: 860px){
+    .admin-body .form-grid,
+    .admin-body .form-grid-narrow{
+        grid-template-columns:1fr !important;
+    }
+    .admin-body .form-main{ grid-row:auto; }
+}
+
+@media (max-width: 640px){
+    .admin-body .admin-content{ padding:16px 12px; }
+
+    .admin-body .form-card{ padding:16px; }
+
+    /* Semua kolom isian: 16px demi mencegah zoom otomatis iOS, dan 44px
+       demi jari. */
+    .admin-body .control,
+    .admin-body input.control,
+    .admin-body select.control,
+    .admin-body textarea.control{
+        font-size:16px !important;
+        min-height:44px;
+    }
+    .admin-body textarea.control{ min-height:110px; }
+    .admin-body .checkbox-item{ min-height:40px; }
+    .admin-body .checkbox-item input{ width:20px; height:20px; }
+    .admin-body .checkbox-grid{ grid-template-columns:1fr 1fr; }
+
+    /* Bilah Simpan/Batal menempel di dasar layar, tepat di atas bilah
+       navigasi. Pada form panjang seperti Drama, tombol simpan tadinya
+       berada belasan layar di bawah — dan tidak ada yang tahu ia ada. */
+    .admin-body .admin-form > .form-actions,
+    .admin-body .form-actions{
+        position:sticky;
+        bottom:calc(var(--admin-bottomnav-h) + env(safe-area-inset-bottom, 0px));
+        z-index:30;
+        display:flex !important;
+        flex-direction:row-reverse;
+        gap:10px;
+        margin:16px -12px 0;
+        padding:12px !important;
+        border-top:1px solid var(--border-soft) !important;
+        background:var(--bg-secondary);
+    }
+    .admin-body .form-actions .btn{
+        flex:1 1 0;
+        min-height:46px;
+        justify-content:center;
+    }
+    /* Form yang tombolnya memang rata kiri (mis. broadcast) tidak ikut
+       dibalik urutannya. */
+    .admin-body .broadcast-form .form-actions{ flex-direction:row; }
+}
+
+
+/* ==========================================================================
+   6. KERANGKA HALAMAN — panel, topbar, toast, kartu statistik
+   ========================================================================== */
+
+@media (max-width: 640px){
+
+    .admin-body .admin-topbar{
+        padding:10px 12px !important;
+        gap:10px !important;
+    }
+    .admin-body .admin-topbar h1{ font-size:16px; }
+    .admin-body .admin-topbar .btn-icon{
+        width:40px; height:40px;
+        flex-shrink:0;
+    }
+    /* "Lihat situs" memakan lebar yang dibutuhkan judul halaman. Sudah ada
+       di laci lewat menu, jadi tidak ada yang hilang. */
+    .admin-body .admin-topbar .admin-topbar-right .btn-ghost{ display:none; }
+
+    .admin-body .panel{ border-radius:var(--radius-m); }
+    .admin-body .panel-head{
+        flex-direction:column;
+        align-items:flex-start !important;
+        gap:8px !important;
+        padding:14px 12px !important;
+    }
+    .admin-body .panel > .detail-body-admin{ padding:14px 12px !important; }
+
+    .admin-body .toast{
+        margin:12px 12px 0;
+        padding:11px 13px;
+        font-size:13.5px;
+    }
+
+    /* Dua kartu statistik per baris. minmax(140px,1fr) yang lama pecah
+       jadi satu kolom di 360px, sehingga dashboard jadi tiang panjang. */
+    .admin-body .admin-content .stat-row,
+    .admin-body .stat-grid,
+    .admin-body .stats-row{
+        grid-template-columns:repeat(2, minmax(0, 1fr)) !important;
+        gap:8px !important;
+    }
+    .admin-body .admin-content .stat-card{ padding:12px; }
+    .admin-body .admin-content .stat-value{ font-size:19px; }
+    .admin-body .stat-icon{ display:none; }
+
+    .admin-body .chart-grid{ grid-template-columns:1fr; }
+    .admin-body .chart-card{ padding:14px; }
+    .admin-body .chart-canvas{ height:180px; }
+
+    /* Dialog konfirmasi: naik dari dasar layar, tombol selebar penuh. */
+    .admin-body .modal-box{
+        width:calc(100% - 24px);
+        max-width:none;
+        padding:18px 16px;
+    }
+    .admin-body .modal-actions{ flex-direction:row-reverse; gap:10px; }
+    .admin-body .modal-actions .btn{
+        flex:1 1 0;
+        min-height:46px;
+        justify-content:center;
+    }
+
+    .admin-body .detail-actions .btn{
+        flex:1 1 130px;
+        min-height:44px;
+        justify-content:center;
+    }
+
+    /* Blok kode panjang (token, URL storage, payload log) adalah penyebab
+       paling sering halaman melebar dan bisa digeser ke samping. */
+    .admin-body pre,
+    .admin-body .detail-body-admin pre{
+        max-width:100%;
+        overflow-x:auto;
+        white-space:pre-wrap;
+        overflow-wrap:anywhere;
+        font-size:12px;
+    }
+}
+
+/* Jaring pengaman: apa pun yang lolos dari aturan di atas tidak boleh
+   membuat seluruh halaman bisa digeser ke samping. */
+@media (max-width: 860px){
+    /* `clip`, bukan `hidden`: keduanya sama-sama memotong luapan ke samping,
+       tapi `hidden` menjadikan elemennya kotak gulir — dan elemen
+       position:sticky di dalamnya (topbar, bilah Simpan) jadi bergantung
+       pada kotak itu alih-alih pada layar. `clip` tidak. */
+    .admin-body{ overflow-x:clip; }
+    .admin-body .admin-main,
+    .admin-body .admin-content{ max-width:100%; min-width:0; }
+}
