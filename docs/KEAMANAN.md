@@ -53,20 +53,52 @@ Ditambah tiga hal yang memperbesar biaya per permintaan:
 `?page=500000` yang memaksa `OFFSET` belasan juta baris, kata kunci pencarian
 tanpa batas panjang, dan tidak adanya `limit_req` di nginx.
 
-### Konfigurasi produksi — dua yang serius
+### Konfigurasi produksi — jauh lebih baik daripada dugaan awal
 
-- **`APP_DEBUG=true`.** Bila nilai ini juga terpasang di server, setiap galat
-  menampilkan halaman Whoops berisi **seluruh isi `.env`**: kata sandi
-  database, token bot, kunci pembayaran, `APP_KEY`. Memicu galat tidak sulit —
-  `?page=abc` sudah cukup. Ini kebocoran total tanpa perlu satu pun celah kode.
-  Periksa `.env` di server sekarang juga.
-- **`DB_USERNAME=root`.** Aplikasi web memegang kendali penuh atas server
-  database. Tidak berbahaya selama tidak ada celah; pada hari ada celah, ini
-  yang membedakan "satu tabel bocor" dari "seluruh server jatuh" — hak `FILE`
-  milik root bisa menulis cangkang PHP ke direktori web.
+Audit awal dokumen ini dibuat dari `.env` di komputer pengembang, dan dari
+sana temuannya terlihat gawat: `APP_DEBUG=true`, `DB_USERNAME=root`,
+`SESSION_LIFETIME` tujuh hari. Ketiganya **tidak berlaku di server.**
 
-Selebihnya: cookie sesi belum dikunci ke https, sesi tidak dienkripsi di
-database, dan umurnya tujuh hari.
+`.env` lokal dan `.env` produksi adalah dua berkas terpisah yang tidak pernah
+saling menimpa — `.env` ada di `.gitignore`, jadi ia tidak ikut `git pull`.
+Pemeriksaan langsung di server menunjukkan:
+
+| Setelan | Server | Catatan |
+|---|---|---|
+| `APP_ENV` | `production` | benar |
+| `APP_DEBUG` | `false` | benar — ini yang paling penting |
+| `SESSION_SECURE_COOKIE` | `true` | benar |
+| `SESSION_LIFETIME` | `120` | dua jam, lebih ketat daripada anjuran umum |
+| `DB_USERNAME` | `dramaverse_user` | bukan root |
+
+Pelajarannya layak dicatat: **jangan pernah menyimpulkan keadaan produksi dari
+berkas di komputer pengembang.** Satu perintah `grep` di server akan
+menghemat satu bab kekhawatiran.
+
+Yang benar-benar perlu diubah tinggal tiga baris, dan semuanya sudah
+diterapkan: `LOG_LEVEL` dari `debug` ke `warning`, `SESSION_ENCRYPT` ke
+`true`, dan `LOG_KEAMANAN_DAYS=30` yang baru.
+
+> **`SESSION_SAME_SITE=none` — jangan diubah.** Panduan keamanan umum
+> menganjurkan `lax`, dan untuk situs biasa itu benar. Situs ini tidak biasa:
+> Mini App Telegram berjalan di dalam iframe milik `web.telegram.org`, dan
+> `lax` menghentikan cookie sesi terkirim dari konteks lintas-situs seperti
+> itu — login otomatis gagal 419 tanpa pesan galat. `none` aman di sini
+> justru karena `SESSION_SECURE_COOKIE=true` ada; peramban menolak
+> `SameSite=None` yang tidak disertai `Secure`. Keduanya pasangan.
+
+### Kernel tertinggal 105 revisi
+
+Ditemukan tanpa dicari, dari pesan `apt` saat memasang ufw: kernel yang
+berjalan `6.8.0-31`, sedangkan `6.8.0-136` sudah terpasang di disk dan hanya
+menunggu reboot.
+
+Menarik karena arahnya berlawanan dengan seluruh pekerjaan di dokumen ini.
+Lapisan yang kita pasang menahan orang di luar; kernel menentukan seberapa
+jauh mereka bisa melangkah kalau satu lapis tembus. Selisih 105 revisi berisi
+banyak perbaikan *local privilege escalation* — persis jalur dari "berhasil
+masuk sebagai www-data" menuju "menguasai server". Sudah diperbaiki dengan
+reboot.
 
 ### Yang sudah baik sebelum audit
 
@@ -322,10 +354,75 @@ Kalau ini sering terjadi, ambangnya terlalu ketat — naikkan `maxretry` di
 
 ---
 
+## Pelajaran dari penerapan
+
+Tiga kesalahan terjadi saat lapisan ini dipasang di server sungguhan. Ketiganya
+dicatat karena bentuknya akan terulang pada siapa pun yang mengeraskan
+konfigurasi ini nanti.
+
+### 1. Penolakan User-Agent kosong membunuh bot
+
+Aturan `if ($http_user_agent = "") { return 444; }` terdengar masuk akal:
+peramban selalu mengirim User-Agent. Tapi situs ini dijalankan mesin — server
+Telegram tidak mengirimnya, dan banyak gateway pembayaran juga tidak. Selama
+tujuh menit setiap webhook dijawab 444 dan bot mati total.
+
+Bentuknya sama persis dengan kesalahan yang sudah pernah terjadi di proyek ini
+dan tercatat di `bootstrap/app.php`: callback pembayaran yang terlewat dari
+pengecualian CSRF, dijawab 419 sebelum satu baris kode pun jalan, tanpa satu
+pun galat aplikasi karena kodenya memang tidak pernah dijalankan.
+
+**Polanya:** penjagaan yang benar secara umum, dipasang di jalur yang justru
+dilewati mesin sah. Rusaknya tidak terlihat di log aplikasi karena
+permintaannya berhenti sebelum aplikasi menyala.
+
+### 2. `backend = systemd` membuat empat jail buta
+
+Backend itu membaca journald dan mengabaikan `logpath` sepenuhnya. Empat jail
+berbasis berkas akan berjalan tanpa pernah membaca apa pun — sementara
+`fail2ban-client status` tetap menampilkannya sebagai aktif, dengan
+"0 total failed" selamanya. Angka yang mustahil dibedakan dari "tidak ada
+serangan hari ini".
+
+**Polanya:** perlindungan yang mati diam-diam lebih buruk daripada tidak ada,
+karena ia menghentikan orang dari mencari lagi.
+
+### 3. `systemctl enable --now` tidak memuat konfigurasi baru
+
+`apt install fail2ban` langsung menyalakan servisnya dengan konfigurasi bawaan
+— sebelum `jail.local` sempat disalin. `--now` hanya menyalakan servis yang
+mati, jadi pada servis yang sudah hidup ia tidak melakukan apa pun. Pakai
+`systemctl restart`.
+
+### Yang benar dilakukan, dan patut diulang
+
+Setiap perubahan diverifikasi langsung dari data server, bukan diasumsikan.
+Ketiga kesalahan di atas ditemukan dalam hitungan menit karena setiap tahap
+diikuti pemeriksaan yang membuktikan — bukan sekadar "tidak ada galat".
+
+Yang paling menentukan: `$remote_addr` diperiksa dari access log **sebelum**
+`throttle:publik` diaktifkan. Kalau ternyata ada proxy di depan, pembatas laju
+akan menghukum pengguna asli secara massal, dan gejalanya tidak akan terlihat
+seperti kesalahan konfigurasi.
+
+---
+
 ## Yang masih terbuka
 
 Disebut supaya tidak terlupakan, bukan karena mendesak:
 
+- **Cloudflare belum dipasang.** Ini yang terbesar. Seluruh lapis yang sudah
+  aktif berada di dalam VPS, dan tidak satu pun bisa menolak paket yang
+  menyumbat saluran masuk sebelum sampai. Untuk DDoS volumetrik sungguhan,
+  penyaringnya harus di luar. Paket gratis sudah cukup — lihat tahap 9 di
+  `PENERAPAN-KEAMANAN.md`.
+- **35 pembaruan paket menunggu, 15 di antaranya pembaruan keamanan.**
+  `apt list --upgradable` untuk melihatnya. Kernel sudah diperbarui lewat
+  reboot; sisanya paket ruang pengguna.
+- **Hak `dramaverse_user` masih `ALL PRIVILEGES` pada satu basis data.**
+  Bagian terburuknya sudah tertutup — `GRANT USAGE ON *.*` berarti tidak ada
+  `FILE`, jadi SQL injection tidak bisa menulis cangkang PHP ke direktori web.
+  Yang tersisa `DROP`/`ALTER`. Perbaikan nyata tapi kecil; lihat tahap 8.
 - **Belum ada 2FA untuk panel admin.** Kata sandi tetap satu-satunya penjaga;
   rate limit dan fail2ban memperlambat penebakan, tapi tidak menutupnya.
 - **`ngrok.exe`, `*.zip`, dan `setup-local.bat` ada di akar proyek.** Zip sudah

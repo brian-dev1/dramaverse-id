@@ -602,10 +602,23 @@ Harus melaporkan `Matched` lebih dari 0 — mencocokkan baris uji dari tahap 4.2
 🌐 **VPS**
 
 ```bash
-systemctl enable --now fail2ban
-systemctl status fail2ban --no-pager
+systemctl enable fail2ban
+systemctl restart fail2ban
+sleep 8
 fail2ban-client status
 ```
+
+> **`restart`, bukan `enable --now`.** `apt install fail2ban` sudah menyalakan
+> servisnya seketika, dengan konfigurasi bawaan yang hanya memuat jail `sshd`
+> — dan itu terjadi sebelum `jail.local` sempat disalin. `--now` hanya
+> menyalakan servis yang sedang mati, jadi pada servis yang sudah hidup ia
+> tidak melakukan apa pun sama sekali.
+>
+> Gejalanya membingungkan karena semuanya tampak benar:
+> `fail2ban-client -t` menjawab `OK`, berkas filter ada di tempatnya, dan
+> jail `sshd` bahkan bekerja dan memblokir IP. Yang salah hanya satu — empat
+> jail lainnya tidak pernah dibaca, dan `fail2ban-client status` menjawab
+> `UnknownJailException` untuk keempatnya.
 
 Harus muncul lima jail: `sshd`, `nginx-banjir`, `laravel-pemindai`,
 `nginx-probe`, `laravel-login`.
