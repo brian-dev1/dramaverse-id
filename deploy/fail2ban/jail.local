@@ -82,7 +82,27 @@ bantime.maxtime   = 1w
 # nftables, bukan iptables. Debian 12 / Ubuntu 24.04 memakai nftables sebagai
 # bawaan, dan lapisan kompatibilitas iptables-nya kadang tidak terpasang.
 banaction = nftables-multiport
-backend   = systemd
+
+# -----------------------------------------------------------------------------
+# Backend: auto (berbasis berkas), BUKAN systemd
+# -----------------------------------------------------------------------------
+#
+# Ini pernah salah tulis sebagai `backend = systemd` di sini, dan akibatnya
+# halus tapi total: `systemd` membaca journald dan MENGABAIKAN `logpath`.
+# Empat dari lima jail di bawah membaca berkas — access log nginx dan log
+# keamanan Laravel — jadi keempatnya akan berjalan tanpa pernah membaca apa
+# pun.
+#
+# Yang membuatnya berbahaya adalah tampilannya. `fail2ban-client status`
+# tetap menampilkan kelima jail sebagai aktif, dan tidak ada satu pun galat.
+# Yang terlihat hanyalah "0 currently failed, 0 total failed" selamanya —
+# angka yang mustahil dibedakan dari "tidak ada serangan hari ini".
+# Perlindungan yang mati diam-diam lebih buruk daripada tidak ada, karena
+# ia menghentikan orang dari mencari lagi.
+#
+# `auto` memilih pembacaan berkas selama `logpath` ada, dan itu benar untuk
+# keempat jail berbasis berkas.
+backend = auto
 
 
 # -----------------------------------------------------------------------------
@@ -91,8 +111,13 @@ backend   = systemd
 #
 # Pertama karena paling penting. VPS baru mulai menerima percobaan login SSH
 # dalam hitungan menit setelah IP-nya hidup, terus-menerus, selamanya.
+#
+# Ini satu-satunya jail yang memang memakai `systemd`: Ubuntu 24.04 tidak
+# lagi menulis /var/log/auth.log secara bawaan — sshd mencatat ke journald.
+# Jail inilah yang butuh backend berbeda, bukan sebaliknya.
 [sshd]
 enabled  = true
+backend  = systemd
 port     = ssh
 maxretry = 3
 bantime  = 24h
