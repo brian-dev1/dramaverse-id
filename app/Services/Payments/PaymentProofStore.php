@@ -121,16 +121,9 @@ class PaymentProofStore
                 return null;
             }
 
-            $respon = Http::timeout(30)->get($this->telegram->downloadUrl($filePath));
+            $isi = $this->isiBerkas($filePath, $invoiceNumber);
 
-            if (! $respon->successful()) {
-
-                // URL unduh memuat token bot, jadi yang dicatat cuma kodenya.
-                Log::warning('payment.proof.download_rejected', [
-                    'invoice' => $invoiceNumber,
-                    'status'  => $respon->status(),
-                ]);
-
+            if ($isi === null) {
                 return null;
             }
 
@@ -160,7 +153,7 @@ class PaymentProofStore
             |
             */
 
-            if (Storage::disk(self::DISK)->put($tujuan, $respon->body()) === false) {
+            if (Storage::disk(self::DISK)->put($tujuan, $isi) === false) {
 
                 Log::error('payment.proof.write_failed', [
                     'invoice' => $invoiceNumber,
@@ -183,6 +176,111 @@ class PaymentProofStore
 
             return null;
         }
+    }
+
+    /**
+     * Isi berkas dari Telegram — dari disk bila bisa, kalau tidak lewat HTTP.
+     *
+     * ## Kenapa ada dua jalan
+     *
+     * `file_path` yang dikembalikan `getFile` bentuknya berbeda tergantung
+     * server mana yang menjawab, dan perbedaannya tidak diumumkan di mana pun
+     * selain pada nilainya sendiri:
+     *
+     * - **api.telegram.org** menjawab dengan potongan relatif seperti
+     *   `photos/file_5.jpg`, yang harus digabung jadi URL unduh.
+     *
+     * - **Local Bot API Server** yang dijalankan dengan `--local` menjawab
+     *   dengan path ABSOLUT di mesin itu sendiri, misalnya
+     *   `/var/lib/telegram-bot-api/<token>/photos/file_5.jpg`. Berkasnya sudah
+     *   ada di disk kita dan tidak disajikan lewat HTTP sama sekali.
+     *
+     * Versi sebelumnya selalu menempuh jalan pertama. Di server yang memakai
+     * Local Bot API Server — dan proyek ini memakainya untuk video besar —
+     * hasilnya adalah URL yang menempelkan path absolut ke belakang alamat
+     * unduh, dan Telegram menjawabnya 404. Itulah 404 beruntun di log yang
+     * membuat bukti bayar tidak pernah tersimpan sekali pun.
+     *
+     * Membaca disk dicoba lebih dulu karena ia jawaban yang pasti benar ketika
+     * berlaku: kalau path absolutnya memang ada dan terbaca, tidak ada alasan
+     * memutarnya lewat jaringan.
+     */
+    private function isiBerkas(string $filePath, string $invoiceNumber): ?string
+    {
+        /*
+        |----------------------------------------------------------------------
+        | Jalan 1 — berkasnya sudah ada di mesin ini
+        |----------------------------------------------------------------------
+        |
+        | `is_file()` sekaligus menjadi penjagaannya. Nilai ini datang dari
+        | Bot API server kita sendiri, bukan dari pengguna, tapi ia tetap
+        | dipakai sebagai path — jadi yang diterima hanya berkas biasa yang
+        | benar-benar ada dan benar-benar terbaca. Symlink dan direktori
+        | gugur dengan sendirinya.
+        |
+        */
+
+        if (str_starts_with($filePath, '/') && is_file($filePath) && is_readable($filePath)) {
+
+            if (filesize($filePath) > self::MAX_BYTES) {
+
+                Log::warning('payment.proof.too_large', [
+                    'invoice' => $invoiceNumber,
+                    'bytes'   => filesize($filePath),
+                ]);
+
+                return null;
+            }
+
+            $isi = @file_get_contents($filePath);
+
+            if ($isi !== false) {
+                return $isi;
+            }
+
+            Log::warning('payment.proof.local_read_failed', [
+                'invoice'   => $invoiceNumber,
+                'file_path' => $filePath,
+                'petunjuk'  => 'Berkas ada tapi tidak terbaca. Periksa izin baca '
+                    .'folder Local Bot API Server untuk user www-data.',
+            ]);
+
+            return null;
+        }
+
+        /*
+        |----------------------------------------------------------------------
+        | Jalan 2 — unduh lewat HTTP
+        |----------------------------------------------------------------------
+        */
+
+        $respon = Http::timeout(30)->get($this->telegram->downloadUrl($filePath));
+
+        if ($respon->successful()) {
+            return $respon->body();
+        }
+
+        /*
+        | URL unduhnya memuat token bot dan karena itu tidak boleh masuk log.
+        | `file_path`-nya boleh, dan justru itu yang paling menjelaskan: path
+        | absolut di sini berarti Bot API server lokal berjalan dalam mode
+        | `--local` sementara berkasnya tidak terbaca oleh proses PHP —
+        | biasanya soal izin folder, bukan soal Telegram.
+        */
+
+        Log::warning('payment.proof.download_rejected', [
+            'invoice'   => $invoiceNumber,
+            'status'    => $respon->status(),
+            'file_path' => $filePath,
+            'absolut'   => str_starts_with($filePath, '/'),
+            'petunjuk'  => str_starts_with($filePath, '/')
+                ? 'file_path berupa path absolut, jadi berkasnya seharusnya dibaca '
+                    .'dari disk. Ia tidak ditemukan atau tidak terbaca oleh PHP — '
+                    .'periksa izin folder Local Bot API Server.'
+                : 'Periksa TELEGRAM_API_URL dan TELEGRAM_BOT_TOKEN.',
+        ]);
+
+        return null;
     }
 
     /*
