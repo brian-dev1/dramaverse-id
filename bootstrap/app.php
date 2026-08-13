@@ -6,6 +6,7 @@ use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\CheckMaintenanceMode;
 use App\Http\Middleware\VerifyTelegramWebhook;
 use App\Http\Middleware\EnsureUserIsAdmin;
+use App\Http\Middleware\LogSlowRequests;
 use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -36,6 +37,19 @@ return Application::configure(basePath: dirname(__DIR__))
         |
         */
         $middleware->prepend(BlockProbeRequests::class);
+
+        /*
+        |----------------------------------------------------------------------
+        | Pengukur permintaan lambat
+        |----------------------------------------------------------------------
+        |
+        | Di grup global supaya ia juga melihat permintaan yang tidak masuk
+        | grup `web` — unggahan, callback pembayaran, webhook. Pencatatannya
+        | terjadi di `terminate()`, setelah jawaban dikirim, jadi tidak
+        | menambah beban pada permintaan yang diukurnya.
+        |
+        */
+        $middleware->append(LogSlowRequests::class);
 
         // Berlaku untuk seluruh permintaan web.
         $middleware->web(append: [

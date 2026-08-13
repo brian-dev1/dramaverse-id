@@ -43,6 +43,22 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Ambang permintaan lambat (milidetik)
+    |--------------------------------------------------------------------------
+    |
+    | Permintaan yang melebihi angka ini dicatat sebagai `slow_request` beserta
+    | rute dan durasinya. Lihat LogSlowRequests untuk alasannya.
+    |
+    | Aman dibiarkan menyala di produksi: yang ditulis hanya yang melewati
+    | ambang, dan pencatatannya berjalan setelah jawaban terkirim. Isi 0 untuk
+    | mematikannya sama sekali.
+    |
+    */
+
+    'slow_request_ms' => (int) env('SLOW_REQUEST_MS', 1000),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application URL
     |--------------------------------------------------------------------------
     |
