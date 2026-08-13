@@ -187,7 +187,25 @@ abstract class AdminCrudController extends Controller
             'bulkActions'  => $this->bulkActions(),
             'softDeletes'  => $this->softDeletes(),
             'keyword'      => $keyword ?? '',
+            'notices'      => $this->notices(),
         ]);
+    }
+
+    /**
+     * Peringatan yang tampil di atas daftar.
+     *
+     * Untuk keadaan yang membuat data di halaman ini TIDAK berlaku di tempat
+     * lain — paket yang sudah dibuat tetapi tidak pernah bisa dibeli, misalnya.
+     * Keadaan seperti itu tidak terlihat dari daftarnya sendiri: barisnya ada,
+     * kolomnya terisi, `is_active` bernilai benar. Yang hilang justru ada di
+     * halaman lain, dan tanpa peringatan di sini admin baru mengetahuinya
+     * setelah ada yang mengeluh tidak bisa membayar.
+     *
+     * @return array<int,string>
+     */
+    protected function notices(): array
+    {
+        return [];
     }
 
     /*

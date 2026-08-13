@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Enums\PaymentRegion;
 use App\Models\MembershipPlan;
+use App\Services\Payments\PaymentGatewayManager;
 use App\Support\Uang;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -34,8 +35,8 @@ class MembershipController extends AdminCrudController
             'Nama'          => 'name',
             'Slug'          => 'slug',
             'Wilayah'       => 'region',
-            'Harga'         => 'price',
-            'Mata uang'     => 'currency',
+            // Beserta mata uangnya — lihat MembershipPlan::getHargaTampilAttribute().
+            'Harga'         => 'harga_tampil',
             'Durasi (hari)' => 'duration',
             'Badge'         => 'badge',
             'Langganan'     => 'subscriptions_count',
@@ -173,6 +174,50 @@ class MembershipController extends AdminCrudController
             'benefitsText' => $model?->benefits ? implode("\n", $model->benefits) : '',
             'regionOptions'   => PaymentRegion::options(),
             'currencyOptions' => Uang::PILIHAN,
+        ];
+    }
+
+    /**
+     * Wilayah yang punya paket tetapi belum punya cara membayar.
+     *
+     * ## Kenapa ini perlu diberitahukan
+     *
+     * Halaman VIP dan bot hanya menawarkan wilayah yang paketnya ADA dan
+     * provider pembayarannya siap. Syarat itu benar — tombol yang mengantar
+     * ke penolakan lebih buruk daripada tombol yang tidak ada — tetapi
+     * akibatnya tidak terlihat dari halaman ini.
+     *
+     * Admin yang baru menambahkan tiga paket Malaysia melihat tiga baris
+     * aktif dengan harga yang benar, lalu membuka halaman VIP dan tidak
+     * menemukan Malaysia di mana pun. Tidak ada galat, tidak ada kolom yang
+     * salah, tidak ada yang bisa ditelusuri. Peringatan inilah yang
+     * menyambungkan keduanya, dan ia menyebut langkah berikutnya secara
+     * spesifik supaya tidak berubah jadi teka-teki kedua.
+     *
+     * @return array<int,string>
+     */
+    protected function notices(): array
+    {
+        $gateways = app(PaymentGatewayManager::class);
+
+        $belumSiap = collect(PaymentRegion::cases())
+            ->filter(fn (PaymentRegion $r) => MembershipPlan::query()
+                    ->where('region', $r->value)
+                    ->where('is_active', true)
+                    ->where('price', '>', 0)
+                    ->exists()
+                && $gateways->usable($r)->isEmpty());
+
+        if ($belumSiap->isEmpty()) {
+            return [];
+        }
+
+        return [
+            'Paket untuk '.$belumSiap->map(fn (PaymentRegion $r) => $r->label())->join(' dan ')
+            .' belum bisa dibeli: wilayah itu punya paket aktif, tetapi belum ada '
+            .'metode pembayaran yang siap dipakai. Selama itu, wilayahnya tidak '
+            .'muncul di halaman VIP maupun di bot. Tambahkan providernya di menu '
+            .'Metode Pembayaran.',
         ];
     }
 

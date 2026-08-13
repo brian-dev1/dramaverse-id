@@ -39,6 +39,15 @@
 
 @section('content')
 
+    {{--
+        Peringatan modul. Dirender sebelum toolbar dengan sengaja: keadaan yang
+        membuat seluruh daftar di bawahnya tidak berlaku harus terbaca sebelum
+        admin mulai menyunting barisnya, bukan sesudah.
+    --}}
+    @foreach ($notices ?? [] as $notice)
+        <div class="admin-alert is-warning">{{ $notice }}</div>
+    @endforeach
+
     @php
         /*
         | Ada filter yang sedang dipakai?

@@ -42,14 +42,26 @@
             jawabannya cuma satu bukan pertanyaan — dan pemasangan yang hanya
             melayani Indonesia tidak perlu satu ketukan tambahan.
         --}}
-        <div class="vip-region" role="tablist" aria-label="Wilayah pembayaran">
-            @foreach ($wilayah as $r)
-                <a href="{{ route('web.membership', ['wilayah' => $r->value]) }}"
-                   class="{{ $terpilih === $r ? 'active' : '' }}"
-                   role="tab" aria-selected="{{ $terpilih === $r ? 'true' : 'false' }}">
-                    {{ $r->label() }}
-                </a>
-            @endforeach
+        <div class="vip-region-wrap">
+
+            <p class="vip-region-lead">
+                Harga berbeda tiap wilayah. Pilih sesuai alat bayar yang Anda pegang,
+                bukan tempat Anda tinggal.
+            </p>
+
+            <div class="vip-region" role="tablist" aria-label="Wilayah pembayaran">
+                @foreach ($wilayah as $r)
+                    <a href="{{ route('web.membership', ['wilayah' => $r->value]) }}"
+                       class="{{ $terpilih === $r ? 'active' : '' }}"
+                       role="tab" aria-selected="{{ $terpilih === $r ? 'true' : 'false' }}">
+                        <span aria-hidden="true">{{ $r->bendera() }}</span> {{ $r->label() }}
+                    </a>
+                @endforeach
+            </div>
+
+            @if ($terpilih)
+                <p class="vip-region-note">{{ $terpilih->keterangan() }}</p>
+            @endif
         </div>
     @endif
 

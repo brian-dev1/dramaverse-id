@@ -90,7 +90,7 @@
                                 </td>
                                 <td>
                                     <span class="chip {{ $p->region === \App\Enums\PaymentRegion::ID ? '' : 'gold' }}">
-                                        {{ $p->region->label() }}
+                                        {{ $p->region->bendera() }} {{ $p->region->label() }}
                                     </span>
                                 </td>
                                 <td>
