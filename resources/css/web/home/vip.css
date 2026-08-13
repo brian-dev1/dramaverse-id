@@ -125,6 +125,23 @@
     opacity: .8;
 }
 
+/* Peringatan penyalahgunaan wilayah. Warnanya amber, bukan merah: ini
+   pemberitahuan aturan yang berlaku untuk semua orang, bukan tuduhan
+   terhadap orang yang sedang membacanya. */
+.vip-region-warn {
+    margin: 12px 0 0;
+    padding: 10px 14px;
+    border: 1px solid rgba(255, 184, 77, .22);
+    border-radius: var(--dv-r-m, 12px);
+    background: rgba(255, 184, 77, .07);
+    font-size: 11.5px;
+    line-height: 1.6;
+    color: var(--dv-accent-2, #FFB84D);
+    text-align: center;
+}
+
+.vip-region-warn strong { font-weight: 700; }
+
 /* ---------- Kerangka seksi ---------- */
 
 .vip-section {

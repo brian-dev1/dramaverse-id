@@ -62,6 +62,21 @@
             @if ($terpilih)
                 <p class="vip-region-note">{{ $terpilih->keterangan() }}</p>
             @endif
+
+            {{--
+                Peringatan penyalahgunaan wilayah.
+
+                Ditempatkan tepat di bawah pemilihnya, bukan di kaki halaman:
+                ia hanya berguna kalau terbaca SEBELUM orang menekan salah satu
+                tab. Peringatan yang datang setelah pilihan diambil cuma
+                menjelaskan hukuman, bukan mencegah pelanggarannya.
+            --}}
+            <p class="vip-region-warn">
+                <strong>Pilih sesuai negara Anda saat ini.</strong>
+                Daftar harga tiap wilayah menyesuaikan metode pembayaran yang berlaku di
+                sana. Memakai daftar harga wilayah lain sementara Anda membayar dari
+                negara berbeda dapat berakibat <strong>pemblokiran akun oleh admin</strong>.
+            </p>
         </div>
     @endif
 
