@@ -4,6 +4,7 @@ namespace App\Telegram\Handlers;
 
 use App\Models\Episode;
 use App\Models\User;
+use App\Services\Telegram\ChannelGate;
 use App\Services\Telegram\Contracts\TelegramServiceInterface;
 use App\Services\Telegram\TelegramDeliveryService;
 
@@ -20,7 +21,8 @@ class WatchHandler
 {
     public function __construct(
         protected TelegramServiceInterface $telegram,
-        protected TelegramDeliveryService $delivery
+        protected TelegramDeliveryService $delivery,
+        protected ChannelGate $channel
     ) {
     }
 
@@ -43,6 +45,27 @@ class WatchHandler
                 'Episode yang Anda buka tidak ditemukan. Tautannya mungkin sudah '
                 .'kedaluwarsa, atau episodenya sudah dihapus.'
             );
+
+            return;
+        }
+
+        /*
+        |----------------------------------------------------------------------
+        | Gabung channel dulu
+        |----------------------------------------------------------------------
+        |
+        | Diperiksa SESUDAH episodenya dipastikan ada. Urutan ini disengaja:
+        | menahan orang di gerbang channel untuk episode yang ternyata sudah
+        | dihapus berarti ia bergabung lebih dulu, lalu tetap tidak mendapat
+        | apa-apa — dan pada saat itu ia sudah menyalahkan channelnya.
+        |
+        */
+
+        if (! $this->channel->lolos($user)) {
+
+            [$pesan, $opsi] = $this->channel->penahan('menonton');
+
+            $this->telegram->sendMessage($chatId, $pesan, $opsi);
 
             return;
         }

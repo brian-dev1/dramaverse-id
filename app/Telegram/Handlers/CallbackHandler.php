@@ -142,6 +142,49 @@ class CallbackHandler
                 app(PremiumHandler::class)->confirmPaid($callback, $user, (int) ($argumen[0] ?? 0));
 
                 return;
+
+            /*
+            |------------------------------------------------------------------
+            | "Saya sudah gabung"
+            |------------------------------------------------------------------
+            |
+            | Hasil pemeriksaan yang tersimpan dibuang lebih dulu, lalu
+            | diperiksa ulang. Tanpa pembuangan itu tombolnya tidak akan
+            | pernah bekerja: jawabannya diambil dari cache yang barusan
+            | menyatakan pengguna bukan anggota, dan orang yang benar-benar
+            | baru bergabung akan menekannya berkali-kali tanpa hasil.
+            |
+            */
+
+            case \App\Services\Telegram\ChannelGate::RECHECK:
+
+                $gate = app(\App\Services\Telegram\ChannelGate::class);
+
+                $gate->lupakan($user);
+
+                if ($gate->lolos($user)) {
+
+                    $this->telegram->sendMessage(
+                        $chatId,
+                        \App\Support\Telegram\Notice::make('✅', 'Terima kasih sudah bergabung')
+                            ->lead('Sekarang Anda bisa menonton dan berlangganan seperti biasa.')
+                            ->note('Tekan tombol tonton yang tadi, atau /start untuk membuka menu.')
+                            ->render()
+                    );
+
+                    return;
+                }
+
+                [$pesan, $opsi] = $gate->penahan();
+
+                $this->telegram->sendMessage(
+                    $chatId,
+                    'Belum terbaca sebagai anggota channel. Pastikan Anda menekan '
+                    ."Join di channelnya, lalu coba lagi.\n\n".$pesan,
+                    $opsi
+                );
+
+                return;
         }
 
         /*

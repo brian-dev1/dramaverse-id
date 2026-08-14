@@ -75,7 +75,8 @@ class PremiumHandler
         protected MembershipService $membership,
         protected CheckoutService $checkout,
         protected PaymentGatewayManager $gateways,
-        protected UserSessionService $sessions
+        protected UserSessionService $sessions,
+        protected \App\Services\Telegram\ChannelGate $channel
     ) {
     }
 
@@ -280,6 +281,27 @@ class PremiumHandler
 
         if ($user === null) {
             $this->telegram->sendMessage($chatId, 'Kirim /start dulu supaya akun Anda dikenali.');
+
+            return;
+        }
+
+        /*
+        |----------------------------------------------------------------------
+        | Gabung channel dulu
+        |----------------------------------------------------------------------
+        |
+        | Ditempatkan sebelum apa pun dibuat. Menahan orang SETELAH tagihan
+        | jadi berarti ada tagihan menggantung atas nama orang yang belum
+        | pernah bisa membayarnya — dan tagihan itu akan menghalangi
+        | pembeliannya sendiri begitu ia bergabung.
+        |
+        */
+
+        if (! $this->channel->lolos($user)) {
+
+            [$pesan, $opsi] = $this->channel->penahan('menyelesaikan pembelian');
+
+            $this->telegram->sendMessage($chatId, $pesan, $opsi);
 
             return;
         }

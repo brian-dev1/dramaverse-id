@@ -93,6 +93,20 @@ class TelegramService implements TelegramServiceInterface
         return $this->client->get('getFile', ['file_id' => $fileId]);
     }
 
+    /**
+     * Keanggotaan seseorang di satu chat.
+     *
+     * Bot harus menjadi admin di chat itu; kalau tidak, Telegram menjawab
+     * dengan galat dan `TelegramClient` melemparnya sebagai TelegramException.
+     */
+    public function getChatMember(int|string $chatId, int|string $userId): TelegramResponse
+    {
+        return $this->client->get('getChatMember', [
+            'chat_id' => $chatId,
+            'user_id' => $userId,
+        ]);
+    }
+
     public function getMe(): TelegramResponse
     {
         return $this->client->get('getMe');

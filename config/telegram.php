@@ -66,6 +66,39 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Wajib gabung channel
+    |--------------------------------------------------------------------------
+    |
+    | Bila diisi, pengguna harus menjadi anggota channel ini sebelum bisa
+    | menonton atau membeli. Isinya `@namachannel` untuk channel publik, atau
+    | id numerik berawalan -100 untuk yang privat.
+    |
+    | ## Syarat yang mudah terlewat
+    |
+    | Bot HARUS menjadi admin di channel itu. Bot API tidak mengizinkan
+    | `getChatMember` dari bot yang bukan admin, dan yang dikembalikannya
+    | adalah galat — bukan "bukan anggota". Tanpa penjagaan, galat itu akan
+    | menutup akses SELURUH pengguna, termasuk yang sudah bergabung.
+    |
+    | Karena itu `ChannelGate` memilih memihak pengguna saat pemeriksaannya
+    | gagal: lihat docblock-nya.
+    |
+    | Kosongkan untuk mematikan seluruh penjagaan ini.
+    |
+    */
+    'required_channel' => env('TELEGRAM_REQUIRED_CHANNEL'),
+
+    /*
+    | Lama hasil pemeriksaan disimpan (detik). Terlalu pendek berarti satu
+    | panggilan API pada setiap ketukan tombol; terlalu panjang berarti orang
+    | yang baru keluar channel masih bisa menonton beberapa lama. Lima menit
+    | adalah pertengahan yang wajar — dan cache-nya dibuang begitu pengguna
+    | menekan "Saya sudah gabung", jadi yang baru bergabung tidak menunggu.
+    */
+    'required_channel_ttl' => (int) env('TELEGRAM_REQUIRED_CHANNEL_TTL', 300),
+
+    /*
+    |--------------------------------------------------------------------------
     | Mini App (Telegram WebApp)
     |--------------------------------------------------------------------------
     |

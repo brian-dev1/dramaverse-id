@@ -135,6 +135,17 @@ interface TelegramServiceInterface
     public function getFile(string $fileId): TelegramResponse;
 
     /**
+     * Keanggotaan seseorang di satu chat.
+     *
+     * Bot harus admin di chat itu. Bila tidak, ini MELEMPAR — bukan
+     * mengembalikan "bukan anggota". Pemanggil wajib membedakan keduanya;
+     * lihat ChannelGate.
+     *
+     * @throws TelegramException
+     */
+    public function getChatMember(int|string $chatId, int|string $userId): TelegramResponse;
+
+    /**
      * Identitas bot. Panggilan paling murah untuk membuktikan token benar
      * dan jaringan tersambung.
      *
