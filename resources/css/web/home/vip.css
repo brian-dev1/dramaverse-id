@@ -238,56 +238,36 @@ a.vip-plan-body:active { transform: scale(.99); }
    admin menambah paket. Lihat MembershipController::tier().
 */
 
+/* Seluruh permukaan medali digambar di dalam SVG-nya — gradasi, facet, tepi
+   logam. Yang tersisa di sini hanya penempatan dan cahaya yang jatuh ke luar
+   bentuknya, dua hal yang memang tidak bisa dilakukan dari dalam SVG. */
+
 .vip-plan-mark {
     flex: none;
-    position: relative;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    height: 40px;
-    border-radius: 13px;
-    color: #fff;
-    background: linear-gradient(140deg, #3E4C6B, #5B6C90);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .22);
-    transition: transform .18s ease;
+    width: 44px;
+    height: 44px;
+    transition: transform .2s var(--dv-ease, cubic-bezier(.2, .7, .3, 1));
 }
 
-/* Kilau tipis di sudut atas: memberi kesan permukaan, bukan kotak berwarna. */
-.vip-plan-mark::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    background: linear-gradient(160deg, rgba(255, 255, 255, .26), transparent 55%);
-    pointer-events: none;
-}
+.vip-plan-mark svg { display: block; overflow: visible; }
 
-.vip-plan-mark svg { position: relative; z-index: 1; }
+/* Cahaya di sekeliling medali, bukan di dalamnya. Halus untuk tingkat bawah
+   supaya tetap terasa benda padat, dan jelas untuk yang teratas. */
+.vip-plan-mark.tier-2 svg { filter: drop-shadow(0 3px 10px rgba(63, 163, 220, .3)); }
+.vip-plan-mark.tier-3 svg { filter: drop-shadow(0 3px 10px rgba(155, 107, 240, .32)); }
+.vip-plan-mark.tier-4 svg { filter: drop-shadow(0 3px 12px rgba(240, 98, 155, .34)); }
+.vip-plan-mark.tier-5 svg { filter: drop-shadow(0 3px 16px rgba(255, 200, 90, .42)); }
 
-.vip-plan-mark.tier-1 { background: linear-gradient(140deg, #3E4C6B, #5B6C90); }
-.vip-plan-mark.tier-2 { background: linear-gradient(140deg, #1F6FA8, #35A0D8); }
-.vip-plan-mark.tier-3 { background: linear-gradient(140deg, #6B3FC4, #9B6BF0); }
-.vip-plan-mark.tier-4 { background: linear-gradient(140deg, #B4356B, #F0629B); }
-
-/* Puncaknya diberi cahaya, bukan sekadar warna lain. Paket seumur hidup dan
-   paket tahunan adalah yang paling ingin dilihat orang, dan cahaya itulah
-   yang membuat matanya berhenti di situ lebih dulu. */
-.vip-plan-mark.tier-5 {
-    background: linear-gradient(140deg, #C98A16, #FFD36B);
-    color: #2A1B05;
-    box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, .45),
-        0 0 0 1px rgba(255, 200, 90, .28),
-        0 4px 16px rgba(255, 190, 70, .22);
-}
-
-.vip-plan:hover .vip-plan-mark,
-.vip-plan-body:focus-visible .vip-plan-mark { transform: translateY(-1px) scale(1.04); }
+.vip-plan:hover .vip-plan-mark { transform: translateY(-2px) rotate(-3deg); }
 
 @media (prefers-reduced-motion: reduce) {
     .vip-plan-mark { transition: none; }
     .vip-plan:hover .vip-plan-mark { transform: none; }
+    /* Kilau menyapu dimatikan sepenuhnya, bukan diperlambat. */
+    .vip-plan-mark .pm-kilau { display: none; }
 }
 
 .vip-plan-main {
