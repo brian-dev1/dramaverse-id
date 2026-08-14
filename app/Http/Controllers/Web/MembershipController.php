@@ -164,6 +164,7 @@ class MembershipController extends Controller
                 // justru tidak dimiliki paket ini.
                 'harian' => $plan->isLifetime() ? null : $hargaHarian,
                 'durasi' => $plan->durasi_tampil,
+                'tier'   => $this->tier($plan),
                 'badge'  => $badge,
                 // Null bila TELEGRAM_BOT_USERNAME belum diisi, ATAU bila
                 // wilayahnya belum punya metode pembayaran. View merender
@@ -173,6 +174,38 @@ class MembershipController extends Controller
                 'tautan' => $siap ? TelegramDeepLink::buyPlan($plan) : null,
             ];
         });
+    }
+
+    /**
+     * Tingkat paket, 1 sampai 5, untuk memilih lambangnya.
+     *
+     * ## Kenapa dari jumlah hari, bukan dari urutan baris
+     *
+     * Lambang lama dibedakan `nth-child`: paket pertama ungu, kedua hijau,
+     * dan seterusnya. Artinya warnanya melekat pada POSISI, bukan pada
+     * paketnya — menambah satu paket murah di puncak daftar menggeser warna
+     * semua paket di bawahnya, dan pengunjung yang kembali minggu depan
+     * menemukan paket yang sama memakai lambang berbeda.
+     *
+     * Ambangnya tetap dan tidak bergantung pada berapa banyak paket yang ada,
+     * sehingga dua wilayah dengan susunan paket berbeda tetap memberi isyarat
+     * yang sama: yang berlambang mahkota selalu paket panjang, di mana pun.
+     *
+     * @return int 1 percikan, 2 bintang, 3 permata, 4 mahkota, 5 tak terhingga
+     */
+    private function tier(MembershipPlan $plan): int
+    {
+        if ($plan->isLifetime()) {
+            return 5;
+        }
+
+        return match (true) {
+            $plan->duration >= 365 => 5,
+            $plan->duration >= 90  => 4,
+            $plan->duration >= 30  => 3,
+            $plan->duration >= 7   => 2,
+            default                => 1,
+        };
     }
 
     /**

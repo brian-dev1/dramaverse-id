@@ -226,24 +226,69 @@ a.vip-plan-body:active { transform: scale(.99); }
 | arti yang melekat pada warnanya, jadi tidak ada keterangan yang hilang bagi
 | orang yang tidak bisa membedakannya.
 */
+/* ---------- Lambang tingkat paket ----------
+
+   Bentuk lingkaran ditinggalkan: squircle memberi lebih banyak ruang untuk
+   lambangnya pada ukuran yang sama, dan bidang datar di sisinya membuat
+   deretan kartu terbaca sebagai kolom yang lurus.
+
+   Warnanya menghangat seiring naiknya tingkat — biru dingin di paket
+   terpendek sampai emas di seumur hidup. Ramp itu menggantikan warna acak
+   per `nth-child`, yang melekat pada posisi baris dan berubah setiap kali
+   admin menambah paket. Lihat MembershipController::tier().
+*/
+
 .vip-plan-mark {
     flex: none;
+    position: relative;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 38px;
-    height: 38px;
-    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    border-radius: 13px;
     color: #fff;
-    background: linear-gradient(135deg, #7B5CF0, #9C7BFF);
+    background: linear-gradient(140deg, #3E4C6B, #5B6C90);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .22);
+    transition: transform .18s ease;
 }
 
-.vip-plan:nth-child(2)  .vip-plan-mark { background: linear-gradient(135deg, #17A673, #2FD69B); }
-.vip-plan:nth-child(3)  .vip-plan-mark { background: linear-gradient(135deg, #1D7FE0, #46A6FF); }
-.vip-plan:nth-child(4)  .vip-plan-mark { background: linear-gradient(135deg, #D63E5A, #FF6F87); }
-.vip-plan:nth-child(5)  .vip-plan-mark { background: linear-gradient(135deg, #B23FD0, #DE73F5); }
-.vip-plan:nth-child(6)  .vip-plan-mark { background: linear-gradient(135deg, #5D4BE0, #8C7BFF); }
-.vip-plan:nth-child(7n) .vip-plan-mark { background: linear-gradient(135deg, #17A673, #2FD69B); }
+/* Kilau tipis di sudut atas: memberi kesan permukaan, bukan kotak berwarna. */
+.vip-plan-mark::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(160deg, rgba(255, 255, 255, .26), transparent 55%);
+    pointer-events: none;
+}
+
+.vip-plan-mark svg { position: relative; z-index: 1; }
+
+.vip-plan-mark.tier-1 { background: linear-gradient(140deg, #3E4C6B, #5B6C90); }
+.vip-plan-mark.tier-2 { background: linear-gradient(140deg, #1F6FA8, #35A0D8); }
+.vip-plan-mark.tier-3 { background: linear-gradient(140deg, #6B3FC4, #9B6BF0); }
+.vip-plan-mark.tier-4 { background: linear-gradient(140deg, #B4356B, #F0629B); }
+
+/* Puncaknya diberi cahaya, bukan sekadar warna lain. Paket seumur hidup dan
+   paket tahunan adalah yang paling ingin dilihat orang, dan cahaya itulah
+   yang membuat matanya berhenti di situ lebih dulu. */
+.vip-plan-mark.tier-5 {
+    background: linear-gradient(140deg, #C98A16, #FFD36B);
+    color: #2A1B05;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, .45),
+        0 0 0 1px rgba(255, 200, 90, .28),
+        0 4px 16px rgba(255, 190, 70, .22);
+}
+
+.vip-plan:hover .vip-plan-mark,
+.vip-plan-body:focus-visible .vip-plan-mark { transform: translateY(-1px) scale(1.04); }
+
+@media (prefers-reduced-motion: reduce) {
+    .vip-plan-mark { transition: none; }
+    .vip-plan:hover .vip-plan-mark { transform: none; }
+}
 
 .vip-plan-main {
     display: flex;

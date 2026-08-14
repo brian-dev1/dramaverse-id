@@ -133,9 +133,7 @@
                             <div class="vip-plan-body">
                         @endif
 
-                            <span class="vip-plan-mark" aria-hidden="true">
-                                <x-web.home.icon name="crown" :size="18" />
-                            </span>
+                            <x-web.home.plan-mark :tier="$plan['tier']" :size="20" />
 
                             <span class="vip-plan-main">
                                 <span class="vip-plan-name">{{ $plan['nama'] }}</span>
