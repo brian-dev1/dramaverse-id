@@ -38,6 +38,22 @@ class Invoice extends Model
         'telegram_message_id',
     ];
 
+    /**
+     * Durasi paket siap tampil.
+     *
+     * Nol berarti seumur hidup — arti yang sama dengan
+     * `MembershipPlan::isLifetime()`, dan disalin ke sini karena tagihan
+     * menyimpan durasinya sendiri: paket boleh diubah atau dihapus setelah
+     * tagihan dibuat, dan yang tercetak di tagihan harus tetap apa yang
+     * dibeli saat itu.
+     */
+    public function getDurasiTampilAttribute(): string
+    {
+        return (int) $this->plan_duration <= 0
+            ? 'Selamanya'
+            : (int) $this->plan_duration.' hari';
+    }
+
     protected $casts = [
         'plan_duration' => 'integer',
         'subtotal'      => 'decimal:2',

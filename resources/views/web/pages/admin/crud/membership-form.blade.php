@@ -40,8 +40,8 @@
                                hint="Boleh isi bebas: 1500, 1.500, Rp 1.234, atau RM 14,90. Rupiah dibulatkan tanpa sen; mata uang lain menyimpan dua desimal." />
 
                 <x-admin.field name="duration" label="Durasi (hari)" type="number"
-                               :value="$record->duration" min="1" required
-                               hint="Masa berlaku setelah pembayaran dikonfirmasi." />
+                               :value="$record->duration" min="0" required
+                               hint="Masa berlaku setelah pembayaran dikonfirmasi. Isi 0 untuk paket SEUMUR HIDUP — langganannya tidak pernah kedaluwarsa. Jangan pakai 36500: pengguna akan melihat '36500 hari', bukan 'Selamanya'." />
 
                 <x-admin.field name="description" label="Deskripsi" type="textarea" :rows="3"
                                :value="$record->description" />

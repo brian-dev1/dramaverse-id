@@ -565,7 +565,7 @@ class PremiumHandler
     {
         return Notice::make('🧾', 'Scan '.$provider->labelQr().' untuk bayar')
             ->rows([
-                'Paket'         => $invoice->plan_name.' — '.(int) $invoice->plan_duration.' hari',
+                'Paket'         => $invoice->plan_name.' — '.$invoice->durasi_tampil,
                 'Nominal'       => Uang::invoice($invoice),
                 'Nomor tagihan' => $invoice->number,
                 'Atas nama'     => filled($merchant = $provider->credential('merchant_name'))
@@ -601,7 +601,7 @@ class PremiumHandler
     {
         $pesan = Notice::make('🧾', 'Tagihan dibuat')
             ->rows([
-                'Paket' => $invoice->plan_name.' — '.(int) $invoice->plan_duration.' hari',
+                'Paket' => $invoice->plan_name.' — '.$invoice->durasi_tampil,
                 'Total' => Uang::invoice($invoice),
                 'Nomor' => $invoice->number,
                 'Bayar sebelum' => $invoice->due_at !== null

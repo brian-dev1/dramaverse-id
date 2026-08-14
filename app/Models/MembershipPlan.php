@@ -87,4 +87,35 @@ class MembershipPlan extends Model
     {
         return (float) $this->price <= 0;
     }
+
+    /**
+     * Paket tanpa tanggal berakhir.
+     *
+     * ## Kenapa durasi 0, bukan kolom `is_lifetime`
+     *
+     * Kolom kedua berarti dua sumber kebenaran untuk satu pertanyaan, dan
+     * cepat atau lambat keduanya berselisih: paket dengan `is_lifetime = true`
+     * dan `duration = 30` tidak punya jawaban benar, tetapi kombinasinya bisa
+     * tersimpan.
+     *
+     * Nol tidak punya arti lain di sini — paket berdurasi nol hari mustahil
+     * dijual — jadi ia bebas dipakai. Yang penting justru bukan bilangannya
+     * melainkan bahwa hanya ADA SATU tempat yang menerjemahkannya, yaitu
+     * method ini.
+     *
+     * Cara lama menuliskannya, `duration = 36500`, tetap berjalan tetapi tidak
+     * disarankan: ia berbohong dua kali. Pengguna melihat "36500 hari"
+     * alih-alih "selamanya", dan seratus tahun dari sekarang ia benar-benar
+     * kedaluwarsa.
+     */
+    public function isLifetime(): bool
+    {
+        return (int) $this->duration <= 0;
+    }
+
+    /** Durasi siap tampil, dipakai panel admin dan halaman harga. */
+    public function getDurasiTampilAttribute(): string
+    {
+        return $this->isLifetime() ? 'Selamanya' : (int) $this->duration.' hari';
+    }
 }

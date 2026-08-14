@@ -18,7 +18,7 @@
                     <dd>{{ $invoice->user?->name ?? '—' }}</dd>
 
                     <dt>Paket</dt>
-                    <dd>{{ $invoice->plan_name }} ({{ $invoice->plan_duration }} hari)</dd>
+                    <dd>{{ $invoice->plan_name }} ({{ $invoice->durasi_tampil }})</dd>
 
                     <dt>Subtotal</dt>
                     <dd>{{ \App\Support\Uang::invoice($invoice, 'subtotal') }}</dd>

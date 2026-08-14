@@ -34,6 +34,17 @@ class MembershipRepository implements MembershipRepositoryInterface
             ->where('user_id', $user->id)
             ->where('status', SubscriptionStatus::ACTIVE->value)
             ->where(fn ($q) => $q->whereNull('expired_at')->orWhere('expired_at', '>', now()))
+            /*
+            | Seumur hidup menang atas apa pun.
+            |
+            | `expired_at` null berarti tanpa batas, dan MySQL menempatkan NULL
+            | di URUTAN TERAKHIR pada `ORDER BY ... DESC`. Tanpa baris ini,
+            | pengguna yang punya langganan seumur hidup lalu membeli paket 30
+            | hari akan dianggap berlangganan yang 30 hari itu — dan sebulan
+            | kemudian sistem menyatakan aksesnya habis, padahal ia sudah
+            | membayar untuk selamanya.
+            */
+            ->orderByRaw('expired_at IS NULL DESC')
             ->latest('expired_at')
             ->first();
     }

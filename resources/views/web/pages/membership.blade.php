@@ -139,12 +139,16 @@
 
                             <span class="vip-plan-main">
                                 <span class="vip-plan-name">{{ $plan['nama'] }}</span>
-                                <span class="vip-plan-rate">≈ {{ $plan['harian'] }}/hari</span>
+                                {{-- Null untuk paket seumur hidup: tidak ada
+                                     "per hari" pada masa yang tidak habis. --}}
+                                <span class="vip-plan-rate">
+                                    {{ $plan['harian'] ? '≈ '.$plan['harian'].'/hari' : 'Sekali bayar, berlaku selamanya' }}
+                                </span>
                             </span>
 
                             <span class="vip-plan-side">
                                 <span class="vip-plan-price">{{ $plan['harga'] }}</span>
-                                <span class="vip-plan-days">{{ $plan['durasi'] }} hari</span>
+                                <span class="vip-plan-days">{{ $plan['durasi'] }}</span>
                             </span>
 
                             <span class="vip-plan-go" aria-hidden="true">

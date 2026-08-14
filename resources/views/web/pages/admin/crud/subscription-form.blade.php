@@ -19,8 +19,13 @@
 
                 <x-admin.field name="membership_plan_id" label="Paket" type="select"
                                :value="$record->membership_plan_id" required
+                               {{-- Harga dan durasi lewat accessor: paket kini
+                                    bisa berdenominasi Ringgit atau Dolar, dan
+                                    bisa berdurasi "Selamanya". Merangkainya di
+                                    sini dengan "Rp" dan "hari" mentah membuat
+                                    dropdown ini menyebut angka yang salah. --}}
                                :options="$plans->mapWithKeys(fn ($p) => [
-                                   $p->id => $p->name.' — Rp '.number_format((float) $p->price, 0, ',', '.').' / '.$p->duration.' hari',
+                                   $p->id => $p->name.' — '.$p->harga_tampil.' / '.$p->durasi_tampil,
                                ])->all()" />
 
                 <x-admin.field name="price" label="Harga dibayar (Rupiah)" type="number" step="1000"

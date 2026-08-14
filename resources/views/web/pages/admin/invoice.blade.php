@@ -119,7 +119,7 @@
                                 </td>
                                 <td>
                                     {{ $invoice->plan_name }}
-                                    <br><span class="cell-empty">{{ $invoice->plan_duration }} hari</span>
+                                    <br><span class="cell-empty">{{ $invoice->durasi_tampil }}</span>
                                 </td>
                                 <td>{{ \App\Support\Uang::invoice($invoice) }}</td>
                                 <td>

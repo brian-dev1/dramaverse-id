@@ -37,7 +37,9 @@ class MembershipController extends AdminCrudController
             'Wilayah'       => 'region',
             // Beserta mata uangnya — lihat MembershipPlan::getHargaTampilAttribute().
             'Harga'         => 'harga_tampil',
-            'Durasi (hari)' => 'duration',
+            // "Selamanya" untuk durasi 0, bukan angka 0 yang terbaca seperti
+            // paket rusak.
+            'Durasi'        => 'durasi_tampil',
             'Badge'         => 'badge',
             'Langganan'     => 'subscriptions_count',
             'Urutan'        => 'sort_order',
@@ -83,7 +85,8 @@ class MembershipController extends AdminCrudController
             'region'      => ['required', Rule::enum(PaymentRegion::class)],
             'price'       => ['required', 'string', 'max:30'],
             'currency'    => ['required', 'string', 'size:3', Rule::in(array_keys(Uang::PILIHAN))],
-            'duration'    => ['required', 'integer', 'min:1', 'max:36500'],
+            // 0 = seumur hidup. Lihat MembershipPlan::isLifetime().
+            'duration'    => ['required', 'integer', 'min:0', 'max:36500'],
             'description' => ['nullable', 'string', 'max:500'],
             'benefits'    => ['nullable', 'string', 'max:1000'],
             'badge'       => ['nullable', 'string', 'max:30'],

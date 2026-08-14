@@ -250,7 +250,7 @@
                     <div class="detail-body-admin" style="border-top:1px solid var(--admin-border,#2a2a2a);padding-top:1rem;">
                         <p class="page-subtitle">
                             <code>{{ $invoice->number }}</code>
-                            · {{ $invoice->plan_name }} ({{ (int) $invoice->plan_duration }} hari)
+                            · {{ $invoice->plan_name }} ({{ $invoice->durasi_tampil }})
                             · <strong>Rp {{ number_format((float) $invoice->total, 0, ',', '.') }}</strong>
                             @if ((float) $invoice->paid_amount > 0 && ! $invoice->isSettled())
                                 <br>Terbayar Rp {{ number_format((float) $invoice->paid_amount, 0, ',', '.') }}

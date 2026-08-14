@@ -9,7 +9,7 @@
         <h1 class="page-title">Tagihan {{ $invoice->number }}</h1>
 
         <p class="page-subtitle">
-            {{ $invoice->plan_name }} — {{ $invoice->plan_duration }} hari
+            {{ $invoice->plan_name }} — {{ $invoice->durasi_tampil }}
         </p>
 
         <div class="panel">

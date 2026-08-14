@@ -124,33 +124,46 @@ class MembershipController extends Controller
 
         $perHari = fn (MembershipPlan $p) => (float) $p->price / max(1, (int) $p->duration);
 
+        // Label HEMAT dan TERLARIS dibandingkan antar paket BERDURASI saja.
+        // Paket seumur hidup selalu memenangkan hitungan per hari — bagi
+        // berapa pun dengan hari yang tak terbatas hasilnya mendekati nol —
+        // jadi memasukkannya berarti label itu tidak pernah berpindah.
+        $berdurasi = $plans->reject(fn (MembershipPlan $p) => $p->isLifetime());
+
         // Dibandingkan sebagai string berformat, bukan sebagai float. Dua
         // paket yang tampil sama-sama "Rp 1.000/hari" tidak boleh yang satu
         // mendapat label HEMAT hanya karena selisih pecahan yang tidak pernah
         // terlihat di layar.
-        $murah = $plans->sortBy($perHari)->first();
+        $murah = $berdurasi->sortBy($perHari)->first();
 
-        $termurah = Uang::format($perHari($murah), $murah->currency);
+        $termurah = $murah !== null
+            ? Uang::format($perHari($murah), $murah->currency)
+            : null;
 
         $terlaris = $plans->count() > 1
             ? $this->paketTerlaris($plans)
             : null;
 
-        return $plans->values()->map(function (MembershipPlan $plan) use ($perHari, $termurah, $terlaris, $plans, $siap) {
+        return $plans->values()->map(function (MembershipPlan $plan) use ($perHari, $termurah, $terlaris, $plans, $berdurasi, $siap) {
 
             $hargaHarian = Uang::format($perHari($plan), $plan->currency);
 
             $badge = filled($plan->badge) ? $plan->badge : match (true) {
+                $plan->isLifetime() => 'Selamanya',
                 $terlaris !== null && $terlaris === (int) $plan->id => 'Terlaris',
-                $plans->count() > 1 && $hargaHarian === $termurah => 'Hemat',
+                $berdurasi->count() > 1 && $hargaHarian === $termurah => 'Hemat',
                 default => null,
             };
 
             return [
                 'nama'   => $plan->name,
                 'harga'  => Uang::format($plan->price, $plan->currency),
-                'harian' => $hargaHarian,
-                'durasi' => (int) $plan->duration,
+                // Null untuk paket seumur hidup: "harga per hari" adalah
+                // pembagian dengan jumlah hari yang tidak pernah habis, dan
+                // angka apa pun yang keluar dari situ mengarang batas yang
+                // justru tidak dimiliki paket ini.
+                'harian' => $plan->isLifetime() ? null : $hargaHarian,
+                'durasi' => $plan->durasi_tampil,
                 'badge'  => $badge,
                 // Null bila TELEGRAM_BOT_USERNAME belum diisi, ATAU bila
                 // wilayahnya belum punya metode pembayaran. View merender

@@ -162,7 +162,7 @@ class MembershipService
         $langganan->forceFill([
             'status'     => SubscriptionStatus::ACTIVE->value,
             'started_at' => $mulai,
-            'expired_at' => $mulai->copy()->addDays(max(1, (int) $invoice->plan_duration)),
+            'expired_at' => $this->berakhirPada($mulai, (int) $invoice->plan_duration),
         ])->save();
 
         $this->syncUserFlags($invoice->user_id);
@@ -193,7 +193,7 @@ class MembershipService
             'membership_plan_id' => $plan->id,
             'price'              => $plan->price,
             'started_at'         => $mulai,
-            'expired_at'         => $mulai->copy()->addDays(max(1, (int) $plan->duration)),
+            'expired_at'         => $this->berakhirPada($mulai, (int) $plan->duration),
             'status'             => SubscriptionStatus::ACTIVE->value,
             'source'             => 'admin',
         ]);
@@ -294,6 +294,19 @@ class MembershipService
      * Dari sisa langganan yang masih berjalan bila ada — lihat alasannya di
      * docblock kelas.
      */
+    /**
+     * Tanggal berakhir langganan, atau null bila paketnya seumur hidup.
+     *
+     * Satu-satunya tempat durasi diterjemahkan menjadi tanggal. Sebelumnya
+     * perhitungan yang sama ditulis dua kali — di `activateFromInvoice()` dan
+     * di `grant()` — dan dua salinan berarti paket seumur hidup yang bekerja
+     * lewat pembelian tetapi diam-diam berbatas waktu saat diberikan admin.
+     */
+    private function berakhirPada(\Illuminate\Support\Carbon $mulai, int $durasi): ?\Illuminate\Support\Carbon
+    {
+        return $durasi <= 0 ? null : $mulai->copy()->addDays($durasi);
+    }
+
     private function startFrom(int $userId): \Illuminate\Support\Carbon
     {
         $user = User::find($userId);
