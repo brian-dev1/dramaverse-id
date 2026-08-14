@@ -6,6 +6,7 @@ use App\Repositories\Contracts\TelegramRepositoryInterface;
 use App\Services\Telegram\Contracts\TelegramServiceInterface;
 use App\Services\UserService;
 use App\Support\TelegramDeepLink;
+use App\Telegram\Handlers\WebsiteHandler;
 use App\Telegram\Keyboards\HomeKeyboard;
 
 /**
@@ -44,6 +45,25 @@ class StartHandler
         */
 
         if ($parameter !== '') {
+
+            /*
+            |------------------------------------------------------------------
+            | Permintaan masuk ke website
+            |------------------------------------------------------------------
+            |
+            | Datang dari tombol "Masuk lewat Telegram" di beranda. Jawabannya
+            | sama persis dengan tombol Website di menu bot — tautan sekali
+            | pakai atau tombol Mini App — jadi keduanya memanggil kode yang
+            | sama, bukan dua salinan yang lambat laun berbeda.
+            |
+            */
+
+            if ($parameter === TelegramDeepLink::LOGIN) {
+
+                app(WebsiteHandler::class)->kirim($chatId, $user);
+
+                return;
+            }
 
             if ($parameter === TelegramDeepLink::SUBSCRIBE) {
 

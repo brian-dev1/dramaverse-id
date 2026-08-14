@@ -20,9 +20,24 @@ class WebsiteHandler
         $chatId = $callback['message']['chat']['id'];
         $telegramId = $callback['from']['id'];
 
-        $user = $this->users->findByTelegramId($telegramId);
+        $this->kirim($chatId, $this->users->findByTelegramId($telegramId));
+    }
 
-        if (!$user) {
+    /**
+     * Kirim cara masuk ke website.
+     *
+     * Dipisahkan dari `handle()` supaya bisa dipanggil dari tempat yang tidak
+     * punya objek callback — khususnya deep link `?start=login`, yang dipakai
+     * tombol "Masuk lewat Telegram" di website. Tanpa pemisahan ini, satu-
+     * satunya cara mendapatkan tautan masuk adalah menekan tombol di dalam
+     * menu bot, dan orang yang sedang berdiri di halaman web tidak punya cara
+     * menemukannya.
+     *
+     * @param  \App\Models\User|null  $user
+     */
+    public function kirim(int|string $chatId, $user): void
+    {
+        if (! $user) {
 
             // Dikirim sebagai pesan, bukan sebagai jawaban callback.
             // CallbackHandler sudah menjawab callback-nya lebih dulu, dan

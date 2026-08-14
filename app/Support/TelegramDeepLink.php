@@ -32,6 +32,18 @@ class TelegramDeepLink
     public const SUBSCRIBE = 'subscribe';
 
     /**
+     * Meminta tautan masuk ke website: `?start=login`.
+     *
+     * Pengguna biasa tidak punya kata sandi — identitasnya dibuktikan Telegram,
+     * dan website menerimanya lewat tautan sekali pakai yang dikirim bot.
+     * Selama tautan itu hanya bisa diminta dari dalam menu bot, orang yang
+     * sedang berdiri di halaman web tidak punya cara masuk sama sekali: ia
+     * menekan Riwayat, terlempar kembali ke beranda, dan tidak ada satu pun
+     * petunjuk tentang apa yang harus dilakukannya.
+     */
+    public const LOGIN = 'login';
+
+    /**
      * Membuat tagihan untuk satu paket: `?start=vip_12`.
      *
      * Inilah jembatan yang menggantikan daftar paket di dalam bot. Harganya
@@ -93,6 +105,12 @@ class TelegramDeepLink
         $id = $plan instanceof MembershipPlan ? $plan->id : $plan;
 
         return self::build(self::PLAN.$id);
+    }
+
+    /** Tautan untuk meminta akses masuk website. Null bila bot belum diatur. */
+    public static function login(): ?string
+    {
+        return self::build(self::LOGIN);
     }
 
     /** Tautan affiliate seseorang. Null bila bot belum diatur. */

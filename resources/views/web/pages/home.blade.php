@@ -12,6 +12,42 @@
 
 @section('content')
 
+    {{--
+        Tamu yang menekan Riwayat, Profil, atau Favorit dilempar ke sini oleh
+        `redirectGuestsTo()` dengan `?masuk=1`. Sampai sekarang parameter itu
+        tidak dibaca siapa pun: yang terjadi hanyalah halaman berganti kembali
+        ke beranda, tanpa satu kata pun tentang kenapa. Dari sisi pengguna itu
+        tidak bisa dibedakan dari tombol yang rusak.
+
+        Yang menutup lubangnya bukan pesannya, melainkan tombol di bawahnya —
+        pengguna biasa tidak punya kata sandi, jadi memberitahunya "silakan
+        masuk" tanpa menunjukkan caranya sama saja dengan tidak memberi tahu.
+    --}}
+    @guest
+        @if (request()->boolean('masuk'))
+            @php $masukUrl = \App\Support\TelegramDeepLink::login(); @endphp
+
+            <div class="login-prompt" role="status">
+                <x-web.home.icon name="user" :size="18" />
+                <div>
+                    <strong>Masuk dulu untuk membuka halaman itu.</strong>
+                    <p>
+                        Riwayat, Favorit, dan Profil terikat pada akun Anda. DramaVerse
+                        tidak memakai kata sandi — Telegram yang membuktikan identitas
+                        Anda, lalu bot mengirim tautan masuk sekali pakai.
+                    </p>
+                </div>
+
+                @if ($masukUrl)
+                    <a href="{{ $masukUrl }}" class="btn btn-primary btn-sm"
+                       target="_blank" rel="noopener noreferrer">
+                        Masuk lewat Telegram
+                    </a>
+                @endif
+            </div>
+        @endif
+    @endguest
+
     <x-web.home.continue-watching :histories="$continueWatching" />
 
     {{-- Rail teratas yang pasti ada isinya: posternya jadi gambar pertama yang
