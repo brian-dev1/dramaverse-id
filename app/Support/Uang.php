@@ -38,6 +38,13 @@ class Uang
     private const FORMAT = [
         'IDR' => ['Rp ', 0],
         'MYR' => ['RM ', 2],
+        // Dolar ditulis dengan kode negaranya, bukan "$" telanjang. Belasan
+        // mata uang memakai lambang yang sama — dolar Amerika, Singapura,
+        // Australia, Hong Kong — dan "$12" di halaman yang juga melayani
+        // Malaysia adalah angka yang tidak bisa dipastikan artinya oleh orang
+        // yang sedang memutuskan membayar.
+        'USD' => ['US$ ', 2],
+        'SGD' => ['S$ ', 2],
     ];
 
     /** Mata uang yang boleh dipilih admin saat membuat paket. */

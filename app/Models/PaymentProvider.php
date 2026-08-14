@@ -124,6 +124,31 @@ class PaymentProvider extends Model
     }
 
     /** Path absolut gambar QRIS di disk, untuk diunggah ke Telegram. */
+    /**
+     * Sebutan kode QR-nya menurut wilayah.
+     *
+     * ## Kenapa tidak selalu "QRIS"
+     *
+     * QRIS adalah nama sistem pembayaran Indonesia, bukan nama umum untuk
+     * kode QR. Selama satu-satunya wilayah adalah Indonesia, menyebutnya
+     * begitu di mana-mana tidak merugikan siapa pun.
+     *
+     * Begitu Malaysia dan negara lain masuk, ia berubah jadi instruksi yang
+     * salah: orang Malaysia diminta memindai "QRIS" dengan aplikasi yang
+     * mengenalnya sebagai DuitNow, dan orang yang membayar dolar lewat QR
+     * PayPal diminta memindai sesuatu yang tidak ada di layarnya. Instruksi
+     * yang menyebut nama yang tidak dikenal membuat orang berhenti dan
+     * bertanya, bukan membayar.
+     */
+    public function labelQr(): string
+    {
+        return match ($this->region) {
+            PaymentRegion::ID   => 'QRIS',
+            PaymentRegion::MY   => 'DuitNow QR',
+            default             => 'kode QR',
+        };
+    }
+
     public function qrisAbsolutePath(): ?string
     {
         if (blank($this->qris_image_path)) {

@@ -563,7 +563,7 @@ class PremiumHandler
      */
     private function captionQris(Invoice $invoice, PaymentProvider $provider): string
     {
-        return Notice::make('🧾', 'Scan QRIS untuk bayar')
+        return Notice::make('🧾', 'Scan '.$provider->labelQr().' untuk bayar')
             ->rows([
                 'Paket'         => $invoice->plan_name.' — '.(int) $invoice->plan_duration.' hari',
                 'Nominal'       => Uang::invoice($invoice),

@@ -161,9 +161,11 @@
                 @endforeach
             </ul>
 
+            {{-- "kode QR", bukan "QRIS": halaman ini melayani tiga wilayah, dan
+                 QRIS hanya nama sistem pembayaran Indonesia. --}}
             <p class="vip-note">
                 Pembayaran diproses lewat Telegram seperti biasa. Menekan paket
-                membuka chat bot, dan tagihan beserta QRIS-nya dikirim di sana.
+                membuka chat bot, dan tagihan beserta kode QR-nya dikirim di sana.
             </p>
 
         @endif
