@@ -1346,3 +1346,9 @@ a.stat-card:hover .stat-icon{ color:var(--gold); }
    dan kotak empat baris membuat admin menggulir di dalam kotak untuk melihat
    sesuatu yang sebenarnya muat di layar. */
 #field-channel_template{ min-height:260px; font-family:var(--font-mono); font-size:12.5px; }
+
+/* Chip berbendera. Bendera SVG dipakai menggantikan emoji karena Windows
+   merender emoji bendera sebagai dua huruf kode negara — lihat komponen
+   web.home.flag. */
+.chip-flag{ display:inline-flex; align-items:center; gap:6px; }
+.chip-flag .flag{ border-radius:2px; box-shadow:0 0 0 1px rgba(255,255,255,.18); }

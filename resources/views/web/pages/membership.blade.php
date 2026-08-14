@@ -54,7 +54,8 @@
                     <a href="{{ route('web.membership', ['wilayah' => $r->value]) }}"
                        class="{{ $terpilih === $r ? 'active' : '' }}"
                        role="tab" aria-selected="{{ $terpilih === $r ? 'true' : 'false' }}">
-                        <span aria-hidden="true">{{ $r->bendera() }}</span> {{ $r->label() }}
+                        <x-web.home.flag :region="$r" :size="17" />
+                        <span>{{ $r->label() }}</span>
                     </a>
                 @endforeach
             </div>
@@ -86,6 +87,21 @@
             <h2>Pilih Paket</h2>
             <span>Tidak berlangganan otomatis.</span>
         </div>
+
+        {{--
+            Harga wilayah ini tetap ditampilkan meski pembayarannya belum
+            dibuka — orang datang ke halaman ini untuk mengetahui berapa, sering
+            jauh sebelum ia siap membayar. Yang ditahan cuma tombolnya, dan
+            alasannya disebut di sini supaya kartu tanpa tombol tidak terbaca
+            sebagai halaman rusak.
+        --}}
+        @if ($terpilih && ! $siap && $plans->isNotEmpty())
+            <p class="vip-region-warn">
+                <strong>Pembayaran untuk {{ $terpilih->label() }} belum dibuka.</strong>
+                Harganya sudah final dan tidak akan berubah, tetapi metode pembayarannya
+                masih disiapkan. Pilih wilayah lain bila Anda ingin berlangganan sekarang.
+            </p>
+        @endif
 
         @if ($plans->isEmpty())
 

@@ -99,6 +99,9 @@
 
 .vip-region a {
     flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
     white-space: nowrap;
     padding: 8px 16px;
     border: 1px solid var(--dv-line, rgba(255, 255, 255, .08));
@@ -141,6 +144,17 @@
 }
 
 .vip-region-warn strong { font-weight: 700; }
+
+/* Bendera SVG. Sudut dibulatkan sedikit dan diberi garis tipis supaya
+   bendera yang bagiannya putih tidak lenyap di latar gelap. */
+.flag {
+    display: block;
+    flex: 0 0 auto;
+    border-radius: 2px;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, .18);
+}
+
+.flag-globe { box-shadow: none; }
 
 /* ---------- Kerangka seksi ---------- */
 

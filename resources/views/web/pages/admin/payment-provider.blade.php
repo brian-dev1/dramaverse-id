@@ -89,8 +89,9 @@
                                     <br><span class="cell-empty">{{ $p->slug }}</span>
                                 </td>
                                 <td>
-                                    <span class="chip {{ $p->region === \App\Enums\PaymentRegion::ID ? '' : 'gold' }}">
-                                        {{ $p->region->bendera() }} {{ $p->region->label() }}
+                                    <span class="chip chip-flag {{ $p->region === \App\Enums\PaymentRegion::ID ? '' : 'gold' }}">
+                                        <x-web.home.flag :region="$p->region" :size="14" />
+                                        {{ $p->region->label() }}
                                     </span>
                                 </td>
                                 <td>

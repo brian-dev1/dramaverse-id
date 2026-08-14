@@ -54,9 +54,11 @@ class MembershipController extends Controller
 
         $terpilih = $this->wilayahTerpilih($request, $wilayah);
 
+        $siap = $this->siap($terpilih);
+
         $plans = $terpilih === null
             ? collect()
-            : $this->kartu($this->paketBerbayar($terpilih));
+            : $this->kartu($this->paketBerbayar($terpilih), $siap);
 
         $subscriptions = collect();
 
@@ -78,6 +80,7 @@ class MembershipController extends Controller
             'plans'         => $plans,
             'wilayah'       => $wilayah,
             'terpilih'      => $terpilih,
+            'siap'          => $siap,
             'subscriptions' => $subscriptions,
             'status'        => $status,
         ]);
@@ -110,9 +113,10 @@ class MembershipController extends Controller
      * ia cuma satu-satunya.
      *
      * @param  Collection<int,MembershipPlan>  $plans
+     * @param  bool  $siap  wilayahnya sudah punya metode pembayaran
      * @return Collection<int,array<string,mixed>>
      */
-    private function kartu(Collection $plans): Collection
+    private function kartu(Collection $plans, bool $siap = true): Collection
     {
         if ($plans->isEmpty()) {
             return collect();
@@ -132,7 +136,7 @@ class MembershipController extends Controller
             ? $this->paketTerlaris($plans)
             : null;
 
-        return $plans->values()->map(function (MembershipPlan $plan) use ($perHari, $termurah, $terlaris, $plans) {
+        return $plans->values()->map(function (MembershipPlan $plan) use ($perHari, $termurah, $terlaris, $plans, $siap) {
 
             $hargaHarian = Uang::format($perHari($plan), $plan->currency);
 
@@ -148,10 +152,12 @@ class MembershipController extends Controller
                 'harian' => $hargaHarian,
                 'durasi' => (int) $plan->duration,
                 'badge'  => $badge,
-                // Null bila TELEGRAM_BOT_USERNAME belum diisi. View merender
+                // Null bila TELEGRAM_BOT_USERNAME belum diisi, ATAU bila
+                // wilayahnya belum punya metode pembayaran. View merender
                 // kartunya tanpa tautan, bukan tombol yang tidak menuju ke
-                // mana pun.
-                'tautan' => TelegramDeepLink::buyPlan($plan),
+                // mana pun — harganya tetap terbaca, yang hilang cuma
+                // kemampuan menekannya.
+                'tautan' => $siap ? TelegramDeepLink::buyPlan($plan) : null,
             ];
         });
     }
@@ -190,21 +196,39 @@ class MembershipController extends Controller
     */
 
     /**
-     * Wilayah yang benar-benar siap melayani pembayaran.
+     * Wilayah yang punya daftar harga.
      *
-     * Syarat yang sama persis dengan yang dipakai bot sebelum ini: ada paket
-     * berbayar DAN ada provider yang bisa dipakai. Wilayah yang paketnya ada
-     * tapi metode bayarnya belum diisi tidak ditawarkan — tombolnya akan
-     * mengantar ke penolakan.
+     * ## Kenapa provider tidak lagi jadi syarat
+     *
+     * Dulu wilayah baru muncul bila paketnya ada DAN metode bayarnya siap.
+     * Niatnya benar — tombol yang mengantar ke penolakan lebih buruk daripada
+     * tombol yang tidak ada — tetapi ia menyelesaikan masalahnya dengan
+     * menyembunyikan seluruh daftar harga, dan itu terlalu mahal.
+     *
+     * Halaman ini pertama-tama adalah daftar harga. Orang datang untuk
+     * mengetahui berapa, sering jauh sebelum ia siap membayar. Menyembunyikan
+     * harga Malaysia sampai QRIS-nya siap berarti pengunjung Malaysia melihat
+     * harga Rupiah dan menyimpulkan situs ini tidak melayani negaranya —
+     * kesimpulan yang jauh lebih merugikan daripada tombol yang belum aktif.
+     *
+     * Penolakannya tetap dicegah, hanya dipindahkan: `siap()` menentukan
+     * apakah kartunya membawa tautan beli. Wilayah yang belum punya provider
+     * tetap memperlihatkan harganya, tanpa tombol yang tidak menuju ke mana
+     * pun, disertai keterangan kenapa.
      *
      * @return Collection<int,PaymentRegion>
      */
     private function wilayahTersedia(): Collection
     {
         return collect(PaymentRegion::cases())
-            ->filter(fn (PaymentRegion $r) => $this->paketBerbayar($r)->isNotEmpty()
-                && $this->gateways->usable($r)->isNotEmpty())
+            ->filter(fn (PaymentRegion $r) => $this->paketBerbayar($r)->isNotEmpty())
             ->values();
+    }
+
+    /** Wilayah itu sudah punya metode pembayaran yang bisa dipakai. */
+    private function siap(?PaymentRegion $region): bool
+    {
+        return $region !== null && $this->gateways->usable($region)->isNotEmpty();
     }
 
     /**
