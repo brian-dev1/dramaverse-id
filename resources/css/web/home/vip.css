@@ -201,8 +201,10 @@
 .vip-plan-body {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 14px 14px;
+    /* Jarak dan padding menyesuaikan medali 56px: terlalu rapat, cincin
+       luarnya menyentuh tepi kartu dan bentuk segi enamnya hilang. */
+    gap: 14px;
+    padding: 15px 16px;
     border: 1px solid var(--dv-line, rgba(255, 255, 255, .08));
     border-radius: var(--dv-r, 14px);
     background: var(--dv-glass, rgba(20, 15, 28, .78));
@@ -218,21 +220,14 @@ a.vip-plan-body:hover {
 
 a.vip-plan-body:active { transform: scale(.99); }
 
-/*
-| Cakram ikon.
-|
-| Warnanya berputar per baris lewat :nth-child supaya deretan paket tidak
-| terbaca sebagai satu blok abu-abu panjang. Murni penanda posisi — tidak ada
-| arti yang melekat pada warnanya, jadi tidak ada keterangan yang hilang bagi
-| orang yang tidak bisa membedakannya.
-*/
-/* ---------- Lambang tingkat paket ----------
+/* ---------- Medali tingkat paket ----------
 
-   Bentuk lingkaran ditinggalkan: squircle memberi lebih banyak ruang untuk
-   lambangnya pada ukuran yang sama, dan bidang datar di sisinya membuat
-   deretan kartu terbaca sebagai kolom yang lurus.
+   Seluruh permukaannya digambar di dalam SVG — gradasi, facet, tepi logam,
+   cincin luar. Yang tersisa di sini hanya penempatan dan cahaya yang jatuh
+   ke LUAR bentuknya, satu-satunya hal yang memang tidak bisa dilakukan dari
+   dalam SVG.
 
-   Warnanya menghangat seiring naiknya tingkat — biru dingin di paket
+   Warnanya menghangat seiring naiknya tingkat — baja dingin di paket
    terpendek sampai emas di seumur hidup. Ramp itu menggantikan warna acak
    per `nth-child`, yang melekat pada posisi baris dan berubah setiap kali
    admin menambah paket. Lihat MembershipController::tier().
@@ -247,19 +242,21 @@ a.vip-plan-body:active { transform: scale(.99); }
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 44px;
-    height: 44px;
+    width: 56px;
+    height: 56px;
     transition: transform .2s var(--dv-ease, cubic-bezier(.2, .7, .3, 1));
 }
 
 .vip-plan-mark svg { display: block; overflow: visible; }
 
-/* Cahaya di sekeliling medali, bukan di dalamnya. Halus untuk tingkat bawah
-   supaya tetap terasa benda padat, dan jelas untuk yang teratas. */
-.vip-plan-mark.tier-2 svg { filter: drop-shadow(0 3px 10px rgba(63, 163, 220, .3)); }
-.vip-plan-mark.tier-3 svg { filter: drop-shadow(0 3px 10px rgba(155, 107, 240, .32)); }
-.vip-plan-mark.tier-4 svg { filter: drop-shadow(0 3px 12px rgba(240, 98, 155, .34)); }
-.vip-plan-mark.tier-5 svg { filter: drop-shadow(0 3px 16px rgba(255, 200, 90, .42)); }
+/* Cahaya di sekeliling medali, bukan di dalamnya — tidak ada cara membuat
+   sinar keluar dari bentuknya dari dalam SVG. Halus di tingkat bawah supaya
+   tetap terasa benda padat, dan kuat di puncak. */
+.vip-plan-mark.tier-1 svg { filter: drop-shadow(0 4px 12px rgba(122, 139, 181, .28)); }
+.vip-plan-mark.tier-2 svg { filter: drop-shadow(0 4px 16px rgba(79, 180, 236, .42)); }
+.vip-plan-mark.tier-3 svg { filter: drop-shadow(0 4px 16px rgba(168, 123, 255, .45)); }
+.vip-plan-mark.tier-4 svg { filter: drop-shadow(0 4px 18px rgba(255, 111, 166, .48)); }
+.vip-plan-mark.tier-5 svg { filter: drop-shadow(0 4px 22px rgba(255, 206, 102, .6)); }
 
 .vip-plan:hover .vip-plan-mark { transform: translateY(-2px) rotate(-3deg); }
 

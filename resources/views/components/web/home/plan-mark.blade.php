@@ -1,28 +1,35 @@
-@props(['tier' => 1, 'size' => 44])
+@props(['tier' => 1, 'size' => 56])
 
 {{--
     Medali tingkat paket.
 
-    ## Kenapa bukan ikon di dalam kotak berwarna
+    ## Kenapa besar, dan kenapa bercincin
 
-    Bentuk sebelumnya — mahkota putih di atas gradasi datar — terbaca sebagai
-    ikon antarmuka, bukan sebagai penanda nilai. Yang membedakan keduanya bukan
-    warnanya melainkan permukaannya: benda yang terasa eksklusif selalu punya
-    sisi yang memantulkan cahaya, tepi yang tertangkap sinar, dan bidang yang
-    tidak rata. Bidang datar berwarna terlihat seperti tombol.
+    Versi sebelumnya berukuran 44px dan berdiri sendiri tanpa bingkai. Pada
+    kartu setinggi 78px itu membuatnya terbaca sebagai ikon pelengkap — mata
+    melewatinya dan langsung ke nama paket. Lambang yang tugasnya menyatakan
+    tingkat harus cukup besar untuk dikenali sebelum teks apa pun dibaca;
+    kalau tidak, ia hanya menghabiskan ruang.
 
-    Karena itu medalinya digambar sebagai segi enam bersudut dengan empat
-    lapisan: gradasi dasar, permukaan miring yang lebih terang di kiri-atas,
-    garis tepi logam yang menangkap cahaya, dan facet gelap di separuh bawah
-    supaya bentuknya terbaca cekung. Semuanya di dalam satu SVG — tanpa gambar,
-    tanpa berkas tambahan, dan tetap tajam di layar kepadatan berapa pun.
+    Sekarang 56px dengan cincin luar yang mengelilinginya. Cincin itu bukan
+    hiasan: ia yang mengubah bentuknya dari "ikon berlatar warna" menjadi
+    "medali" — sama seperti pada lencana pangkat, uang logam, dan lambang
+    kesatuan, di mana bingkai melingkar itulah yang menyatakan bahwa isinya
+    diberikan, bukan sekadar digambar.
 
-    ## Kilaunya hanya di tingkat teratas
+    ## Empat lapisan permukaan
 
-    Kilau yang menyapu setiap medali akan berhenti berarti dan berubah jadi
-    kebisingan. Ia disediakan hanya untuk seumur hidup dan paket tahunan —
-    tepatnya karena itu yang paling ingin dilihat orang. Gerakannya dimatikan
-    penuh di CSS bila sistem meminta pengurangan animasi.
+    Gradasi dasar, facet terang di kuadran atas, facet gelap di separuh bawah,
+    dan tepi logam yang menangkap cahaya di kiri-atas lalu meredup ke
+    kanan-bawah. Benda yang terasa mahal selalu punya sisi yang memantul
+    berbeda-beda; bidang datar berwarna selalu terbaca sebagai tombol.
+
+    ## Kilau hanya di puncak
+
+    Kilau yang menyapu semua medali berhenti berarti dan berubah jadi
+    kebisingan. Ia disediakan untuk seumur hidup dan paket tahunan saja —
+    tepatnya karena itu yang paling ingin dilihat orang. Dimatikan penuh di
+    CSS bila sistem meminta pengurangan animasi.
 
     Tingkatnya dihitung dari jumlah hari, bukan urutan baris. Lihat
     MembershipController::tier().
@@ -35,44 +42,44 @@
     // id yang bertabrakan membuat semuanya memakai gradasi milik yang pertama.
     $uid = $t.'-'.substr(md5(uniqid('', true)), 0, 6);
 
-    // [dasar gelap, dasar terang, kilau tepi, warna lambang]
-    $palet = [
-        1 => ['#39445E', '#6B7BA3', 'rgba(203,217,255,.85)', '#EAF0FF'],
-        2 => ['#0E4F7D', '#3FA3DC', 'rgba(180,228,255,.9)',  '#F2FBFF'],
-        3 => ['#4A2597', '#9B6BF0', 'rgba(214,190,255,.9)',  '#F8F4FF'],
-        4 => ['#8E1F52', '#F0629B', 'rgba(255,196,220,.9)',  '#FFF5F9'],
-        5 => ['#8A5A05', '#FFD36B', 'rgba(255,238,190,.95)', '#3A2405'],
+    // [dasar gelap, dasar terang, kilau tepi, warna lambang, cincin luar]
+    [$gelap, $terang, $tepi, $lambang, $cincin] = [
+        1 => ['#2E3852', '#7A8BB5', 'rgba(214,226,255,.9)', '#F2F6FF', 'rgba(148,168,214,.55)'],
+        2 => ['#06456F', '#4FB4EC', 'rgba(190,234,255,.95)', '#F4FCFF', 'rgba(79,180,236,.55)'],
+        3 => ['#3D1B86', '#A87BFF', 'rgba(222,203,255,.95)', '#FAF7FF', 'rgba(168,123,255,.55)'],
+        4 => ['#7D1547', '#FF6FA6', 'rgba(255,205,225,.95)', '#FFF7FA', 'rgba(255,111,166,.55)'],
+        5 => ['#7A4A02', '#FFDC80', 'rgba(255,244,206,1)',   '#3A2405', 'rgba(255,206,102,.7)'],
     ][$t];
 
-    [$gelap, $terang, $tepi, $lambang] = $palet;
-
-    // Segi enam bersudut atas. Dipakai berulang: isi, facet, dan kliping.
-    $segi = '22,2.2 39.3,12.1 39.3,31.9 22,41.8 4.7,31.9 4.7,12.1';
+    // Segi enam bersudut atas, pusat 28,28. Dipakai berulang: isi, facet,
+    // kliping, dan tepi.
+    $segi   = '28,4 48.8,16 48.8,40 28,52 7.2,40 7.2,16';
+    $cincinSegi = '28,0.8 51.6,14.4 51.6,41.6 28,55.2 4.4,41.6 4.4,14.4';
 @endphp
 
 <span {{ $attributes->merge(['class' => 'vip-plan-mark tier-'.$t]) }} aria-hidden="true">
-    <svg width="{{ (int) $size }}" height="{{ (int) $size }}" viewBox="0 0 44 44"
+    <svg width="{{ (int) $size }}" height="{{ (int) $size }}" viewBox="0 0 56 56"
          fill="none" focusable="false">
 
         <defs>
-            <linearGradient id="pmDasar{{ $uid }}" x1="0.15" y1="0" x2="0.85" y2="1">
-                <stop offset="0"   stop-color="{{ $terang }}"/>
-                <stop offset="0.55" stop-color="{{ $gelap }}"/>
-                <stop offset="1"   stop-color="{{ $gelap }}"/>
+            <linearGradient id="pmDasar{{ $uid }}" x1="0.12" y1="0" x2="0.88" y2="1">
+                <stop offset="0"    stop-color="{{ $terang }}"/>
+                <stop offset="0.5"  stop-color="{{ $gelap }}"/>
+                <stop offset="1"    stop-color="{{ $gelap }}"/>
             </linearGradient>
 
-            {{-- Tepi logam: terang di kiri-atas tempat cahaya jatuh, redup di
-                 kanan-bawah. Tepi yang terang merata terlihat seperti garis
-                 tebal, bukan seperti logam. --}}
-            <linearGradient id="pmTepi{{ $uid }}" x1="0.1" y1="0" x2="0.9" y2="1">
-                <stop offset="0"   stop-color="{{ $tepi }}"/>
-                <stop offset="0.45" stop-color="rgba(255,255,255,.18)"/>
-                <stop offset="1"   stop-color="{{ $tepi }}" stop-opacity=".55"/>
+            {{-- Tepi logam: terang tempat cahaya jatuh, redup di seberangnya.
+                 Tepi yang terang merata terlihat seperti garis tebal, bukan
+                 seperti logam. --}}
+            <linearGradient id="pmTepi{{ $uid }}" x1="0.08" y1="0" x2="0.92" y2="1">
+                <stop offset="0"    stop-color="{{ $tepi }}"/>
+                <stop offset="0.42" stop-color="rgba(255,255,255,.16)"/>
+                <stop offset="1"    stop-color="{{ $tepi }}" stop-opacity=".5"/>
             </linearGradient>
 
             <linearGradient id="pmKilau{{ $uid }}" x1="0" y1="0" x2="1" y2="0">
                 <stop offset="0"   stop-color="#fff" stop-opacity="0"/>
-                <stop offset="0.5" stop-color="#fff" stop-opacity=".55"/>
+                <stop offset="0.5" stop-color="#fff" stop-opacity=".6"/>
                 <stop offset="1"   stop-color="#fff" stop-opacity="0"/>
             </linearGradient>
 
@@ -81,61 +88,67 @@
             </clipPath>
         </defs>
 
-        {{-- Bayangan tipis di bawah medali. --}}
-        <ellipse cx="22" cy="41" rx="12" ry="2.4" fill="#000" opacity=".28"/>
+        {{-- Cincin luar. Inilah yang membuatnya terbaca sebagai medali. --}}
+        <polygon points="{{ $cincinSegi }}" fill="none"
+                 stroke="{{ $cincin }}" stroke-width="1.4" stroke-linejoin="round"/>
+
+        <ellipse cx="28" cy="51.5" rx="15" ry="2.8" fill="#000" opacity=".3"/>
 
         <polygon points="{{ $segi }}" fill="url(#pmDasar{{ $uid }})"/>
 
-        {{-- Facet: separuh bawah digelapkan sedikit sehingga permukaannya
-             terbaca sebagai dua bidang, bukan satu bidang rata. --}}
         <g clip-path="url(#pmKlip{{ $uid }})">
-            <polygon points="4.7,22 39.3,22 39.3,42 22,42 4.7,42" fill="#000" opacity=".16"/>
-            <polygon points="22,2.2 39.3,12.1 22,22 4.7,12.1" fill="#fff" opacity=".13"/>
+            {{-- Separuh bawah digelapkan dan kuadran atas diterangkan, supaya
+                 permukaannya terbaca sebagai beberapa bidang, bukan satu
+                 bidang rata. --}}
+            <polygon points="7.2,28 48.8,28 48.8,54 7.2,54" fill="#000" opacity=".18"/>
+            <polygon points="28,4 48.8,16 28,28 7.2,16" fill="#fff" opacity=".15"/>
 
             @if ($t === 5)
-                {{-- Kilau menyapu. Hanya tingkat teratas. --}}
-                <polygon class="pm-kilau" points="-16,-6 -4,-6 8,50 -4,50"
+                <polygon class="pm-kilau" points="-20,-8 -6,-8 8,64 -6,64"
                          fill="url(#pmKilau{{ $uid }})">
                     <animateTransform attributeName="transform" type="translate"
-                                      values="0 0; 66 0; 66 0" dur="3.4s"
+                                      values="0 0; 84 0; 84 0" dur="3.4s"
                                       keyTimes="0; 0.45; 1" repeatCount="indefinite"/>
                 </polygon>
             @endif
         </g>
 
         <polygon points="{{ $segi }}" fill="none"
-                 stroke="url(#pmTepi{{ $uid }})" stroke-width="1.5" stroke-linejoin="round"/>
+                 stroke="url(#pmTepi{{ $uid }})" stroke-width="1.9" stroke-linejoin="round"/>
 
-        {{-- Lambang, diskalakan dari kanvas 24 ke tengah medali. --}}
-        <g transform="translate(22 21.6) scale(0.78) translate(-12 -12)"
+        {{-- Lambang, diskalakan dari kanvas 24 ke tengah medali. Sengaja
+             mengisi hampir seluruh bidang: lambang kecil di tengah bidang
+             luas terbaca sebagai tempelan, bukan sebagai lambang. --}}
+        <g transform="translate(28 27.6) scale(1.08) translate(-12 -12)"
            fill="{{ $lambang }}">
 
             @switch($t)
 
                 @case(1)
-                    <path d="M12 4.2l1.4 4.9 4.9 1.4-4.9 1.4L12 16.8l-1.4-4.9-4.9-1.4 4.9-1.4z"/>
+                    <path d="M12 3.4l1.7 5.4 5.4 1.7-5.4 1.7L12 17.6l-1.7-5.4-5.4-1.7 5.4-1.7z"/>
                     @break
 
                 @case(2)
-                    <path d="M12 3.6l2.5 5.2 5.7.7-4.2 3.9 1.1 5.6-5.1-2.8-5.1 2.8 1.1-5.6-4.2-3.9 5.7-.7z"/>
+                    <path d="M12 3.2l2.6 5.4 5.9.8-4.3 4.1 1.1 5.9-5.3-2.9-5.3 2.9 1.1-5.9-4.3-4.1 5.9-.8z"/>
                     @break
 
                 @case(3)
-                    <path d="M7.6 4.4h8.8l3.4 4.7L12 19.9 4.2 9.1z"/>
-                    <path d="M4.2 9.1h15.6M9.2 4.4L8 9.1l4 10.8 4-10.8-1.2-4.7"
-                          stroke="rgba(0,0,0,.3)" stroke-width="1" fill="none" stroke-linejoin="round"/>
+                    <path d="M7.4 4h9.2l3.6 4.9L12 20.4 3.8 8.9z"/>
+                    <path d="M3.8 8.9h16.4M9.1 4L7.8 8.9 12 20.4l4.2-11.5L14.9 4"
+                          stroke="rgba(0,0,0,.32)" stroke-width="1.05" fill="none" stroke-linejoin="round"/>
                     @break
 
                 @case(4)
-                    <path d="M3.8 8.9l4.1 3 4.1-6.6 4.1 6.6 4.1-3-1.8 9.5H5.6z"/>
-                    <circle cx="3.8" cy="7.9" r="1.5"/>
-                    <circle cx="20.2" cy="7.9" r="1.5"/>
-                    <circle cx="12" cy="4.3" r="1.7"/>
+                    <path d="M3.4 8.6l4.3 3.2L12 4.9l4.3 6.9 4.3-3.2-1.9 10H5.3z"/>
+                    <circle cx="3.4" cy="7.5" r="1.6"/>
+                    <circle cx="20.6" cy="7.5" r="1.6"/>
+                    <circle cx="12" cy="3.8" r="1.8"/>
+                    <path d="M5.6 20.2h12.8" stroke="{{ $lambang }}" stroke-width="1.9" stroke-linecap="round"/>
                     @break
 
                 @default
-                    <path d="M8.7 15c-1.9 0-3.3-1.4-3.3-3.1s1.4-3.1 3.3-3.1c1.5 0 2.4.8 3.1 1.8l.9 1.3c.7 1 1.6 1.8 3.1 1.8 1.9 0 3.3-1.4 3.3-3.1s-1.4-3.1-3.3-3.1c-1.5 0-2.4.8-3.1 1.8l-.9 1.3c-.7 1-1.6 1.8-3.1 1.8z"
-                          fill="none" stroke="{{ $lambang }}" stroke-width="2.2" stroke-linecap="round"/>
+                    <path d="M8.5 15.6c-2.2 0-3.9-1.6-3.9-3.6s1.7-3.6 3.9-3.6c1.7 0 2.8.9 3.6 2.1l.9 1.4c.8 1.2 1.9 2.1 3.6 2.1 2.2 0 3.9-1.6 3.9-3.6s-1.7-3.6-3.9-3.6c-1.7 0-2.8.9-3.6 2.1l-.9 1.4c-.8 1.2-1.9 2.1-3.6 2.1z"
+                          fill="none" stroke="{{ $lambang }}" stroke-width="2.6" stroke-linecap="round"/>
             @endswitch
 
         </g>

@@ -133,7 +133,7 @@
                             <div class="vip-plan-body">
                         @endif
 
-                            <x-web.home.plan-mark :tier="$plan['tier']" :size="20" />
+                            <x-web.home.plan-mark :tier="$plan['tier']" :size="56" />
 
                             <span class="vip-plan-main">
                                 <span class="vip-plan-name">{{ $plan['nama'] }}</span>
