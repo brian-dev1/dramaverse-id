@@ -174,21 +174,39 @@ class ChannelGate
     /**
      * Alamat channel untuk tombolnya.
      *
-     * `channel_url` didahulukan karena ia memang alamat siap pakai. Bila
-     * kosong tetapi channelnya publik, alamatnya bisa disusun dari
-     * username-nya — jadi satu pengaturan yang terlewat tidak menghasilkan
-     * pesan penahan tanpa jalan keluar.
+     * ## Kenapa `required_channel` yang menang, bukan `channel_url`
+     *
+     * Keduanya sekilas menyatakan hal yang sama, tetapi tugasnya berbeda:
+     * `channel_url` adalah channel yang kita PROMOSIKAN (dipakai tombol
+     * "Gabung Channel" di situs dan halaman affiliate), sedangkan
+     * `required_channel` adalah channel yang benar-benar DIPERIKSA.
+     *
+     * Selama keduanya diisi channel yang sama, urutannya tidak berpengaruh.
+     * Begitu berbeda — dan itu keadaan yang wajar; channel promosi bisa
+     * berganti tanpa syarat menontonnya ikut berganti — mendahulukan
+     * `channel_url` menghasilkan kegagalan yang paling menyesatkan yang bisa
+     * dibuat: tombolnya mengantar ke channel A, pengguna bergabung di sana,
+     * lalu tetap ditolak karena yang diperiksa channel B. Tidak ada satu pun
+     * petunjuk di layarnya tentang apa yang salah, dan tidak ada yang bisa
+     * ia lakukan untuk keluar dari situ.
+     *
+     * Jadi tombolnya selalu menunjuk channel yang diperiksa. `channel_url`
+     * hanya dipakai untuk channel privat, yang id numeriknya tidak bisa
+     * diubah menjadi alamat — di situ tautan undangannya memang harus
+     * disediakan terpisah.
      */
     private function url(): ?string
     {
-        if (filled($url = trim((string) config('telegram.channel_url')))) {
-            return $url;
-        }
-
         $channel = $this->channel();
 
-        return str_starts_with($channel, '@')
-            ? 'https://t.me/'.ltrim($channel, '@')
+        if (str_starts_with($channel, '@')) {
+            return 'https://t.me/'.ltrim($channel, '@');
+        }
+
+        // Channel privat: id -100... tidak punya alamat publik. Satu-satunya
+        // sumbernya adalah tautan undangan yang diisi admin.
+        return filled($url = trim((string) config('telegram.channel_url')))
+            ? $url
             : null;
     }
 
