@@ -250,47 +250,22 @@
     // tujuan menjalankan berkas ini lagi dan login di sana.
     if (tujuanStartapp()) return;
 
-    // Dikunci potret. requestFullscreen() sengaja TIDAK dipakai: di mode
-    // itu Telegram membiarkan jendela ikut berputar mengikuti sensor, dan
-    // tata letak mobile yang memang dirancang potret jadi melebar.
-    try { tg.lockOrientation && tg.lockOrientation(); } catch (e) {}
-    try { screen.orientation && screen.orientation.lock && screen.orientation.lock('portrait').catch(function () {}); } catch (e) {}
-
-    // Warna header/latar mengikuti tema situs.
-    try {
-        tg.setHeaderColor && tg.setHeaderColor('#140A06');
-        tg.setBackgroundColor && tg.setBackgroundColor('#140A06');
-    } catch (e) {}
-
-    function applyInsets() {
-        var s = (tg.safeAreaInset || {});
-        var c = (tg.contentSafeAreaInset || {});
-        var top = (s.top || 0) + (c.top || 0);
-        var bottom = (s.bottom || 0) + (c.bottom || 0);
-        body.style.setProperty('--tg-safe-top', top + 'px');
-        body.style.setProperty('--tg-safe-bottom', bottom + 'px');
-    }
-    applyInsets();
-    try {
-        tg.onEvent('safeAreaChanged', applyInsets);
-        tg.onEvent('contentSafeAreaChanged', applyInsets);
-    } catch (e) {}
-
-    // Tombol kembali bawaan Telegram menggantikan tombol back browser.
-    try {
-        if (window.history.length > 1 && tg.BackButton) {
-            tg.BackButton.show();
-            tg.BackButton.onClick(function () { window.history.back(); });
-        }
-    } catch (e) {}
-
+    /*
+    | Login dijalankan SEBELUM urusan kosmetik di bawahnya.
+    |
+    | Kunci orientasi, warna header, safe area, dan tombol kembali tidak
+    | dibutuhkan siapa pun sampai halamannya benar. Menaruhnya lebih dulu
+    | berarti permintaan login baru berangkat setelah semua itu selesai —
+    | penundaan yang tidak besar, tapi tepat berada di dalam detik-detik
+    | ketika pengguna sedang menatap halaman milik akun yang salah.
+    */
     /*
     | Login otomatis: kirim initData yang sudah ditandatangani Telegram.
     |
     | Dikirim SELALU, termasuk ketika halaman ini sudah punya sesi login.
     | Dulu blok ini dibungkus direktif guest milik Blade, jadi halaman yang
-    | sudah login tidak pernah menanyakan apa pun — dan itulah sebabnya sesi menempel pada akun
-    | sebelumnya: Telegram memakai satu webview untuk semua akun di perangkat
+    | sudah login tidak pernah menanyakan apa pun — dan itulah sebabnya sesi
+    | menempel pada akun sebelumnya: Telegram memakai satu webview untuk semua akun di perangkat
     | itu, sehingga akun B membuka Mini App sambil membawa cookie milik akun
     | A. Tanpa initData dikirim, tidak ada satu pun pihak yang tahu bahwa
     | pemiliknya sudah berganti.
@@ -301,11 +276,58 @@
     (function login() {
         var sudahLogin = @json(auth()->check());
 
-        // Tirai "Menghubungkan akun" hanya untuk yang memang belum login.
+        /*
+        | Menutupi halaman akun lama SEKARANG, bukan setelah server menjawab.
+        |
+        | Pergantian akun butuh satu perjalanan bolak-balik ke server lalu
+        | satu kali muat ulang. Selama itu — sedetik dua detik di jaringan
+        | seluler — yang terpampang adalah halaman lengkap milik akun
+        | SEBELUMNYA: namanya, riwayatnya, status VIP-nya. Itu yang terasa
+        | sebagai "tidak langsung berganti"; pergantiannya sendiri sudah
+        | jalan sejak awal.
+        |
+        | `initDataUnsafe` dipakai di sini justru karena namanya: ia TIDAK
+        | diverifikasi, dan tidak boleh dipakai memutuskan siapa yang login.
+        | Yang diputuskan di sini cuma "perlukah tirai dipasang" — keputusan
+        | kosmetik yang salahnya paling banter satu tirai yang tidak perlu.
+        | Identitas tetap ditentukan server dari initData bertanda tangan.
+        */
+        var akunSekarang = (tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id)
+            ? String(tg.initDataUnsafe.user.id)
+            : '';
+
+        var akunSesi = @json((string) (auth()->user()?->telegram_id ?? ''));
+
+        var berganti = sudahLogin && akunSesi !== '' && akunSekarang !== '' && akunSesi !== akunSekarang;
+
+        if (berganti) {
+            document.getElementById('tg-boot').textContent = 'Berganti akun…';
+        }
+
         // Sesi yang sudah benar tidak perlu dikedipkan setiap kali halaman
         // dibuka — dan itu mayoritas pembukaan.
-        if (!sudahLogin) {
+        if (!sudahLogin || berganti) {
             body.classList.add('tg-authenticating');
+        }
+
+        /*
+        | Sesi yang jelas-jelas sudah milik akun ini: tidak usah bertanya.
+        |
+        | Perbandingan yang sama persis dengan yang akan dikerjakan server,
+        | jadi jawabannya sudah pasti "already" — satu permintaan POST di
+        | setiap pembukaan halaman, hanya untuk mendengar bahwa tidak ada
+        | yang berubah.
+        |
+        | Memakai initDataUnsafe untuk MELEWATI pemeriksaan aman di sini,
+        | dan hanya di sini: yang didapat orang yang memalsukannya cuma
+        | mempertahankan sesinya sendiri — sesi yang cookie-nya sudah ada di
+        | tangannya. Tidak ada akun lain yang bisa dimasuki lewat jalan ini.
+        | Perhatikan syarat `akunSesi !== ''`: sesi yang bukan dari Telegram
+        | (mis. admin yang masuk lewat kata sandi) tidak punya pembanding,
+        | jadi ia tetap ditanyakan ke server.
+        */
+        if (sudahLogin && !berganti && akunSesi !== '' && akunSekarang !== '') {
+            return;
         }
 
         var token = document.querySelector('meta[name="csrf-token"]');
@@ -364,5 +386,41 @@
             lapor('Permintaan login gagal terkirim.\n\n' + err);
         });
     })();
+
+
+    // Dikunci potret. requestFullscreen() sengaja TIDAK dipakai: di mode
+    // itu Telegram membiarkan jendela ikut berputar mengikuti sensor, dan
+    // tata letak mobile yang memang dirancang potret jadi melebar.
+    try { tg.lockOrientation && tg.lockOrientation(); } catch (e) {}
+    try { screen.orientation && screen.orientation.lock && screen.orientation.lock('portrait').catch(function () {}); } catch (e) {}
+
+    // Warna header/latar mengikuti tema situs.
+    try {
+        tg.setHeaderColor && tg.setHeaderColor('#140A06');
+        tg.setBackgroundColor && tg.setBackgroundColor('#140A06');
+    } catch (e) {}
+
+    function applyInsets() {
+        var s = (tg.safeAreaInset || {});
+        var c = (tg.contentSafeAreaInset || {});
+        var top = (s.top || 0) + (c.top || 0);
+        var bottom = (s.bottom || 0) + (c.bottom || 0);
+        body.style.setProperty('--tg-safe-top', top + 'px');
+        body.style.setProperty('--tg-safe-bottom', bottom + 'px');
+    }
+    applyInsets();
+    try {
+        tg.onEvent('safeAreaChanged', applyInsets);
+        tg.onEvent('contentSafeAreaChanged', applyInsets);
+    } catch (e) {}
+
+    // Tombol kembali bawaan Telegram menggantikan tombol back browser.
+    try {
+        if (window.history.length > 1 && tg.BackButton) {
+            tg.BackButton.show();
+            tg.BackButton.onClick(function () { window.history.back(); });
+        }
+    } catch (e) {}
+
 })();
 </script>
