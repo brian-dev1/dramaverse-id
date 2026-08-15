@@ -284,10 +284,29 @@
         }
     } catch (e) {}
 
-    @guest
-    // Login otomatis: kirim initData yang sudah ditandatangani Telegram.
+    /*
+    | Login otomatis: kirim initData yang sudah ditandatangani Telegram.
+    |
+    | Dikirim SELALU, termasuk ketika halaman ini sudah punya sesi login.
+    | Dulu blok ini dibungkus direktif guest milik Blade, jadi halaman yang
+    | sudah login tidak pernah menanyakan apa pun — dan itulah sebabnya sesi menempel pada akun
+    | sebelumnya: Telegram memakai satu webview untuk semua akun di perangkat
+    | itu, sehingga akun B membuka Mini App sambil membawa cookie milik akun
+    | A. Tanpa initData dikirim, tidak ada satu pun pihak yang tahu bahwa
+    | pemiliknya sudah berganti.
+    |
+    | Yang memutuskan perlu-tidaknya sesi diganti adalah server — lihat
+    | TelegramMiniAppController. Halaman ini hanya menuruti jawabannya.
+    */
     (function login() {
-        body.classList.add('tg-authenticating');
+        var sudahLogin = @json(auth()->check());
+
+        // Tirai "Menghubungkan akun" hanya untuk yang memang belum login.
+        // Sesi yang sudah benar tidak perlu dikedipkan setiap kali halaman
+        // dibuka — dan itu mayoritas pembukaan.
+        if (!sudahLogin) {
+            body.classList.add('tg-authenticating');
+        }
 
         var token = document.querySelector('meta[name="csrf-token"]');
 
@@ -307,11 +326,34 @@
         })
         .then(function (data) {
             if (data && data.ok) {
+                // Sesi memang sudah milik akun yang sedang membuka Mini App.
+                // Memuat ulang di sini berarti setiap pembukaan halaman
+                // dimuat dua kali, tanpa satu pun yang berubah.
+                if (data.already) {
+                    body.classList.remove('tg-authenticating');
+
+                    return;
+                }
+
                 // replace(), bukan reload(): reload mengulang POST kalau
                 // halaman ini sendiri hasil kiriman form.
                 window.location.replace(window.location.href);
                 return;
             }
+
+            /*
+            | Server sudah memutus sesi akun lama, tapi akun barunya ditolak
+            | (diblokir atau dinonaktifkan). Halaman yang sedang terbuka masih
+            | menampilkan nama dan isi milik akun lama, jadi ia harus diambil
+            | ulang — kalau tidak, yang terlihat adalah halaman milik orang
+            | lain yang tombol-tombolnya sudah tidak berfungsi.
+            */
+            if (data && data.reset) {
+                window.location.replace(window.location.href);
+
+                return;
+            }
+
             console.warn('Mini App login gagal:', data);
             body.classList.remove('tg-authenticating');
             lapor('Login ditolak server.\n\n' + JSON.stringify(data));
@@ -322,6 +364,5 @@
             lapor('Permintaan login gagal terkirim.\n\n' + err);
         });
     })();
-    @endguest
 })();
 </script>
