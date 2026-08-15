@@ -100,6 +100,8 @@ class SettingService
             self::TEMPLATE_BAWAAN,
             'Placeholder: {judul}, {daftar}, {sinopsis}, {negara}, {genre}, {total_episode}, '
             .'{tautan_drama}, {tautan_vip}, {tautan_cari}, {tautan_request}, {tautan_situs}. '
+            .'Semua tautan itu tetap di dalam Telegram: {tautan_drama} dan {tautan_vip} membuka bot, '
+            .'{tautan_cari}, {tautan_request}, dan {tautan_situs} membuka Mini App. Tidak ada yang mengantar ke browser. '
             .'Boleh memakai tag HTML Telegram: <b>, <i>, <u>, <s>, <code>, <blockquote>, <tg-spoiler>. '
             .'Username channel lain, kontak admin, dan pengumuman tetap boleh diketik langsung di sini.'],
         'channel_line'      => ['channel', 'Format satu baris', 'text',

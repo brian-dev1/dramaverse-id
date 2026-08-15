@@ -106,9 +106,21 @@ return [
     | Kosongkan untuk memakai APP_URL. miniapp_auth_ttl membatasi umur initData
     | (detik) supaya tidak bisa diputar ulang.
     |
+    | miniapp_short_name adalah nama pendek Mini App di @BotFather, yang
+    | membentuk tautan t.me/<bot>/<nama>?startapp=... Tautan itulah
+    | satu-satunya cara membuka Mini App dari CHANNEL: tombol `web_app` hanya
+    | diizinkan Telegram di chat pribadi, jadi postingan channel tidak bisa
+    | memakainya.
+    |
+    | Kosongkan bila Mini App-nya dipasang sebagai "Main Mini App" tanpa nama
+    | pendek — bentuk tautannya jadi t.me/<bot>?startapp=... Keduanya
+    | ditangani App\Support\TelegramDeepLink::app().
+    |
     */
 
     'miniapp_url' => env('TELEGRAM_MINIAPP_URL'),
+
+    'miniapp_short_name' => env('TELEGRAM_MINIAPP_SHORT_NAME'),
 
     'miniapp_button_text' => env('TELEGRAM_MINIAPP_BUTTON_TEXT', 'Buka DramaVerse'),
 

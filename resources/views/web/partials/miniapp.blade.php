@@ -169,6 +169,55 @@
     try { tg.ready(); tg.expand(); } catch (e) {}
     try { tg.disableVerticalSwipes && tg.disableVerticalSwipes(); } catch (e) {}
 
+    /*
+    | Tujuan dari tautan ?startapp=
+    | -----------------------------
+    | Postingan channel tidak boleh lagi mengantar orang ke browser, dan
+    | tombol `web_app` yang biasa dipakai membuka Mini App dilarang Telegram
+    | di luar chat pribadi. Yang tersisa adalah tautan
+    | t.me/<bot>/<app>?startapp=<tujuan>, yang selalu membuka Mini App di
+    | HALAMAN AWAL — parameternya tidak diteruskan Telegram sebagai alamat,
+    | melainkan dititipkan sebagai start_param di dalam initData.
+    |
+    | Jadi pemetaan tujuan ke halaman dikerjakan di sini. Pasangannya ada di
+    | App\Support\TelegramDeepLink (konstanta APP_*); menambah satu di sana
+    | tanpa menambahnya di sini menghasilkan tombol yang membuka beranda dan
+    | terlihat seperti fitur yang belum jadi.
+    */
+    function tujuanStartapp() {
+        var tujuan = (tg.initDataUnsafe && tg.initDataUnsafe.start_param) || '';
+
+        if (!tujuan) return false;
+
+        var peta = {
+            'cari':    @json(route('web.search')),
+            'request': @json(route('web.request.index')),
+            'vip':     @json(route('web.membership'))
+        };
+
+        var alamat = peta[tujuan];
+
+        if (!alamat) return false;
+
+        // Sudah berada di halaman yang dituju — start_param tetap terbaca
+        // pada pemuatan berikutnya, dan tanpa penjagaan ini halamannya
+        // memuat ulang dirinya sendiri tanpa henti.
+        if (window.location.pathname === new URL(alamat, window.location.origin).pathname) {
+            return false;
+        }
+
+        window.location.replace(alamat);
+
+        return true;
+    }
+
+    // Pindah halaman dulu, baru sisanya. Login otomatis di bawah diakhiri
+    // `location.replace(location.href)`, dan kalau keduanya berjalan
+    // bersamaan yang menang adalah yang belakangan: orangnya kembali ke
+    // beranda persis setelah halaman yang benar mulai terbuka. Halaman
+    // tujuan menjalankan berkas ini lagi dan login di sana.
+    if (tujuanStartapp()) return;
+
     // Dikunci potret. requestFullscreen() sengaja TIDAK dipakai: di mode
     // itu Telegram membiarkan jendela ikut berputar mengikuti sensor, dan
     // tata letak mobile yang memang dirancang potret jadi melebar.

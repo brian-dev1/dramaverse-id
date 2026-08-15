@@ -177,6 +177,88 @@ class TelegramDeepLink
 
     /*
     |--------------------------------------------------------------------------
+    | Mini App
+    |--------------------------------------------------------------------------
+    |
+    | `?startapp=` membuka Mini App langsung, tanpa singgah di chat bot.
+    |
+    | Ini bukan sekadar pilihan gaya. Tombol `web_app` — cara biasa membuka
+    | Mini App — hanya diizinkan Telegram di chat pribadi; postingan channel
+    | yang memakainya ditolak. Jadi dari channel, tautan `startapp` inilah
+    | satu-satunya jalan yang tersisa, dan jalan itu pula yang menggantikan
+    | tautan ke website: pembaca yang menekan "Cari judul lain" tidak lagi
+    | dilempar ke browser, ia tetap berada di dalam Telegram.
+    |
+    | Parameternya sampai ke sisi web sebagai `start_param` di dalam
+    | initData. Yang membacanya dan memilih halaman tujuan adalah
+    | `resources/views/web/partials/miniapp.blade.php` — kalau menambah
+    | tujuan baru di sini, tambahkan pasangannya di sana juga, karena tujuan
+    | yang tidak dikenal hanya membuka beranda Mini App tanpa keluhan apa pun.
+    |
+    */
+
+    /** Halaman pencarian di Mini App. */
+    public const APP_CARI = 'cari';
+
+    /** Halaman request judul di Mini App. */
+    public const APP_REQUEST = 'request';
+
+    /** Halaman paket VIP di Mini App. */
+    public const APP_VIP = 'vip';
+
+    /**
+     * Tautan yang membuka Mini App, langsung di halaman yang diminta.
+     *
+     * Tanpa argumen: beranda Mini App.
+     *
+     * Bentuk tautannya mengikuti pemasangan di @BotFather —
+     * `t.me/<bot>/<nama>?startapp=` bila Mini App punya nama pendek
+     * (TELEGRAM_MINIAPP_SHORT_NAME), atau `t.me/<bot>?startapp=` bila ia
+     * dipasang sebagai Main Mini App. Null bila username botnya belum diisi,
+     * dengan alasan yang sama seperti `build()`.
+     *
+     * @throws \InvalidArgumentException bila tujuannya di luar aturan
+     *                                   Telegram: [A-Za-z0-9_-], maksimal 64
+     *                                   karakter.
+     */
+    public static function app(string $tujuan = ''): ?string
+    {
+        $bot = trim((string) config('telegram.bot_username'), " \t@");
+
+        if ($bot === '') {
+            return null;
+        }
+
+        $nama = trim((string) config('telegram.miniapp_short_name'), " \t/");
+
+        $url = 'https://t.me/'.$bot.($nama === '' ? '' : '/'.$nama);
+
+        $tujuan = trim($tujuan);
+
+        if ($tujuan === '') {
+            return $url;
+        }
+
+        /*
+        | Tujuan yang salah bentuk dilempar, bukan dibuang diam-diam.
+        |
+        | Seluruh pemanggilnya memakai konstanta di atas, jadi nilai yang
+        | tidak lolos di sini berarti ada salah ketik di kode — sesuatu yang
+        | harus berhenti saat dikembangkan, bukan berubah jadi tautan yang
+        | membuka beranda dan membuat orang mengira fiturnya belum jadi.
+        */
+        if (! preg_match('/^[A-Za-z0-9_-]{1,64}$/', $tujuan)) {
+            throw new \InvalidArgumentException(
+                "Parameter startapp '{$tujuan}' di luar aturan Telegram: "
+                .'hanya huruf, angka, garis bawah, dan tanda hubung, maksimal 64 karakter.'
+            );
+        }
+
+        return $url.'?startapp='.$tujuan;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
     | Membaca
     |--------------------------------------------------------------------------
     */

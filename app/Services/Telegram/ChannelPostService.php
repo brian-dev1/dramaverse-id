@@ -164,17 +164,26 @@ class ChannelPostService
             '{tautan_vip}'     => e((string) (TelegramDeepLink::subscribe() ?? '')),
 
             /*
-            | Tiga tautan berikut menuju SITUS, bukan bot.
+            | Tiga tautan berikut membuka MINI APP, bukan browser.
             |
             | Mencari judul dan mengetik permintaan sama-sama butuh kolom teks
             | dan daftar hasil — dua hal yang di dalam chat bot berarti
-            | percakapan bolak-balik, sementara di halaman biasa cukup satu
-            | layar. Pembacanya sudah berada di Telegram, jadi keduanya akan
-            | terbuka sebagai Mini App tanpa berpindah aplikasi.
+            | percakapan bolak-balik, sementara di satu halaman cukup satu
+            | layar. Halaman itu sekarang dibuka sebagai Mini App lewat
+            | `?startapp=`, jadi pembacanya tidak pernah keluar dari Telegram:
+            | tautan http biasa di postingan channel dibuka Telegram di
+            | browser luar, dan di sana orangnya kehilangan sesi Mini App-nya
+            | sekaligus harus masuk ulang.
+            |
+            | `?? route(...)` hanya jaring pengaman untuk pemasangan yang
+            | username botnya belum diisi. Pada keadaan itu penghalang() sudah
+            | menolak pengiriman lebih dulu, jadi tautan situs tidak pernah
+            | benar-benar sampai ke channel — ia hanya menjaga pratinjau di
+            | panel admin tetap punya alamat yang bisa diklik.
             */
-            '{tautan_cari}'    => e(route('web.search')),
-            '{tautan_request}' => e(route('web.request.index')),
-            '{tautan_situs}'   => e(route('web.home')),
+            '{tautan_cari}'    => e((string) (TelegramDeepLink::app(TelegramDeepLink::APP_CARI) ?? route('web.search'))),
+            '{tautan_request}' => e((string) (TelegramDeepLink::app(TelegramDeepLink::APP_REQUEST) ?? route('web.request.index'))),
+            '{tautan_situs}'   => e((string) (TelegramDeepLink::app() ?? route('web.home'))),
         ]);
 
         return $this->potong($this->rapikan($kepala), $baris);
