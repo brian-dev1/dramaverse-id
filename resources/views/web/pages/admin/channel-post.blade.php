@@ -77,8 +77,9 @@
                              Caption foto Telegram maksimal 1024 karakter, jadi
                              daftar yang panjang memang harus dipecah. --}}
                         <p class="page-subtitle">
-                            Daftarnya melewati batas caption foto Telegram (1024 karakter),
-                            jadi sisanya menyusul sebagai pesan teks di bawah posternya.
+                            Daftarnya melewati batas caption foto Telegram (1024 karakter
+                            yang terlihat — tag HTML dan URL tidak dihitung), jadi sisanya
+                            menyusul sebagai pesan teks di bawah posternya.
                         </p>
                     @endif
 
@@ -91,7 +92,15 @@
                                         — dengan poster
                                     @endif
                                 </h2>
-                                <span class="panel-meta">{{ mb_strlen(strip_tags($teks)) }} karakter</span>
+                                {{-- Angka dari ChannelPostService, sama persis
+                                     dengan yang dipakainya saat memutuskan
+                                     apakah postingan perlu dipecah. --}}
+                                <span class="panel-meta">
+                                    {{ $panjang[$i] }} karakter
+                                    @if ($i === 0)
+                                        / {{ $batasCaption }}
+                                    @endif
+                                </span>
                             </div>
 
                             <div class="detail-body-admin">

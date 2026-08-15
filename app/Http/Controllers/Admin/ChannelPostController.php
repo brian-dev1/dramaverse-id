@@ -60,6 +60,22 @@ class ChannelPostController extends Controller
             'dari'     => $dari,
             'sampai'   => $sampai,
             'potongan' => $potongan,
+
+            /*
+            | Panjang tiap potongan dihitung di sini, memakai hitungan
+            | ChannelPostService — bukan `mb_strlen()` di dalam blade.
+            |
+            | Angka yang dipakai pengirim untuk memutuskan pecah-tidaknya
+            | postingan harus sama dengan angka yang dibaca admin di
+            | pratinjau; hitungan kedua yang berdiri sendiri di view adalah
+            | tempat keduanya diam-diam berselisih.
+            */
+            'panjang'       => array_map(
+                fn (string $teks) => $this->channel->panjangTelegram($teks),
+                $potongan
+            ),
+            'batasCaption'  => $this->channel->batasCaption(),
+
             'episodes' => $drama !== null ? $this->channel->episodes($drama, $dari, $sampai) : collect(),
             'penghalang' => $this->channel->penghalang(),
             'chatId'     => $this->channel->chatId(),

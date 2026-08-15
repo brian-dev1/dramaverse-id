@@ -24,14 +24,20 @@ use Throwable;
  * ## Batas 1024 karakter yang menentukan bentuk kelas ini
  *
  * Caption sebuah foto di Telegram maksimal 1024 karakter; pesan teks biasa
- * 4096. Satu baris episode memakan sekitar 45 karakter, jadi drama 60 episode
- * tidak mungkin muat dalam satu caption.
+ * 4096. Satu baris episode memakan sekitar 30 karakter yang terlihat, jadi
+ * drama 60 episode tidak mungkin muat dalam satu caption.
  *
  * Yang dilakukan: episode pertama masuk ke caption foto sampai batasnya
  * hampir tersentuh, sisanya menyusul sebagai pesan teks biasa. Pilihan lain —
  * memotong daftarnya diam-diam — menghasilkan postingan yang terlihat
  * lengkap padahal separuh episodenya tidak punya tautan, dan tidak ada yang
  * akan menyadarinya sampai ada yang bertanya.
+ *
+ * Yang dihitung Telegram adalah teks yang TERLIHAT — tag HTML dan URL di
+ * dalam href tidak ikut. Perbedaannya besar: postingan drama 4 episode
+ * berukuran 1281 karakter mentah hanya 807 menurut hitungan Telegram, dan
+ * mengukurnya dengan `mb_strlen()` biasa memecah postingan yang sebenarnya
+ * muat dengan sisa 200 karakter. Lihat `panjangTelegram()`.
  *
  * ## Episode tanpa video tidak diberi tautan
  *
@@ -44,15 +50,17 @@ class ChannelPostService
     /**
      * Ambang aman caption foto.
      *
-     * Batas Telegram 1024, tapi yang dihitung Telegram adalah karakter UTF-16
-     * setelah tag HTML dibuang — perhitungan yang tidak sepenuhnya bisa ditiru
-     * dari sisi kita. Sisa 120 karakter dipakai sebagai jarak aman supaya
-     * postingan tidak ditolak gara-gara selisih beberapa karakter.
+     * Batas Telegram 1024, diukur dengan `panjangTelegram()` yang meniru cara
+     * Telegram menghitung. Sisa 24 karakter cukup sebagai jarak aman karena
+     * hitungannya sudah setara, bukan tebakan.
      */
-    private const BATAS_CAPTION = 900;
+    private const BATAS_CAPTION = 1000;
 
-    /** Batas pesan teks biasa, dengan jarak aman yang sama. */
-    private const BATAS_TEKS = 3900;
+    /** Batas pesan teks biasa (4096), dengan jarak aman yang sama. */
+    private const BATAS_TEKS = 4000;
+
+    /** Penanda tempat daftar episode disisipkan di dalam template. */
+    private const PENANDA_DAFTAR = '{daftar}';
 
     public function __construct(
         protected TelegramServiceInterface $telegram,
@@ -141,8 +149,11 @@ class ChannelPostService
 
         $template = (string) $this->settings->get('channel_template', "『 {judul} 』\n\n{daftar}");
 
-        // Kepala caption disusun lebih dulu tanpa daftar, supaya sisa ruang
-        // untuk baris episode bisa dihitung dari panjang sebenarnya.
+        // {daftar} sengaja TIDAK diisi di sini. Ia dibiarkan utuh sampai
+        // potong(), supaya daftar episode disisipkan tepat di posisi yang
+        // ditulis admin di template — bukan ditempel di ujung caption, yang
+        // membuat dua garis pemisah di template bawaan berdiri kosong
+        // berdempetan dan daftarnya muncul di bawah blok penutup.
         $kepala = strtr($template, [
             '{judul}'          => e($drama->title),
             '{sinopsis}'       => e($this->sinopsis($drama)),
@@ -164,8 +175,6 @@ class ChannelPostService
             '{tautan_cari}'    => e(route('web.search')),
             '{tautan_request}' => e(route('web.request.index')),
             '{tautan_situs}'   => e(route('web.home')),
-
-            '{daftar}'         => '',
         ]);
 
         return $this->potong($this->rapikan($kepala), $baris);
@@ -260,7 +269,73 @@ class ChannelPostService
     }
 
     /**
+     * Panjang teks menurut hitungan Telegram.
+     *
+     * Telegram menghitung teks yang TERLIHAT setelah HTML-nya diurai: tag
+     * dibuang, entitas dikembalikan ke karakter aslinya, dan URL di dalam
+     * href tidak ikut sama sekali. Satuannya UTF-16, sehingga emoji seperti
+     * 🎬 dihitung 2 — itulah kenapa `mb_strlen()` saja tidak cukup.
+     *
+     * Publik karena pratinjau di panel admin memakai angka yang sama. Dua
+     * cara menghitung yang berbeda antara pratinjau dan pengirim berarti
+     * pratinjau yang suatu saat berbohong soal jumlah pesan.
+     */
+    public function panjangTelegram(string $html): int
+    {
+        $terlihat = html_entity_decode(
+            strip_tags($html),
+            ENT_QUOTES | ENT_HTML5,
+            'UTF-8'
+        );
+
+        return (int) (strlen(mb_convert_encoding($terlihat, 'UTF-16LE', 'UTF-8')) / 2);
+    }
+
+    /** Batas caption foto, untuk ditampilkan di pratinjau admin. */
+    public function batasCaption(): int
+    {
+        return self::BATAS_CAPTION;
+    }
+
+    /**
+     * Sisipkan daftar episode ke posisi {daftar} di dalam kepala.
+     *
+     * @param  array<int,string>  $baris
+     */
+    private function sisipkan(string $kepala, array $baris): string
+    {
+        $daftar = implode("\n", $baris);
+
+        // Template yang penandanya dihapus admin tetap harus menghasilkan
+        // postingan yang utuh; daftarnya ditempel di ujung seperti dulu.
+        if (! str_contains($kepala, self::PENANDA_DAFTAR)) {
+            return $daftar === '' ? rtrim($kepala) : rtrim(rtrim($kepala)."\n".$daftar);
+        }
+
+        if ($daftar !== '') {
+            return rtrim(str_replace(self::PENANDA_DAFTAR, $daftar, $kepala));
+        }
+
+        // Tanpa satu pun baris, barisnya dibuang seluruhnya. Mengganti
+        // penanda dengan string kosong meninggalkan baris kosong di antara
+        // dua garis pemisah — bekas template yang terlihat seperti isi yang
+        // gagal dimuat.
+        $kepala = preg_replace(
+            '/^[ \t]*'.preg_quote(self::PENANDA_DAFTAR, '/').'[ \t]*\R?/mu',
+            '',
+            $kepala
+        ) ?? str_replace(self::PENANDA_DAFTAR, '', $kepala);
+
+        return trim(preg_replace('/\n{3,}/u', "\n\n", $kepala) ?? $kepala);
+    }
+
+    /**
      * Bagi kepala + baris menjadi beberapa pesan yang muat.
+     *
+     * Caption diisi sebanyak yang muat, sisanya jadi pesan teks. Yang diukur
+     * setiap kali adalah caption UTUH hasil penyisipan, bukan potongannya —
+     * karena panjang yang dihitung Telegram baru bisa diketahui setelah
+     * penandanya diganti.
      *
      * @param  array<int,string>  $baris
      * @return array<int,string>
@@ -268,26 +343,41 @@ class ChannelPostService
     private function potong(string $kepala, array $baris): array
     {
         if ($baris === []) {
-            return [rtrim($kepala)];
+            return [$this->sisipkan($kepala, [])];
         }
 
-        $pesan = [];
+        $muat = [];
 
-        $sekarang = $kepala;
+        $sisa = $baris;
 
-        $batas = self::BATAS_CAPTION;
+        while ($sisa !== []) {
 
-        foreach ($baris as $satu) {
+            $calon = [...$muat, $sisa[0]];
+
+            if ($this->panjangTelegram($this->sisipkan($kepala, $calon)) > self::BATAS_CAPTION) {
+                break;
+            }
+
+            $muat = $calon;
+
+            array_shift($sisa);
+        }
+
+        // $muat bisa kosong bila kepalanya sendiri sudah hampir memenuhi
+        // 1024 — template yang terlalu panjang. Postingannya tetap dikirim;
+        // seluruh daftar menyusul sebagai pesan teks.
+        $pesan = [$this->sisipkan($kepala, $muat)];
+
+        $sekarang = '';
+
+        foreach ($sisa as $satu) {
 
             $calon = $sekarang === '' ? $satu : $sekarang."\n".$satu;
 
-            if (mb_strlen($calon) > $batas && $sekarang !== '') {
+            if ($this->panjangTelegram($calon) > self::BATAS_TEKS && $sekarang !== '') {
                 $pesan[] = rtrim($sekarang);
 
-                // Pesan kedua dan seterusnya adalah teks biasa, yang batasnya
-                // jauh lebih longgar daripada caption foto.
                 $sekarang = $satu;
-                $batas    = self::BATAS_TEKS;
 
                 continue;
             }
