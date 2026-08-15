@@ -63,15 +63,51 @@
     | window.open ke domainnya sendiri, jadi tombol "Tonton di Telegram"
     | terlihat bisa diklik tapi diam saja — persis keluhan yang muncul.
     |
-    | Satu-satunya jalan yang sah adalah openTelegramLink(), yang menutup
-    | Mini App lalu membuka chat botnya. Dipasang sebagai delegasi di
-    | document supaya SEMUA tautan t.me ikut tertangani — tombol tonton,
-    | poster, dan tombol berlangganan — termasuk yang dirender belakangan.
+    | Satu-satunya jalan yang sah adalah openTelegramLink(). Dipasang sebagai
+    | delegasi di document supaya SEMUA tautan t.me ikut tertangani — tombol
+    | tonton, poster, dan tombol berlangganan — termasuk yang dirender
+    | belakangan.
     |
     | Didaftarkan SEBELUM pemeriksaan initData: halaman bisa saja dibuka
     | tanpa initData (mis. dari tautan biasa di dalam Telegram) dan
     | tombolnya tetap harus berfungsi.
     */
+
+    /*
+    | Membuka chat bot, lalu menutup Mini App-nya
+    | -------------------------------------------
+    | `openTelegramLink()` dulu menutup Mini App dengan sendirinya. Sejak
+    | Bot API 7.0 ia TIDAK lagi begitu — dokumentasinya sekarang menyebut
+    | "the Mini App will not be closed after this method is called".
+    |
+    | Akibatnya persis keluhan yang muncul: menekan Tonton membuka chat bot
+    | di belakang, sementara Mini App tetap terbentang di depannya. Pengguna
+    | melihat halaman yang sama seolah tombolnya tidak bekerja, menekannya
+    | lagi, dan bot menerima dua permintaan untuk satu niat.
+    |
+    | Jadi penutupannya dilakukan sendiri. Diberi jeda pendek, bukan
+    | dipanggil langsung: `close()` yang menyusul di baris yang sama kadang
+    | mendahului perpindahannya, dan yang terjadi hanyalah Mini App tertutup
+    | tanpa chat bot pernah terbuka. Seperlima detik cukup bagi Telegram
+    | memproses tautannya, dan tidak cukup lama untuk terasa sebagai jeda.
+    */
+    function bukaChatBot(url, cadangan) {
+        try {
+            tg.openTelegramLink(url);
+        } catch (err) {
+            // Tautannya ditolak — jatuh kembali ke halaman situs, jangan
+            // menutup apa pun. Menutup Mini App di sini berarti pengguna
+            // kehilangan halamannya tanpa mendapat gantinya.
+            if (cadangan) window.location.href = cadangan;
+
+            return;
+        }
+
+        setTimeout(function () {
+            try { tg.close(); } catch (err) {}
+        }, 200);
+    }
+
     document.addEventListener('click', function (e) {
         var a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
 
@@ -97,13 +133,9 @@
         if (pintasan && tg.openTelegramLink) {
             e.preventDefault();
 
-            try {
-                tg.openTelegramLink(pintasan);
-            } catch (err) {
-                // Biarkan tombolnya tetap berguna: jatuh kembali ke halaman
-                // episode di situs, bukan diam saja.
-                window.location.href = a.href;
-            }
+            // Cadangannya halaman episode di situs — tombolnya tetap berguna
+            // bila tautan botnya ditolak, bukan diam saja.
+            bukaChatBot(pintasan, a.href);
 
             return;
         }
@@ -119,11 +151,9 @@
 
         e.preventDefault();
 
-        try {
-            tg.openTelegramLink(a.href);
-        } catch (err) {
-            window.location.href = a.href;
-        }
+        // Tanpa cadangan: href-nya sendiri sudah tautan t.me, dan mengarahkan
+        // webview ke sana hanya menghasilkan halaman "buka di aplikasi".
+        bukaChatBot(a.href, null);
     }, false);
 
     if (!tg.initData) {
