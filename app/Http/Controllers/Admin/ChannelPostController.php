@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ChannelPost;
 use App\Models\Drama;
 use App\Services\Admin\ActivityLogger;
+use App\Services\Telegram\ChannelBulkService;
 use App\Services\Telegram\ChannelPostService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -25,7 +26,8 @@ use Illuminate\Http\Request;
 class ChannelPostController extends Controller
 {
     public function __construct(
-        protected ChannelPostService $channel
+        protected ChannelPostService $channel,
+        protected ChannelBulkService $massal
     ) {
     }
 
@@ -79,6 +81,18 @@ class ChannelPostController extends Controller
             'episodes' => $drama !== null ? $this->channel->episodes($drama, $dari, $sampai) : collect(),
             'penghalang' => $this->channel->penghalang(),
             'chatId'     => $this->channel->chatId(),
+            /*
+            | Data panel "kirim banyak sekaligus".
+            |
+            | `sudahDikirim` satu query untuk seluruh tabel, bukan
+            | `pernahDikirim()` per baris — daftar dramanya bisa ratusan, dan
+            | satu query per baris adalah halaman admin yang melambat diam-diam
+            | seiring katalognya bertambah.
+            */
+            'sudahDikirim' => $this->massal->sudahDikirim(),
+            'bulkMax'      => ChannelBulkService::LIMIT,
+            'bulkJeda'     => ChannelBulkService::JEDA_DETIK,
+
             'riwayat'  => ChannelPost::query()
                 ->with(['drama:id,title', 'sender:id,name'])
                 ->latest('id')
@@ -133,5 +147,68 @@ class ChannelPostController extends Controller
                 "Terkirim ke channel: {$drama->title}, {$catatan->rentang()} "
                 ."({$catatan->episode_count} episode, ".count($catatan->message_ids ?? [])." pesan).")
             : back()->with('error', 'Gagal mengirim: '.$catatan->error);
+    }
+
+    /**
+     * Kirim beberapa drama sekaligus.
+     *
+     * Terpisah dari `send()` dan tidak menyentuhnya. Keduanya memang berbeda
+     * sifat: `send()` mengirim satu drama yang captionnya baru saja dilihat
+     * admin di pratinjau dan melaporkan hasilnya seketika; yang ini menerima
+     * pilihan tanpa pratinjau, jadi ia hanya boleh melaporkan berapa yang
+     * diantrekan — hasil tiap drama menyusul di tabel Riwayat.
+     *
+     * Rentang part sengaja tidak diterima di sini. Rentang "part 5-10" masuk
+     * akal untuk satu drama tertentu; diterapkan ke sepuluh drama sekaligus
+     * ia berarti sepuluh postingan yang dipotong di tempat yang tidak ada
+     * hubungannya dengan isi masing-masing.
+     */
+    public function bulk(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'ids'     => ['required', 'array', 'min:1'],
+            'ids.*'   => ['integer'],
+            'ulangi'  => ['nullable', 'boolean'],
+        ], [
+            'ids.required' => 'Pilih dulu drama yang ingin dikirim.',
+        ]);
+
+        // Tanda centang "kirim ulang" dibalik jadi "lewati yang sudah
+        // dikirim": bawaannya melewati, dan admin harus sengaja mencentang
+        // untuk menghasilkan postingan kedua atas drama yang sama.
+        $lewati = ! $request->boolean('ulangi');
+
+        $hasil = $this->massal->kirim($data['ids'], $request->user(), $lewati);
+
+        app(ActivityLogger::class)->log('kirim-channel-massal', 'drama', null, [
+            'diminta'  => count($data['ids']),
+            'diantre'  => $hasil['queued'],
+            'dilewati' => count($hasil['skipped']),
+            'ulangi'   => ! $lewati,
+        ]);
+
+        if ($hasil['queued'] === 0) {
+            return back()->with('error', 'Tidak ada yang diantrekan. '.implode(' ', array_slice($hasil['skipped'], 0, 5)));
+        }
+
+        $pesan = $hasil['queued'].' drama diantrekan ke channel';
+
+        if ($hasil['perkiraan'] > 0) {
+            $pesan .= ', selesai dalam ~'.$hasil['perkiraan'].' menit';
+        }
+
+        $pesan .= '. Hasil tiap drama muncul di Riwayat kiriman.';
+
+        if ($hasil['skipped'] !== []) {
+
+            $pesan .= ' Dilewati '.count($hasil['skipped']).': '
+                .implode(' ', array_slice($hasil['skipped'], 0, 5));
+
+            if (count($hasil['skipped']) > 5) {
+                $pesan .= ' (dan lainnya)';
+            }
+        }
+
+        return back()->with('status', $pesan);
     }
 }

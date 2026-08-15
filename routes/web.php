@@ -645,6 +645,14 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
             Route::post('/channel-post', [Admin\ChannelPostController::class, 'send'])
                 ->name('channel-post.send');
+
+            // Kirim beberapa drama sekaligus. Endpoint sendiri, bukan
+            // parameter tambahan pada 'send' di atas: yang satu mengirim
+            // seketika dan melaporkan hasilnya, yang ini hanya mengantrekan.
+            // Menyatukan keduanya berarti satu aksi dengan dua arti pesan
+            // sukses yang berbeda.
+            Route::post('/channel-post/bulk', [Admin\ChannelPostController::class, 'bulk'])
+                ->name('channel-post.bulk');
         });
 
         /*

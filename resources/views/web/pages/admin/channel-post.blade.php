@@ -159,6 +159,132 @@
         </section>
     @endif
 
+    {{--
+        Panel kirim massal. Berdiri sendiri di bawah panel satuan, tidak
+        menggantikannya: pratinjau per drama tetap satu-satunya cara melihat
+        caption sebelum terkirim, dan untuk drama tertentu itu masih yang
+        paling benar. Yang di bawah ini untuk pekerjaan lain — menaruh
+        katalog lama ke channel yang baru dibuat, misalnya, di mana yang
+        dibutuhkan bukan ketelitian per caption melainkan tidak menekan
+        tombol yang sama enam puluh kali.
+    --}}
+    <section class="panel">
+        <div class="panel-head">
+            <h2>Kirim banyak drama sekaligus</h2>
+            <span class="panel-meta">maksimal {{ $bulkMax }} drama sekali kirim</span>
+        </div>
+
+        <div class="detail-body-admin">
+            <p class="page-subtitle">
+                Centang dramanya, lalu Kirim. Semuanya lewat antrean dengan jeda
+                {{ $bulkJeda }} detik antar drama — Telegram membatasi sekitar 20 pesan
+                per menit ke satu channel, dan mengirim serentak akan ditolaknya.
+                Postingannya karena itu tidak muncul sekaligus. Rentang part tidak
+                berlaku di sini; tiap drama dikirim seluruh partnya.
+                <br>
+                Hasil tiap drama muncul di tabel Riwayat di bawah, satu per satu.
+                <br>
+                Part yang belum tersinkron ke Telegram tetap ditulis barisnya, tapi
+                tanpa tautan — sama seperti kiriman satuan. Tidak ada pratinjau di
+                sini, jadi sinkronkan dulu bila ingin semua barisnya bisa ditekan.
+            </p>
+        </div>
+
+        @if ($dramas->isEmpty())
+            <div class="detail-body-admin">
+                <p class="page-subtitle">Belum ada drama.</p>
+            </div>
+        @else
+
+            <div class="admin-toolbar">
+                <input type="search" class="control control-sm" data-cp-cari
+                       placeholder="Saring judul…" style="max-width:260px" autocomplete="off">
+                <span class="panel-meta" data-cp-tampil></span>
+            </div>
+
+            {{-- Tabelnya SENGAJA tidak dilingkupi form pengirimnya. Sebuah
+                 form di dalam form tidak sah di HTML dan parser membuang yang
+                 bersarang; kotak centangnya menempel lewat atribut form=,
+                 pola yang sama dengan halaman Sinkron Telegram. --}}
+            <div class="table-wrap" style="max-height:420px;overflow:auto">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th class="col-check">
+                                {{-- Hanya mencentang yang BELUM pernah dikirim.
+                                     Yang sudah ada di channel dicentang manual,
+                                     satu per satu, supaya postingan kembar
+                                     selalu keputusan yang disengaja. --}}
+                                <input type="checkbox" data-cp-all
+                                       title="Centang semua yang belum pernah dikirim">
+                            </th>
+                            <th>Drama</th>
+                            <th>Total part</th>
+                            <th>Status channel</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($dramas as $d)
+                            @php $terkirim = isset($sudahDikirim[$d->id]); @endphp
+                            <tr data-cp-baris data-judul="{{ Str::lower($d->title) }}">
+                                <td class="col-check">
+                                    <input type="checkbox" form="channel-bulk-form" name="ids[]"
+                                           value="{{ $d->id }}" data-cp-item
+                                           data-terkirim="{{ $terkirim ? '1' : '0' }}">
+                                </td>
+                                <td>{{ $d->title }}</td>
+                                <td>
+                                    @if ($d->total_episode)
+                                        {{ number_format($d->total_episode) }}
+                                    @else
+                                        <span class="cell-empty">—</span>
+                                    @endif
+                                </td>
+                                <td>
+                                    @if ($terkirim)
+                                        <span class="badge badge-on">Sudah dikirim</span>
+                                    @else
+                                        <span class="cell-empty">Belum pernah</span>
+                                    @endif
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+
+            <form method="POST" action="{{ route('admin.channel-post.bulk') }}"
+                  id="channel-bulk-form" class="bulk-bar"
+                  data-confirm
+                  data-confirm-title="Kirim ke channel?"
+                  data-confirm-ok="Antrekan sekarang"
+                  data-confirm-message="Drama yang dicentang akan diposting ke channel dan langsung terlihat semua pelanggan. Postingan tidak bisa ditarik dari panel.">
+                @csrf
+
+                <span class="panel-meta">
+                    <span data-cp-count>Belum ada yang dicentang.</span>
+                </span>
+
+                <button type="button" class="btn btn-sm btn-ghost" data-cp-none>
+                    Bersihkan
+                </button>
+
+                <label class="panel-meta" style="display:inline-flex;align-items:center;gap:6px">
+                    {{-- Bawaannya melewati yang sudah pernah dikirim.
+                         Dicentang bila channelnya memang sudah dibersihkan
+                         manual dan katalognya perlu ditaruh ulang. --}}
+                    <input type="checkbox" name="ulangi" value="1">
+                    Kirim ulang yang sudah pernah dikirim
+                </label>
+
+                <button type="submit" class="btn btn-primary" @disabled($penghalang !== null)>
+                    <x-web.home.icon name="send" :size="14" />
+                    Kirim yang dicentang
+                </button>
+            </form>
+        @endif
+    </section>
+
     <section class="panel">
         <div class="panel-head">
             <h2>Riwayat kiriman</h2>
@@ -213,3 +339,99 @@
     </section>
 
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+
+        const semua = document.querySelector('[data-cp-all]');
+        const items = Array.from(document.querySelectorAll('[data-cp-item]'));
+
+        if (!semua || !items.length) {
+            return;
+        }
+
+        const penghitung = document.querySelector('[data-cp-count]');
+        const tombolBersih = document.querySelector('[data-cp-none]');
+        const kotakCari  = document.querySelector('[data-cp-cari]');
+        const infoTampil = document.querySelector('[data-cp-tampil]');
+        const baris      = Array.from(document.querySelectorAll('[data-cp-baris]'));
+
+        const belumDikirim = items.filter((el) => el.dataset.terkirim !== '1');
+
+        const hitung = () => {
+            const dipilih = items.filter((el) => el.checked);
+
+            const ulang = dipilih.filter((el) => el.dataset.terkirim === '1').length;
+
+            if (!dipilih.length) {
+                penghitung.textContent = 'Belum ada yang dicentang.';
+            } else {
+                let teks = `${dipilih.length} dicentang`;
+
+                // Yang sudah pernah dikirim disebut terpisah: tanpa mencentang
+                // "kirim ulang" ia akan dilewati, dan angka yang benar-benar
+                // terkirim jadi lebih kecil dari yang terlihat di sini.
+                if (ulang > 0) {
+                    teks += ` — ${ulang} di antaranya sudah pernah dikirim`;
+                }
+
+                penghitung.textContent = teks + '.';
+            }
+
+            const tercentang = belumDikirim.filter((el) => el.checked).length;
+
+            semua.checked = belumDikirim.length > 0 && tercentang === belumDikirim.length;
+
+            semua.indeterminate = tercentang > 0 && tercentang < belumDikirim.length;
+        };
+
+        semua.addEventListener('change', () => {
+            const nyalakan = semua.checked;
+
+            // Hanya baris yang sedang terlihat. Mencentang sekaligus baris
+            // yang tersaring keluar berarti mengirim drama yang tidak pernah
+            // dilihat admin di layarnya.
+            belumDikirim
+                .filter((el) => !el.closest('[data-cp-baris]').hidden)
+                .forEach((el) => { el.checked = nyalakan; });
+
+            hitung();
+        });
+
+        items.forEach((el) => el.addEventListener('change', hitung));
+
+        tombolBersih?.addEventListener('click', () => {
+            items.forEach((el) => { el.checked = false; });
+            hitung();
+        });
+
+        if (kotakCari) {
+            const saring = () => {
+                const kata = kotakCari.value.trim().toLowerCase();
+
+                let terlihat = 0;
+
+                baris.forEach((tr) => {
+                    const cocok = kata === '' || tr.dataset.judul.includes(kata);
+
+                    tr.hidden = !cocok;
+
+                    if (cocok) terlihat++;
+                });
+
+                infoTampil.textContent = kata === ''
+                    ? ''
+                    : `${terlihat} dari ${baris.length} judul.`;
+            };
+
+            kotakCari.addEventListener('input', saring);
+        }
+
+        // Centangan bertahan saat disaring — kotak yang tersembunyi tetap
+        // ikut terkirim. Itu disengaja: admin bisa mencentang lewat beberapa
+        // kali pencarian, dan penghitung di atas selalu menyebut totalnya.
+        hitung();
+    });
+</script>
+@endpush
