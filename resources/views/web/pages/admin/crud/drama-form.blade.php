@@ -48,9 +48,9 @@
                 <x-admin.field name="status" label="Status" type="select"
                                :value="$record->status ?? 'ongoing'" :options="$statuses" required />
 
-                <x-admin.field name="total_episode" label="Jumlah episode" type="number"
+                <x-admin.field name="total_episode" label="Jumlah part" type="number"
                                :value="$record->total_episode" min="0"
-                               hint="Diperbarui otomatis saat episode ditambah." />
+                               hint="Diperbarui otomatis saat part ditambah." />
 
             </section>
 

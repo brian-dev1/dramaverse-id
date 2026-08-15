@@ -8,7 +8,7 @@
         <div class="head-row">
             <div>
                 <h1 class="page-title">Notifikasi</h1>
-                <p class="page-subtitle">Episode baru, membership, dan pengumuman.</p>
+                <p class="page-subtitle">Part baru, membership, dan pengumuman.</p>
             </div>
 
             @if ($notifications->isNotEmpty())
@@ -23,7 +23,7 @@
     @if ($notifications->isEmpty())
         <x-web.home.empty-state
             title="Tidak ada notifikasi"
-            message="Kami akan memberi tahu saat ada episode baru."
+            message="Kami akan memberi tahu saat ada part baru."
             :href="route('web.home')" action="Kembali ke Beranda" />
     @else
         <section class="section section-pad">

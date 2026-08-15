@@ -777,9 +777,9 @@ class PremiumHandler
                 .'. Membeli lagi menambah masa aktif, bukan menggantinya.',
 
             'expired' => 'Status Anda: Kedaluwarsa. Perpanjang untuk membuka '
-                .'episode premium lagi.',
+                .'part premium lagi.',
 
-            default => 'Status Anda: Gratis. Episode premium belum bisa dibuka.',
+            default => 'Status Anda: Gratis. Part premium belum bisa dibuka.',
         };
     }
 }

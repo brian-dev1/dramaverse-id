@@ -55,7 +55,7 @@ class HistoryHandler
             }
 
             $baris[] = sprintf(
-                '• %s — episode %s',
+                '• %s — part %s',
                 e($episode->drama?->title ?? 'Drama'),
                 e((string) $episode->episode_number)
             );

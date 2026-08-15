@@ -14,8 +14,8 @@
             <p>Buka bot DramaVerse di Telegram, lalu tekan tombol "Buka Website".
             Anda akan diarahkan ke situs dalam keadaan sudah masuk.</p>
 
-            <h2>Kenapa episode tertentu terkunci?</h2>
-            <p>Episode bertanda VIP hanya dapat diputar oleh anggota VIP atau Premium.
+            <h2>Kenapa part tertentu terkunci?</h2>
+            <p>Part bertanda VIP hanya dapat diputar oleh anggota VIP atau Premium.
             Lihat halaman Membership untuk rinciannya.</p>
 
             <h2>Riwayat tontonan saya hilang</h2>
@@ -24,7 +24,7 @@
 
             <h2>Video tidak dapat diputar</h2>
             <p>Coba muat ulang halaman terlebih dahulu. Bila masih bermasalah,
-            laporkan judul dan nomor episodenya melalui bot Telegram kami.</p>
+            laporkan judul dan nomor partnya melalui bot Telegram kami.</p>
 
             <h2>Masih butuh bantuan?</h2>
             <p>Kirim pesan langsung ke bot DramaVerse di Telegram. Kami membalas

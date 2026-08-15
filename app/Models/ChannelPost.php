@@ -59,11 +59,11 @@ class ChannelPost extends Model
     public function rentang(): string
     {
         if ($this->from_episode === null && $this->to_episode === null) {
-            return 'Semua episode';
+            return 'Semua part';
         }
 
         return $this->from_episode === $this->to_episode
-            ? 'Episode '.$this->from_episode
-            : 'Episode '.$this->from_episode.'–'.$this->to_episode;
+            ? 'Part '.$this->from_episode
+            : 'Part '.$this->from_episode.'–'.$this->to_episode;
     }
 }

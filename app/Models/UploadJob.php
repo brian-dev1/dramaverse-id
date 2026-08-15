@@ -219,11 +219,11 @@ class UploadJob extends Model
         $episode = $this->episode;
 
         if ($episode === null) {
-            return 'Episode sudah dihapus';
+            return 'Part sudah dihapus';
         }
 
         return sprintf(
-            '%s — Episode %s',
+            '%s — Part %s',
             $episode->drama?->title ?: 'Tanpa drama',
             str_pad((string) (int) $episode->episode_number, 2, '0', STR_PAD_LEFT)
         );

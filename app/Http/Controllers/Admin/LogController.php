@@ -49,7 +49,7 @@ class LogController extends AdminCrudController
 
     protected function filters(): array
     {
-        return ['module' => ['label' => 'Modul', 'options' => ['drama' => 'Drama', 'episode' => 'Episode', 'genre' => 'Genre', 'country' => 'Negara', 'banner' => 'Banner']]];
+        return ['module' => ['label' => 'Modul', 'options' => ['drama' => 'Drama', 'episode' => 'Part', 'genre' => 'Genre', 'country' => 'Negara', 'banner' => 'Banner']]];
     }
 
     protected function bulkActions(): array

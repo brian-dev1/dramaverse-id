@@ -43,7 +43,7 @@ enum StoredFileSource: string
     public function label(): string
     {
         return match ($this) {
-            self::EPISODE_VIDEO => 'Video episode',
+            self::EPISODE_VIDEO => 'Video part',
             self::DRAMA_ASSET   => 'Aset drama',
         };
     }
@@ -89,7 +89,7 @@ enum StoredFileSource: string
     public function deleteWarning(): string
     {
         return match ($this) {
-            self::EPISODE_VIDEO => 'Episode ini akan kehilangan videonya dan tidak bisa '
+            self::EPISODE_VIDEO => 'Part ini akan kehilangan videonya dan tidak bisa '
                                    .'diputar sampai ada video baru yang diunggah.',
             self::DRAMA_ASSET   => 'Gambar ini akan hilang dari halaman yang memakainya.',
         };

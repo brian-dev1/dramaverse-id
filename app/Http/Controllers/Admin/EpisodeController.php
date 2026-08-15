@@ -35,7 +35,7 @@ class EpisodeController extends AdminCrudController
 
     protected function label(): string
     {
-        return 'Episode';
+        return 'Part';
     }
 
     protected function columns(): array
@@ -119,7 +119,7 @@ class EpisodeController extends AdminCrudController
 
         return view('web.pages.admin.episode-groups', [
             'dramas'  => $dramas,
-            'title'   => 'Episode',
+            'title'   => 'Part',
             'keyword' => $keyword,
         ]);
     }
@@ -313,7 +313,7 @@ class EpisodeController extends AdminCrudController
             'ranges.*.status'   => ['required', 'in:draft,published'],
             'url_pattern'       => ['nullable', 'string', 'max:500'],
         ], [
-            'ranges.required' => 'Isi minimal satu rentang episode.',
+            'ranges.required' => 'Isi minimal satu rentang part.',
         ]);
 
         // Rentang terbalik dan rentang raksasa ditolak di sini, bukan
@@ -332,7 +332,7 @@ class EpisodeController extends AdminCrudController
 
         if ($total > 300) {
             return back()->withInput()->withErrors([
-                'ranges' => "Total {$total} episode terlalu banyak sekali jalan. Maksimal 300.",
+                'ranges' => "Total {$total} part terlalu banyak sekali jalan. Maksimal 300.",
             ]);
         }
 
@@ -362,7 +362,7 @@ class EpisodeController extends AdminCrudController
                     Episode::create([
                         'drama_id'       => $drama->id,
                         'episode_number' => $number,
-                        'title'          => 'Episode '.$number,
+                        'title'          => 'Part '.$number,
                         'slug'           => \Illuminate\Support\Str::slug($drama->slug.'-episode-'.$number),
                         'video_url'      => $this->expandPattern($data['url_pattern'] ?? null, $number),
                         'is_vip'         => $vip,
@@ -383,7 +383,7 @@ class EpisodeController extends AdminCrudController
             'dilewati'  => $skipped,
         ]);
 
-        $message = "{$created} episode dibuat untuk {$drama->title}.";
+        $message = "{$created} part dibuat untuk {$drama->title}.";
 
         if ($skipped > 0) {
             $message .= " {$skipped} nomor dilewati karena sudah ada.";

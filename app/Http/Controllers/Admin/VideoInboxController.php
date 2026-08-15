@@ -75,8 +75,8 @@ class VideoInboxController extends Controller
             'pairs.*.video_id'   => ['required', 'integer', 'distinct'],
             'pairs.*.episode_id' => ['required', 'integer'],
         ], [
-            'pairs.required'              => 'Centang minimal satu video dan pilih episodenya.',
-            'pairs.*.episode_id.required' => 'Ada video yang dicentang tetapi belum dipilih episodenya.',
+            'pairs.required'              => 'Centang minimal satu video dan pilih partnya.',
+            'pairs.*.episode_id.required' => 'Ada video yang dicentang tetapi belum dipilih partnya.',
         ]);
 
         $pairs = collect($data['pairs']);
@@ -90,7 +90,7 @@ class VideoInboxController extends Controller
                 ->withInput()
                 ->with(
                     'error',
-                    'Ada dua video atau lebih yang diarahkan ke episode yang sama. Perbaiki dulu pilihannya.'
+                    'Ada dua video atau lebih yang diarahkan ke part yang sama. Perbaiki dulu pilihannya.'
                 );
         }
 
@@ -138,7 +138,7 @@ class VideoInboxController extends Controller
             }
 
             if ($episode === null) {
-                $dilewati[] = $nama.': episode tujuan tidak ditemukan.';
+                $dilewati[] = $nama.': part tujuan tidak ditemukan.';
                 continue;
             }
 
@@ -148,7 +148,7 @@ class VideoInboxController extends Controller
             // niat mengganti video.
             if ($episode->video !== null) {
                 $dilewati[] = $nama.': '
-                    .($episode->drama?->title ?? 'Drama').' Episode '
+                    .($episode->drama?->title ?? 'Drama').' Part '
                     .str_pad((string) $episode->episode_number, 2, '0', STR_PAD_LEFT)
                     .' sudah punya video.';
                 continue;

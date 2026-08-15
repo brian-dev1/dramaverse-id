@@ -108,7 +108,7 @@
 
         <div class="stat-row">
             <x-admin.stat-card label="Drama"             :value="$data['totals']['drama']"    icon="film" />
-            <x-admin.stat-card label="Episode"           :value="$data['totals']['episode']"  icon="play" />
+            <x-admin.stat-card label="Part"           :value="$data['totals']['episode']"  icon="play" />
             <x-admin.stat-card label="Video tersimpan"   :value="$data['totals']['video']"    icon="database" />
             <x-admin.stat-card label="Ditonton hari ini" :value="$data['totals']['hari_ini']" icon="clock" />
         </div>
@@ -157,9 +157,9 @@
             </section>
 
             <section class="panel">
-                <div class="panel-head"><h2>Episode teratas</h2></div>
+                <div class="panel-head"><h2>Part teratas</h2></div>
                 <table class="data-table">
-                    <thead><tr><th>Drama</th><th>Episode</th><th>Riwayat</th></tr></thead>
+                    <thead><tr><th>Drama</th><th>Part</th><th>Riwayat</th></tr></thead>
                     <tbody>
                         @forelse ($data['topEpisodes'] as $episode)
                             <tr>

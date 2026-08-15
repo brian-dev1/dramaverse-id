@@ -22,7 +22,7 @@
             'cta'      => 'Tonton Sekarang',
             'meta'     => array_filter([
                 $d->country?->name,
-                $d->total_episode ? $d->total_episode.' Episode' : null,
+                $d->total_episode ? $d->total_episode.' Part' : null,
             ]),
         ]);
     } elseif ($banners && $banners->isNotEmpty()) {

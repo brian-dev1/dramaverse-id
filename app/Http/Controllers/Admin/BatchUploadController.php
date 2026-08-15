@@ -250,7 +250,7 @@ class BatchUploadController extends Controller
         }
 
         return sprintf(
-            'Episode %s sudah punya unggahan yang %s di antrean (%s). Berkas ini '
+            'Part %s sudah punya unggahan yang %s di antrean (%s). Berkas ini '
             .'tidak diantrekan supaya keduanya tidak saling menimpa.',
             str_pad((string) $episode->episode_number, 2, '0', STR_PAD_LEFT),
             $berjalan->status->label(),

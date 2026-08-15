@@ -28,7 +28,7 @@ class EpisodeController extends Controller
         // bot Telegram — supaya aturan "boleh menonton atau tidak" tidak
         // didefinisikan ulang secara terpisah dan berisiko berbeda/rusak.
         if (! $this->episodeAccessService->canWatch(Auth::user(), $episode)) {
-            abort(403, 'Episode ini khusus anggota VIP.');
+            abort(403, 'Part ini khusus anggota VIP.');
         }
 
         $data = $this->playerService->watch($episode, Auth::user());

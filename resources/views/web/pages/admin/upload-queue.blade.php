@@ -85,12 +85,12 @@
                 @if ($keyword !== '' || $status !== '')
                     Tidak ada pekerjaan yang cocok dengan pencarian Anda.
                 @else
-                    Riwayat akan terisi sendiri begitu ada video episode yang diunggah.
+                    Riwayat akan terisi sendiri begitu ada video part yang diunggah.
                 @endif
             </p>
 
             <a href="{{ route('admin.episode.video.form') }}" class="btn btn-primary">
-                Unggah video episode
+                Unggah video part
             </a>
         </div>
 
@@ -102,7 +102,7 @@
                 <thead>
                     <tr>
                         <th>Berkas</th>
-                        <th>Episode</th>
+                        <th>Part</th>
                         <th>Tujuan</th>
                         <th>Ukuran</th>
                         <th>Status</th>

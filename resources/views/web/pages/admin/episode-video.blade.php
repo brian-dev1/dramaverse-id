@@ -24,17 +24,17 @@
         <div class="form-grid form-grid-narrow">
 
             <section class="form-card form-main">
-                <h2>Episode tujuan</h2>
+                <h2>Part tujuan</h2>
 
                 <x-admin.field name="drama_id" label="Drama" type="select" required
                                :value="old('drama_id', $selected)"
                                :options="$dramas->pluck('title', 'id')->all()"
                                data-drama
-                               hint="Pilih drama dulu — daftar episodenya menyusul." />
+                               hint="Pilih drama dulu — daftar partnya menyusul." />
 
                 <div class="field">
                     <label for="field-episode_id">
-                        Episode
+                        Part
                         <span class="field-required" aria-hidden="true">*</span>
                     </label>
 
@@ -44,16 +44,16 @@
                     </select>
 
                     <p class="field-hint" data-episode-note>
-                        Episode dibuat lewat menu Episode. Halaman ini hanya
+                        Part dibuat lewat menu Part. Halaman ini hanya
                         mengunggah videonya.
                     </p>
 
                     @error('episode_id')<p class="field-error">{{ $message }}</p>@enderror
                 </div>
 
-                <x-admin.field name="title" label="Judul Episode" :value="old('title')"
+                <x-admin.field name="title" label="Judul Part" :value="old('title')"
                                data-title
-                               hint="Opsional. Bila diisi, judul episode ikut diperbarui." />
+                               hint="Opsional. Bila diisi, judul part ikut diperbarui." />
 
                 {{--
                     Season sengaja TIDAK ada di formulir ini.
@@ -221,7 +221,7 @@
                     </button>
 
                     <a href="{{ route('admin.episode.index') }}" class="btn btn-ghost">
-                        Kembali ke daftar episode
+                        Kembali ke daftar part
                     </a>
                 </div>
             </section>

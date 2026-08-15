@@ -154,9 +154,9 @@ class MembershipExpiryNotifier
             ])
             ->text('Mulai sekarang:')
             ->bullets([
-                'Episode VIP terkunci',
+                'Part VIP terkunci',
                 'Video premium yang sudah dikirim ditarik dari chat ini',
-                'Episode gratis tetap bisa ditonton seperti biasa',
+                'Part gratis tetap bisa ditonton seperti biasa',
             ])
             ->note('Perpanjang kapan saja — sisa hari dari pembelian baru '
                 .'ditambahkan, bukan menghapus riwayat Anda.')

@@ -73,7 +73,7 @@ class PaymentNotifier
                     ? Waktu::ringkas($langganan->expired_at)
                     : null,
             ])
-            ->note('Seluruh episode premium sudah terbuka. Selamat menonton! 🎬');
+            ->note('Seluruh part premium sudah terbuka. Selamat menonton! 🎬');
 
         $this->kirim($user->telegram_id, $pesan, [
             [['text' => '🔎 Cari Drama', 'callback_data' => 'search']],

@@ -37,11 +37,11 @@ class ChannelTemplates
             [
                 'kunci'   => 'lengkap',
                 'nama'    => 'Lengkap',
-                'ringkas' => 'Poster, info, sinopsis, daftar episode, plus tautan cari dan request. '
+                'ringkas' => 'Poster, info, sinopsis, daftar part, plus tautan cari dan request. '
                     .'Paling cocok untuk channel utama.',
                 'template' => <<<'T'
                     🎬 <b>{judul}</b>
-                    {negara} • {total_episode} Episode • {genre}
+                    {negara} • {total_episode} Part • {genre}
 
                     <blockquote>{sinopsis}</blockquote>
 
@@ -51,7 +51,7 @@ class ChannelTemplates
 
                     🆓 Gratis   💎 Khusus VIP
 
-                    📺 <a href="{tautan_drama}">Semua episode drama ini</a>
+                    📺 <a href="{tautan_drama}">Semua part drama ini</a>
                     🔍 <a href="{tautan_cari}">Cari judul lain</a>
                     ⭐ <a href="{tautan_vip}">Buka akses VIP</a>
 
@@ -66,7 +66,7 @@ class ChannelTemplates
             [
                 'kunci'   => 'ringkas',
                 'nama'    => 'Ringkas',
-                'ringkas' => 'Judul dan daftar episode saja. Untuk channel yang memposting '
+                'ringkas' => 'Judul dan daftar part saja. Untuk channel yang memposting '
                     .'banyak drama setiap hari, di mana caption panjang justru melelahkan.',
                 'template' => <<<'T'
                     『 {judul} 』
@@ -84,10 +84,10 @@ class ChannelTemplates
                 'kunci'   => 'promosi',
                 'nama'    => 'Promosi VIP',
                 'ringkas' => 'Menonjolkan ajakan berlangganan. Dipakai bila sebagian besar '
-                    .'episodenya VIP dan tujuan postingannya menjual, bukan sekadar mengabarkan.',
+                    .'partnya VIP dan tujuan postingannya menjual, bukan sekadar mengabarkan.',
                 'template' => <<<'T'
                     🔥 <b>{judul}</b>
-                    📍 {negara}  •  🎞 {total_episode} Episode  •  {genre}
+                    📍 {negara}  •  🎞 {total_episode} Part  •  {genre}
 
                     <blockquote>{sinopsis}</blockquote>
 
@@ -95,11 +95,11 @@ class ChannelTemplates
                     {daftar}
                     ━━━━━━━━━━━━━━━
 
-                    💎 <b>Buka semua episode tanpa batas</b>
+                    💎 <b>Buka semua part tanpa batas</b>
                     Sekali langganan, seluruh katalog terbuka — tanpa iklan, kualitas penuh.
 
                     ⭐ <a href="{tautan_vip}">Langganan VIP sekarang</a>
-                    📺 <a href="{tautan_drama}">Lihat daftar episode</a>
+                    📺 <a href="{tautan_drama}">Lihat daftar part</a>
                     🔍 <a href="{tautan_cari}">Cari judul lain</a>
                     T,
                 'baris'  => '➤ <b>Part {nomor}</b> | {tanda} → {tautan}',
@@ -114,7 +114,7 @@ class ChannelTemplates
                     .'tenang, atau bila emoji tampil berbeda-beda di perangkat pembacanya.',
                 'template' => <<<'T'
                     <b>{judul}</b>
-                    {negara} | {total_episode} Episode | {genre}
+                    {negara} | {total_episode} Part | {genre}
 
                     <blockquote>{sinopsis}</blockquote>
 
@@ -124,7 +124,7 @@ class ChannelTemplates
 
                     Gratis = tanda G, VIP = tanda V
 
-                    <a href="{tautan_drama}">Semua episode</a> · <a href="{tautan_cari}">Cari judul</a> · <a href="{tautan_vip}">Akses VIP</a>
+                    <a href="{tautan_drama}">Semua part</a> · <a href="{tautan_cari}">Cari judul</a> · <a href="{tautan_vip}">Akses VIP</a>
                     <a href="{tautan_request}">Request drama yang belum ada</a>
                     T,
                 'baris'  => 'Part {nomor} | {tanda} | {tautan}',

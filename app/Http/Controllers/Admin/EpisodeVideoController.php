@@ -60,7 +60,7 @@ class EpisodeVideoController extends Controller
         $collection = StorageCollection::EPISODE;
 
         return view('web.pages.admin.episode-video', [
-            'title'      => 'Unggah Video Episode',
+            'title'      => 'Unggah Video Part',
             'dramas'     => Drama::orderBy('title')->get(['id', 'title']),
             'selected'   => (int) $request->integer('drama_id') ?: null,
 
@@ -107,7 +107,7 @@ class EpisodeVideoController extends Controller
                 'number' => $e->episode_number,
                 'title'  => $e->title,
                 'label'  => sprintf(
-                    'Episode %s%s',
+                    'Part %s%s',
                     str_pad((string) $e->episode_number, 2, '0', STR_PAD_LEFT),
                     $e->title ? ' — '.$e->title : ''
                 ),
@@ -158,7 +158,7 @@ class EpisodeVideoController extends Controller
             return response()->json([
                 'ok'      => false,
                 'message' => sprintf(
-                    'Episode ini sudah punya unggahan yang %s di antrean (%s). '
+                    'Part ini sudah punya unggahan yang %s di antrean (%s). '
                     .'Tunggu sampai selesai, atau batalkan dulu di halaman Upload Queue.',
                     $berjalan->status->label(),
                     $berjalan->original_filename
@@ -204,7 +204,7 @@ class EpisodeVideoController extends Controller
             'ok'     => true,
             'queued' => true,
             'message' => sprintf(
-                'Video episode %s masuk antrean. Pengirimannya ke storage '
+                'Video part %s masuk antrean. Pengirimannya ke storage '
                 .'provider berjalan di latar belakang — halaman ini boleh ditutup.',
                 str_pad((string) $episode->episode_number, 2, '0', STR_PAD_LEFT)
             ),

@@ -30,7 +30,7 @@ class CatalogController extends Controller
         return $this->render(
             fn (Builder $q) => $q->latestRelease(),
             'Rilis Terbaru',
-            'Episode dan judul yang baru saja tayang.',
+            'Part dan judul yang baru saja tayang.',
         );
     }
 

@@ -9,7 +9,7 @@
         <div class="form-grid">
 
             <section class="form-card form-main">
-                <h2>Informasi episode</h2>
+                <h2>Informasi part</h2>
 
                 <x-admin.field name="drama_id" label="Drama" type="select"
                                :value="$record->drama_id"
@@ -17,13 +17,13 @@
                                required
                                data-next-numbers="{{ json_encode($nextNumbers) }}" />
 
-                <x-admin.field name="episode_number" label="Nomor episode" type="number"
+                <x-admin.field name="episode_number" label="Nomor part" type="number"
                                :value="$record->episode_number" min="1" required
                                data-auto-number
                                hint="Terisi otomatis saat drama dipilih." />
 
-                <x-admin.field name="title" label="Judul episode" :value="$record->title"
-                               hint="Kosongkan untuk memakai 'Episode N'." />
+                <x-admin.field name="title" label="Judul part" :value="$record->title"
+                               hint="Kosongkan untuk memakai 'Part N'." />
 
                 <x-admin.field name="description" label="Deskripsi" type="textarea"
                                :value="$record->description" />

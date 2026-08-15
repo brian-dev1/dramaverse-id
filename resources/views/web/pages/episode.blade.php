@@ -1,6 +1,6 @@
 @extends('web.layouts.app')
 
-@section('title', $drama->title.' — Episode '.$episode->episode_number)
+@section('title', $drama->title.' — Part '.$episode->episode_number)
 
 @section('content')
 
@@ -34,7 +34,7 @@
                 <a href="{{ route('web.drama.show', $drama->slug) }}" class="see-all"><x-web.home.icon name="arrow-left" :size="13" /> {{ $drama->title }}</a>
 
                 <h1 class="page-title">
-                    Episode {{ $episode->episode_number }}@if ($episode->title) — {{ $episode->title }}@endif
+                    Part {{ $episode->episode_number }}@if ($episode->title) — {{ $episode->title }}@endif
                 </h1>
 
                 {{--
@@ -60,13 +60,13 @@
                 <div class="player-nav">
                     @if ($previousEpisode ?? null)
                         <a href="{{ route('web.episode.show', $previousEpisode->id) }}" class="btn btn-ghost">
-                            <x-web.home.icon name="arrow-left" :size="14" /> Episode {{ $previousEpisode->episode_number }}
+                            <x-web.home.icon name="arrow-left" :size="14" /> Part {{ $previousEpisode->episode_number }}
                         </a>
                     @endif
 
                     @if ($nextEpisode ?? null)
                         <a href="{{ route('web.episode.show', $nextEpisode->id) }}" class="btn btn-primary">
-                            Episode {{ $nextEpisode->episode_number }} <x-web.home.icon name="arrow-right" :size="14" />
+                            Part {{ $nextEpisode->episode_number }} <x-web.home.icon name="arrow-right" :size="14" />
                         </a>
                     @endif
                 </div>
@@ -75,18 +75,18 @@
         </div>
 
         <aside class="player-sidebar">
-            <h2 class="section-title">Semua Episode</h2>
+            <h2 class="section-title">Semua Part</h2>
 
             <div class="episode-list episode-list-compact">
                 @forelse ($episodes as $ep)
                     <a href="{{ route('web.episode.show', $ep->id) }}"
                        class="episode-item {{ $ep->id === $episode->id ? 'active' : '' }}">
                         <span class="episode-number">{{ str_pad($ep->episode_number, 2, '0', STR_PAD_LEFT) }}</span>
-                        <span class="episode-title">{{ $ep->title ?: 'Episode '.$ep->episode_number }}</span>
+                        <span class="episode-title">{{ $ep->title ?: 'Part '.$ep->episode_number }}</span>
                         @if ($ep->is_vip)<span class="chip gold">VIP</span>@endif
                     </a>
                 @empty
-                    <p class="page-subtitle">Belum ada episode lain.</p>
+                    <p class="page-subtitle">Belum ada part lain.</p>
                 @endforelse
             </div>
         </aside>

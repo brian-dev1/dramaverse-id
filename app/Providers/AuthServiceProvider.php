@@ -17,8 +17,8 @@ class AuthServiceProvider extends ServiceProvider
     public const PERMISSIONS = [
         'drama.view'        => ['drama', 'Lihat drama'],
         'drama.manage'      => ['drama', 'Kelola drama'],
-        'episode.view'      => ['episode', 'Lihat episode'],
-        'episode.manage'    => ['episode', 'Kelola episode'],
+        'episode.view'      => ['episode', 'Lihat part'],
+        'episode.manage'    => ['episode', 'Kelola part'],
         'taxonomy.manage'   => ['taxonomy', 'Kelola genre, negara, banner'],
         'membership.manage' => ['membership', 'Kelola paket dan langganan'],
 

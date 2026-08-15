@@ -195,8 +195,8 @@ class StoreBatchUploadRequest extends FormRequest
                                  .number_format($this->effectiveMaxKb() / 1024, 1)
                                  .' MB yang berlaku di server ini.',
 
-            'episode_id.required' => 'Berkas ini belum dipetakan ke episode mana pun.',
-            'episode_id.exists'   => 'Episode itu tidak ditemukan. Muat ulang halaman.',
+            'episode_id.required' => 'Berkas ini belum dipetakan ke part mana pun.',
+            'episode_id.exists'   => 'Part itu tidak ditemukan. Muat ulang halaman.',
 
             'drama_id.required' => 'Pilih drama tujuan lebih dulu.',
             'drama_id.exists'   => 'Drama itu tidak ditemukan. Muat ulang halaman.',

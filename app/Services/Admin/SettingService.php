@@ -40,7 +40,7 @@ class SettingService
      */
     public const TEMPLATE_BAWAAN = <<<'CAPTION'
         🎬 <b>{judul}</b>
-        {negara} • {total_episode} Episode • {genre}
+        {negara} • {total_episode} Part • {genre}
 
         <blockquote>{sinopsis}</blockquote>
 
@@ -50,7 +50,7 @@ class SettingService
 
         🆓 Gratis   💎 Khusus VIP
 
-        📺 <a href="{tautan_drama}">Semua episode drama ini</a>
+        📺 <a href="{tautan_drama}">Semua part drama ini</a>
         🔍 <a href="{tautan_cari}">Cari judul lain</a>
         ⭐ <a href="{tautan_vip}">Buka akses VIP</a>
 
@@ -93,8 +93,8 @@ class SettingService
         */
         'channel_chat_id'  => ['channel', 'Chat ID channel', 'text', null, 'Contoh: -1001234567890 untuk channel, atau @namachannel. Bot harus jadi admin di sana.'],
         'channel_auto_post' => ['channel', 'Kirim otomatis saat drama dipublikasikan', 'boolean', '0', 'Satu drama hanya dikirim sekali; kiriman berikutnya harus lewat tombol manual.'],
-        'channel_free_mark' => ['channel', 'Penanda episode gratis', 'text', '🆓', null],
-        'channel_vip_mark'  => ['channel', 'Penanda episode VIP', 'text', '💎', null],
+        'channel_free_mark' => ['channel', 'Penanda part gratis', 'text', '🆓', null],
+        'channel_vip_mark'  => ['channel', 'Penanda part VIP', 'text', '💎', null],
         'channel_cta'       => ['channel', 'Teks tautan', 'text', 'Tonton Sekarang', 'Kata yang jadi tautan ke bot di setiap baris.'],
         'channel_template'  => ['channel', 'Template caption', 'textarea',
             self::TEMPLATE_BAWAAN,
@@ -108,7 +108,7 @@ class SettingService
             '➤ <b>Part {nomor}</b> | {tanda} → {tautan}',
             'Placeholder: {nomor}, {tanda}, {tautan}, {judul_episode}.'],
         'channel_sinopsis_max' => ['channel', 'Batas panjang sinopsis', 'text', '180',
-            'Caption foto Telegram maksimal 1024 karakter. Sinopsis yang panjang memakan jatah baris episode.'],
+            'Caption foto Telegram maksimal 1024 karakter. Sinopsis yang panjang memakan jatah baris part.'],
 
         // --- Sistem ---
         'footer_text'      => ['system', 'Teks footer', 'text', null, 'Kosongkan untuk memakai bawaan.'],

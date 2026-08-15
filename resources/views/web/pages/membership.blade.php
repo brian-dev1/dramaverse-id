@@ -31,7 +31,7 @@
             </p>
         @elseif ($status && $status['status'] === 'expired')
             <p class="vip-status is-expired">
-                Masa VIP Anda sudah habis. Perpanjang untuk membuka episode premium lagi.
+                Masa VIP Anda sudah habis. Perpanjang untuk membuka part premium lagi.
             </p>
         @endif
     </section>
@@ -184,7 +184,7 @@
             @foreach ([
                 ['film',     'Akses Semua Film & Series', 'Ribuan judul, tonton tanpa batas'],
                 ['play',     'Tanpa Buffering',           'Kualitas HD, langsung diputar di Telegram'],
-                ['no-ads',   'Tanpa Iklan',               'Tidak ada jeda di tengah episode'],
+                ['no-ads',   'Tanpa Iklan',               'Tidak ada jeda di tengah part'],
                 ['download', 'Simpan & Tonton Ulang',     'Video tetap ada di chat Anda'],
             ] as [$ikon, $judul, $teks])
                 <li class="vip-perk">

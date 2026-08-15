@@ -140,7 +140,7 @@ class ProcessEpisodeVideoUpload implements ShouldQueue
 
         if ($episode === null) {
             throw new RuntimeException(
-                'Episode tujuan sudah dihapus setelah unggahan diantrekan. '
+                'Part tujuan sudah dihapus setelah unggahan diantrekan. '
                 .'Berkasnya tidak dikirim ke mana pun.'
             );
         }

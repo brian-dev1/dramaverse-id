@@ -48,7 +48,7 @@ enum TelegramMenuAction: string
             self::CONTINUE => 'Lanjut menonton',
             self::FAVORITE => 'Favorit',
             self::HISTORY  => 'Riwayat tontonan',
-            self::LATEST   => 'Episode terbaru',
+            self::LATEST   => 'Part terbaru',
             self::TRENDING => 'Sedang populer',
             self::WEBSITE  => 'Buka website (tautan masuk sekali pakai)',
             self::PREMIUM  => 'Premium',

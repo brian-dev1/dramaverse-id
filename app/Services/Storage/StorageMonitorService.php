@@ -47,7 +47,7 @@ class StorageMonitorService
      * @var array<string, string>
      */
     public const SOURCE_TABLES = [
-        'episode_videos' => 'Video episode',
+        'episode_videos' => 'Video part',
         'drama_assets'   => 'Aset drama',
     ];
 

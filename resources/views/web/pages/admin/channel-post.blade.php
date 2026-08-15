@@ -16,7 +16,7 @@
 
     <section class="panel">
         <div class="panel-head">
-            <h2>Pilih drama dan rentang episode</h2>
+            <h2>Pilih drama dan rentang part</h2>
             <span class="panel-meta">
                 @if ($chatId)
                     Channel tujuan: <code>{{ $chatId }}</code>
@@ -39,17 +39,17 @@
                 </select>
 
                 <input type="number" name="from" value="{{ $dari }}" min="1"
-                       class="control control-sm" placeholder="Dari episode" style="max-width:130px">
+                       class="control control-sm" placeholder="Dari part" style="max-width:130px">
 
                 <input type="number" name="to" value="{{ $sampai }}" min="1"
-                       class="control control-sm" placeholder="Sampai episode" style="max-width:140px">
+                       class="control control-sm" placeholder="Sampai part" style="max-width:140px">
 
                 <button type="submit" class="btn btn-sm">
                     <x-web.home.icon name="search" :size="14" /> Pratinjau
                 </button>
             </form>
 
-            <span class="panel-meta">Kosongkan rentang untuk mengirim seluruh episode.</span>
+            <span class="panel-meta">Kosongkan rentang untuk mengirim seluruh part.</span>
         </div>
     </section>
 
@@ -59,7 +59,7 @@
             <div class="panel-head">
                 <h2>Pratinjau</h2>
                 <span class="panel-meta">
-                    {{ $episodes->count() }} episode
+                    {{ $episodes->count() }} part
                     @if (count($potongan) > 1)
                         · akan dikirim sebagai {{ count($potongan) }} pesan
                     @endif
@@ -69,7 +69,7 @@
             <div class="detail-body-admin">
 
                 @if ($episodes->isEmpty())
-                    <p class="page-subtitle">Tidak ada episode pada rentang itu.</p>
+                    <p class="page-subtitle">Tidak ada part pada rentang itu.</p>
                 @else
 
                     @if (count($potongan) > 1)
@@ -127,8 +127,8 @@
 
                     @if ($belumSiap->isNotEmpty())
                         <p class="queue-error">
-                            {{ $belumSiap->count() }} episode belum tersinkron ke Telegram, jadi barisnya
-                            ditulis tanpa tautan: episode
+                            {{ $belumSiap->count() }} part belum tersinkron ke Telegram, jadi barisnya
+                            ditulis tanpa tautan: part
                             {{ $belumSiap->pluck('episode_number')->take(15)->join(', ') }}@if ($belumSiap->count() > 15), …@endif.
                             Sinkronkan dulu di menu Sinkron Telegram bila ingin semuanya bisa ditekan.
                         </p>
@@ -176,7 +176,7 @@
                         <tr>
                             <th>Drama</th>
                             <th>Rentang</th>
-                            <th>Episode</th>
+                            <th>Part</th>
                             <th>Sumber</th>
                             <th>Oleh</th>
                             <th>Status</th>

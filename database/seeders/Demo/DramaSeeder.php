@@ -111,7 +111,7 @@ class DramaSeeder extends Seeder
             Episode::updateOrCreate(
                 ['drama_id' => $drama->id, 'episode_number' => $n],
                 [
-                    'title'        => 'Episode '.$n,
+                    'title'        => 'Part '.$n,
                     'slug'         => $drama->slug.'-episode-'.$n,
                     'video_url'    => 'https://cdn.example.com/'.$drama->slug.'/ep-'.$n.'.mp4',
                     // Episode 1-2 selalu gratis sebagai pemikat.

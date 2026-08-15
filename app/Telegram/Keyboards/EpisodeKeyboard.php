@@ -50,7 +50,7 @@ class EpisodeKeyboard
         }
 
         $navigasi[] = [
-            'text'          => '📑 Daftar Episode',
+            'text'          => '📑 Daftar Part',
             'callback_data' => self::LIST.':'.$episode->drama_id.':1',
         ];
 

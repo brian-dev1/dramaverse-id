@@ -89,7 +89,7 @@
                 @if ($anyFilter)
                     Tidak ada berkas yang cocok dengan penyaring Anda.
                 @else
-                    Daftar ini terisi sendiri begitu ada video episode atau aset drama
+                    Daftar ini terisi sendiri begitu ada video part atau aset drama
                     yang diunggah.
                 @endif
             </p>
@@ -138,7 +138,7 @@
                                     {{ $file['owner_title'] }}
                                     @if ($file['episode_number'] !== null)
                                         <span class="asset-sub">
-                                            Episode {{ str_pad((string) $file['episode_number'], 2, '0', STR_PAD_LEFT) }}
+                                            Part {{ str_pad((string) $file['episode_number'], 2, '0', STR_PAD_LEFT) }}
                                         </span>
                                     @endif
                                 @else

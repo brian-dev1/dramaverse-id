@@ -62,7 +62,7 @@
                     <div class="radio-row">
                         <label class="checkbox-item">
                             <input type="radio" name="kind" value="video" data-kind checked>
-                            Video episode
+                            Video part
                         </label>
 
                         <label class="checkbox-item">
@@ -91,7 +91,7 @@
                     </select>
 
                     <p class="field-hint" data-drama-note>
-                        Untuk video, daftar episodenya menyusul setelah drama dipilih.
+                        Untuk video, daftar partnya menyusul setelah drama dipilih.
                     </p>
                 </div>
 
@@ -207,9 +207,9 @@
             <div class="detail-body-admin">
 
                 <p class="field-hint" data-batch-note>
-                    Untuk video, nomor episode ditebak dari nama berkas — periksa dan
+                    Untuk video, nomor part ditebak dari nama berkas — periksa dan
                     perbaiki sebelum mengunggah. Tebakan yang salah akan mengganti video
-                    episode yang keliru.
+                    part yang keliru.
                 </p>
 
                 <ol class="batch-files" data-batch-list></ol>

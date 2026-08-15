@@ -40,8 +40,8 @@ enum StorageCollection: string
     public function label(): string
     {
         return match ($this) {
-            self::EPISODE   => 'Video Episode',
-            self::THUMBNAIL => 'Thumbnail Episode',
+            self::EPISODE   => 'Video Part',
+            self::THUMBNAIL => 'Thumbnail Part',
             self::SUBTITLE  => 'Subtitle',
             self::POSTER    => 'Poster Drama',
             self::COVER     => 'Cover Drama',

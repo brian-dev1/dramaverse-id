@@ -78,7 +78,26 @@ Route::controller(Web\CountryController::class)->group(function () {
 
 // --- Detail & pemutar ---
 Route::get('/drama/{drama:slug}', Web\DramaController::class)->name('web.drama.show');
-Route::get('/episode/{episode}', Web\EpisodeController::class)->name('web.episode.show');
+Route::get('/part/{episode}', Web\EpisodeController::class)->name('web.episode.show');
+
+/*
+| Alamat lama /episode/12.
+|
+| Namanya berganti jadi "part" di seluruh tampilan, tapi tautan lamanya sudah
+| tersebar: tersimpan di riwayat chat orang, di postingan channel yang sudah
+| terbit, dan di tab yang belum ditutup. Mematikannya berarti mereka semua
+| mendarat di halaman 404 tanpa satu pun petunjuk ke mana harus pergi.
+|
+| 301, bukan 302: pengalihannya permanen, dan status itulah yang membuat
+| mesin pencari dan klien Telegram memperbarui catatannya sendiri alih-alih
+| bertanya lagi setiap kali.
+|
+| Nama rutenya tetap `web.episode.show`. Nama rute tidak pernah dilihat
+| pengguna, sementara menggantinya berarti menyentuh puluhan pemanggilan
+| `route()` di view dan handler bot demi perubahan yang tak terlihat siapa
+| pun — dan satu yang terlewat baru ketahuan sebagai halaman error.
+*/
+Route::permanentRedirect('/episode/{episode}', '/part/{episode}');
 
 // --- Membership (etalase, bisa dilihat tanpa login) ---
 Route::get('/membership', [Web\MembershipController::class, 'index'])->name('web.membership');

@@ -86,7 +86,7 @@ class EnvCheck extends Command
 
         $this->sarankan(config('app.timezone') === 'Asia/Jakarta',
             'APP_TIMEZONE bukan Asia/Jakarta.',
-            'Jadwal tayang episode dan jatuh tempo tagihan memakai zona waktu ini.');
+            'Jadwal tayang part dan jatuh tempo tagihan memakai zona waktu ini.');
     }
 
     private function periksaBasisData(): void
@@ -114,7 +114,7 @@ class EnvCheck extends Command
         $this->wajib(Schema::hasColumn('users', 'is_premium'),
             'Kolom `users.is_premium` belum ada.',
             'Jalankan `php artisan migrate --force`. Tanpa kolom ini tidak ada '
-            .'satu pun episode premium yang bisa dibuka siapa pun.');
+            .'satu pun part premium yang bisa dibuka siapa pun.');
     }
 
     private function periksaTelegram(bool $produksi): void

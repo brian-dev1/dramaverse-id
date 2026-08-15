@@ -204,7 +204,7 @@
         @if ($sortable_dnd)
             <p class="dnd-hint">
                 <x-web.home.icon name="sort" :size="13" />
-                Seret baris untuk mengubah urutan episode. Perubahan tersimpan otomatis.
+                Seret baris untuk mengubah urutan part. Perubahan tersimpan otomatis.
             </p>
         @endif
 

@@ -18,7 +18,7 @@ class RoleSeeder extends Seeder
         ],
         'editor' => [
             'Editor Konten',
-            'Mengelola katalog: drama, episode, genre, negara, dan banner.',
+            'Mengelola katalog: drama, part, genre, negara, dan banner.',
             // Editor mengunggah video, jadi ia juga yang perlu mengulang dan
             // membatalkan pekerjaan unggahnya sendiri. Memisahkannya ke peran
             // lain berarti setiap unggahan yang gagal harus menunggu orang

@@ -42,8 +42,8 @@ class WatchHandler
             // pantas mendapat jawaban yang jelas.
             $this->telegram->sendMessage(
                 $chatId,
-                'Episode yang Anda buka tidak ditemukan. Tautannya mungkin sudah '
-                .'kedaluwarsa, atau episodenya sudah dihapus.'
+                'Part yang Anda buka tidak ditemukan. Tautannya mungkin sudah '
+                .'kedaluwarsa, atau partnya sudah dihapus.'
             );
 
             return;

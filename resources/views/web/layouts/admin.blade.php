@@ -23,7 +23,7 @@
         ]],
         ['group' => 'Katalog', 'items' => [
             ['route' => 'admin.drama.index',   'icon' => 'film',   'label' => 'Drama',   'can' => 'drama.manage'],
-            ['route' => 'admin.episode.index', 'icon' => 'list',   'label' => 'Episode', 'can' => 'episode.manage'],
+            ['route' => 'admin.episode.index', 'icon' => 'list',   'label' => 'Part', 'can' => 'episode.manage'],
             ['route' => 'admin.genre.index',   'icon' => 'tag',    'label' => 'Genre',   'can' => 'taxonomy.manage'],
             ['route' => 'admin.country.index', 'icon' => 'globe',  'label' => 'Negara',  'can' => 'taxonomy.manage'],
             ['route' => 'admin.banner.index',  'icon' => 'image',  'label' => 'Banner',  'can' => 'taxonomy.manage'],

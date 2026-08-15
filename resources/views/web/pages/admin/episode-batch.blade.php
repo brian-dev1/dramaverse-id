@@ -1,6 +1,6 @@
 @extends('web.layouts.admin')
 
-@section('title', 'Tambah Episode Massal')
+@section('title', 'Tambah Part Massal')
 
 @php
     /*
@@ -59,11 +59,11 @@
                                :options="$dramas->pluck('title', 'id')->all()"
                                data-next-numbers="{{ json_encode($nextNumbers) }}" />
 
-                <h2 style="margin-top:1.25rem">Rentang episode</h2>
+                <h2 style="margin-top:1.25rem">Rentang part</h2>
 
                 <p class="field-hint">
-                    Satu baris = satu rentang. Contoh: episode 1 gratis, lalu 2–5 VIP.
-                    Nomor yang sudah ada akan dilewati, bukan ditimpa. Maksimal 300 episode sekali jalan.
+                    Satu baris = satu rentang. Contoh: part 1 gratis, lalu 2–5 VIP.
+                    Nomor yang sudah ada akan dilewati, bukan ditimpa. Maksimal 300 part sekali jalan.
                 </p>
 
                 @error('ranges')
@@ -143,7 +143,7 @@
 
         <div class="form-actions">
             <a href="{{ $batal }}" class="btn btn-ghost">Batal</a>
-            <button type="submit" class="btn btn-primary">Buat episode</button>
+            <button type="submit" class="btn btn-primary">Buat part</button>
         </div>
     </form>
 

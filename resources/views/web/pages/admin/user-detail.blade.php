@@ -87,7 +87,7 @@
         <section class="panel">
             <div class="panel-head"><h2>Riwayat tontonan</h2></div>
             <table class="data-table">
-                <thead><tr><th>Drama</th><th>Episode</th><th>Terakhir</th></tr></thead>
+                <thead><tr><th>Drama</th><th>Part</th><th>Terakhir</th></tr></thead>
                 <tbody>
                     @forelse ($histories as $h)
                         <tr>

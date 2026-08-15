@@ -1,6 +1,6 @@
 @extends('web.layouts.admin')
 
-@section('title', 'Episode')
+@section('title', 'Part')
 
 @php
     /*
@@ -45,7 +45,7 @@
         <div class="toolbar-actions">
             <a href="{{ route('admin.episode.batch', $kembali) }}" class="btn btn-primary btn-sm">
                 <x-web.home.icon name="plus" :size="14" />
-                Tambah episode
+                Tambah part
             </a>
         </div>
     </form>
@@ -58,7 +58,7 @@
                 @if ($keyword !== '')
                     Tidak ada drama yang cocok dengan pencarian Anda.
                 @else
-                    Episode dikelola per drama. Tambahkan drama dulu, lalu isi episodenya di sini.
+                    Part dikelola per drama. Tambahkan drama dulu, lalu isi partnya di sini.
                 @endif
             </p>
 
@@ -76,7 +76,7 @@
                         @foreach ($kolom as $label => $path)
                             <th>{{ $label }}</th>
                         @endforeach
-                        <th>Episode</th>
+                        <th>Part</th>
                         <th>Status</th>
                         <th class="col-actions">Aksi</th>
                     </tr>
@@ -108,7 +108,7 @@
                                 @if ($jumlah === 0)
                                     <span class="cell-empty">belum ada</span>
                                 @else
-                                    <a href="{{ $kelolaUrl }}">{{ $jumlah }} episode</a>
+                                    <a href="{{ $kelolaUrl }}">{{ $jumlah }} part</a>
                                     <br>
                                     <span class="badge badge-off">{{ $gratis }} gratis</span>
                                     <span class="badge badge-on">{{ $vip }} VIP</span>
@@ -128,12 +128,12 @@
 
                             <td class="col-actions">
                                 <a href="{{ route('admin.episode.batch', ['drama_id' => $drama->id] + $kembali) }}"
-                                   class="btn-icon" title="Tambah episode" aria-label="Tambah episode">
+                                   class="btn-icon" title="Tambah part" aria-label="Tambah part">
                                     <x-web.home.icon name="plus" :size="15" />
                                 </a>
 
                                 <a href="{{ $kelolaUrl }}"
-                                   class="btn-icon" title="Kelola episode" aria-label="Kelola episode">
+                                   class="btn-icon" title="Kelola part" aria-label="Kelola part">
                                     <x-web.home.icon name="list" :size="15" />
                                 </a>
 

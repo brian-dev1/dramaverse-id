@@ -46,7 +46,7 @@ class BroadcastEpisodeTelegramJob implements ShouldQueue
             // berakhir di failed_jobs seolah ada yang perlu diperbaiki.
             if ($e->isBlockedByUser() || $e->isChatNotFound()) {
 
-                Log::info('Pengumuman episode dilewati', $e->logContext() + [
+                Log::info('Pengumuman part dilewati', $e->logContext() + [
                     'episode_id' => $this->episode->id,
                 ]);
 

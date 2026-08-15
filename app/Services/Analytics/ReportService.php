@@ -93,11 +93,11 @@ class ReportService
 
             'telegram' => ['Nama', 'Username Telegram', 'ID Telegram', 'Aktif', 'Terakhir masuk', 'Bergabung'],
 
-            'sync' => ['Drama', 'Episode', 'Ukuran (byte)', 'Status', 'Percobaan', 'Disinkron', 'Galat terakhir'],
+            'sync' => ['Drama', 'Part', 'Ukuran (byte)', 'Status', 'Percobaan', 'Disinkron', 'Galat terakhir'],
 
-            'storage' => ['Drama', 'Episode', 'Provider', 'Ukuran (byte)', 'Diunggah'],
+            'storage' => ['Drama', 'Part', 'Provider', 'Ukuran (byte)', 'Diunggah'],
 
-            default => ['Pengguna', 'Drama', 'Episode', 'Progres (detik)', 'Selesai', 'Terakhir ditonton'],
+            default => ['Pengguna', 'Drama', 'Part', 'Progres (detik)', 'Selesai', 'Terakhir ditonton'],
         };
     }
 

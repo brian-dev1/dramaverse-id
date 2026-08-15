@@ -112,7 +112,7 @@ class ChannelPostController extends Controller
         // tidak ada yang bisa ditekan pembacanya. Ditahan di sini, bukan
         // dibiarkan terkirim lalu dihapus manual dari channel.
         if ($this->channel->episodes($drama, $dari, $sampai)->isEmpty()) {
-            return back()->with('error', 'Tidak ada episode pada rentang itu. Postingan dibatalkan.');
+            return back()->with('error', 'Tidak ada part pada rentang itu. Postingan dibatalkan.');
         }
 
         $catatan = $this->channel->kirim(

@@ -117,7 +117,7 @@ class ProfileHandler
             // karena pengingat otomatis belum ada.
             if ($sisa !== null && $sisa <= 3) {
                 $pesan->note('⚠️ Tinggal '.max(0, $sisa).' hari lagi — perpanjang '
-                    .'sebelum episode premium terkunci.');
+                    .'sebelum part premium terkunci.');
             }
 
         } else {
@@ -126,8 +126,8 @@ class ProfileHandler
 
             $pesan->text($status['status'] === 'expired'
                 ? 'Langganan Anda sudah berakhir. Perpanjang untuk membuka '
-                    .'episode premium lagi.'
-                : 'Anda belum berlangganan. Episode premium masih terkunci.');
+                    .'part premium lagi.'
+                : 'Anda belum berlangganan. Part premium masih terkunci.');
         }
 
         /*
@@ -181,7 +181,7 @@ class ProfileHandler
             'Terakhir ditonton' => $terakhir === null
                 ? 'belum ada'
                 : ($terakhir->drama?->title ?? 'Drama')
-                    .' — episode '.$terakhir->episode_number,
+                    .' — part '.$terakhir->episode_number,
         ]);
 
         return $pesan->render();
@@ -204,7 +204,7 @@ class ProfileHandler
 
         if ($terakhir !== null) {
             $tombol[] = [[
-                'text'          => '▶️ Lanjutkan episode '.$terakhir->episode_number,
+                'text'          => '▶️ Lanjutkan part '.$terakhir->episode_number,
                 'callback_data' => EpisodeKeyboard::WATCH.':'.$terakhir->id,
             ]];
         }

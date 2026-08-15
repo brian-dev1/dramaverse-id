@@ -99,7 +99,7 @@
                 <thead>
                     <tr>
                         <th>Pengguna</th>
-                        <th>Episode</th>
+                        <th>Part</th>
                         <th>Dikirim</th>
                         <th>Dijadwal hapus</th>
                         <th>Status</th>

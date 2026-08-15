@@ -136,7 +136,7 @@
 
     <section class="panel">
         <div class="panel-head">
-            <h2>Video episode</h2>
+            <h2>Video part</h2>
             <span class="panel-meta">
                 Video dikirim SEKALI ke Telegram untuk mendapatkan file_id. Sesudah itu
                 pengiriman ke pengguna tidak memakai bandwidth bucket sama sekali.
@@ -146,7 +146,7 @@
         <div class="admin-toolbar">
             <form method="GET" action="{{ route('admin.telegram-sync.index') }}" class="toolbar-search">
                 <input type="search" name="q" value="{{ $q }}" class="control control-sm"
-                       placeholder="Cari judul drama, nomor episode, nama berkas">
+                       placeholder="Cari judul drama, nomor part, nama berkas">
 
                 <select name="status" class="control control-sm">
                     <option value="">Semua status</option>
@@ -190,7 +190,7 @@
         @if ($videos->isEmpty())
             <div class="detail-body-admin">
                 <p class="page-subtitle">
-                    Tidak ada video yang cocok. Unggah dulu lewat menu Episode, tombol "Unggah video".
+                    Tidak ada video yang cocok. Unggah dulu lewat menu Part, tombol "Unggah video".
                 </p>
             </div>
         @else
@@ -217,7 +217,7 @@
                                 <input type="checkbox" data-check-all
                                        title="Centang semua yang belum tersinkron">
                             </th>
-                            <th>Episode</th>
+                            <th>Part</th>
                             <th>Ukuran</th>
                             <th>Status</th>
                             <th>file_id</th>
@@ -237,7 +237,7 @@
                                     {{ $video->episode?->drama?->title ?? '—' }}
                                     <br>
                                     <span class="cell-empty">
-                                        Episode {{ $video->episode?->episode_number ?? '?' }}
+                                        Part {{ $video->episode?->episode_number ?? '?' }}
                                     </span>
                                 </td>
                                 <td>{{ $video->size_for_humans }}</td>

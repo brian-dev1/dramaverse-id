@@ -61,7 +61,7 @@ class TelegramDeliveryService
 
         if (! $episode->isPublished()) {
             $this->reject($chatId, $episode, 'belum terbit',
-                'Episode ini belum terbit. Coba lagi setelah jadwal tayangnya.');
+                'Part ini belum terbit. Coba lagi setelah jadwal tayangnya.');
 
             return;
         }
@@ -116,7 +116,7 @@ class TelegramDeliveryService
             $this->log('warning', 'delivery.missing_file_id', $episode, $user);
 
             $this->reject($chatId, $episode, 'belum tersinkron',
-                'Video episode ini belum siap dikirim lewat Telegram. '
+                'Video part ini belum siap dikirim lewat Telegram. '
                 .'Tim kami sudah diberi tahu — coba lagi nanti, atau tonton lewat website.');
 
             return;
@@ -187,7 +187,7 @@ class TelegramDeliveryService
     {
         $baris = [
             '<b>'.e($episode->drama?->title ?? 'Drama').'</b>',
-            'Episode '.e((string) $episode->episode_number),
+            'Part '.e((string) $episode->episode_number),
         ];
 
         if (filled($episode->title)) {
@@ -200,12 +200,12 @@ class TelegramDeliveryService
     private function upgradeText(Episode $episode): string
     {
         return implode("\n", [
-            '💎 <b>Episode Premium</b>',
+            '💎 <b>Part Premium</b>',
             '',
-            e($episode->drama?->title ?? 'Drama').' episode '.e((string) $episode->episode_number)
+            e($episode->drama?->title ?? 'Drama').' part '.e((string) $episode->episode_number)
                 .' hanya untuk anggota premium.',
             '',
-            'Berlangganan untuk menonton seluruh episode tanpa batas.',
+            'Berlangganan untuk menonton seluruh part tanpa batas.',
         ]);
     }
 

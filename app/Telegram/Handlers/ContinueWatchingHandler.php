@@ -62,18 +62,18 @@ class ContinueWatchingHandler
                 e($episode->drama?->title ?? 'Drama'),
                 e((string) $episode->episode_number),
                 $lanjutan
-                    ? 'Lanjutkan ke episode '.e((string) $lanjut->episode_number).'.'
-                    : 'Ini episode terakhir yang tersedia.'
+                    ? 'Lanjutkan ke part '.e((string) $lanjut->episode_number).'.'
+                    : 'Ini part terakhir yang tersedia.'
             ),
             [
                 'reply_markup' => ['inline_keyboard' => [
                     [[
-                        'text'          => ($lanjutan ? 'Tonton episode ' : 'Tonton ulang episode ')
+                        'text'          => ($lanjutan ? 'Tonton part ' : 'Tonton ulang part ')
                                             .$lanjut->episode_number,
                         'callback_data' => EpisodeKeyboard::WATCH.':'.$lanjut->id,
                     ]],
                     [[
-                        'text'          => '📑 Daftar Episode',
+                        'text'          => '📑 Daftar Part',
                         'callback_data' => EpisodeKeyboard::LIST.':'.$episode->drama_id.':1',
                     ]],
                 ]],

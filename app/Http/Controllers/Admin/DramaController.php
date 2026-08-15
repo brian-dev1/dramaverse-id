@@ -41,7 +41,7 @@ class DramaController extends AdminCrudController
             'Poster'  => 'poster',
             'Judul'   => 'title',
             'Negara'  => 'country.name',
-            'Episode' => 'total_episode',
+            'Part' => 'total_episode',
             'Status'  => 'status',
             'Terbit'  => 'published_at',
         ];

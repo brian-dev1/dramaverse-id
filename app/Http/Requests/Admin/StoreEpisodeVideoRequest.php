@@ -146,8 +146,8 @@ class StoreEpisodeVideoRequest extends FormRequest
                                   .number_format($this->effectiveMaxKb() / 1024, 0)
                                   .' MB yang berlaku di server ini.',
 
-            'episode_id.required' => 'Pilih episode tujuan lebih dulu.',
-            'episode_id.exists'   => 'Episode itu tidak ditemukan. Muat ulang halaman.',
+            'episode_id.required' => 'Pilih part tujuan lebih dulu.',
+            'episode_id.exists'   => 'Part itu tidak ditemukan. Muat ulang halaman.',
 
             'storage_provider_id.required_if' =>
                 'Mode Manual memerlukan storage provider yang dipilih.',

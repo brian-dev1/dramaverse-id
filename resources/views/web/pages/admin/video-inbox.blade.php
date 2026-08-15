@@ -191,7 +191,7 @@
 
         <p class="inbox-intro">
             Video di halaman ini sudah tersimpan di storage provider lewat worker
-            Telegram. Pilih drama dan episode untuk tiap video — boleh beda-beda
+            Telegram. Pilih drama dan part untuk tiap video — boleh beda-beda
             drama — lalu pasang semuanya sekali tekan di panel atas. Tidak ada
             berkas yang diunduh atau diunggah ulang.
         </p>
@@ -245,7 +245,7 @@
                     </button>
 
                     <a href="{{ route('admin.episode.batch') }}" class="btn btn-ghost btn-sm">
-                        + Episode
+                        + Part
                     </a>
 
                     <button type="submit" class="btn btn-primary btn-sm" data-inbox-submit disabled>
@@ -314,7 +314,7 @@
                                 Terpasang ke
                                 <strong>
                                     {{ $video->episode->drama?->title ?? 'Drama' }}
-                                    — Episode {{ $video->episode->episode_number }}
+                                    — Part {{ $video->episode->episode_number }}
                                 </strong>
                             </p>
 
@@ -351,7 +351,7 @@
                                 </div>
 
                                 <div class="field">
-                                    <label for="inbox-episode-{{ $video->id }}">Episode</label>
+                                    <label for="inbox-episode-{{ $video->id }}">Part</label>
 
                                     <select id="inbox-episode-{{ $video->id }}"
                                             name="pairs[{{ $video->id }}][episode_id]"
@@ -365,7 +365,7 @@
                                 </div>
 
                                 <p class="inbox-note field-error" data-inbox-clash hidden>
-                                    Episode ini juga dipilih video lain.
+                                    Part ini juga dipilih video lain.
                                 </p>
 
                             </div>
@@ -443,7 +443,7 @@
                         fetch(url, { headers: { 'Accept': 'application/json' } })
                             .then((response) => {
                                 if (!response.ok) {
-                                    throw new Error('Gagal mengambil episode.');
+                                    throw new Error('Gagal mengambil part.');
                                 }
 
                                 return response.json();
@@ -496,7 +496,7 @@
 
                 const kosong = document.createElement('option');
                 kosong.value = '';
-                kosong.textContent = '— pilih episode —';
+                kosong.textContent = '— pilih part —';
                 select.appendChild(kosong);
 
                 episodes.forEach((item) => {
@@ -542,18 +542,18 @@
                     return;
                 }
 
-                setOpsi(select, '— memuat episode —');
+                setOpsi(select, '— memuat part —');
 
                 try {
                     const episodes = await ambilEpisode(drama.value);
 
                     if (!episodes.length) {
-                        setOpsi(select, '— belum ada episode —');
+                        setOpsi(select, '— belum ada part —');
                     } else {
                         isiEpisode(row, episodes, pilihan);
                     }
                 } catch (error) {
-                    setOpsi(select, 'Gagal memuat episode');
+                    setOpsi(select, 'Gagal memuat part');
                 }
 
                 segarkanBaris(row);
@@ -647,7 +647,7 @@
                 }
 
                 if (!bersih) {
-                    pesan += ' Ada episode yang dipakai lebih dari satu video.';
+                    pesan += ' Ada part yang dipakai lebih dari satu video.';
                 }
 
                 counter.textContent = pesan;

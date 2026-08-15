@@ -97,7 +97,7 @@ class NotifyDramaRequestFulfilled implements ShouldQueue
                 'Judul di katalog' => $permintaan->drama?->title !== $permintaan->title
                     ? $permintaan->drama?->title
                     : null,
-                'Total episode' => $permintaan->drama?->total_episode ?: null,
+                'Total part' => $permintaan->drama?->total_episode ?: null,
             ]);
 
         if (filled($permintaan->admin_note)) {

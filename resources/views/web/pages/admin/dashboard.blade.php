@@ -7,7 +7,7 @@
     {{-- Ringkasan --}}
     <div class="stat-row">
         <x-admin.stat-card label="Drama"    :value="$summary['dramas']"   icon="film"  :href="route('admin.drama.index')" />
-        <x-admin.stat-card label="Episode"  :value="$summary['episodes']" icon="list"  :href="route('admin.episode.index')" />
+        <x-admin.stat-card label="Part"  :value="$summary['episodes']" icon="list"  :href="route('admin.episode.index')" />
         <x-admin.stat-card label="Pengguna" :value="$summary['users']"    icon="users" :href="route('admin.user.index')" />
         <x-admin.stat-card label="Pengguna Telegram" :value="$summary['telegramUsers']" icon="send" />
         <x-admin.stat-card label="Aktif 30 hari"     :value="$summary['activeUsers']"   icon="user" />

@@ -24,7 +24,7 @@ class HelpHandler
                 ->bullets([
                     '🔍 Cari Drama — cari judul lewat kata kunci',
                     '🔥 Trending — yang paling banyak ditonton',
-                    '🆕 Drama Baru — episode yang baru masuk',
+                    '🆕 Drama Baru — part yang baru masuk',
                     '❤️ Favorit — daftar simpanan Anda',
                     '👤 Profil — status membership & tagihan',
                     '🌐 Website — jelajahi katalog lengkap',

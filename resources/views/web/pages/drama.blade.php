@@ -38,7 +38,7 @@
                         {{ ['ongoing' => 'Sedang Tayang', 'completed' => 'Tamat', 'upcoming' => 'Akan Tayang'][$drama->status] ?? $drama->status }}
                     </span>
                     @if ($drama->total_episode)
-                        <span class="chip gold">{{ $drama->total_episode }} Episode</span>
+                        <span class="chip gold">{{ $drama->total_episode }} Part</span>
                     @endif
                     @if ($drama->is_vip)
                         <span class="chip gold">VIP</span>
@@ -78,7 +78,7 @@
                         <a href="{{ route('web.episode.show', $episodePertama->id) }}"
                            class="btn btn-primary" {{ $tgEpisodePertama }}>
                             <x-web.home.icon name="play" :size="15" />
-                            Tonton Episode {{ $episodePertama->episode_number }}
+                            Tonton Part {{ $episodePertama->episode_number }}
                         </a>
                     @endif
 
@@ -110,11 +110,11 @@
     <section class="section section-pad">
 
         <x-web.home.section-header
-            title="Daftar Episode"
-            :count="$drama->episodes->count().' episode'" />
+            title="Daftar Part"
+            :count="$drama->episodes->count().' part'" />
 
         @if ($drama->episodes->isEmpty())
-            <p class="page-subtitle">Episode belum tersedia.</p>
+            <p class="page-subtitle">Part belum tersedia.</p>
         @else
             <div class="episode-list">
                 @foreach ($drama->episodes as $episode)
@@ -127,7 +127,7 @@
                             ? \App\Support\TelegramDeepLink::attribute($episode)
                             : '' }}>
                         <span class="episode-number">{{ str_pad($episode->episode_number, 2, '0', STR_PAD_LEFT) }}</span>
-                        <span class="episode-title">{{ $episode->title ?: 'Episode '.$episode->episode_number }}</span>
+                        <span class="episode-title">{{ $episode->title ?: 'Part '.$episode->episode_number }}</span>
                         <span class="episode-meta">
                             @if ($episode->is_vip)<span class="chip gold">VIP</span>@endif
                         </span>
