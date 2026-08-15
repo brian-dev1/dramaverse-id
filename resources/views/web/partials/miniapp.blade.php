@@ -199,9 +199,41 @@
 
         if (!alamat) return false;
 
-        // Sudah berada di halaman yang dituju — start_param tetap terbaca
-        // pada pemuatan berikutnya, dan tanpa penjagaan ini halamannya
-        // memuat ulang dirinya sendiri tanpa henti.
+        /*
+        | Sekali saja per sesi Mini App
+        | -----------------------------
+        | start_param TIDAK hilang setelah dipakai. Ia melekat pada sesi Mini
+        | App dan terbaca lagi di SETIAP halaman yang dibuka sesudahnya.
+        |
+        | Tanpa penanda ini, orang yang masuk lewat ?startapp=cari lalu
+        | menekan Beranda langsung terlempar kembali ke pencarian — dan
+        | terlempar lagi setiap kali ia mencoba, sampai Mini App-nya ditutup.
+        | Memeriksa "apakah sudah di halaman tujuan" saja tidak cukup, karena
+        | justru halaman yang dituju penggunalah yang berbeda.
+        |
+        | sessionStorage, bukan localStorage: umurnya sepanjang webview.
+        | Menutup lalu membuka Mini App lagi lewat tautan yang sama harus
+        | tetap mengantar ke halamannya. Yang disimpan nilai tujuannya, bukan
+        | sekadar "sudah" — supaya tautan ?startapp=request yang ditekan
+        | belakangan di sesi yang sama tetap dilayani.
+        */
+        var kunci = 'tg-startapp';
+
+        try {
+            if (window.sessionStorage.getItem(kunci) === tujuan) return false;
+
+            window.sessionStorage.setItem(kunci, tujuan);
+        } catch (e) {
+            // Tidak ada tempat mengingat berarti tidak ada cara berhenti.
+            // Membiarkannya berpindah di sini akan mengurung penggunanya di
+            // satu halaman; lebih baik tautannya sekadar membuka beranda.
+            lapor('sessionStorage tidak tersedia, startapp diabaikan.');
+
+            return false;
+        }
+
+        // Sudah berada di halaman yang dituju — tidak ada yang perlu
+        // dikerjakan, dan memuat ulang halaman yang sama hanya mengedipkannya.
         if (window.location.pathname === new URL(alamat, window.location.origin).pathname) {
             return false;
         }
