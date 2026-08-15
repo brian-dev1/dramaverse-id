@@ -201,20 +201,34 @@ class ChannelPostService
      */
     private function rapikan(string $teks): string
     {
+        /*
+        | Modifier `u` wajib ada di setiap pola di bawah.
+        |
+        | Tanpanya PCRE bekerja per byte, bukan per karakter, sehingga kelas
+        | [•·|] sebenarnya berarti "salah satu dari byte E2, 80, A2, C2, B7,
+        | atau |". Byte E2 adalah byte pertama • (U+2022) sekaligus byte
+        | pertama ━ (U+2501) — garis pemisah di template bawaan. Baris
+        | "━━━━━━━━━━━━━━━" karena itu kehilangan satu byte E2 di depan dan
+        | menyisakan 94 81 yang berdiri sendiri: caption yang bukan UTF-8 sah
+        | lagi, dan Telegram menolak seluruh postingannya dengan
+        | "Bad Request: text must be encoded in UTF-8" — pesan yang tidak
+        | menyebut baris mana pun.
+        */
+
         // Baris "Korea • 4 Episode • " — genre kosong meninggalkan pemisah
         // menggantung di ujung. Dibersihkan di kedua ujung setiap baris.
-        $teks = preg_replace('/[ \t]*[•·|]+[ \t]*$/m', '', $teks) ?? $teks;
-        $teks = preg_replace('/^[ \t]*[•·|]+[ \t]*/m', '', $teks) ?? $teks;
+        $teks = preg_replace('/[ \t]*[•·|]+[ \t]*$/mu', '', $teks) ?? $teks;
+        $teks = preg_replace('/^[ \t]*[•·|]+[ \t]*/mu', '', $teks) ?? $teks;
 
         // Baris yang isinya tinggal pemisah saja dibuang seluruhnya.
-        $teks = preg_replace('/^[ \t]*[•·|-]+[ \t]*$/m', '', $teks) ?? $teks;
+        $teks = preg_replace('/^[ \t]*[•·|-]+[ \t]*$/mu', '', $teks) ?? $teks;
 
         // Blockquote kosong terjadi pada drama tanpa sinopsis. Yang tampil di
         // Telegram adalah kotak kutipan kosong — bekas template, bukan isi.
         $teks = str_replace("<blockquote></blockquote>\n", '', $teks);
         $teks = str_replace('<blockquote></blockquote>', '', $teks);
 
-        return trim(preg_replace('/\n{3,}/', "\n\n", $teks) ?? $teks);
+        return trim(preg_replace('/\n{3,}/u', "\n\n", $teks) ?? $teks);
     }
 
     /** Satu baris episode, sudah jadi HTML siap kirim. */
