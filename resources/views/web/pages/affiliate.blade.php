@@ -131,8 +131,31 @@
                 <span>Biaya: {{ rtrim(rtrim(number_format($summary['fee_percent'], 2, ',', '.'), '0'), ',') }}%</span>
             </p>
 
-            <form method="POST" action="{{ route('web.affiliate.withdraw') }}" class="af-form">
+            <form method="POST" action="{{ route('web.affiliate.withdraw') }}" class="af-form" data-tarik-form>
                 @csrf
+
+                {{--
+                    Jumlahnya dipilih sendiri, tidak lagi selalu seluruh saldo.
+                    `min` dan `max` di sini cuma bantuan mengetik; yang mengikat
+                    adalah pemeriksaan di dalam transaksi ReferralService, yang
+                    berjalan saat baris penggunanya terkunci.
+                --}}
+                <div style="display:flex;gap:8px;align-items:stretch">
+                    <input type="number" name="amount" class="af-field" style="flex:1 1 auto"
+                           placeholder="Jumlah penarikan (Rp)"
+                           value="{{ old('amount') }}"
+                           min="{{ (int) $summary['min_withdraw'] }}"
+                           max="{{ $summary['balance'] }}"
+                           step="0.01" inputmode="numeric" required
+                           data-tarik-jumlah
+                           data-saldo="{{ $summary['balance'] }}"
+                           data-min="{{ $summary['min_withdraw'] }}"
+                           data-fee="{{ $summary['fee_percent'] }}">
+
+                    <button type="button" class="af-field" style="flex:0 0 auto;width:auto;cursor:pointer" data-tarik-semua>Semua</button>
+                </div>
+
+                <p class="af-row-sub" data-tarik-info></p>
 
                 <select name="method" class="af-field" required>
                     <option value="">Pilih E-Wallet</option>
@@ -147,14 +170,22 @@
                 <input type="text" name="account_name" class="af-field" placeholder="Nama Pemilik Akun"
                        value="{{ old('account_name') }}" required>
 
+                @error('amount') <p class="af-err">{{ $message }}</p> @enderror
                 @error('method') <p class="af-err">{{ $message }}</p> @enderror
                 @error('account_number') <p class="af-err">{{ $message }}</p> @enderror
                 @error('account_name') <p class="af-err">{{ $message }}</p> @enderror
 
                 <button type="submit" class="af-submit"
                         @disabled($summary['balance'] < $summary['min_withdraw'])>
-                    Tarik Semua Saldo
+                    Ajukan Penarikan
                 </button>
+
+                @if ($summary['balance'] < $summary['min_withdraw'])
+                    <p class="af-row-sub">
+                        Saldo belum mencapai minimal penarikan
+                        Rp {{ number_format($summary['min_withdraw'], 0, ',', '.') }}.
+                    </p>
+                @endif
             </form>
         </div>
     </section>
@@ -169,6 +200,12 @@
                     <div>
                         <strong>Rp {{ number_format($w->amount, 0, ',', '.') }}</strong>
                         <span class="af-row-sub">{{ $w->method }} &middot; {{ $w->account_number }}</span>
+                        @if ($w->fee > 0)
+                            <span class="af-row-sub">
+                                Potongan Rp {{ number_format($w->fee, 0, ',', '.') }} &middot;
+                                diterima Rp {{ number_format($w->net_amount, 0, ',', '.') }}
+                            </span>
+                        @endif
                     </div>
                     <div class="af-row-right">
                         <span class="af-pill s-{{ $w->status }}">
@@ -330,6 +367,76 @@
 
         setInterval(tarik, 10000);
         document.addEventListener('visibilitychange', function () { if (!document.hidden) tarik(); });
+    })();
+    </script>
+
+    <script>
+    (function () {
+        var kolom = document.querySelector('[data-tarik-jumlah]');
+
+        if (!kolom) return;
+
+        var form  = document.querySelector('[data-tarik-form]');
+        var semua = form.querySelector('[data-tarik-semua]');
+        var info  = form.querySelector('[data-tarik-info]');
+
+        var saldo = parseFloat(kolom.dataset.saldo) || 0;
+        var min   = parseFloat(kolom.dataset.min) || 0;
+        var fee   = parseFloat(kolom.dataset.fee) || 0;
+
+        var rupiah = function (n) {
+            return 'Rp ' + Math.round(n).toLocaleString('id-ID');
+        };
+
+        /*
+        | Yang ditampilkan adalah jumlah yang BENAR-BENAR diterima, bukan
+        | jumlah yang diketik.
+        |
+        | Potongan sekian persen adalah angka yang tidak bisa dihitung
+        | siapa pun sambil mengetik, dan selisihnya baru terasa saat uangnya
+        | masuk — saat itu yang muncul bukan pertanyaan, melainkan tuduhan.
+        */
+        var hitung = function () {
+            var jumlah = parseFloat(kolom.value);
+
+            if (!jumlah || jumlah <= 0) {
+                info.textContent = 'Saldo tersedia ' + rupiah(saldo)
+                    + '. Minimal penarikan ' + rupiah(min) + '.';
+
+                return;
+            }
+
+            if (jumlah > saldo) {
+                info.textContent = 'Melebihi saldo tersedia (' + rupiah(saldo) + ').';
+
+                return;
+            }
+
+            if (jumlah < min) {
+                info.textContent = 'Di bawah minimal penarikan ' + rupiah(min) + '.';
+
+                return;
+            }
+
+            var potongan = jumlah * fee / 100;
+
+            info.textContent = fee > 0
+                ? 'Potongan ' + rupiah(potongan) + ' — diterima ' + rupiah(jumlah - potongan)
+                    + '. Sisa saldo ' + rupiah(saldo - jumlah) + '.'
+                : 'Diterima ' + rupiah(jumlah) + '. Sisa saldo ' + rupiah(saldo - jumlah) + '.';
+        };
+
+        semua.addEventListener('click', function () {
+            // Dibulatkan ke bawah: mengisi 100000.004 lalu ditolak server
+            // karena melebihi saldo adalah cara terburuk tombol ini gagal.
+            kolom.value = Math.floor(saldo * 100) / 100;
+
+            hitung();
+        });
+
+        kolom.addEventListener('input', hitung);
+
+        hitung();
     })();
     </script>
 

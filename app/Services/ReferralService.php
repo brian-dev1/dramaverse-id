@@ -461,13 +461,35 @@ class ReferralService
     }
 
     /**
-     * Ajukan penarikan seluruh saldo.
+     * Ajukan penarikan sejumlah tertentu.
      *
-     * @throws \RuntimeException bila saldo kurang atau masih ada pengajuan.
+     * Dulu selalu menarik SELURUH saldo. Yang hilang di sana adalah pilihan:
+     * orang yang saldonya Rp 500.000 dan cuma butuh Rp 100.000 terpaksa
+     * menarik semuanya, dan sisanya keluar dari sistem — beserta seluruh
+     * alasannya untuk kembali mengumpulkan.
+     *
+     * Batas minimalnya tetap berlaku, tapi sekarang berlaku pada JUMLAH YANG
+     * DITARIK, bukan pada saldo. Bedanya nyata: saldo Rp 500.000 dengan
+     * minimal Rp 50.000 boleh ditarik Rp 50.000, tidak boleh Rp 20.000.
+     *
+     * Jumlahnya diperiksa ulang di dalam transaksi ini, bukan cukup di
+     * controller. Antara halaman dirender dan tombol ditekan, saldonya bisa
+     * berubah — komisi yang dibatalkan admin, atau penarikan dari tab lain —
+     * dan angka `max` di HTML tidak mengikat siapa pun yang mengirim
+     * formulirnya sendiri.
+     *
+     * @throws \RuntimeException bila jumlahnya di luar batas atau masih ada
+     *                           pengajuan yang menunggu.
      */
-    public function requestWithdrawal(User $user, string $method, string $number, string $name): ReferralWithdrawal
-    {
-        return DB::transaction(function () use ($user, $method, $number, $name) {
+    public function requestWithdrawal(
+        User $user,
+        float $amount,
+        string $method,
+        string $number,
+        string $name
+    ): ReferralWithdrawal {
+
+        return DB::transaction(function () use ($user, $amount, $method, $number, $name) {
 
             // Kunci baris pengguna: dua permintaan tarik yang tiba bersamaan
             // tidak boleh sama-sama lolos pemeriksaan saldo.
@@ -480,17 +502,44 @@ class ReferralService
             $saldo = $this->balance($user);
             $min   = (float) $this->setting('referral_min_withdraw');
 
+            $amount = round($amount, 2);
+
             if ($saldo < $min) {
-                throw new \RuntimeException('Saldo minimal penarikan Rp '.number_format($min, 0, ',', '.').'.');
+                throw new \RuntimeException(
+                    'Saldo belum cukup. Minimal penarikan Rp '.number_format($min, 0, ',', '.').'.'
+                );
             }
 
-            $fee = round($saldo * (float) $this->setting('referral_fee_percent') / 100, 2);
+            if ($amount < $min) {
+                throw new \RuntimeException(
+                    'Jumlah penarikan minimal Rp '.number_format($min, 0, ',', '.').'.'
+                );
+            }
+
+            if ($amount > $saldo) {
+                throw new \RuntimeException(
+                    'Jumlahnya melebihi saldo tersedia (Rp '.number_format($saldo, 0, ',', '.').').'
+                );
+            }
+
+            /*
+            | Sisa yang tertinggal boleh berapa pun, termasuk di bawah minimal.
+            |
+            | Sempat terpikir memaksa sisanya tetap di atas minimal — supaya
+            | tidak ada saldo kecil yang mengendap selamanya. Tapi aturan itu
+            | melarang orang menarik Rp 90.000 dari saldo Rp 100.000 dengan
+            | alasan yang tidak akan pernah masuk akal baginya, dan saldo
+            | mengendap itu toh tetap miliknya: ia tinggal mengumpulkan lagi
+            | sampai lewat minimal.
+            */
+
+            $fee = round($amount * (float) $this->setting('referral_fee_percent') / 100, 2);
 
             return ReferralWithdrawal::create([
                 'user_id'        => $user->id,
-                'amount'         => $saldo,
+                'amount'         => $amount,
                 'fee'            => $fee,
-                'net_amount'     => round($saldo - $fee, 2),
+                'net_amount'     => round($amount - $fee, 2),
                 'method'         => $method,
                 'account_number' => $number,
                 'account_name'   => $name,
