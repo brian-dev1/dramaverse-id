@@ -116,7 +116,22 @@
                                     Ditampilkan mentah supaya admin melihat
                                     tautannya persis seperti di Telegram.
                                 --}}
-                                <div style="white-space:pre-wrap;line-height:1.7">{!! $teks !!}</div>
+                                @if ($teks === '')
+                                    {{-- Potongan pertama kosong berarti caption
+                                         sengaja ditiadakan: kepala postingan tidak
+                                         muat di batas 1024 walau sinopsisnya sudah
+                                         dipangkas, jadi fotonya dikirim sendirian
+                                         dan seluruh teksnya menyusul di bawah. --}}
+                                    <p class="page-subtitle">
+                                        Tanpa caption — template ini terlalu panjang untuk caption foto
+                                        (batas 1024 karakter), jadi posternya dikirim sendirian dan seluruh
+                                        teksnya menyusul sebagai pesan di bawahnya. Persingkat template di
+                                        Pengaturan → Channel Telegram bila ingin captionnya kembali menempel
+                                        di poster.
+                                    </p>
+                                @else
+                                    <div style="white-space:pre-wrap;line-height:1.7">{!! $teks !!}</div>
+                                @endif
                             </div>
                         </div>
                     @endforeach

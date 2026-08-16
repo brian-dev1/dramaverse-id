@@ -147,16 +147,56 @@ class ChannelPostService
 
         $baris = $episodes->map(fn (Episode $e) => $this->baris($e))->all();
 
+        $kepala = $this->kepala($drama, $episodes);
+
+        /*
+        | Kepala yang sendirian saja sudah melewati batas caption.
+        |
+        | Ini yang dulu menghasilkan "Bad Request: message caption is too
+        | long" di riwayat: `potong()` di bawah memang menyerah pada keadaan
+        | ini — komentarnya bahkan menyebutkannya — lalu mengirim kepala itu
+        | apa adanya sebagai caption. Telegram menolak seluruh postingannya,
+        | dan yang terlihat admin cuma satu baris merah tanpa petunjuk drama
+        | mana yang sinopsisnya kepanjangan.
+        |
+        | Yang dipangkas duluan sinopsis, bukan daftar episode. Sinopsis
+        | adalah satu-satunya bagian yang panjangnya datang dari isi drama
+        | dan tidak ada yang bisa ditekan pembacanya; baris episode justru
+        | seluruh gunanya postingan ini. Dipangkas bertahap, bukan langsung
+        | dibuang, supaya postingan yang cuma lewat sedikit tetap punya
+        | sinopsis.
+        */
+        foreach ([120, 60, 0] as $batasSinopsis) {
+
+            if ($this->panjangTelegram($this->sisipkan($kepala, [])) <= self::BATAS_CAPTION) {
+                break;
+            }
+
+            $kepala = $this->kepala($drama, $episodes, $batasSinopsis);
+        }
+
+        return $this->potong($kepala, $baris);
+    }
+
+    /**
+     * Bagian tetap postingan: template yang placeholder-nya sudah terisi.
+     *
+     * `{daftar}` sengaja TIDAK diisi di sini. Ia dibiarkan utuh sampai
+     * `potong()`, supaya daftar episode disisipkan tepat di posisi yang
+     * ditulis admin di template — bukan ditempel di ujung caption, yang
+     * membuat dua garis pemisah di template bawaan berdiri kosong
+     * berdempetan dan daftarnya muncul di bawah blok penutup.
+     *
+     * @param  Collection<int,Episode>  $episodes
+     * @param  int|null  $batasSinopsis  null = pakai angka dari Pengaturan
+     */
+    private function kepala(Drama $drama, Collection $episodes, ?int $batasSinopsis = null): string
+    {
         $template = (string) $this->settings->get('channel_template', "『 {judul} 』\n\n{daftar}");
 
-        // {daftar} sengaja TIDAK diisi di sini. Ia dibiarkan utuh sampai
-        // potong(), supaya daftar episode disisipkan tepat di posisi yang
-        // ditulis admin di template — bukan ditempel di ujung caption, yang
-        // membuat dua garis pemisah di template bawaan berdiri kosong
-        // berdempetan dan daftarnya muncul di bawah blok penutup.
-        $kepala = strtr($template, [
+        $isi = strtr($template, [
             '{judul}'          => e($drama->title),
-            '{sinopsis}'       => e($this->sinopsis($drama)),
+            '{sinopsis}'       => e($this->sinopsis($drama, $batasSinopsis)),
             '{negara}'         => e((string) ($drama->country?->name ?? '')),
             '{genre}'          => e($drama->genres->pluck('name')->take(3)->join(', ')),
             '{total_episode}'  => (string) ($drama->total_episode ?: $episodes->count()),
@@ -186,7 +226,7 @@ class ChannelPostService
             '{tautan_situs}'   => e((string) (TelegramDeepLink::app() ?? route('web.home'))),
         ]);
 
-        return $this->potong($this->rapikan($kepala), $baris);
+        return $this->rapikan($isi);
     }
 
     /**
@@ -196,7 +236,7 @@ class ChannelPostService
      * yang seharusnya jadi baris episode — hal yang justru bisa ditekan
      * pembaca. Batasnya bisa diubah admin di Pengaturan.
      */
-    private function sinopsis(Drama $drama): string
+    private function sinopsis(Drama $drama, ?int $batas = null): string
     {
         $teks = trim((string) $drama->synopsis);
 
@@ -204,7 +244,13 @@ class ChannelPostService
             return '';
         }
 
-        $batas = max(0, (int) $this->settings->get('channel_sinopsis_max', 180));
+        // Angka dari pemanggil menang atas Pengaturan. Yang memakainya cuma
+        // `susun()`, saat kepala postingan harus dipendekkan agar muat di
+        // caption — dan pada saat itu batas yang dipilih admin sudah terbukti
+        // terlalu longgar untuk drama ini.
+        $batas ??= (int) $this->settings->get('channel_sinopsis_max', 180);
+
+        $batas = max(0, $batas);
 
         return $batas === 0 ? '' : \Illuminate\Support\Str::limit($teks, $batas);
     }
@@ -351,8 +397,32 @@ class ChannelPostService
      */
     private function potong(string $kepala, array $baris): array
     {
+        $tanpaDaftar = $this->sisipkan($kepala, []);
+
+        /*
+        | Kepala yang tetap tidak muat walau sinopsisnya sudah dibuang.
+        |
+        | Artinya templatenya sendiri yang panjang — dan tidak ada yang bisa
+        | dipangkas lagi tanpa membuang tulisan yang sengaja ditulis admin.
+        | Jalan keluarnya bukan memaksakan caption, melainkan mengirim
+        | fotonya TANPA caption dan menurunkan seluruh isinya menjadi pesan
+        | teks, yang batasnya 4096 — empat kali lipat.
+        |
+        | Potongan pertama dikembalikan sebagai string kosong, dan `kirim()`
+        | membacanya sebagai "foto saja". Postingannya jadi sedikit berbeda
+        | bentuk: gambar dulu, teks menyusul. Itu harga yang jauh lebih murah
+        | daripada postingan yang ditolak Telegram seluruhnya.
+        */
+        if ($this->panjangTelegram($tanpaDaftar) > self::BATAS_CAPTION) {
+
+            return array_merge(
+                [''],
+                $this->pecahTeks($this->sisipkan($kepala, $baris), self::BATAS_TEKS)
+            );
+        }
+
         if ($baris === []) {
-            return [$this->sisipkan($kepala, [])];
+            return [$tanpaDaftar];
         }
 
         $muat = [];
@@ -387,6 +457,49 @@ class ChannelPostService
                 $pesan[] = rtrim($sekarang);
 
                 $sekarang = $satu;
+
+                continue;
+            }
+
+            $sekarang = $calon;
+        }
+
+        if (trim($sekarang) !== '') {
+            $pesan[] = rtrim($sekarang);
+        }
+
+        return $pesan;
+    }
+
+    /**
+     * Bagi satu teks panjang menjadi beberapa pesan yang muat.
+     *
+     * Dipotong di pergantian baris, tidak pernah di tengah baris: satu baris
+     * episode berisi tag `<a href>` yang utuh, dan memotongnya di tengah
+     * menghasilkan HTML rusak yang ditolak Telegram — kegagalan yang sama
+     * persis dengan yang hendak dihindari fungsi ini.
+     *
+     * Satu baris yang sendirian saja melewati batas tetap dikirim apa
+     * adanya. Baris episode berkisar 30-100 karakter, jadi keadaan itu
+     * menuntut judul episode sepanjang empat ribu karakter; memotongnya
+     * paksa di sana justru merusak yang tadinya masih mungkin terkirim.
+     *
+     * @return array<int,string>
+     */
+    private function pecahTeks(string $teks, int $batas): array
+    {
+        $pesan = [];
+
+        $sekarang = '';
+
+        foreach (explode("\n", $teks) as $baris) {
+
+            $calon = $sekarang === '' ? $baris : $sekarang."\n".$baris;
+
+            if ($this->panjangTelegram($calon) > $batas && $sekarang !== '') {
+                $pesan[] = rtrim($sekarang);
+
+                $sekarang = $baris;
 
                 continue;
             }
@@ -450,6 +563,19 @@ class ChannelPostService
             $poster = $this->poster($drama);
 
             foreach ($potongan as $i => $teks) {
+
+                /*
+                | Potongan kosong = caption sengaja dikosongkan oleh
+                | `potong()` karena kepalanya tidak muat. Fotonya tetap
+                | dikirim (TelegramService memang menghilangkan caption
+                | kosong dari payload), tapi kalau dramanya tidak punya
+                | poster sama sekali, tidak ada apa pun untuk dikirim —
+                | `sendMessage` dengan teks kosong hanya menghasilkan
+                | "message text is empty" dari Telegram.
+                */
+                if ($teks === '' && ! ($i === 0 && $poster !== null)) {
+                    continue;
+                }
 
                 // Poster hanya ikut di pesan pertama. Mengulanginya di setiap
                 // potongan membuat channel penuh gambar yang sama.
