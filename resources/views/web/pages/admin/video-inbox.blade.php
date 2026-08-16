@@ -30,6 +30,29 @@
             opacity: .8;
         }
 
+        .inbox-tabs {
+            display: flex;
+            gap: 8px;
+            margin: 0 0 14px;
+            flex-wrap: wrap;
+        }
+
+        .inbox-tab {
+            padding: 6px 12px;
+            border: 1px solid rgba(255,255,255,.14);
+            border-radius: 999px;
+            font-size: 12.5px;
+            text-decoration: none;
+            color: inherit;
+            opacity: .7;
+        }
+
+        .inbox-tab.is-on {
+            opacity: 1;
+            border-color: rgba(255,255,255,.4);
+            background: rgba(255,255,255,.06);
+        }
+
         /* --- Panel kendali --- */
 
         .inbox-panel {
@@ -190,11 +213,32 @@
     <div class="inbox-wrap">
 
         <p class="inbox-intro">
-            Video di halaman ini sudah tersimpan di storage provider lewat worker
-            Telegram. Pilih drama dan part untuk tiap video — boleh beda-beda
-            drama — lalu pasang semuanya sekali tekan di panel atas. Tidak ada
-            berkas yang diunduh atau diunggah ulang.
+            @if ($tampil === 'terpasang')
+                Video yang sudah dipasang ke part. Daftar ini hanya catatan — tidak ada
+                yang bisa dipasang ulang dari sini. Untuk mengganti video sebuah part,
+                lepaskan dulu videonya dari halaman Part.
+            @else
+                Video di halaman ini sudah tersimpan di storage provider lewat worker
+                Telegram. Pilih drama dan part untuk tiap video — boleh beda-beda
+                drama — lalu pasang semuanya sekali tekan di panel atas. Tidak ada
+                berkas yang diunduh atau diunggah ulang.
+            @endif
         </p>
+
+        {{-- Yang terpasang tidak lagi ikut menumpuk di daftar kerja, tapi juga
+             tidak dihapus dari pandangan: ia catatan berkas mana jadi part
+             mana, dan itu justru dicari saat ada yang salah. --}}
+        <div class="inbox-tabs">
+            <a href="{{ route('admin.video-inbox.index') }}"
+               class="inbox-tab {{ $tampil === 'tersedia' ? 'is-on' : '' }}">
+                Belum terpasang ({{ number_format($jumlah['tersedia']) }})
+            </a>
+
+            <a href="{{ route('admin.video-inbox.index', ['tampil' => 'terpasang']) }}"
+               class="inbox-tab {{ $tampil === 'terpasang' ? 'is-on' : '' }}">
+                Sudah terpasang ({{ number_format($jumlah['terpasang']) }})
+            </a>
+        </div>
 
         @if (session('success'))
             <div class="inbox-alert">
@@ -232,7 +276,7 @@
 
             @csrf
 
-            <div class="inbox-panel">
+            <div class="inbox-panel" @if ($tampil === 'terpasang') hidden @endif>
 
                 <div class="inbox-panel-actions">
 
@@ -383,8 +427,19 @@
                 @empty
 
                     <section class="inbox-row">
-                        <h2 class="inbox-name">Inbox kosong</h2>
-                        <p class="inbox-meta"><span>Belum ada video dari worker Telegram.</span></p>
+                        @if ($tampil === 'terpasang')
+                            <h2 class="inbox-name">Belum ada yang terpasang</h2>
+                            <p class="inbox-meta"><span>Video yang sudah dipasang ke part akan muncul di sini.</span></p>
+                        @elseif ($jumlah['terpasang'] > 0)
+                            <h2 class="inbox-name">Semua video sudah terpasang</h2>
+                            <p class="inbox-meta">
+                                <span>Tidak ada yang menunggu dikerjakan.</span>
+                                <span>{{ number_format($jumlah['terpasang']) }} video ada di tab Sudah terpasang.</span>
+                            </p>
+                        @else
+                            <h2 class="inbox-name">Inbox kosong</h2>
+                            <p class="inbox-meta"><span>Belum ada video dari worker Telegram.</span></p>
+                        @endif
                     </section>
 
                 @endforelse

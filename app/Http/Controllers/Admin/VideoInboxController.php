@@ -7,6 +7,7 @@ use App\Models\Drama;
 use App\Models\Episode;
 use App\Models\EpisodeVideo;
 use App\Models\VideoInbox;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -15,26 +16,79 @@ use Illuminate\View\View;
 
 class VideoInboxController extends Controller
 {
-    public function index(): View
+    /**
+     * Daftar video, BAWAANNYA hanya yang belum terpasang.
+     *
+     * Dulu seluruh isi inbox ditampilkan, terpasang maupun belum. Akibatnya
+     * halaman ini tumbuh selamanya: tiap video yang selesai dipasang tetap
+     * duduk di sana beserta dua kotak pilihan yang sudah tidak ada gunanya,
+     * dan yang benar-benar perlu dikerjakan makin jauh terdorong ke bawah.
+     * Halaman kerja yang isinya sebagian besar pekerjaan yang sudah selesai
+     * akan berhenti dibaca, dan yang terlewat justru barisan paling bawah —
+     * video terbaru.
+     *
+     * Yang terpasang tidak dihapus dari pandangan, cuma dipindahkan ke
+     * tampilan sendiri: ia tetap catatan berkas mana sudah jadi part mana,
+     * dan itu pertanyaan yang muncul justru saat ada yang salah.
+     */
+    public function index(Request $request): View
     {
+        $tampil = $request->query('tampil') === 'terpasang' ? 'terpasang' : 'tersedia';
+
         $videos = VideoInbox::query()
             ->with([
                 'provider:id,name,slug,bucket',
                 'episode:id,drama_id,episode_number,title',
                 'episode.drama:id,title,slug',
             ])
+            ->when($tampil === 'tersedia', fn ($q) => $this->belumTerpasang($q))
+            ->when($tampil === 'terpasang', fn ($q) => $this->sudahTerpasang($q))
             ->latest('uploaded_at')
-            ->paginate(20);
+            ->paginate(20)
+
+            // Tanpa ini, menekan halaman 2 mengembalikan tampilan ke bawaan
+            // dan admin yang sedang memeriksa yang terpasang tiba-tiba
+            // melihat daftar yang lain.
+            ->withQueryString();
 
         $dramas = Drama::query()
             ->select('id', 'title')
             ->orderBy('title')
             ->get();
 
+        $jumlah = [
+            'tersedia'  => $this->belumTerpasang(VideoInbox::query())->count(),
+            'terpasang' => $this->sudahTerpasang(VideoInbox::query())->count(),
+        ];
+
         return view('web.pages.admin.video-inbox', compact(
             'videos',
-            'dramas'
+            'dramas',
+            'tampil',
+            'jumlah'
         ));
+    }
+
+    /**
+     * Video yang masih menunggu dipasang.
+     *
+     * Dua syarat, bukan satu. `status` bisa saja masih 'available' sementara
+     * `episode_id` sudah terisi bila ada proses yang berhenti di tengah —
+     * dan video seperti itu tidak boleh muncul sebagai pekerjaan yang belum
+     * selesai, karena memasangnya lagi akan ditolak di tahap berikutnya.
+     * Syarat yang sama dipakai `VideoInbox::isAvailable()`.
+     */
+    private function belumTerpasang(Builder $query): Builder
+    {
+        return $query->where('status', 'available')->whereNull('episode_id');
+    }
+
+    /** Kebalikannya persis, supaya tidak ada video yang hilang dari keduanya. */
+    private function sudahTerpasang(Builder $query): Builder
+    {
+        return $query->where(
+            fn (Builder $q) => $q->where('status', '!=', 'available')->orWhereNotNull('episode_id')
+        );
     }
 
     /**
