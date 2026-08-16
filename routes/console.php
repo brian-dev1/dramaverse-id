@@ -76,6 +76,17 @@ Schedule::command('telegram:auto cleanup')
     ->withoutOverlapping()
     ->runInBackground();
 
+// Pengumuman channel yang jadwalnya sudah tiba. Tiap menit, karena admin
+// memilih jam tayangnya sampai ke menit — memeriksanya tiap lima menit
+// berarti pengumuman jam 19.00 bisa tayang 19.04, dan yang menunggu di
+// channel tidak tahu kenapa. Perintahnya keluar diam-diam bila tidak ada
+// yang jatuh tempo, jadi 1.440 panggilan sehari ini hampir seluruhnya
+// hanya satu query berindeks.
+Schedule::command('channel:announce-due')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->runInBackground();
+
 /*
 |--------------------------------------------------------------------------
 | Cadangan

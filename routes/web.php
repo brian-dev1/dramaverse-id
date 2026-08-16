@@ -653,6 +653,24 @@ Route::prefix('admin')->name('admin.')->group(function () {
             // sukses yang berbeda.
             Route::post('/channel-post/bulk', [Admin\ChannelPostController::class, 'bulk'])
                 ->name('channel-post.bulk');
+
+            /*
+            |------------------------------------------------------------------
+            | Pengumuman bebas ke channel
+            |
+            | Controller sendiri, panel menumpang di halaman Kirim ke Channel.
+            | Izinnya sama: keduanya menulis ke channel yang sama, dibaca
+            | orang yang sama.
+            |------------------------------------------------------------------
+            */
+            Route::post('/channel-post/pengumuman', [Admin\ChannelAnnouncementController::class, 'store'])
+                ->name('channel-announcement.store');
+
+            Route::post('/channel-post/pengumuman/{pengumuman}/kirim-ulang', [Admin\ChannelAnnouncementController::class, 'resend'])
+                ->name('channel-announcement.resend')->whereNumber('pengumuman');
+
+            Route::post('/channel-post/pengumuman/{pengumuman}/batal', [Admin\ChannelAnnouncementController::class, 'cancel'])
+                ->name('channel-announcement.cancel')->whereNumber('pengumuman');
         });
 
         /*

@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ChannelAnnouncement;
 use App\Models\ChannelPost;
 use App\Models\Drama;
 use App\Services\Admin\ActivityLogger;
+use App\Services\Telegram\ChannelAnnouncementService;
 use App\Services\Telegram\ChannelBulkService;
 use App\Services\Telegram\ChannelPostService;
 use Illuminate\Contracts\View\View;
@@ -27,7 +29,8 @@ class ChannelPostController extends Controller
 {
     public function __construct(
         protected ChannelPostService $channel,
-        protected ChannelBulkService $massal
+        protected ChannelBulkService $massal,
+        protected ChannelAnnouncementService $pengumuman
     ) {
     }
 
@@ -92,6 +95,32 @@ class ChannelPostController extends Controller
             'sudahDikirim' => $this->massal->sudahDikirim(),
             'bulkMax'      => ChannelBulkService::LIMIT,
             'bulkJeda'     => ChannelBulkService::JEDA_DETIK,
+
+            /*
+            | Panel pengumuman menumpang di halaman ini, tapi seluruh
+            | aksinya milik ChannelAnnouncementController. Yang dikerjakan di
+            | sini cuma menyediakan daftarnya untuk ditampilkan — panel yang
+            | datanya diambil lewat query di dalam blade adalah query yang
+            | tidak pernah terlihat siapa pun sampai halamannya melambat.
+            */
+            'pengumuman' => ChannelAnnouncement::query()
+                ->with('author:id,name')
+                ->latest('id')
+                ->limit(15)
+                ->get(),
+
+            'maxTombol'  => ChannelAnnouncementController::MAX_TOMBOL,
+
+            /*
+            | Penghalang pengumuman DIHITUNG TERPISAH dari penghalang katalog.
+            |
+            | Yang di atas ikut mensyaratkan TELEGRAM_BOT_USERNAME, karena
+            | tiap baris episode berisi tautan ke bot. Pengumuman tidak
+            | membuat tautan apa pun sendiri; memakai penghalang yang sama
+            | berarti tombol Kirim Pengumuman mati dengan alasan yang tidak
+            | ada hubungannya dengan pengumuman.
+            */
+            'penghalangPengumuman' => $this->pengumuman->penghalang(),
 
             'riwayat'  => ChannelPost::query()
                 ->with(['drama:id,title', 'sender:id,name'])

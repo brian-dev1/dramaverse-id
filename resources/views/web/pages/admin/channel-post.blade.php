@@ -300,6 +300,217 @@
         @endif
     </section>
 
+    {{--
+        Pengumuman bebas ke channel.
+        Panelnya menumpang di halaman ini karena tujuannya sama — channel yang
+        sama, pembaca yang sama — tapi seluruh aksinya milik
+        ChannelAnnouncementController, dan tidak satu pun menyentuh jalur
+        kiriman katalog di atas.
+    --}}
+    <section class="panel">
+        <div class="panel-head">
+            <h2>Pengumuman ke channel</h2>
+            <span class="panel-meta">tulisan bebas, bukan katalog drama</span>
+        </div>
+
+        <div class="detail-body-admin">
+            <p class="page-subtitle">
+                Untuk kabar yang bukan drama: jadwal rilis, pemberitahuan gangguan,
+                promo VIP. Tanpa gambar, batasnya 4096 karakter. Dengan gambar, tulisan
+                jadi caption foto yang batasnya 1024 — kalau lewat, fotonya dikirim
+                sendirian dan tulisannya menyusul sebagai pesan di bawahnya, bukan
+                dipotong diam-diam.
+            </p>
+        </div>
+
+        <form method="POST" action="{{ route('admin.channel-announcement.store') }}"
+              class="admin-form" enctype="multipart/form-data"
+              data-confirm
+              data-confirm-title="Kirim pengumuman?"
+              data-confirm-ok="Ya, kirim"
+              data-confirm-message="Pengumuman ini akan tayang di channel dan langsung terbaca semua pelanggan. Postingan tidak bisa ditarik dari panel."
+              data-pengumuman-form>
+            @csrf
+
+            <x-admin.field name="body" label="Isi pengumuman" type="textarea" :rows="6" required
+                           data-pengumuman-teks
+                           hint="Mendukung HTML sederhana: <b>, <i>, <a href>, <blockquote>." />
+
+            <p class="field-hint" data-pengumuman-hitung></p>
+
+            <div class="field">
+                <label for="field-image_file">Gambar (opsional)</label>
+                {{-- Ditulis tangan, tidak lewat x-admin.field: komponen itu
+                     menempelkan value= pada input, dan input berkas tidak
+                     boleh punya nilai awal. --}}
+                <input type="file" id="field-image_file" name="image_file" class="control"
+                       accept="image/jpeg,image/png,image/webp" data-pengumuman-gambar>
+                <p class="field-hint">{{ \App\Services\Admin\MediaService::hint() }}</p>
+                @error('image_file')<p class="field-error">{{ $message }}</p>@enderror
+            </div>
+
+            <div class="field">
+                <label>Tombol tautan (opsional)</label>
+
+                @for ($i = 0; $i < $maxTombol; $i++)
+                    <div class="admin-toolbar" style="margin-bottom:6px">
+                        <input type="text" name="buttons[{{ $i }}][label]"
+                               value="{{ old('buttons.'.$i.'.label') }}"
+                               class="control control-sm" maxlength="64"
+                               placeholder="Label tombol {{ $i + 1 }}" style="max-width:220px">
+
+                        <input type="url" name="buttons[{{ $i }}][url]"
+                               value="{{ old('buttons.'.$i.'.url') }}"
+                               class="control control-sm" maxlength="255"
+                               placeholder="https://t.me/… atau https://…">
+                    </div>
+                @endfor
+
+                <p class="field-hint">
+                    Baris yang dikosongkan diabaikan. URL harus diawali https://, http://,
+                    atau tg:// — Telegram menolak seluruh pesannya kalau tidak.
+                </p>
+
+                @error('buttons')<p class="field-error">{{ $message }}</p>@enderror
+            </div>
+
+            <div class="field">
+                <label>Waktu tayang</label>
+
+                <label class="checkbox-item">
+                    <input type="radio" name="kirim" value="sekarang"
+                           @checked(old('kirim', 'sekarang') === 'sekarang') data-pengumuman-mode>
+                    Kirim sekarang
+                </label>
+
+                <label class="checkbox-item">
+                    <input type="radio" name="kirim" value="jadwal"
+                           @checked(old('kirim') === 'jadwal') data-pengumuman-mode>
+                    Jadwalkan
+                </label>
+
+                {{-- Nilai dan batas bawahnya ditulis dalam waktu LOKAL, karena
+                     itu yang dibaca dan diketik admin. Pengubahannya ke UTC
+                     terjadi di controller, satu tempat saja. --}}
+                <input type="datetime-local" name="scheduled_at" class="control"
+                       value="{{ old('scheduled_at') }}"
+                       min="{{ \App\Support\Waktu::lokal(now())?->format('Y-m-d\TH:i') }}"
+                       data-pengumuman-jadwal style="max-width:260px;margin-top:8px">
+
+                <p class="field-hint">
+                    Waktu {{ \App\Support\Waktu::label() }}. Pengumuman terjadwal dipungut
+                    penjadwal tiap menit, jadi bisa meleset paling banyak satu menit —
+                    dan bisa dibatalkan kapan saja selama belum tayang.
+                </p>
+
+                @error('scheduled_at')<p class="field-error">{{ $message }}</p>@enderror
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary" @disabled($penghalangPengumuman !== null)>
+                    <x-web.home.icon name="send" :size="14" />
+                    <span data-pengumuman-tombol>Kirim pengumuman</span>
+                </button>
+
+                @if ($penghalangPengumuman)
+                    <span class="queue-error">{{ $penghalangPengumuman }}</span>
+                @endif
+            </div>
+        </form>
+    </section>
+
+    <section class="panel">
+        <div class="panel-head">
+            <h2>Riwayat pengumuman</h2>
+            <span class="panel-meta">15 terakhir</span>
+        </div>
+
+        @if ($pengumuman->isEmpty())
+            <div class="detail-body-admin">
+                <p class="page-subtitle">Belum ada pengumuman.</p>
+            </div>
+        @else
+            <div class="table-wrap">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Isi</th>
+                            <th>Tayang</th>
+                            <th>Oleh</th>
+                            <th>Status</th>
+                            <th class="col-actions">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($pengumuman as $p)
+                            <tr>
+                                <td>
+                                    {{-- strip_tags: isinya HTML siap kirim, dan
+                                         menampilkannya mentah di tabel berarti
+                                         tabelnya ikut menuruti tag di dalamnya. --}}
+                                    {{ Str::limit(strip_tags($p->body), 90) }}
+
+                                    @if ($p->image)
+                                        <br><span class="cell-empty">+ gambar</span>
+                                    @endif
+
+                                    @if ($p->buttons)
+                                        <br><span class="cell-empty">{{ count($p->buttons) }} tombol</span>
+                                    @endif
+                                </td>
+                                <td>
+                                    @if ($p->berhasil())
+                                        {{ \App\Support\Waktu::ringkas($p->sent_at) }}
+                                    @elseif ($p->scheduled_at)
+                                        {{ \App\Support\Waktu::ringkas($p->scheduled_at) }}
+                                    @else
+                                        <span class="cell-empty">—</span>
+                                    @endif
+                                </td>
+                                <td>{{ $p->author?->name ?? '—' }}</td>
+                                <td>
+                                    <span class="badge {{ $p->statusBadge() }}">{{ $p->statusLabel() }}</span>
+
+                                    @if ($p->error)
+                                        <br><span class="queue-error">{{ Str::limit($p->error, 120) }}</span>
+                                    @endif
+                                </td>
+                                <td class="col-actions">
+                                    @if ($p->bisaDibatalkan())
+                                        <form method="POST"
+                                              action="{{ route('admin.channel-announcement.cancel', $p->id) }}"
+                                              class="inline-form">
+                                            @csrf
+                                            <button type="submit" class="btn btn-sm btn-danger">
+                                                <x-web.home.icon name="close" :size="14" /> Batalkan
+                                            </button>
+                                        </form>
+                                    @elseif (! $p->berhasil())
+                                        <form method="POST"
+                                              action="{{ route('admin.channel-announcement.resend', $p->id) }}"
+                                              class="inline-form"
+                                              data-confirm
+                                              data-confirm-title="Kirim ulang?"
+                                              data-confirm-ok="Kirim ulang"
+                                              data-confirm-message="Pengumuman ini akan tayang di channel sekarang juga.">
+                                            @csrf
+                                            <button type="submit" class="btn btn-sm"
+                                                    @disabled($penghalangPengumuman !== null)>
+                                                <x-web.home.icon name="restore" :size="14" /> Kirim ulang
+                                            </button>
+                                        </form>
+                                    @else
+                                        <span class="cell-empty">—</span>
+                                    @endif
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
+    </section>
+
     <section class="panel">
         <div class="panel-head">
             <h2>Riwayat kiriman</h2>
@@ -447,6 +658,77 @@
         // ikut terkirim. Itu disengaja: admin bisa mencentang lewat beberapa
         // kali pencarian, dan penghitung di atas selalu menyebut totalnya.
         hitung();
+    });
+</script>
+@endpush
+\n
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+
+        const form = document.querySelector('[data-pengumuman-form]');
+
+        if (!form) return;
+
+        const teks   = form.querySelector('[data-pengumuman-teks]');
+        const gambar = form.querySelector('[data-pengumuman-gambar]');
+        const jadwal = form.querySelector('[data-pengumuman-jadwal]');
+        const label  = form.querySelector('[data-pengumuman-tombol]');
+        const info   = form.querySelector('[data-pengumuman-hitung]');
+        const mode   = () => form.querySelector('[data-pengumuman-mode]:checked')?.value || 'sekarang';
+
+        const BATAS_CAPTION = {{ $batasCaption }};
+        const BATAS_TEKS    = 4000;
+
+        /*
+        | Hitungan di sini SENGAJA kasar — panjang mentah, bukan panjang
+        | terlihat versi Telegram yang membuang tag HTML dan URL di dalam
+        | href. Angka pastinya dihitung server saat mengirim; yang dibutuhkan
+        | di sini cuma peringatan dini bahwa tulisannya mulai kepanjangan.
+        | Hitungan kasar yang lebih besar dari yang sebenarnya aman: ia
+        | memperingatkan sedikit terlalu awal, tidak terlambat.
+        */
+        const hitung = () => {
+            const panjang = teks.value.length;
+            const pakaiGambar = gambar.files && gambar.files.length > 0;
+            const batas = pakaiGambar ? BATAS_CAPTION : BATAS_TEKS;
+
+            let pesan = panjang + ' karakter (kira-kira). Batas '
+                + (pakaiGambar ? 'caption foto ' : 'pesan teks ') + batas + '.';
+
+            if (pakaiGambar && panjang > batas) {
+                pesan += ' Terlalu panjang untuk caption — fotonya akan dikirim sendirian'
+                    + ' dan tulisannya menyusul sebagai pesan di bawahnya.';
+            }
+
+            info.textContent = pesan;
+        };
+
+        // Tombol dan kalimat konfirmasi mengikuti mode: dialog yang berkata
+        // "akan tayang sekarang" pada pengumuman terjadwal adalah dialog yang
+        // menjawab pertanyaan yang tidak ditanyakan.
+        const ikutiMode = () => {
+            const terjadwal = mode() === 'jadwal';
+
+            jadwal.disabled = !terjadwal;
+            label.textContent = terjadwal ? 'Jadwalkan pengumuman' : 'Kirim pengumuman';
+
+            form.dataset.confirmTitle = terjadwal ? 'Jadwalkan pengumuman?' : 'Kirim pengumuman?';
+            form.dataset.confirmOk    = terjadwal ? 'Jadwalkan' : 'Ya, kirim';
+            form.dataset.confirmMessage = terjadwal
+                ? 'Pengumuman disimpan dan tayang otomatis pada waktu yang dipilih. Selama belum tayang, ia masih bisa dibatalkan.'
+                : 'Pengumuman ini akan tayang di channel dan langsung terbaca semua pelanggan. Postingan tidak bisa ditarik dari panel.';
+        };
+
+        teks.addEventListener('input', hitung);
+        gambar.addEventListener('change', hitung);
+
+        form.querySelectorAll('[data-pengumuman-mode]').forEach(
+            (el) => el.addEventListener('change', ikutiMode)
+        );
+
+        hitung();
+        ikutiMode();
     });
 </script>
 @endpush
