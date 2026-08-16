@@ -184,20 +184,21 @@
     | tanpa menambahnya di sini menghasilkan tombol yang membuka beranda dan
     | terlihat seperti fitur yang belum jadi.
     */
-    function tujuanStartapp() {
+    function alamatStartapp() {
         var tujuan = (tg.initDataUnsafe && tg.initDataUnsafe.start_param) || '';
 
-        if (!tujuan) return false;
+        if (!tujuan) return null;
 
         var peta = {
-            'cari':    @json(route('web.search')),
-            'request': @json(route('web.request.index')),
-            'vip':     @json(route('web.membership'))
+            'cari':      @json(route('web.search')),
+            'request':   @json(route('web.request.index')),
+            'vip':       @json(route('web.membership')),
+            'affiliate': @json(route('web.affiliate'))
         };
 
         var alamat = peta[tujuan];
 
-        if (!alamat) return false;
+        if (!alamat) return null;
 
         /*
         | Sekali saja per sesi Mini App
@@ -220,7 +221,7 @@
         var kunci = 'tg-startapp';
 
         try {
-            if (window.sessionStorage.getItem(kunci) === tujuan) return false;
+            if (window.sessionStorage.getItem(kunci) === tujuan) return null;
 
             window.sessionStorage.setItem(kunci, tujuan);
         } catch (e) {
@@ -229,26 +230,43 @@
             // satu halaman; lebih baik tautannya sekadar membuka beranda.
             lapor('sessionStorage tidak tersedia, startapp diabaikan.');
 
-            return false;
+            return null;
         }
 
         // Sudah berada di halaman yang dituju — tidak ada yang perlu
         // dikerjakan, dan memuat ulang halaman yang sama hanya mengedipkannya.
         if (window.location.pathname === new URL(alamat, window.location.origin).pathname) {
-            return false;
+            return null;
         }
 
-        window.location.replace(alamat);
-
-        return true;
+        return alamat;
     }
 
-    // Pindah halaman dulu, baru sisanya. Login otomatis di bawah diakhiri
-    // `location.replace(location.href)`, dan kalau keduanya berjalan
-    // bersamaan yang menang adalah yang belakangan: orangnya kembali ke
-    // beranda persis setelah halaman yang benar mulai terbuka. Halaman
-    // tujuan menjalankan berkas ini lagi dan login di sana.
-    if (tujuanStartapp()) return;
+    var alamatTujuan = alamatStartapp();
+
+    var sudahLogin = @json(auth()->check());
+
+    /*
+    | Urutan pindah halaman dan login BERGANTUNG pada sudah-tidaknya login.
+    |
+    | Yang sudah punya sesi: pindah dulu, sisanya dikerjakan di halaman
+    | tujuan — berkas ini dijalankan lagi di sana. Menjalankan keduanya
+    | bersamaan berarti `location.replace(location.href)` milik login
+    | membatalkan perpindahan yang baru saja dimulai, dan orangnya kembali ke
+    | beranda persis setelah halaman yang benar terbuka.
+    |
+    | Yang BELUM punya sesi tidak boleh dipindahkan lebih dulu. Sebagian
+    | tujuan — Program Affiliate, misalnya — ada di balik middleware `auth`,
+    | dan pengunjung tanpa sesi yang dilempar ke sana ditolak middleware
+    | sebelum initData-nya sempat ditukar jadi login. Yang terlihat olehnya
+    | cuma beranda, dan tombol di channel yang seolah salah alamat. Jadi
+    | login dulu, lalu perpindahannya dikerjakan di ujung login.
+    */
+    if (sudahLogin && alamatTujuan) {
+        window.location.replace(alamatTujuan);
+
+        return;
+    }
 
     /*
     | Login dijalankan SEBELUM urusan kosmetik di bawahnya.
@@ -274,7 +292,6 @@
     | TelegramMiniAppController. Halaman ini hanya menuruti jawabannya.
     */
     (function login() {
-        var sudahLogin = @json(auth()->check());
 
         /*
         | Menutupi halaman akun lama SEKARANG, bukan setelah server menjawab.
@@ -351,15 +368,17 @@
                 // Sesi memang sudah milik akun yang sedang membuka Mini App.
                 // Memuat ulang di sini berarti setiap pembukaan halaman
                 // dimuat dua kali, tanpa satu pun yang berubah.
-                if (data.already) {
+                if (data.already && !alamatTujuan) {
                     body.classList.remove('tg-authenticating');
 
                     return;
                 }
 
                 // replace(), bukan reload(): reload mengulang POST kalau
-                // halaman ini sendiri hasil kiriman form.
-                window.location.replace(window.location.href);
+                // halaman ini sendiri hasil kiriman form. Bila tautannya
+                // menyebut tujuan, ke sanalah perginya — sesinya sekarang
+                // sudah ada, jadi halaman ber-`auth` pun menerima.
+                window.location.replace(alamatTujuan || window.location.href);
                 return;
             }
 
@@ -372,6 +391,18 @@
             */
             if (data && data.reset) {
                 window.location.replace(window.location.href);
+
+                return;
+            }
+
+            /*
+            | Login ditolak, tapi tautannya menyebut tujuan. Diantar juga.
+            | Halaman tujuan yang memutuskan apa yang pantas ditampilkan
+            | kepada tamu — menahannya di beranda tanpa penjelasan justru
+            | membuat tombol di channel terlihat rusak.
+            */
+            if (alamatTujuan) {
+                window.location.replace(alamatTujuan);
 
                 return;
             }

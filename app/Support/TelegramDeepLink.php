@@ -206,6 +206,9 @@ class TelegramDeepLink
     /** Halaman paket VIP di Mini App. */
     public const APP_VIP = 'vip';
 
+    /** Halaman Program Affiliate di Mini App. */
+    public const APP_AFFILIATE = 'affiliate';
+
     /**
      * Tautan yang membuka Mini App, langsung di halaman yang diminta.
      *
