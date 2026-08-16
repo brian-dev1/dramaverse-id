@@ -51,8 +51,29 @@ class VideoInboxController extends Controller
             // melihat daftar yang lain.
             ->withQueryString();
 
+        /*
+        | Hanya drama yang MASIH punya part kosong.
+        |
+        | Daftar ini dulu memuat seluruh katalog, termasuk drama yang setiap
+        | partnya sudah bervideo. Memilihnya tidak pernah menghasilkan apa
+        | pun — daftar partnya keluar dengan semua baris bertanda "sudah ada
+        | video — akan dilewati" — jadi yang tersisa cuma puluhan judul yang
+        | harus dilewati mata sebelum sampai ke judul yang benar-benar sedang
+        | dikerjakan. Katalog yang bertambah membuat daftar ini makin panjang
+        | justru saat pekerjaannya makin sedikit.
+        |
+        | `whereHas` dengan `whereDoesntHave`, bukan menghitung selisih di
+        | PHP: yang dibutuhkan cuma "ada tidaknya satu part kosong", dan
+        | pertanyaan itu dijawab basis data dengan satu subquery, bukan
+        | dengan memuat seluruh episode setiap drama ke memori.
+        |
+        | Drama yang belum punya part sama sekali ikut tidak muncul, dan itu
+        | memang benar: tidak ada yang bisa dipasangi. Buat partnya dulu
+        | lewat tombol "+ Part" di panel atas, dan dramanya muncul sendiri.
+        */
         $dramas = Drama::query()
             ->select('id', 'title')
+            ->whereHas('episodes', fn ($q) => $q->whereDoesntHave('video'))
             ->orderBy('title')
             ->get();
 

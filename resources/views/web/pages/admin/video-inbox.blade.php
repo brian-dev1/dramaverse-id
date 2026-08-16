@@ -228,6 +228,14 @@
         {{-- Yang terpasang tidak lagi ikut menumpuk di daftar kerja, tapi juga
              tidak dihapus dari pandangan: ia catatan berkas mana jadi part
              mana, dan itu justru dicari saat ada yang salah. --}}
+        @if ($tampil !== 'terpasang' && $dramas->isEmpty() && $videos->isNotEmpty())
+            <div class="inbox-alert">
+                Tidak ada drama yang masih punya part kosong, jadi daftar pilihan dramanya
+                kosong. Buat partnya dulu lewat tombol <strong>+ Part</strong>, lalu muat
+                ulang halaman ini.
+            </div>
+        @endif
+
         <div class="inbox-tabs">
             <a href="{{ route('admin.video-inbox.index') }}"
                class="inbox-tab {{ $tampil === 'tersedia' ? 'is-on' : '' }}">
@@ -374,6 +382,8 @@
                                             data-inbox-drama>
 
                                         <option value="">— pilih drama —</option>
+                                        {{-- Yang tampil hanya drama yang masih punya
+                                             part kosong; lihat VideoInboxController. --}}
 
                                         @foreach ($dramas as $drama)
                                             <option value="{{ $drama->id }}">{{ $drama->title }}</option>
