@@ -6,7 +6,7 @@ use App\Services\Telegram\Contracts\TelegramServiceInterface;
 use Illuminate\Console\Command;
 
 /**
- * Memasang tombol menu bot supaya membuka website sebagai Mini App.
+ * Memasang tombol menu bot supaya membuka aplikasi sebagai Mini App.
  */
 class TelegramMiniApp extends Command
 {
@@ -15,7 +15,7 @@ class TelegramMiniApp extends Command
                             {--text= : Label tombol menu}
                             {--reset : Kembalikan tombol menu ke daftar command bawaan}';
 
-    protected $description = 'Pasang tombol menu Telegram Mini App untuk website.';
+    protected $description = 'Pasang tombol menu Telegram Mini App untuk aplikasi.';
 
     public function handle(TelegramServiceInterface $telegram): int
     {
@@ -41,7 +41,7 @@ class TelegramMiniApp extends Command
             return self::FAILURE;
         }
 
-        $text = (string) ($this->option('text') ?: config('telegram.miniapp_button_text', 'Buka Website'));
+        $text = (string) ($this->option('text') ?: config('telegram.miniapp_button_text', 'Buka Aplikasi'));
 
         $telegram->withTimeout(15)->withRetries(2)->call('setChatMenuButton', [
             'menu_button' => json_encode([

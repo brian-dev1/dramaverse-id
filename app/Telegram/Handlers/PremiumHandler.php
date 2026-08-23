@@ -180,14 +180,14 @@ class PremiumHandler
      */
     private function antarKeEtalase(int|string $chatId, Notice $pesan): void
     {
-        $pesan->section('💳', 'Harga paket ada di website')
+        $pesan->section('💳', 'Harga paket ada di aplikasi')
             ->bullets([
                 'Semua paket beserta harga per harinya muat dalam satu layar.',
                 'Tekan paket yang Anda mau — Anda kembali ke chat ini.',
                 'Tagihan, QRIS, dan bukti bayarnya tetap di sini seperti biasa.',
             ])
             ->note('Pembayarannya tidak berubah sama sekali. Yang pindah ke '
-                .'website hanya layar memilih harganya.');
+                .'aplikasi hanya layar memilih harganya.');
 
         $this->telegram->sendMessage($chatId, $pesan->render(), [
             'reply_markup' => ['inline_keyboard' => [

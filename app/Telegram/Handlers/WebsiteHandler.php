@@ -59,7 +59,7 @@ class WebsiteHandler
             $this->telegram->sendMessage(
                 $chatId,
                 implode("\n", [
-                    "🌐 *DramaVerse Website*",
+                    "🌐 *Aplikasi DramaVerse*",
                     "",
                     "Buka langsung di dalam Telegram — akun Anda otomatis masuk.",
                 ]),
@@ -67,7 +67,7 @@ class WebsiteHandler
                     'parse_mode' => 'Markdown',
                     'reply_markup' => json_encode([
                         'inline_keyboard' => [[[
-                            'text'    => (string) config('telegram.miniapp_button_text', 'Buka DramaVerse'),
+                            'text'    => (string) setting('bot_app_button', (string) config('telegram.miniapp_button_text', 'Buka Aplikasi')),
                             'web_app' => ['url' => $miniAppUrl],
                         ]]],
                     ]),
@@ -86,9 +86,9 @@ class WebsiteHandler
         $this->telegram->sendMessage(
             $chatId,
             implode("\n", [
-                "🌐 *DramaVerse Website*",
+                "🌐 *Aplikasi DramaVerse*",
                 "",
-                "Klik link di bawah untuk login otomatis ke website.",
+                "Klik link di bawah untuk login otomatis ke aplikasi.",
                 "",
                 $url,
                 "",

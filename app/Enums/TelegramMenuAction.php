@@ -50,7 +50,7 @@ enum TelegramMenuAction: string
             self::HISTORY  => 'Riwayat tontonan',
             self::LATEST   => 'Part terbaru',
             self::TRENDING => 'Sedang populer',
-            self::WEBSITE  => 'Buka website (tautan masuk sekali pakai)',
+            self::WEBSITE  => 'Buka aplikasi (tautan masuk sekali pakai)',
             self::PREMIUM  => 'Premium',
             self::PROFILE  => 'Profil',
             self::HELP     => 'Bantuan',

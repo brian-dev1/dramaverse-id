@@ -120,7 +120,7 @@ class FavoriteHandler
             $sudah
                 ? '💔 <b>'.e($drama->title).'</b> dihapus dari favorit.'
                 : '❤️ <b>'.e($drama->title).'</b> ditambahkan ke favorit. '
-                    .'Sudah terlihat juga di website.'
+                    .'Sudah terlihat juga di aplikasi.'
         );
     }
 

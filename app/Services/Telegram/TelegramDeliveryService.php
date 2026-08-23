@@ -121,7 +121,7 @@ class TelegramDeliveryService
 
             $this->reject($chatId, $episode, 'belum tersinkron',
                 'Video part ini belum siap dikirim lewat Telegram. '
-                .'Tim kami sudah diberi tahu — coba lagi nanti, atau tonton lewat website.');
+                .'Tim kami sudah diberi tahu — coba lagi nanti, atau tonton lewat aplikasi.');
 
             return;
         }

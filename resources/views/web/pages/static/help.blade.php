@@ -11,7 +11,7 @@
     <section class="section section-pad">
         <article class="prose">
             <h2>Bagaimana cara masuk?</h2>
-            <p>Buka bot DramaVerse di Telegram, lalu tekan tombol "Buka Website".
+            <p>Buka bot DramaVerse di Telegram, lalu tekan tombol "Buka Aplikasi".
             Anda akan diarahkan ke situs dalam keadaan sudah masuk.</p>
 
             <h2>Kenapa part tertentu terkunci?</h2>

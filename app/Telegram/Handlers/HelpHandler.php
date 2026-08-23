@@ -27,7 +27,7 @@ class HelpHandler
                     '🆕 Drama Baru — part yang baru masuk',
                     '❤️ Favorit — daftar simpanan Anda',
                     '👤 Profil — membership, tagihan & Program Affiliate',
-                    '🌐 Website — jelajahi katalog lengkap',
+                    '🌐 Aplikasi — jelajahi katalog lengkap',
                     '💎 Premium — beli atau perpanjang VIP',
                 ])
                 ->note('Jika mengalami kendala, silakan hubungi admin.')
