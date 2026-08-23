@@ -1,17 +1,14 @@
 @props(['countries'])
 
+{{-- Sepasang dengan genre.blade.php — lihat catatan di sana. --}}
 @if ($countries->isNotEmpty())
-    <section class="section section-pad">
+    <nav class="dv-chiprow" aria-label="Jelajahi negara">
+        @foreach ($countries as $country)
+            <a href="{{ route('web.country.show', $country->slug) }}" class="dv-chip">
+                <x-web.home.country-badge :country="$country" /> {{ $country->name }}
+            </a>
+        @endforeach
 
-        <x-web.home.section-header title="Jelajahi Negara" :href="route('web.country.index')" />
-
-        <div class="pill-row">
-            @foreach ($countries as $country)
-                <a href="{{ route('web.country.show', $country->slug) }}" class="pill">
-                    <x-web.home.country-badge :country="$country" /> {{ $country->name }}
-                </a>
-            @endforeach
-        </div>
-
-    </section>
+        <a href="{{ route('web.country.index') }}" class="dv-chip dv-chip-all">Semua negara →</a>
+    </nav>
 @endif

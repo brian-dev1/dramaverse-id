@@ -195,3 +195,77 @@ body:not(.admin-body) main .section {
 @media (max-width: 900px) {
     html { scroll-behavior: auto; }
 }
+
+
+/* ==========================================================================
+   4. Baris chip genre & negara
+   ==========================================================================
+   Menggantikan dua blok `.pill-row` yang dulu membungkus jadi tiga baris di
+   dasar beranda. Sebagai baris geser, keduanya memakai tinggi tetap berapa pun
+   jumlah genrenya — dan yang lebih penting, terlihat sebelum orang menggulir.
+
+   `overscroll-behavior-x:contain` menahan geseran supaya tidak menular ke
+   webview begitu daftarnya mentok, alasan yang sama seperti pada `.rail`. */
+
+body:not(.admin-body) .dv-chiprow {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    max-width: var(--dv-max, 1440px);
+    margin-inline: auto;
+    padding: 10px var(--dv-gut, 16px) 0;
+    scrollbar-width: none;
+}
+
+body:not(.admin-body) .dv-chiprow::-webkit-scrollbar { display: none; }
+
+body:not(.admin-body) .dv-chip {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: var(--dv-pill, 999px);
+    border: 1px solid var(--dv-line, rgba(255, 255, 255, .08));
+    background: #141021;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--dv-dim, #A79BB8);
+    white-space: nowrap;
+}
+
+body:not(.admin-body) .dv-chip-all {
+    border-color: transparent;
+    background: rgba(255, 106, 26, .14);
+    color: var(--dv-accent-2, #FFB84D);
+}
+
+/* Hover hanya untuk yang benar-benar punya kursor — di layar sentuh, keadaan
+   hover menempel di chip terakhir yang disentuh sampai ada sentuhan lain. */
+@media (hover: hover) {
+    body:not(.admin-body) .dv-chip:hover {
+        color: var(--dv-text, #F6F2FB);
+        border-color: rgba(255, 255, 255, .22);
+    }
+}
+
+
+/* ==========================================================================
+   5. Paginasi di dasar daftar
+   ==========================================================================
+   Tombolnya sendiri sudah bergaya lewat pager.css (`.pager`, `.pager-btn`)
+   yang dipakai bersama panel admin. Yang ditambahkan di sini hanya jaraknya
+   terhadap kartu terakhir, dan sedikit penegasan untuk halaman aktif supaya
+   terbaca sebagai posisi, bukan sebagai tombol yang bisa ditekan lagi. */
+
+body:not(.admin-body) .dv-pager {
+    max-width: var(--dv-max, 1440px);
+    margin-inline: auto;
+    padding: 22px var(--dv-gut, 16px) 4px;
+}
+
+body:not(.admin-body) .dv-pager .pager-btn.is-active {
+    background: var(--dv-accent, #FF6A1A);
+    color: #12060A;
+}

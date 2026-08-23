@@ -15,6 +15,9 @@ class HomeRepository implements HomeRepositoryInterface
     /** Umur cache untuk blok katalog homepage (menit). */
     private const CACHE_TTL = 5;
 
+    /** Judul per halaman pada daftar "Rilis Terbaru" di dasar beranda. */
+    private const CATALOG_PER_PAGE = 18;
+
     /** Kolom yang dibutuhkan kartu drama — hindari SELECT *. */
     private const CARD_COLUMNS = [
         'id', 'title', 'slug', 'poster', 'gradient', 'country_id',
@@ -29,7 +32,8 @@ class HomeRepository implements HomeRepositoryInterface
      */
     public const CATALOG_KEYS = [
         'home:trending',
-        'home:latest',
+        // 'home:latest' sengaja tidak ada di sini: daftar rilis terbaru
+        // sekarang berhalaman dan tidak lagi di-cache sama sekali.
         'home:popular',
         'home:total-drama',
     ];
@@ -93,13 +97,35 @@ class HomeRepository implements HomeRepositoryInterface
         );
     }
 
+    /**
+     * Daftar rilis terbaru — berhalaman, bukan 12 teratas seperti dulu.
+     *
+     * Inilah yang menggantikan blok "Jelajahi Genre" dan "Jelajahi Negara"
+     * di dasar beranda: pengunjung bisa terus maju ke halaman berikutnya
+     * tanpa berpindah ke halaman katalog terpisah.
+     *
+     * TIDAK di-cache. Isinya berubah per nomor halaman, jadi kuncinya akan
+     * beranak-pinak dan `flushCatalog()` tidak punya cara membuang semuanya —
+     * drama yang baru terbit akan tersangkut di halaman yang kebetulan sudah
+     * pernah dibuka orang.
+     *
+     * Yang mahal dari `paginate()` justru COUNT(*)-nya, dan itu dihindari
+     * dengan mengoper total yang sudah di-cache sejam. Efek sampingnya
+     * disengaja: nomor halaman dan angka "4.127 judul" di atas kepala halaman
+     * selalu berasal dari bilangan yang sama, jadi keduanya tidak mungkin
+     * saling bertentangan.
+     */
     private function latest()
     {
-        return Cache::remember(
-            'home:latest',
-            now()->addMinutes(self::CACHE_TTL),
-            fn () => $this->cardQuery()->latestRelease()->take(12)->get()
-        );
+        return $this->cardQuery()
+            ->latestRelease()
+            ->paginate(
+                self::CATALOG_PER_PAGE,
+                self::CARD_COLUMNS,
+                'page',
+                null,
+                $this->totalDrama()
+            );
     }
 
     private function popular()

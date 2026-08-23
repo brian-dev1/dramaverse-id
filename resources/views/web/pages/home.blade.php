@@ -8,6 +8,16 @@
     $catalogEmpty = $trending->isEmpty()
         && $latest->isEmpty()
         && $popular->isEmpty();
+
+    /*
+    | Halaman 2 dan seterusnya bukan lagi beranda — orang sudah memutuskan
+    | untuk menelusuri katalog. Rail dan baris chip disembunyikan di sana
+    | supaya yang tersisa hanya daftarnya sendiri; membawa "Lanjutkan
+    | Menonton" dan "Trending" ikut ke setiap halaman berarti menyuruh orang
+    | menggulir melewati barang yang sama berulang-ulang hanya untuk sampai
+    | ke tempat mereka tadi berhenti.
+    */
+    $berandaPenuh = $latest->onFirstPage();
 @endphp
 
 @section('content')
@@ -24,6 +34,12 @@
             <p class="dv-total"><b>{{ number_format($totalDrama, 0, ',', '.') }}</b> judul</p>
         @endif
     @endisset
+
+    @if ($berandaPenuh)
+        {{-- Penyaring cepat, tepat di bawah kolom cari. --}}
+        <x-web.home.genre :genres="$genres" />
+        <x-web.home.country :countries="$countries" />
+    @endif
 
     {{--
         Tamu yang menekan Riwayat, Profil, atau Favorit dilempar ke sini oleh
@@ -61,31 +77,39 @@
         @endif
     @endguest
 
-    <x-web.home.continue-watching :histories="$continueWatching" />
+    @if ($berandaPenuh)
+        <x-web.home.continue-watching :histories="$continueWatching" />
 
-    {{-- Rail teratas yang pasti ada isinya: posternya jadi gambar pertama yang
-         dilihat pengguna, jadi tiga di antaranya tidak ditunda. --}}
-    <x-web.home.rail
-        :dramas="$trending"
-        title="Trending Minggu Ini"
-        variant="rank"
-        :priority="true"
-        :href="route('web.trending')" />
+        {{-- Rail teratas yang pasti ada isinya: posternya jadi gambar pertama
+             yang dilihat pengguna, jadi tiga di antaranya tidak ditunda. --}}
+        <x-web.home.rail
+            :dramas="$trending"
+            title="Trending Minggu Ini"
+            variant="rank"
+            :priority="true"
+            :href="route('web.trending')" />
 
+        <x-web.home.rail
+            :dramas="$popular"
+            title="Populer Minggu Ini"
+            :href="route('web.popular')" />
+    @endif
+
+    {{--
+        Daftar utama. Berhalaman, dan menjadi SATU-SATUNYA isi halaman mulai
+        dari halaman kedua. Tautan "Lihat Semua" dilepas: tombol angka dan
+        Next di bawah daftar sudah membawa ke tempat yang sama, dan dua jalan
+        menuju hal yang sama di satu layar hanya membuat orang menimbang-nimbang
+        mana yang benar.
+    --}}
     <x-web.home.grid
         :dramas="$latest"
         title="Rilis Terbaru"
-        variant="latest"
-        :href="route('web.latest')" />
-
-    <x-web.home.rail
-        :dramas="$popular"
-        title="Populer Minggu Ini"
-        :href="route('web.popular')" />
-
-    {{-- Taksonomi tetap ditampilkan walau katalog kosong: keduanya data nyata. --}}
-    <x-web.home.genre :genres="$genres" />
-    <x-web.home.country :countries="$countries" />
+        {{-- Label "BARU" hanya sah di halaman pertama. Di halaman kelima yang
+             tampil adalah judul-judul lama, dan menempeli semuanya dengan
+             lencana BARU membuat lencananya berhenti berarti apa pun. --}}
+        :variant="$berandaPenuh ? 'latest' : 'default'"
+        :paginator="$latest" />
 
     @if ($catalogEmpty)
         <x-web.home.empty-state
