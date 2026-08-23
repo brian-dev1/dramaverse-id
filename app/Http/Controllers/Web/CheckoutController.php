@@ -71,6 +71,23 @@ class CheckoutController extends Controller
             'transaction' => $terakhir,
             'provider'    => $terakhir?->provider,
             'membership'  => $this->membership->status($request->user()),
+
+            /*
+            | QRIS dinamis, bila gateway mengirimkannya.
+            |
+            | Disisipkan sebagai data URI alih-alih URL: gambarnya memuat
+            | nominal dan referensi satu tagihan milik satu orang, dan
+            | melayaninya lewat route berarti menulis pemeriksaan kepemilikan
+            | kedua yang harus benar sendiri. Halaman ini sudah memeriksanya
+            | di atas; menumpang pemeriksaan itu lebih aman daripada
+            | mengulanginya.
+            |
+            | Null bila providernya memakai QRIS statis atau bukan QRIS sama
+            | sekali — view yang memutuskan apa yang ditampilkan.
+            */
+            'qrisDinamis' => $terakhir === null
+                ? null
+                : app(\App\Services\Payments\QrisImage::class)->dataUri($terakhir),
         ]);
     }
 

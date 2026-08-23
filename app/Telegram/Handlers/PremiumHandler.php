@@ -76,7 +76,8 @@ class PremiumHandler
         protected CheckoutService $checkout,
         protected PaymentGatewayManager $gateways,
         protected UserSessionService $sessions,
-        protected \App\Services\Telegram\ChannelGate $channel
+        protected \App\Services\Telegram\ChannelGate $channel,
+        protected \App\Services\Payments\QrisImage $qris
     ) {
     }
 
@@ -543,7 +544,25 @@ class PremiumHandler
             $this->tombolBayar($invoice, $checkoutUrl, $provider),
         ]];
 
-        $gambar = $provider->qrisAbsolutePath();
+        /*
+        |----------------------------------------------------------------------
+        | Dua sumber gambar, satu jalur pengiriman
+        |----------------------------------------------------------------------
+        |
+        | QRIS statis datang dari berkas yang diunggah admin ke providernya.
+        | QRIS dinamis datang dari jawaban gateway per transaksi, sebagai
+        | string payload yang baru jadi gambar setelah dirender.
+        |
+        | Yang statis didahulukan: bila admin sengaja mengunggah gambar untuk
+        | provider ini, itu keputusan yang lebih tahu konteks daripada
+        | tebakan kode. Dinamisnya jadi cadangan, dan untuk gateway seperti
+        | Xoftware Pay ia satu-satunya yang ada — tanpa ini pengguna menerima
+        | tagihan tanpa QR dan tanpa tombol bayar, karena `checkout_url` juga
+        | null untuk pembayaran QRIS.
+        |
+        */
+        $gambar = $provider->qrisAbsolutePath()
+            ?? $this->qris->path($invoice->latestTransaction()->first());
 
         if ($gambar !== null) {
 
@@ -585,7 +604,7 @@ class PremiumHandler
      */
     private function captionQris(Invoice $invoice, PaymentProvider $provider): string
     {
-        return Notice::make('🧾', 'Scan '.$provider->labelQr().' untuk bayar')
+        $pesan = Notice::make('🧾', 'Scan '.$provider->labelQr().' untuk bayar')
             ->rows([
                 'Paket'         => $invoice->plan_name.' — '.$invoice->durasi_tampil,
                 'Nominal'       => Uang::invoice($invoice),
@@ -596,11 +615,42 @@ class PremiumHandler
                 'Bayar sebelum' => $invoice->due_at !== null
                     ? Waktu::lengkapRelatif($invoice->due_at)
                     : null,
-            ])
-            ->text('⚠️ Isi nominalnya TEPAT SAMA dengan angka di atas. Selisih '
-                .'membuat pembayaran Anda harus dicocokkan manual dan aktivasinya '
-                .'jadi lebih lama.')
-            ->note('Setelah membayar, tekan "Saya sudah bayar" lalu kirim foto buktinya.')
+            ]);
+
+        /*
+        |----------------------------------------------------------------------
+        | Dua QRIS, dua instruksi yang berlawanan
+        |----------------------------------------------------------------------
+        |
+        | QRIS statis tidak membawa nominal: pembayar mengetiknya sendiri, dan
+        | salah ketik berarti pencocokan manual. Peringatan keras soal nominal
+        | dan permintaan foto bukti masuk akal di situ.
+        |
+        | QRIS dinamis sudah mengunci nominalnya di dalam kode, dan
+        | pelunasannya datang lewat callback gateway. Menyuruh orang mengetik
+        | nominal yang tidak akan pernah ia ketik hanya membingungkan, dan
+        | meminta foto bukti untuk pembayaran yang terverifikasi otomatis
+        | menciptakan antrean pekerjaan admin yang seluruhnya tidak perlu.
+        |
+        | Pembedanya `isManual()`, bukan nama drivernya — gateway otomatis
+        | berikutnya ikut benar tanpa menyentuh method ini.
+        |
+        */
+        if ($provider->driver->isManual()) {
+
+            return $pesan
+                ->text('⚠️ Isi nominalnya TEPAT SAMA dengan angka di atas. Selisih '
+                    .'membuat pembayaran Anda harus dicocokkan manual dan aktivasinya '
+                    .'jadi lebih lama.')
+                ->note('Setelah membayar, tekan "Saya sudah bayar" lalu kirim foto buktinya.')
+                ->render();
+        }
+
+        return $pesan
+            ->text('Nominalnya sudah terkunci di dalam kode QR — Anda tidak perlu '
+                .'mengetiknya. Pindai, periksa angkanya cocok, lalu bayar.')
+            ->note('Membership aktif otomatis begitu pembayaran diterima. '
+                .'Tidak perlu mengirim bukti apa pun.')
             ->render();
     }
 

@@ -68,6 +68,16 @@
                         <p class="page-subtitle">{!! nl2br(e($provider->instruction)) !!}</p>
                     @endif
 
+                    {{--
+                        Dua sumber gambar QR, dengan instruksi yang berlawanan.
+
+                        Statis: satu gambar milik provider, nominalnya diketik
+                        sendiri oleh pembayar.
+
+                        Dinamis: dibuat gateway per transaksi, nominalnya sudah
+                        terkunci di dalam kode. Menyuruh orang "bayar sesuai
+                        nominal" di sini keliru — tidak ada tempat mengetiknya.
+                    --}}
                     @if ($provider?->qris_image_path)
                         <div class="qris-payment">
                             <p class="page-subtitle">
@@ -83,6 +93,28 @@
                             <p class="page-subtitle">
                                 Bayar sesuai nominal tagihan:
                                 <strong>Rp {{ number_format((float) $invoice->total, 0, ',', '.') }}</strong>
+                            </p>
+                        </div>
+                    @elseif (! empty($qrisDinamis ?? null))
+                        <div class="qris-payment">
+                            <p class="page-subtitle">
+                                <strong>Scan {{ $provider?->labelQr() ?? 'kode QR' }} untuk membayar</strong>
+                            </p>
+
+                            <img
+                                src="{{ $qrisDinamis }}"
+                                alt="Kode QR pembayaran {{ $invoice->number }}"
+                                style="display:block; width:min(100%, 360px); height:auto; margin:16px 0; border-radius:12px; background:#fff; padding:12px;"
+                            >
+
+                            <p class="page-subtitle">
+                                Nominalnya sudah terkunci di dalam kode:
+                                <strong>Rp {{ number_format((float) $invoice->total, 0, ',', '.') }}</strong>.
+                                Anda tidak perlu mengetiknya.
+                            </p>
+
+                            <p class="page-subtitle">
+                                Membership aktif otomatis begitu pembayaran diterima.
                             </p>
                         </div>
                     @endif
