@@ -169,17 +169,21 @@ class EpisodeKeyboard
     */
 
     /**
-     * Tombol "Buka Website".
+     * Tombol menuju aplikasi.
      *
      * Memakai callback, bukan `url`. Tautan masuk ke situs dibuat per
      * pengguna dan berlaku sekali pakai — URL tetap yang ditempel di keyboard
      * akan sama untuk semua orang dan tidak memasukkan siapa pun.
      * WebsiteHandler yang membuatkannya saat tombolnya ditekan.
+     *
+     * Labelnya dibaca dari pengaturan supaya sebutan produk bisa berubah
+     * tanpa deploy — dan supaya tombol ini, tombol di Profil, dan menu utama
+     * tidak lambat laun menyebut hal yang sama dengan tiga nama berbeda.
      */
     private static function websiteButton(): ?array
     {
         return [
-            'text'          => '🌐 Buka Website',
+            'text'          => '🌐 '.setting('bot_app_button', 'Buka Aplikasi'),
             'callback_data' => 'website',
         ];
     }

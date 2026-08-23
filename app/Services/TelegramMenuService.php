@@ -41,7 +41,7 @@ class TelegramMenuService
         ['Continue Watching', TelegramMenuAction::CONTINUE, 2, 1],
         ['Favorit',           TelegramMenuAction::FAVORITE, 3, 1],
         ['Riwayat',           TelegramMenuAction::HISTORY,  3, 2],
-        ['Buka Website',      TelegramMenuAction::WEBSITE,  4, 1],
+        ['Buka Aplikasi',     TelegramMenuAction::WEBSITE,  4, 1],
         ['Premium',           TelegramMenuAction::PREMIUM,  5, 1],
         ['Profil',            TelegramMenuAction::PROFILE,  5, 2],
         ['Bantuan',           TelegramMenuAction::HELP,     6, 1],

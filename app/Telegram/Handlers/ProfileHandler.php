@@ -97,7 +97,7 @@ class ProfileHandler
 
         $pesan = Notice::make('👤', 'Profil Anda');
 
-        $pesan->branch('🪪', 'Detail akun', [
+        $pesan->section('🪪', 'Detail akun')->rows([
             'Nama'            => $user->name,
             'Username'        => filled($user->telegram_username)
                 ? '@'.$user->telegram_username
@@ -112,13 +112,15 @@ class ProfileHandler
         |----------------------------------------------------------------------
         */
 
+        $pesan->section('💎', 'Langganan');
+
         if ($aktif !== null) {
 
             $sisa = $aktif->expired_at !== null
                 ? (int) ceil(now()->floatDiffInDays($aktif->expired_at, false))
                 : null;
 
-            $pesan->branch('💎', 'Langganan', [
+            $pesan->rows([
                 'Status'         => $status['label'],
                 'Paket'          => $aktif->plan?->name ?? '-',
                 // Tanggal DAN jam: pertanyaan "jam berapa berhentinya" selalu
@@ -141,7 +143,7 @@ class ProfileHandler
 
         } else {
 
-            $pesan->branch('💎', 'Langganan', ['Status' => $status['label']]);
+            $pesan->rows(['Status' => $status['label']]);
 
             $pesan->text($status['status'] === 'expired'
                 ? 'Langganan Anda sudah berakhir. Perpanjang untuk membuka '
@@ -170,7 +172,7 @@ class ProfileHandler
 
             $adaCicilan = (float) $tagihan->paid_amount > 0;
 
-            $pesan->branch('🧾', 'Tagihan menunggu pembayaran', [
+            $pesan->section('🧾', 'Tagihan menunggu pembayaran')->rows([
                 'Nomor'       => $tagihan->number,
                 'Paket'       => $tagihan->plan_name,
                 'Total'       => Uang::invoice($tagihan),
@@ -195,7 +197,7 @@ class ProfileHandler
 
         $terakhir = $this->history->latest($user, 1)->first()?->episode;
 
-        $pesan->branch('📊', 'Statistik pribadi', [
+        $pesan->section('📊', 'Statistik pribadi')->rows([
             'Jumlah transaksi'  => $this->jumlahTransaksi($user).' kali',
             'Favorit'           => $this->favorites->all($user)->count().' drama',
             'Terakhir ditonton' => $terakhir === null
@@ -240,7 +242,7 @@ class ProfileHandler
 
         $data = $this->referral->summary($user);
 
-        $pesan->branch('🤝', 'Program Affiliate', [
+        $pesan->section('🤝', 'Program Affiliate')->rows([
             'Persentase komisi' => rtrim(rtrim(number_format((float) $data['rate'], 2, ',', '.'), '0'), ',').'%',
             'Level'             => 'Level '.$data['level'],
             'Mengundang'        => (int) $data['total_referrals'].' orang',
@@ -307,7 +309,7 @@ class ProfileHandler
         ]];
 
         $tombol[] = [[
-            'text'          => '🌐 Buka Website',
+            'text'          => '🌐 '.setting('bot_app_button', 'Buka Aplikasi'),
             'callback_data' => 'website',
         ]];
 

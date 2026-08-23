@@ -58,6 +58,26 @@ class SettingService
         📝 <a href="{tautan_request}">Kirim request di sini</a> — kami beri tahu lewat bot begitu dramanya tersedia.
         CAPTION;
 
+    /**
+     * Teks sambutan bawaan untuk `/start`.
+     *
+     * Disimpan sebagai konstanta, bukan ditulis langsung di SCHEMA, dengan
+     * alasan yang sama seperti `TEMPLATE_BAWAAN`: migrasi perlu
+     * membandingkannya dengan nilai tersimpan untuk memperbarui pemasangan
+     * yang masih memakai bawaan, tanpa menimpa yang sudah disunting admin.
+     */
+    public const SAMBUTAN_BAWAAN = <<<'HTML'
+        🎭 <b>DramaVerse ID</b>
+
+        Selamat datang di <b>DramaVerse ID</b>.
+
+        Aplikasi digunakan untuk mencari drama dan memilih part.
+
+        Telegram digunakan sebagai media untuk menonton.
+
+        Silakan pilih menu di bawah ini.
+        HTML;
+
     /** Definisi lengkap: kunci => [grup, label, tipe, bawaan, keterangan]. */
     public const SCHEMA = [
         // --- Umum ---
@@ -111,6 +131,37 @@ class SettingService
             'Caption foto Telegram maksimal 1024 karakter. Sinopsis yang panjang memakan jatah baris part.'],
 
         // --- Sistem ---
+        /*
+        | Bot Telegram.
+        |
+        | Sebelumnya teks sambutan ditulis langsung di StartHandler, sehingga
+        | mengubah satu kalimat sapaan menuntut push dan deploy. Kalimat
+        | seperti itu berubah jauh lebih sering daripada kode di sekitarnya —
+        | dan orang yang ingin mengubahnya biasanya bukan orang yang memegang
+        | akses deploy.
+        */
+        'bot_welcome_text' => ['bot', 'Teks sambutan /start', 'textarea',
+            self::SAMBUTAN_BAWAAN,
+            'Boleh memakai HTML sederhana: <b>tebal</b>, <i>miring</i>, <a href="...">tautan</a>. '
+            .'Tautan channel dan grup ditambahkan otomatis di bawahnya, jadi tidak perlu ditulis di sini.'],
+
+        'bot_channel_url'  => ['bot', 'Tautan channel resmi', 'text', null,
+            'URL lengkap, misalnya https://t.me/DramaVerseID. Kosongkan untuk memakai '
+            .'TELEGRAM_CHANNEL_URL dari .env, atau menyembunyikan barisnya bila keduanya kosong.'],
+
+        'bot_channel_label' => ['bot', 'Nama channel yang tampil', 'text', 'DramaVerse ID',
+            'Kata yang jadi tautan. Bukan URL-nya.'],
+
+        'bot_group_url'    => ['bot', 'Tautan grup resmi', 'text', null,
+            'URL lengkap grup diskusi. Kosongkan bila belum punya — barisnya tidak akan muncul.'],
+
+        'bot_group_label'  => ['bot', 'Nama grup yang tampil', 'text', 'DramaVerse ID Group',
+            'Kata yang jadi tautan. Bukan URL-nya.'],
+
+        'bot_app_button'   => ['bot', 'Label tombol buka aplikasi', 'text', 'Buka Aplikasi',
+            'Dipakai tombol di bawah video dan di halaman Profil. Label di menu utama '
+            .'diatur terpisah lewat Telegram → Menu.'],
+
         'footer_text'      => ['system', 'Teks footer', 'text', null, 'Kosongkan untuk memakai bawaan.'],
         'maintenance_mode' => ['system', 'Mode pemeliharaan', 'boolean', '0', 'Situs publik ditutup, panel admin tetap bisa diakses.'],
         'maintenance_text' => ['system', 'Pesan pemeliharaan', 'textarea', 'Kami sedang berbenah. Silakan kembali beberapa saat lagi.', null],
@@ -123,6 +174,7 @@ class SettingService
         'contact' => 'Kontak',
         'social'  => 'Media sosial',
         'channel' => 'Channel Telegram',
+        'bot'     => 'Bot Telegram',
         'system'  => 'Sistem',
     ];
 

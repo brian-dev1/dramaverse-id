@@ -199,24 +199,47 @@ class StartHandler
         return '';
     }
 
+    /**
+     * Pesan sambutan `/start`.
+     *
+     * ## Kenapa teksnya tidak lagi di sini
+     *
+     * Kalimat sapaan berubah jauh lebih sering daripada kode di sekitarnya —
+     * dan orang yang ingin mengubahnya biasanya bukan orang yang memegang
+     * akses deploy. Menuliskannya di kode berarti setiap koreksi satu kata
+     * menuntut commit, push, dan deploy.
+     *
+     * Sekarang isinya dibaca dari pengaturan (`Admin → Pengaturan → Bot
+     * Telegram`), dengan bawaan yang sama persis bila belum pernah disunting.
+     *
+     * Tautan channel dan grup TIDAK ikut di dalam teks itu. Keduanya
+     * ditambahkan di sini, masing-masing hanya bila alamatnya diisi — supaya
+     * admin tidak perlu ingat menghapus barisnya saat grupnya belum ada, dan
+     * tidak ada tautan menggantung yang tidak menuju ke mana pun.
+     */
     private function home(int|string $chatId): void
     {
-        $welcome = <<<HTML
-🎭 <b>DramaVerse ID</b>
+        $welcome = trim((string) setting(
+            'bot_welcome_text',
+            \App\Services\Admin\SettingService::SAMBUTAN_BAWAAN
+        ));
 
-Selamat datang di <b>DramaVerse ID</b>.
-
-Website digunakan untuk mencari drama dan memilih episode.
-
-Telegram digunakan sebagai media untuk menonton drama.
-
-Silakan pilih menu di bawah ini.
-HTML;
-
-        $channel = trim((string) config('telegram.channel_url'));
+        // `.env` tetap dihormati sebagai cadangan: pemasangan yang sudah
+        // mengisi TELEGRAM_CHANNEL_URL tidak kehilangan tautannya hanya
+        // karena pengaturan barunya belum pernah dibuka.
+        $channel = trim((string) setting('bot_channel_url'))
+            ?: trim((string) config('telegram.channel_url'));
 
         if ($channel !== '') {
-            $welcome .= "\n\n".'Ikuti channel resmi: <a href="'.e($channel).'">DramaVerse ID</a>';
+            $welcome .= "\n\n".'Ikuti channel resmi: <a href="'.e($channel).'">'
+                .e(setting('bot_channel_label', 'DramaVerse ID')).'</a>';
+        }
+
+        $grup = trim((string) setting('bot_group_url'));
+
+        if ($grup !== '') {
+            $welcome .= "\n".'Grup resmi: <a href="'.e($grup).'">'
+                .e(setting('bot_group_label', 'DramaVerse ID Group')).'</a>';
         }
 
         $this->telegram->sendMessage(
