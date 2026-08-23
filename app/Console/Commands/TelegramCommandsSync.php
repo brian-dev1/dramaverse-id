@@ -57,7 +57,7 @@ class TelegramCommandsSync extends Command
             ['command' => 'riwayat', 'description' => 'Riwayat tontonan'],
             ['command' => 'terbaru', 'description' => 'Part terbaru'],
             ['command' => 'trending', 'description' => 'Drama populer'],
-            ['command' => 'website', 'description' => 'Buka aplikasi'],
+            ['command' => 'bukaaplikasi', 'description' => 'Buka aplikasi'],
             ['command' => 'help', 'description' => 'Bantuan'],
         ];
     }

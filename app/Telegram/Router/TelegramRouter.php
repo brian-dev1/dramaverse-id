@@ -204,7 +204,10 @@ class TelegramRouter
             'riwayat', 'history' => TelegramMenuAction::HISTORY,
             'terbaru', 'latest' => TelegramMenuAction::LATEST,
             'trending', 'populer' => TelegramMenuAction::TRENDING,
-            'website', 'web' => TelegramMenuAction::WEBSITE,
+            // /website adalah nama lama. Tetap dikenali supaya tautan,
+            // tangkapan layar, dan kebiasaan lama tidak mendadak berhenti
+            // bekerja setelah namanya diubah jadi /bukaaplikasi.
+            'bukaaplikasi', 'aplikasi', 'app', 'website', 'web' => TelegramMenuAction::WEBSITE,
             'help', 'bantuan' => TelegramMenuAction::HELP,
             default => null,
         };
