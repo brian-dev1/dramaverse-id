@@ -134,11 +134,53 @@ class QrisImage
             return null;
         }
 
-        $disk->put($relatif, $png);
+        /*
+        |----------------------------------------------------------------------
+        | Kegagalan menulis WAJIB dicatat
+        |----------------------------------------------------------------------
+        |
+        | Versi pertama kelas ini mengembalikan null begitu saja bila
+        | penyimpanan gagal. Akibatnya nyata: folder `qris-dinamis` sempat
+        | terbuat sebagai milik root dengan mode 700 karena dirender lewat
+        | tinker, www-data tidak bisa memasukinya, dan bot mengirim tagihan
+        | tanpa QR — tanpa satu pun baris log yang menyebut ada yang salah.
+        |
+        | Yang terlihat dari luar identik dengan "gateway tidak mengirim
+        | payload QR", padahal payloadnya ada dan yang gagal cuma izin tulis.
+        | Dua sebab yang sama sekali berbeda dengan gejala yang sama adalah
+        | tepat keadaan yang membuat penelusuran berputar-putar.
+        |
+        */
+        try {
+            $tersimpan = $disk->put($relatif, $png);
+
+        } catch (Throwable $e) {
+            $tersimpan = false;
+        }
 
         $absolut = $disk->path($relatif);
 
-        return is_file($absolut) ? $absolut : null;
+        if ($tersimpan === false || ! is_file($absolut)) {
+
+            $folder = dirname($absolut);
+
+            $this->log('error', 'qris.store_failed', [
+                'reference'    => $transaction?->reference,
+                'path'         => $relatif,
+                'folder'       => $folder,
+                'folder_ada'   => is_dir($folder),
+                'bisa_tulis'   => is_writable($folder),
+                'dijalankan_as' => function_exists('posix_geteuid')
+                    ? (posix_getpwuid(posix_geteuid())['name'] ?? '?')
+                    : '?',
+                'petunjuk'     => 'Periksa kepemilikan folder: '
+                    .'chown -R www-data:www-data storage/app/private/qris-dinamis',
+            ]);
+
+            return null;
+        }
+
+        return $absolut;
     }
 
     /**

@@ -232,27 +232,108 @@ class ReferralService
     /* ---------------------------------------------------------------- */
 
     /**
-     * Kabari pengundang lewat bot bahwa komisinya bertambah.
+     * Kabari pengundang lewat bot bahwa ada yang membeli lewat tautannya.
+     *
+     * ## Kenapa serinci ini
+     *
+     * Pesan sebelumnya hanya menyebut nominal: "Rp 5.000 dari transaksi
+     * referral Anda." Yang hilang di situ adalah satu-satunya hal yang bisa
+     * diperiksa penerimanya — dari pembelian yang mana, paket apa, dan
+     * dihitung dari persen berapa. Tanpa itu, satu-satunya cara memastikan
+     * komisinya benar adalah bertanya ke admin, dan itulah yang terjadi.
+     *
+     * Sekarang seluruh perhitungannya ikut dikirim: paket yang dibeli,
+     * nilai yang jadi dasar, persentase yang berlaku, hasilnya, dan saldo
+     * setelahnya. Angka yang bisa dihitung ulang sendiri tidak menimbulkan
+     * pertanyaan.
+     *
+     * ## Nama pembeli disamarkan
+     *
+     * Yang mengundang berhak tahu ada transaksi, bukan berhak tahu identitas
+     * lengkap orangnya. Yang tampil hanya nama depan; sisanya ditutup.
+     *
+     * ## Dipanggil DI LUAR transaksi
+     *
+     * Panggilan HTTP ke Telegram bisa menggantung beberapa detik. Di dalam
+     * transaksi, detik itu adalah baris basis data yang terkunci. Karena itu
+     * komisinya disimpan dan transaksinya ditutup lebih dulu, baru kabarnya
+     * dikirim.
      *
      * Dibungkus try/catch dan tidak pernah melempar: pembayaran yang sah
      * tidak boleh gagal hanya karena seseorang memblokir bot.
      */
-    private function notifyCommission(User $referrer, float $amount): void
-    {
+    private function notifyCommission(
+        User $referrer,
+        ReferralCommission $komisi,
+        Invoice $invoice,
+        User $pembeli
+    ): void {
+
         if (! $referrer->telegram_id) {
             return;
         }
 
         try {
+            $persen = rtrim(rtrim(number_format((float) $komisi->rate, 2, ',', '.'), '0'), ',');
+
+            $pesan = \App\Support\Telegram\Notice::make('💰', 'Komisi referral masuk')
+                ->lead('Orang yang Anda undang baru saja berlangganan.')
+                ->rows([
+                    'Pembeli'   => $this->samarkan($pembeli),
+                    'Paket'     => $invoice->plan_name ?: 'VIP',
+                    'Nilai'     => \App\Support\Uang::format((float) $komisi->base_amount, $invoice->currency),
+                    'Komisi'    => $persen.'%',
+                    'Anda dapat' => \App\Support\Uang::format((float) $komisi->amount, $invoice->currency),
+                    'Saldo kini' => \App\Support\Uang::format($this->balance($referrer)),
+                ]);
+
+            /*
+            | Komisi yang masih ditahan disebutkan terang-terangan.
+            |
+            | Tanpa baris ini, penerimanya membuka halaman penarikan, melihat
+            | saldo yang tidak bisa ditarik, dan menyimpulkan sistemnya rusak.
+            */
+            if ($komisi->status === 'pending' && $komisi->available_at !== null) {
+                $pesan->note('Komisi ini bisa ditarik mulai '
+                    .\App\Support\Waktu::lengkap($komisi->available_at).'.');
+            } else {
+                $pesan->note('Saldo bisa ditarik lewat menu Profil → Saldo & Penarikan.');
+            }
+
             app(\App\Services\Telegram\Contracts\TelegramServiceInterface::class)->sendMessage(
                 $referrer->telegram_id,
-                "<b>Komisi masuk</b>\n\n"
-                .'Rp '.number_format($amount, 0, ',', '.').' dari transaksi referral Anda. '
-                .'Saldo bisa dicek di halaman Program Affiliate.'
+                $pesan->render(),
+                ['disable_web_page_preview' => true]
             );
         } catch (\Throwable $e) {
             Log::warning('referral.notify.failed', ['user' => $referrer->id, 'error' => $e->getMessage()]);
         }
+    }
+
+    /**
+     * Nama pembeli untuk ditampilkan ke pengundangnya.
+     *
+     * Nama depan utuh, kata berikutnya hanya huruf pertama. "Budi Santoso"
+     * jadi "Budi S." — cukup untuk dikenali orang yang memang mengundangnya,
+     * tidak cukup untuk mengumpulkan daftar nama pelanggan.
+     */
+    private function samarkan(User $user): string
+    {
+        $bagian = preg_split('/\s+/', trim((string) $user->name)) ?: [];
+
+        $bagian = array_values(array_filter($bagian));
+
+        if ($bagian === []) {
+            return 'Pengguna';
+        }
+
+        $nama = array_shift($bagian);
+
+        foreach ($bagian as $kata) {
+            $nama .= ' '.mb_strtoupper(mb_substr($kata, 0, 1)).'.';
+        }
+
+        return $nama;
     }
 
     /** Rate (persen) yang berlaku untuk seorang referrer saat ini. */
@@ -290,7 +371,7 @@ class ReferralService
         }
 
         try {
-            return DB::transaction(function () use ($invoice) {
+            $komisi = DB::transaction(function () use ($invoice) {
 
                 $pembeli = $invoice->user;
 
@@ -349,10 +430,37 @@ class ReferralService
                     'amount'   => $amount,
                 ]);
 
-                $this->notifyCommission($referrer, $amount);
+                // Pengundang dan pembelinya dititipkan ke objek komisi supaya
+                // pemberitahuan di luar transaksi tidak perlu mengambilnya
+                // ulang dari basis data.
+                $komisi->setRelation('referrer', $referrer);
+                $komisi->setRelation('referredUser', $pembeli);
 
                 return $komisi;
             });
+
+            /*
+            |------------------------------------------------------------------
+            | Kabar ke pengundang — setelah transaksinya ditutup
+            |------------------------------------------------------------------
+            |
+            | Telegram bisa menggantung beberapa detik. Selama itu, kalau
+            | panggilannya berada di dalam transaksi, baris komisi dan baris
+            | pengguna tetap terkunci — dan callback pembayaran berikutnya
+            | menunggu di belakangnya.
+            |
+            */
+
+            if ($komisi !== null) {
+                $this->notifyCommission(
+                    $komisi->referrer,
+                    $komisi,
+                    $invoice,
+                    $komisi->referredUser
+                );
+            }
+
+            return $komisi;
         } catch (\Throwable $e) {
             // Komisi gagal tidak boleh membatalkan pembayaran yang sah.
             Log::error('referral.commission.failed', [

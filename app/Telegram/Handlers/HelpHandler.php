@@ -26,7 +26,7 @@ class HelpHandler
                     '🔥 Trending — yang paling banyak ditonton',
                     '🆕 Drama Baru — part yang baru masuk',
                     '❤️ Favorit — daftar simpanan Anda',
-                    '👤 Profil — status membership & tagihan',
+                    '👤 Profil — membership, tagihan & Program Affiliate',
                     '🌐 Website — jelajahi katalog lengkap',
                     '💎 Premium — beli atau perpanjang VIP',
                 ])

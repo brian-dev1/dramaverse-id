@@ -41,7 +41,12 @@ class TelegramCommandsSync extends Command
     {
         return [
             ['command' => 'start', 'description' => 'Buka menu utama'],
-            ['command' => 'status', 'description' => 'Cek status akun dan VIP'],
+            // Dulu bernama /status dan hanya memuat langganan. Isinya sekarang
+            // jauh lebih luas — akun, tagihan, aktivitas, dan Program Affiliate —
+            // sehingga namanya diubah jadi /profile agar sesuai isinya.
+            // /status tetap dikenali router sebagai alias, supaya tautan dan
+            // kebiasaan lama tidak mendadak berhenti bekerja.
+            ['command' => 'profile', 'description' => 'Profil, VIP & referral'],
             // Daftar paketnya sendiri sudah pindah ke halaman VIP website;
             // perintah ini membuka halaman itu. Keterangannya diubah supaya
             // tidak menjanjikan daftar harga yang muncul di dalam chat.

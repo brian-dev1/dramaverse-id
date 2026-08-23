@@ -7,9 +7,11 @@ use App\Models\Invoice;
 use App\Models\User;
 use App\Services\FavoriteService;
 use App\Services\Membership\MembershipService;
+use App\Services\ReferralService;
 use App\Services\Telegram\Contracts\TelegramServiceInterface;
 use App\Services\WatchHistoryService;
 use App\Support\Telegram\Notice;
+use App\Support\TelegramDeepLink;
 use App\Support\Waktu;
 use App\Telegram\Keyboards\EpisodeKeyboard;
 use App\Support\Uang;
@@ -27,12 +29,25 @@ use App\Support\Uang;
  * pengguna bisa memeriksa **apakah pembayarannya sudah masuk** — dan tanpa
  * itu, setiap pertanyaan "sudah aktif belum?" berakhir di admin.
  *
+ * ## Kenapa Program Affiliate ikut di sini
+ *
+ * Angka referral sebelumnya hanya ada di halaman web. Yang mengundang orang
+ * paling banyak justru yang paling jarang membuka website: ia menyebarkan
+ * tautannya dari dalam Telegram, dan untuk memeriksa hasilnya harus keluar
+ * dari aplikasi. Karena itu ringkasannya — persentase, jumlah undangan,
+ * transaksi, saldo — dan tautan referralnya sendiri dipasang di halaman ini.
+ *
+ * Yang TIDAK dipindahkan ke sini: penarikan saldo. Penarikan butuh nomor
+ * rekening, nama pemilik, dan konfirmasi; percakapan bot bukan bentuk yang
+ * tepat untuk itu, dan tombol di bawah pesan ini mengantar ke halamannya.
+ *
  * ## Dibaca dari service yang sama dengan website
  *
- * `MembershipService`, `WatchHistoryService`, `FavoriteService`. Tidak ada
- * satu pun query yang ditulis ulang di sini, dan tidak ada aturan membership
- * yang disalin — status yang tampil di bot selalu sama dengan yang tampil di
- * halaman profil website, karena keduanya bertanya ke tempat yang sama.
+ * `MembershipService`, `WatchHistoryService`, `FavoriteService`,
+ * `ReferralService`. Tidak ada satu pun query yang ditulis ulang di sini, dan
+ * tidak ada aturan membership maupun aturan komisi yang disalin — angka yang
+ * tampil di bot selalu sama dengan yang tampil di halaman profil dan halaman
+ * affiliate website, karena keduanya bertanya ke tempat yang sama.
  */
 class ProfileHandler
 {
@@ -40,7 +55,8 @@ class ProfileHandler
         protected TelegramServiceInterface $telegram,
         protected MembershipService $membership,
         protected WatchHistoryService $history,
-        protected FavoriteService $favorites
+        protected FavoriteService $favorites,
+        protected ReferralService $referral
     ) {
     }
 
@@ -60,7 +76,10 @@ class ProfileHandler
         $this->telegram->sendMessage(
             $chatId,
             $this->teks($user),
-            ['reply_markup' => ['inline_keyboard' => $this->tombol($user)]]
+            [
+                'reply_markup' => ['inline_keyboard' => $this->tombol($user)],
+                'disable_web_page_preview' => true,
+            ]
         );
     }
 
@@ -72,24 +91,26 @@ class ProfileHandler
 
     private function teks(User $user): string
     {
-        $pesan = Notice::make('👤', 'Profil')
-            ->rows([
-                'Nama'      => $user->name,
-                'Username'  => filled($user->telegram_username)
-                    ? '@'.$user->telegram_username
-                    : null,
-                'Bergabung' => Waktu::ringkas($user->created_at, '-'),
-            ]);
+        $status = $this->membership->status($user);
+
+        $aktif = $this->membership->active($user);
+
+        $pesan = Notice::make('👤', 'Profil Anda');
+
+        $pesan->section('🪪', 'Detail akun')->rows([
+            'Nama'            => $user->name,
+            'Username'        => filled($user->telegram_username)
+                ? '@'.$user->telegram_username
+                : null,
+            'Status akun'     => $aktif !== null ? $status['label'] : 'Member',
+            'Bergabung sejak' => Waktu::lengkap($user->created_at, '-'),
+        ]);
 
         /*
         |----------------------------------------------------------------------
         | Langganan
         |----------------------------------------------------------------------
         */
-
-        $status = $this->membership->status($user);
-
-        $aktif = $this->membership->active($user);
 
         $pesan->section('💎', 'Langganan');
 
@@ -176,15 +197,67 @@ class ProfileHandler
 
         $terakhir = $this->history->latest($user, 1)->first()?->episode;
 
-        $pesan->section('📊', 'Aktivitas')->rows([
-            'Favorit'          => $this->favorites->all($user)->count().' drama',
+        $pesan->section('📊', 'Statistik pribadi')->rows([
+            'Jumlah transaksi'  => $this->jumlahTransaksi($user).' kali',
+            'Favorit'           => $this->favorites->all($user)->count().' drama',
             'Terakhir ditonton' => $terakhir === null
                 ? 'belum ada'
                 : ($terakhir->drama?->title ?? 'Drama')
                     .' — part '.$terakhir->episode_number,
         ]);
 
+        $this->referralSection($pesan, $user);
+
         return $pesan->render();
+    }
+
+    /**
+     * Berapa kali pengguna ini benar-benar membayar.
+     *
+     * Yang dihitung hanya tagihan berstatus lunas. Tagihan yang dibatalkan,
+     * kedaluwarsa, atau masih menunggu bukan transaksi — memasukkannya akan
+     * membuat orang yang belum pernah membayar sekalipun melihat angka di
+     * atas nol dan mengira uangnya sudah masuk.
+     */
+    private function jumlahTransaksi(User $user): int
+    {
+        return Invoice::query()
+            ->where('user_id', $user->id)
+            ->where('status', PaymentStatus::PAID->value)
+            ->count();
+    }
+
+    /**
+     * Ringkasan Program Affiliate beserta tautan referralnya.
+     *
+     * Dilewati sama sekali bila programnya dimatikan admin. Menampilkan
+     * bagian ini dengan angka nol saat program tidak berjalan hanya
+     * memunculkan pertanyaan "kenapa komisi saya tidak bertambah".
+     */
+    private function referralSection(Notice $pesan, User $user): void
+    {
+        if (! $this->referral->enabled()) {
+            return;
+        }
+
+        $data = $this->referral->summary($user);
+
+        $pesan->section('🤝', 'Program Affiliate')->rows([
+            'Persentase komisi' => rtrim(rtrim(number_format((float) $data['rate'], 2, ',', '.'), '0'), ',').'%',
+            'Level'             => 'Level '.$data['level'],
+            'Mengundang'        => (int) $data['total_referrals'].' orang',
+            'Transaksi masuk'   => (int) $data['transactions'].' kali',
+            'Total komisi'      => Uang::format($data['commission']),
+            'Saldo tersedia'    => Uang::format($data['balance']),
+        ]);
+
+        $pesan->text('Tautan referral Anda:');
+
+        $pesan->code((string) $data['link']);
+
+        $pesan->note('Bagikan tautan di atas — setiap pembelian VIP dari orang '
+            .'yang masuk lewat sana memberi Anda komisi, dan pemberitahuannya '
+            .'langsung dikirim ke chat ini.');
     }
 
     /**
@@ -194,7 +267,7 @@ class ProfileHandler
      * Menampilkan semua tombol kepada semua orang membuat yang paling
      * berguna tenggelam.
      *
-     * @return array<int,array<int,array<string,string>>>
+     * @return array<int,array<int,array<string,mixed>>>
      */
     private function tombol(User $user): array
     {
@@ -209,6 +282,27 @@ class ProfileHandler
             ]];
         }
 
+        if ($this->referral->enabled()) {
+
+            $baris = [];
+
+            $affiliate = $this->tombolAffiliate();
+
+            if ($affiliate !== null) {
+                $baris[] = $affiliate;
+            }
+
+            $bagikan = $this->tombolBagikan($user);
+
+            if ($bagikan !== null) {
+                $baris[] = $bagikan;
+            }
+
+            if ($baris !== []) {
+                $tombol[] = $baris;
+            }
+        }
+
         $tombol[] = [[
             'text'          => '💎 Premium',
             'callback_data' => 'premium',
@@ -220,5 +314,62 @@ class ProfileHandler
         ]];
 
         return $tombol;
+    }
+
+    /**
+     * Tombol menuju halaman Program Affiliate — tempat saldo ditarik.
+     *
+     * Dibuka sebagai Mini App bila alamatnya sudah HTTPS: pengguna tetap di
+     * dalam Telegram dan sudah dalam keadaan masuk. Kalau belum HTTPS —
+     * biasanya saat pengembangan lokal — Telegram menolak tombol `web_app`
+     * dan MENOLAK SELURUH KEYBOARD bersamanya, bukan hanya tombol itu. Karena
+     * itu jatuhannya adalah tautan `startapp` biasa, dan bila username botnya
+     * pun belum diisi, tombolnya tidak dirender sama sekali.
+     *
+     * @return array<string,mixed>|null
+     */
+    private function tombolAffiliate(): ?array
+    {
+        $base = rtrim((string) (config('telegram.miniapp_url') ?: config('app.url')), '/');
+
+        if (str_starts_with($base, 'https://')) {
+            return [
+                'text'    => '💰 Saldo & Penarikan',
+                'web_app' => ['url' => $base.'/affiliate'],
+            ];
+        }
+
+        $url = TelegramDeepLink::app(TelegramDeepLink::APP_AFFILIATE);
+
+        return $url === null ? null : [
+            'text' => '💰 Saldo & Penarikan',
+            'url'  => $url,
+        ];
+    }
+
+    /**
+     * Tombol bagikan: membuka pemilih chat Telegram dengan tautan sudah terisi.
+     *
+     * Menyalin tautan dari dalam blok kode lalu menempelkannya ke chat lain
+     * adalah tiga langkah di ponsel. Ini satu.
+     *
+     * @return array<string,mixed>|null
+     */
+    private function tombolBagikan(User $user): ?array
+    {
+        $link = TelegramDeepLink::referral($this->referral->codeFor($user));
+
+        if ($link === null) {
+            return null;
+        }
+
+        $teks = 'Nonton drama pendek subtitle Indonesia di DramaVerse ID — '
+            .'ribuan judul, part baru tiap hari.';
+
+        return [
+            'text' => '🔗 Bagikan tautan',
+            'url'  => 'https://t.me/share/url?url='.rawurlencode($link)
+                .'&text='.rawurlencode($teks),
+        ];
     }
 }
