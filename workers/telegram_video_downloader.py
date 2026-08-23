@@ -30,6 +30,14 @@ PARALLEL_CONNECTIONS = int(
     os.environ.get("TG_PARALLEL_CONNECTIONS", "4")
 )
 
+# Plafon jatah paralel saat koneksi sedang lancar. Default sama dengan
+# titik awal, jadi angka di atas tidak pernah dilewati diam-diam. Set
+# lebih tinggi (mis. TG_MAX_PARALLEL=8) kalau mau limiter boleh memanjat
+# di atas titik awal selama tidak kena flood.
+MAX_PARALLEL = int(
+    os.environ.get("TG_MAX_PARALLEL", str(PARALLEL_CONNECTIONS))
+)
+
 
 # ============================================================
 # DramaVerse Laravel API
@@ -573,6 +581,7 @@ async def main():
     downloader = ParallelDownloader(
         client,
         num_connections=PARALLEL_CONNECTIONS,
+        max_connections=MAX_PARALLEL,
     )
 
     for index, message in enumerate(
@@ -607,13 +616,24 @@ async def main():
 
             stats = downloader.last_stats
 
+            if stats.get("seconds"):
+                mb = stats["bytes"] / (1024 * 1024)
+
+                print(
+                    f"\n[TG] {mb:.1f} MB dalam "
+                    f"{stats['seconds']:.1f}s "
+                    f"({mb / stats['seconds']:.2f} MB/s)."
+                )
+
             if stats.get("flood_hits"):
                 print(
-                    f"\n[TG] Kena flood {stats['flood_hits']}x "
-                    f"(total tunggu {stats['flood_seconds']}s), "
-                    f"koneksi disesuaikan "
-                    f"{stats['connections_start']} -> "
-                    f"{stats['connections_min']}."
+                    f"[TG] Kena flood {stats['flood_hits']}x "
+                    f"(total tunggu {stats['flood_seconds']}s). "
+                    f"Jatah paralel: mulai "
+                    f"{stats['connections_start']}, "
+                    f"terendah {stats['connections_min']}, "
+                    f"tertinggi {stats['connections_max']}, "
+                    f"akhir {stats['connections_end']}."
                 )
 
         except Exception as error:

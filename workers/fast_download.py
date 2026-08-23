@@ -125,7 +125,16 @@ MAX_FLOOD_TOTAL = 900
 
 # Setelah sekian chunk lancar berturut-turut, izin request bersamaan
 # dinaikkan satu lagi.
-RECOVERY_STREAK = 20
+#
+# Dulu 20. Dengan chunk 1 MB itu berarti 20 MB per satu langkah naik --
+# pulih dari 1 ke 4 butuh 60 MB transfer bersih, dan flood yang datang
+# lebih rapat dari itu membuat jatah tidak pernah naik lagi sama sekali.
+RECOVERY_STREAK = 5
+
+# Jatah paralel tidak boleh turun sampai benar-benar serial. Pada 1,
+# hanya ada satu request 1 MB terbang pada satu waktu dan seluruh
+# throughput ditentukan RTT ke DC.
+MIN_LIMIT = 2
 
 
 class NotEnoughDiskSpace(Exception):
@@ -167,7 +176,13 @@ class _FloodGate:
         self.total_paused = 0.0
         self.flood_hits = 0
 
+        # Nomor gelombang flood. Naik HANYA saat palang yang tadinya
+        # terbuka ditutup lagi -- jadi semua chunk yang kena flood dari
+        # gelombang yang sama membawa nomor yang sama.
+        self.generation = 0
+
     def pause(self, seconds):
+        """Tutup palang, kembalikan nomor gelombang flood saat ini."""
         self.flood_hits += 1
 
         now = time.monotonic()
@@ -175,38 +190,69 @@ class _FloodGate:
         # Tambah jeda kecil supaya tidak menembak tepat di detik batas.
         until = now + seconds + 0.5
 
+        # Palang sedang terbuka -> ini gelombang baru. Kalau masih
+        # tertutup, chunk ini cuma korban gelombang yang sudah berjalan.
+        if now >= self._open_at:
+            self.generation += 1
+
         # Kalau palang sudah tertutup lebih lama, biarkan.
         if until > self._open_at:
             self.total_paused += until - max(now, self._open_at)
             self._open_at = until
 
+        return self.generation
+
     async def wait(self):
+        paused = False
+
         while True:
             delay = self._open_at - time.monotonic()
 
             if delay <= 0:
-                return
+                break
+
+            paused = True
 
             # Tidur pendek-pendek supaya perpanjangan palang oleh
             # koneksi lain langsung terbaca.
             await asyncio.sleep(min(delay, 0.5))
+
+        if paused:
+            # Jangan bangun serempak. Kalau semua koneksi menembak di
+            # milidetik yang sama begitu palang dibuka, Telegram melihat
+            # lonjakan yang sama persis seperti yang tadi dihukum, dan
+            # langsung menutup palang lagi. Jeda acak kecil memecah
+            # gelombang itu -- ini yang paling menentukan, karena waktu
+            # tunggu palang jauh lebih mahal daripada jumlah koneksi.
+            await asyncio.sleep(random.uniform(0, 0.25))
 
 
 class _AdaptiveLimiter:
     """
     Pembatas request bersamaan yang bisa berubah saat jalan.
 
-    Kena flood -> jatah turun satu (minimal 1).
-    Lancar terus -> jatah naik satu lagi (maksimal batas awal).
+    Satu GELOMBANG flood -> jatah turun satu (tidak pernah di bawah
+    `floor`). Turun sekali per gelombang, bukan sekali per chunk: dulu
+    satu gelombang mengenai semua chunk yang sedang terbang sekaligus,
+    jadi 4 koneksi jatuh ke 1 dalam satu tarikan napas.
+
+    Lancar terus -> jatah naik satu lagi, sampai `maximum` (yang boleh
+    lebih tinggi dari titik awal, supaya koneksi yang lancar tidak
+    selamanya mentok di angka start).
     """
 
-    def __init__(self, start, maximum):
+    def __init__(self, start, maximum, floor=MIN_LIMIT):
         self._max = max(1, int(maximum))
-        self._limit = max(1, min(int(start), self._max))
+        self._floor = max(1, min(int(floor), int(start), self._max))
+        self._limit = max(self._floor, min(int(start), self._max))
         self._in_flight = 0
         self._streak = 0
         self._cond = asyncio.Condition()
         self.min_limit_seen = self._limit
+        self.max_limit_seen = self._limit
+
+        # Gelombang flood terakhir yang sudah dihitung sebagai hukuman.
+        self._last_generation = 0
 
     @property
     def limit(self):
@@ -225,11 +271,26 @@ class _AdaptiveLimiter:
 
             self._cond.notify(1)
 
-    async def penalize(self):
-        async with self._cond:
-            self._streak = 0
+    async def penalize(self, generation=None):
+        """
+        Turunkan jatah satu tingkat untuk gelombang flood `generation`.
 
-            if self._limit > 1:
+        Gelombang yang sudah pernah dihukum diabaikan, jadi 12 chunk yang
+        kena flood bersamaan tetap dihitung satu kali.
+        """
+        async with self._cond:
+            if generation is not None:
+                if generation <= self._last_generation:
+                    return
+
+                self._last_generation = generation
+
+            # Flood itu backpressure, bukan kegagalan. Streak dipotong
+            # separuh, tidak dinolkan -- kemajuan yang sudah dikumpulkan
+            # tidak hangus seluruhnya setiap kali kena rem.
+            self._streak //= 2
+
+            if self._limit > self._floor:
                 self._limit -= 1
 
                 self.min_limit_seen = min(
@@ -239,15 +300,21 @@ class _AdaptiveLimiter:
 
     async def reward(self):
         async with self._cond:
+            if self._limit >= self._max:
+                return
+
             self._streak += 1
 
-            if (
-                self._streak >= RECOVERY_STREAK
-                and self._limit < self._max
-            ):
+            if self._streak >= RECOVERY_STREAK:
                 self._limit += 1
                 self._streak = 0
 
+                self.max_limit_seen = max(
+                    self.max_limit_seen,
+                    self._limit,
+                )
+
+                # Satu slot baru terbuka -> satu penunggu boleh jalan.
                 self._cond.notify(1)
 
 
@@ -256,6 +323,7 @@ class ParallelDownloader:
         self,
         client,
         num_connections=4,
+        max_connections=None,
         batch_multiplier=BATCH_MULTIPLIER,
         min_free_bytes=512 * 1024 * 1024,
         chunk_size=CHUNK_SIZE,
@@ -263,6 +331,11 @@ class ParallelDownloader:
         """
         client          : TelegramClient yang sudah terhubung.
         num_connections : jumlah koneksi paralel (dibatasi 1..MAX_CONNECTIONS).
+        max_connections : plafon jatah paralel saat koneksi lancar. Default
+                          sama dengan num_connections, jadi setelan yang
+                          Anda pilih tidak pernah dilewati diam-diam.
+                          Naikkan (mis. 8) kalau mau limiter boleh memanjat
+                          di atas titik awal saat tidak ada flood.
         batch_multiplier: chunk in-flight per koneksi. Turunkan kalau RAM tipis.
         min_free_bytes  : sisa disk yang harus tetap tersedia setelah download.
         chunk_size      : besar satu request. Harus kelipatan 4096 dan
@@ -272,6 +345,13 @@ class ParallelDownloader:
         self.num_connections = max(
             1,
             min(int(num_connections), MAX_CONNECTIONS),
+        )
+        self.max_connections = max(
+            self.num_connections,
+            min(
+                int(max_connections or self.num_connections),
+                MAX_CONNECTIONS,
+            ),
         )
         self.batch_multiplier = max(1, int(batch_multiplier))
         self.min_free_bytes = int(min_free_bytes)
@@ -441,9 +521,12 @@ class ParallelDownloader:
                     )
                     break
 
-                await limiter.penalize()
+                # Palang ditutup lebih dulu supaya nomor gelombangnya
+                # keluar; limiter memakai nomor itu agar satu gelombang
+                # flood hanya menurunkan jatah SEKALI.
+                generation = gate.pause(seconds)
 
-                gate.pause(seconds)
+                await limiter.penalize(generation)
 
         raise RuntimeError(
             f"Chunk offset {offset} gagal: {last_error}"
@@ -516,9 +599,19 @@ class ParallelDownloader:
         batch_size = self.num_connections * self.batch_multiplier
 
         gate = _FloodGate()
+
+        # Plafon dipisahkan dari titik awal, tapi default-nya SAMA dengan
+        # num_connections: setelan yang dipilih pengguna tidak pernah
+        # dilewati diam-diam. Naikkan lewat max_connections kalau mau
+        # limiter boleh memanjat saat tidak ada flood sama sekali.
+        ceiling = max(
+            self.num_connections,
+            min(self.max_connections, batch_size),
+        )
+
         limiter = _AdaptiveLimiter(
             self.num_connections,
-            self.num_connections,
+            ceiling,
         )
 
         senders, same_dc = await self._get_dc_senders(dc_id)
@@ -599,6 +692,7 @@ class ParallelDownloader:
             "flood_seconds": round(gate.total_paused, 1),
             "connections_start": self.num_connections,
             "connections_min": limiter.min_limit_seen,
+            "connections_max": limiter.max_limit_seen,
             "connections_end": limiter.limit,
         }
 
