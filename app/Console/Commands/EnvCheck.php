@@ -138,6 +138,174 @@ class EnvCheck extends Command
                 'Tanpa rahasia ini, endpoint webhook menerima permintaan dari '
                 .'siapa pun yang tahu alamatnya.');
         }
+
+        $this->periksaFileId();
+    }
+
+    /**
+     * Jaga tiga hal yang mematikan seluruh `telegram_file_id` sekaligus.
+     *
+     * ## Kenapa penjagaan ini ada
+     *
+     * Video di bot tidak diputar dari storage provider. Ia diputar dari
+     * salinan milik Telegram, yang ditunjuk `episode_videos.telegram_file_id`.
+     * Setelah berkas aslinya dihapus dari storage — dan menghapusnya adalah
+     * hal yang wajar dilakukan untuk menghemat biaya — id itu menjadi
+     * SATU-SATUNYA jalan menuju video tersebut.
+     *
+     * Id itu tidak pernah kedaluwarsa dengan sendirinya. Ia mati hanya karena
+     * tiga tindakan, dan ketiganya terlihat tidak berbahaya saat dikerjakan:
+     *
+     * 1. `TELEGRAM_API_URL` dipindah ke `api.telegram.org` — id terbitan Local
+     *    Bot API Server tidak dikenal di sana, dan sebaliknya.
+     * 2. `TELEGRAM_BOT_TOKEN` diganti — file id terikat pada bot penerbitnya.
+     * 3. Folder `--dir` Local Bot API Server hilang — terhapus, disk rusak,
+     *    atau container dibuat ulang tanpa volume.
+     *
+     * Ketiganya tidak menimbulkan galat apa pun saat terjadi. Yang terlihat
+     * baru muncul belakangan, saat seseorang menekan tombol tonton dan
+     * Telegram menjawab "file tidak ditemukan" — dan pada saat itu tidak ada
+     * lagi yang bisa dipulihkan.
+     *
+     * Karena itu diperiksa di sini, di perintah yang memang dijalankan sebelum
+     * dan sesudah deploy.
+     */
+    private function periksaFileId(): void
+    {
+        if (! Schema::hasTable('episode_videos')) {
+            return;
+        }
+
+        $jumlah = (int) \App\Models\EpisodeVideo::query()
+            ->whereNotNull('telegram_file_id')
+            ->count();
+
+        // Tanpa file id tersimpan, tidak ada yang bisa hilang.
+        if ($jumlah === 0) {
+            return;
+        }
+
+        $apiUrl = (string) config('telegram.api_url');
+
+        $lokal = $apiUrl !== '' && ! str_contains($apiUrl, 'api.telegram.org');
+
+        /*
+        |----------------------------------------------------------------------
+        | 1. Pindah ke API cloud
+        |----------------------------------------------------------------------
+        |
+        | FATAL, bukan peringatan. Perpindahan ini mematikan seluruh id
+        | sekaligus, dan tidak ada satu pun gejala sampai pengguna pertama
+        | mencoba menonton.
+        |
+        */
+        $this->wajib(
+            $lokal,
+            sprintf(
+                'TELEGRAM_API_URL menunjuk API cloud, padahal ada %d video '
+                .'yang file id-nya diterbitkan Local Bot API Server.',
+                $jumlah
+            ),
+            'File id dari server lokal TIDAK berlaku di api.telegram.org. '
+            .'Mengubah ini mematikan seluruh video di bot sekaligus, dan tidak '
+            .'bisa dipulihkan kecuali berkas aslinya masih ada di storage '
+            .'provider untuk disinkronkan ulang. Kembalikan TELEGRAM_API_URL ke '
+            .'alamat server lokal Anda.'
+        );
+
+        if (! $lokal) {
+            return;
+        }
+
+        /*
+        |----------------------------------------------------------------------
+        | 2. Token berganti
+        |----------------------------------------------------------------------
+        |
+        | Yang dibandingkan hanya bagian id bot — angka sebelum titik dua.
+        | Bagian rahasianya tidak pernah disimpan di mana pun, termasuk di
+        | tabel setting yang bisa dibaca admin mana pun.
+        |
+        | Sidik jarinya ditulis saat pertama kali perintah ini berjalan.
+        | Pemasangan yang sudah berjalan lama karena itu tidak mendadak
+        | dilaporkan bermasalah — yang dijaga adalah PERUBAHAN sesudahnya.
+        |
+        */
+        $token = (string) config('telegram.bot_token');
+
+        $botId = trim(explode(':', $token)[0] ?? '');
+
+        if ($botId !== '' && Schema::hasTable('settings')) {
+
+            $tersimpan = \App\Models\Setting::query()
+                ->where('key', 'telegram_bot_id_fileid')
+                ->value('value');
+
+            if (blank($tersimpan)) {
+
+                \App\Models\Setting::updateOrCreate(
+                    ['key' => 'telegram_bot_id_fileid'],
+                    ['value' => $botId]
+                );
+
+            } else {
+
+                $this->wajib(
+                    (string) $tersimpan === $botId,
+                    sprintf(
+                        'TELEGRAM_BOT_TOKEN berganti bot (dulu %s, sekarang %s), '
+                        .'padahal ada %d video yang file id-nya milik bot lama.',
+                        $tersimpan,
+                        $botId,
+                        $jumlah
+                    ),
+                    'File id terikat pada bot yang menerbitkannya. Bot baru tidak '
+                    .'bisa mengirim video milik bot lama. Kembalikan tokennya, atau '
+                    .'sinkronkan ulang seluruh video dari storage provider dengan '
+                    .'bot yang baru.'
+                );
+            }
+        }
+
+        /*
+        |----------------------------------------------------------------------
+        | 3. Folder data server lokal
+        |----------------------------------------------------------------------
+        |
+        | Di folder inilah Telegram versi lokal menyimpan berkasnya. Setelah
+        | storage provider dikosongkan, folder ini menjadi satu-satunya tempat
+        | video Anda benar-benar berada.
+        |
+        | PERHATIAN, bukan FATAL: `TELEGRAM_API_DIR` boleh saja tidak diisi
+        | pada pemasangan yang tidak perlu membaca berkas dari disk, dan
+        | folder yang tidak terbaca dari sisi PHP belum tentu tidak ada.
+        |
+        */
+        $dir = (string) config('telegram.api_dir');
+
+        if ($dir === '') {
+
+            $this->sarankan(
+                false,
+                'TELEGRAM_API_DIR belum diisi, jadi folder data Local Bot API '
+                .'Server tidak diketahui aplikasi.',
+                'Isi dengan argumen --dir server itu. Setelah berkas di storage '
+                .'provider dihapus, folder tersebut satu-satunya tempat '
+                .$jumlah.' video Anda tersimpan — dan folder yang tidak '
+                .'diketahui tidak akan pernah masuk rencana cadangan.'
+            );
+
+            return;
+        }
+
+        $this->sarankan(
+            is_dir($dir),
+            'Folder TELEGRAM_API_DIR ('.$dir.') tidak ditemukan.',
+            'Di folder itulah '.$jumlah.' video Anda tersimpan. Kalau ia benar-'
+            .'benar hilang, seluruh file id ikut mati. Periksa apakah server '
+            .'Bot API lokal masih memakai --dir yang sama, dan pastikan '
+            .'foldernya ikut dicadangkan.'
+        );
     }
 
     private function periksaPembayaran(bool $produksi): void

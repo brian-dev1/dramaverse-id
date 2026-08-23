@@ -51,6 +51,19 @@ selesai() {
 }
 trap selesai EXIT
 
+# Diperiksa SEBELUM apa pun disentuh — sebelum mode pemeliharaan, sebelum
+# kode ditarik. Kalau ada yang fatal, situs tidak pernah sempat turun dan
+# tidak ada satu pun perubahan yang perlu dibatalkan.
+#
+# Yang paling penting dijaga di sini: TELEGRAM_API_URL, TELEGRAM_BOT_TOKEN,
+# dan folder TELEGRAM_API_DIR. Ketiganya mematikan SELURUH telegram_file_id
+# sekaligus bila berubah, tanpa menimbulkan galat apa pun saat terjadi — yang
+# terlihat baru muncul saat pengguna pertama menekan tombol tonton, dan pada
+# saat itu videonya sudah tidak bisa dipulihkan.
+echo "==> Periksa environment"
+STEP="periksa environment (env:check)"
+php artisan env:check
+
 echo "==> Mode pemeliharaan"
 STEP="mode pemeliharaan"
 php artisan down || true
