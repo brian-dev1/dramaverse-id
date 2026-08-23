@@ -62,6 +62,20 @@ enum PaymentDriver: string
      * Satu baris provider mewakili SATU channel; `channel_code` yang
      * menentukan. Menerima QRIS dan VA sekaligus berarti dua baris provider
      * dengan `api_key` yang sama.
+     *
+     * ## Arti tiap kredensial
+     *
+     * - `base_url` — host API, misalnya `https://api.xoftwarepay.com`, tanpa
+     *   garis miring di akhir. Wajib karena dokumentasi Xoftware Pay hanya
+     *   menyebut path relatif dan tidak pernah menyebut host-nya.
+     * - `merchant_id` — angka, ada di dashboard.
+     * - `api_key` — dipakai autentikasi DAN menandatangani permintaan keluar
+     *   (base64).
+     * - `webhook_secret` — dipakai memverifikasi callback masuk (hex). BUKAN
+     *   kunci yang sama dengan `api_key`, meski header pembawanya sama-sama
+     *   `X-Signature`.
+     * - `channel_code` — misalnya `QRIS`. Channel e-wallet ditolak driver;
+     *   lihat `XoftwarePayGateway`.
      */
     case XOFTWAREPAY = 'xoftwarepay';
 
@@ -178,12 +192,25 @@ enum PaymentDriver: string
             | menyebut path relatif dan tidak pernah menyebut host-nya.
             | Menanamkannya di kode berarti pindah ke sandbox butuh deploy.
             */
+            /*
+            | Label sengaja PENDEK.
+            |
+            | Nilai-nilai ini muncul di dua tempat dengan kebutuhan yang
+            | berlawanan: sebagai label field di form admin, dan sebagai
+            | daftar field yang kurang di `missingLabels()` — yang dicetak
+            | `payment:providers` sebagai satu baris dipisah koma.
+            |
+            | Kalimat penjelasan yang berguna di form berubah jadi tembok
+            | teks yang tidak terbaca di baris itu. Penjelasannya karena itu
+            | ada di docblock case ini dan di kolom `instruction` provider,
+            | bukan di sini.
+            */
             self::XOFTWAREPAY => [
-                'base_url'       => 'Base URL API, misalnya https://api.xoftwarepay.com (tanpa garis miring di akhir)',
-                'merchant_id'    => 'Merchant ID (angka, ada di dashboard)',
-                'api_key'        => 'API Key — dipakai autentikasi DAN menandatangani permintaan keluar',
-                'webhook_secret' => 'Webhook Secret (HMAC) — dipakai memverifikasi callback masuk',
-                'channel_code'   => 'Kode channel, misalnya QRIS. Satu provider satu channel',
+                'base_url'       => 'Base URL API',
+                'merchant_id'    => 'Merchant ID',
+                'api_key'        => 'API Key',
+                'webhook_secret' => 'Webhook Secret (HMAC)',
+                'channel_code'   => 'Kode channel',
             ],
         };
     }
@@ -219,8 +246,7 @@ enum PaymentDriver: string
             ],
 
             self::XOFTWAREPAY => [
-                'fee_direction' => 'Siapa menanggung biaya layanan: `merchant` (dipotong dari '
-                    .'settlement) atau `user` (ditambahkan ke tagihan). Kosong = merchant.',
+                'fee_direction' => 'Penanggung biaya (merchant / user)',
             ],
 
             default => [],
