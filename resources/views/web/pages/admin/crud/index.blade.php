@@ -7,6 +7,12 @@
     // supaya tombol yang tidak berfungsi tidak pernah dirender.
     $canCreate  = Route::has('admin.'.$routeKey.'.create');
     $canEdit    = Route::has('admin.'.$routeKey.'.edit');
+
+    // Halaman detail. Modul seperti Pengguna tidak punya form edit — datanya
+    // dibuat bot, bukan diketik admin — sehingga sebelumnya tidak ada satu pun
+    // tautan menuju detailnya, dan seluruh isi halaman itu tidak pernah
+    // terjangkau dari daftar.
+    $canShow    = Route::has('admin.'.$routeKey.'.show');
     $canDelete  = Route::has('admin.'.$routeKey.'.destroy');
     $canRestore = Route::has('admin.'.$routeKey.'.restore');
     $canBulk    = ! empty($bulkActions) && Route::has('admin.'.$routeKey.'.bulk');
@@ -392,6 +398,22 @@
                                                     <x-web.home.icon name="check" :size="15" />
                                                 </button>
                                             </form>
+                                        @endif
+
+                                        {{--
+                                            Buka halaman detail.
+
+                                            Tidak dibatasi $isProtectedRoot:
+                                            melihat rincian tidak mengubah apa
+                                            pun, dan justru akun terlindungi
+                                            itulah yang paling sering perlu
+                                            diperiksa.
+                                        --}}
+                                        @if ($canShow)
+                                            <a href="{{ route('admin.'.$routeKey.'.show', $record->id) }}"
+                                               class="btn-icon" title="Lihat detail" aria-label="Lihat detail">
+                                                <x-web.home.icon name="file" :size="15" />
+                                            </a>
                                         @endif
 
                                         {{--
