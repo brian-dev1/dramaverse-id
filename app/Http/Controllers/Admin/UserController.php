@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Models\Role;
 use App\Models\User;
 use App\Services\Admin\ActivityLogger;
 use Illuminate\Contracts\View\View;
@@ -110,6 +111,12 @@ class UserController extends AdminCrudController
         return view('web.pages.admin.user-detail', [
             'user' => $user,
 
+            // Dipakai kotak "Akses Admin". Diambil selalu, bukan hanya saat
+            // pengguna ini admin: kotaknya juga dipakai untuk MENAIKKAN
+            // pengguna biasa, dan saat itu daftar rolenya justru yang paling
+            // dibutuhkan.
+            'roles' => Role::query()->orderBy('name')->get(),
+
             'histories' => $user->watchHistories()
                 ->with(['drama:id,title,slug', 'episode:id,episode_number'])
                 ->whereHas('drama')
@@ -180,6 +187,110 @@ class UserController extends AdminCrudController
         $this->guardedUser($id);
 
         return parent::destroy($id);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Akses admin
+    |--------------------------------------------------------------------------
+    |
+    | Panel membuat akun admin dengan email dan password, dan komentarnya
+    | menyatakannya sendiri: "Admin yang dibuat melalui panel bukan akun
+    | Telegram." Itu benar untuk admin yang bekerja di panel — tetapi menutup
+    | satu hal yang diperlukan sejak bot punya perintah admin: memberi akses
+    | kepada orang yang identitasnya MEMANG akun Telegram.
+    |
+    | Menyalin `telegram_id` ke akun admin terpisah bukan jalan keluar; kolom
+    | itu unik, dan barisnya sudah dipakai akun Telegram orang tersebut.
+    | Menaikkan akun yang sudah ada jauh lebih sederhana, dan menjaga riwayat,
+    | referral, serta langganannya tetap menempel pada satu orang.
+    */
+
+    /**
+     * Jadikan pengguna ini admin, dengan role yang dipilih.
+     *
+     * ## Kenapa role WAJIB dipilih
+     *
+     * `User::hasPermission()` memperlakukan admin tanpa role sebagai pemegang
+     * SELURUH izin yang tidak sensitif. Menaikkan seseorang tanpa role karena
+     * itu diam-diam membuka hampir seluruh panel — persis kebalikan dari yang
+     * dimaksud orang yang cuma ingin memberi akses satu perintah bot.
+     *
+     * Mewajibkannya membuat pemberian akses selalu merupakan keputusan yang
+     * disebutkan, bukan akibat sampingan.
+     */
+    public function promote(Request $request, int $id): RedirectResponse
+    {
+        $data = $request->validate(
+            [
+                'roles'   => ['required', 'array', 'min:1'],
+                'roles.*' => ['integer', 'exists:roles,id'],
+            ],
+            ['roles.required' => 'Pilih minimal satu role untuk pengguna ini.']
+        );
+
+        $user = User::findOrFail($id);
+
+        abort_if(
+            $user->id === Auth::id(),
+            403,
+            'Anda tidak bisa mengubah akses akun Anda sendiri di sini.'
+        );
+
+        $user->forceFill([
+            'is_admin' => true,
+
+            // Admin yang nonaktif tidak bisa membuka panel maupun memakai
+            // perintah bot — `canAccessAdmin()` memeriksanya. Menaikkan
+            // seseorang lalu membiarkannya nonaktif menghasilkan akses yang
+            // tidak pernah bekerja, tanpa petunjuk kenapa.
+            'is_active' => true,
+        ])->save();
+
+        $user->roles()->sync(
+            Role::query()->whereIn('id', $data['roles'])->pluck('id')->all()
+        );
+
+        app(ActivityLogger::class)->log('dijadikan admin', 'user', $user);
+
+        return back()->with('status',
+            $user->display_name.' sekarang admin. Aksesnya mengikuti role yang dipilih, '
+            .'baik di panel maupun di perintah bot.');
+    }
+
+    /**
+     * Cabut status admin.
+     *
+     * Role ikut dilepas, bukan disimpan "kalau-kalau dinaikkan lagi". Role
+     * yang tertinggal pada akun non-admin adalah izin yang tidak terlihat di
+     * mana pun sampai seseorang menaikkannya kembali — dan pada saat itu ia
+     * mendapat akses yang tidak pernah diputuskan siapa pun.
+     */
+    public function demote(int $id): RedirectResponse
+    {
+        $user = User::findOrFail($id);
+
+        abort_if(
+            $user->id === Auth::id(),
+            403,
+            'Anda tidak bisa mencabut akses akun Anda sendiri.'
+        );
+
+        // Root Owner tidak bergantung pada role, jadi mencabut is_admin saja
+        // tidak menutup aksesnya — hanya membuat keadaannya membingungkan.
+        abort_if(
+            $user->isRoot(),
+            403,
+            'Root Owner tidak dapat dicabut aksesnya dari sini.'
+        );
+
+        $user->forceFill(['is_admin' => false])->save();
+
+        $user->roles()->detach();
+
+        app(ActivityLogger::class)->log('dicabut status adminnya', 'user', $user);
+
+        return back()->with('status', $user->display_name.' bukan admin lagi.');
     }
 
     /**

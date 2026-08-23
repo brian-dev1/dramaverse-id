@@ -573,6 +573,32 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('/{id}', 'show')->name('show')->whereNumber('id');
             Route::post('/{id}/ban', 'toggleBan')->name('ban')->whereNumber('id');
             Route::post('/{id}/active', 'toggleActive')->name('active')->whereNumber('id');
+
+            /*
+            |------------------------------------------------------------------
+            | Naik-turun status admin
+            |------------------------------------------------------------------
+            |
+            | Dijaga `admin.manage`, izin yang sama dengan modul Akun Admin —
+            | bukan `user.manage` yang menjaga grup ini. Memutuskan siapa yang
+            | menjadi admin adalah keputusan yang sama dengan membuat akun
+            | admin baru, dan menaruhnya di bawah izin yang lebih longgar
+            | berarti siapa pun yang boleh memblokir pengguna juga boleh
+            | mengangkat dirinya sendiri lewat akun lain.
+            |
+            | Izinnya BERTUMPUK dengan grup: pemakainya harus boleh melihat
+            | pengguna DAN boleh mengelola admin. Itu memang gabungan yang
+            | dimaksud — halaman ini adalah daftar pengguna, bukan pintu
+            | belakang menuju pengelolaan admin.
+            |
+            */
+            Route::post('/{id}/promote', 'promote')
+                ->name('promote')->whereNumber('id')
+                ->middleware('permission:admin.manage');
+
+            Route::post('/{id}/demote', 'demote')
+                ->name('demote')->whereNumber('id')
+                ->middleware('permission:admin.manage');
             Route::delete('/{id}', 'destroy')->name('destroy')->whereNumber('id');
             Route::post('/bulk', 'bulk')->name('bulk');
         });

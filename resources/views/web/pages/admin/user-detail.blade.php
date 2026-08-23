@@ -43,6 +43,71 @@
                 <dd>{{ \App\Support\Waktu::ringkas($user->created_at) }}</dd>
             </dl>
 
+            @can('admin.manage')
+                @if ($user->id !== auth()->id() && ! $user->isRoot())
+                    <div class="panel" style="margin-top:16px;">
+                        <div class="panel-head"><h2>Akses admin</h2></div>
+
+                        <div class="detail-body-admin">
+                            @if ($user->is_admin)
+                                <p class="page-subtitle">
+                                    Pengguna ini <strong>admin</strong>, dengan role:
+                                    <strong>{{ $user->roles->pluck('name')->join(', ') ?: 'belum ada role' }}</strong>.
+                                    Aksesnya berlaku di panel maupun di perintah bot.
+                                </p>
+
+                                <form method="POST" action="{{ route('admin.user.demote', $user->id) }}" class="inline-form">
+                                    @csrf
+                                    <button type="submit" class="btn btn-ghost btn-sm">Cabut status admin</button>
+                                </form>
+                            @else
+                                <p class="page-subtitle">
+                                    Jadikan pengguna ini admin agar bisa memakai perintah admin di bot
+                                    Telegram. Pilih role-nya — role itulah yang menentukan apa saja
+                                    yang boleh ia buka, di panel maupun di bot.
+                                </p>
+
+                                <form method="POST" action="{{ route('admin.user.promote', $user->id) }}">
+                                    @csrf
+
+                                    <div class="settings-meta" style="display:block;">
+                                        @forelse ($roles as $role)
+                                            <label style="display:block; margin:6px 0;">
+                                                <input type="checkbox" name="roles[]" value="{{ $role->id }}"
+                                                       @checked(in_array($role->id, old('roles', [])))>
+                                                {{ $role->name }}
+                                                @if ($role->description)
+                                                    <span class="page-subtitle">— {{ $role->description }}</span>
+                                                @endif
+                                            </label>
+                                        @empty
+                                            <p class="page-subtitle">
+                                                Belum ada role. Buat dulu di menu Role, lalu kembali ke sini.
+                                            </p>
+                                        @endforelse
+                                    </div>
+
+                                    @error('roles')
+                                        <p class="page-subtitle" style="color:var(--danger, #d33);">{{ $message }}</p>
+                                    @enderror
+
+                                    @if ($roles->isNotEmpty())
+                                        <button type="submit" class="btn btn-primary btn-sm" style="margin-top:10px;">
+                                            Jadikan admin
+                                        </button>
+                                    @endif
+                                </form>
+
+                                <p class="page-subtitle" style="margin-top:10px;">
+                                    Untuk pemantau Affiliate di bot (<code>/afiliasi</code>), role-nya harus
+                                    memuat izin <strong>Kelola Pembayaran</strong>.
+                                </p>
+                            @endif
+                        </div>
+                    </div>
+                @endif
+            @endcan
+
             @unless ($user->is_admin)
                 <div class="detail-actions">
                     <form method="POST" action="{{ route('admin.user.active', $user->id) }}" class="inline-form">
