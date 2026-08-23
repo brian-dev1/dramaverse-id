@@ -167,6 +167,34 @@ class TelegramRouter
         $chatId = $message['chat']['id'];
         $command = mb_strtolower((string) str($text)->before(' ')->before('@')->ltrim('/'));
 
+        /*
+        |----------------------------------------------------------------------
+        | Perintah admin, ditangani sebelum menu biasa
+        |----------------------------------------------------------------------
+        |
+        | Tidak lewat `TelegramMenuAction` karena bukan menu: ia membawa
+        | argumen pencarian, dan sengaja tidak didaftarkan di daftar command
+        | Telegram supaya tidak muncul di kotak saran perintah pengguna biasa.
+        |
+        | Gerbang izinnya ada di dalam handler, bukan di sini. Menaruhnya di
+        | router berarti setiap perintah admin berikutnya harus mengingat
+        | menuliskannya lagi, dan yang lupa akan terbuka untuk semua orang.
+        |
+        | `$user` boleh null — orang yang belum pernah /start pun bisa
+        | mengetik perintah ini, dan handler menolaknya dengan pesan yang sama
+        | seperti non-admin lain.
+        |
+        */
+        if (in_array($command, ['afiliasi', 'affiliate'], true)) {
+
+            $bagian = preg_split('/\s+/', trim($text), 2);
+
+            app(\App\Telegram\Handlers\AffiliateAdminHandler::class)
+                ->handle($chatId, $user, $bagian[1] ?? '');
+
+            return;
+        }
+
         $action = match ($command) {
             'status', 'profil', 'profile' => TelegramMenuAction::PROFILE,
             'vip', 'premium' => TelegramMenuAction::PREMIUM,
