@@ -130,6 +130,60 @@ final class Notice
     }
 
     /**
+     * Satu bagian bercabang, yang menyatu dengan bagian bercabang di sebelahnya.
+     *
+     * ## Bedanya dengan `section()` + `rows()`
+     *
+     * Pasangan itu membuat SATU BLOK `<pre>` untuk setiap bagian. Di layar,
+     * empat bagian jadi empat kotak terpisah dengan jarak di antaranya —
+     * bentuk yang benar untuk pesan berisi dua bagian, tetapi berantakan
+     * untuk halaman seperti Profil yang memuat lima sekaligus. Mata membaca
+     * lima kotak sebagai lima pesan, bukan satu halaman.
+     *
+     * `branch()` menaruh judul dan isinya di dalam blok yang SAMA, dan
+     * bagian-bagian bercabang yang berurutan digabung jadi satu `<pre>`
+     * dengan garis tipis sebagai batas. Hasilnya satu halaman utuh yang
+     * tetap terbagi jelas.
+     *
+     * Penanda `├` dan `└` menggantikan sekat kotak: batas bagian ditandai
+     * garis, batas baris terakhir ditandai bentuk cabangnya sendiri.
+     *
+     * Pemisahannya otomatis putus bila ada blok lain di antaranya — catatan
+     * peringatan, misalnya. Itu disengaja: sesuatu yang perlu menonjol tidak
+     * boleh ikut terkubur di dalam blok yang sama.
+     *
+     * @param  array<string,string|null>  $data  nilai null dibuang
+     */
+    public function branch(string $ikon, string $judul, array $data): self
+    {
+        $data = array_filter($data, static fn ($v) => $v !== null && $v !== '');
+
+        if ($data === []) {
+            return $this;
+        }
+
+        $lebar = max(array_map(static fn ($k) => mb_strlen((string) $k), array_keys($data)));
+
+        $baris = [e(trim($ikon.' '.$judul))];
+
+        $sisa = count($data);
+
+        foreach ($data as $label => $nilai) {
+
+            $sisa--;
+
+            $pad = str_repeat(' ', $lebar - mb_strlen((string) $label));
+
+            $baris[] = ($sisa === 0 ? '└ ' : '├ ')
+                .e((string) $label).$pad.' : '.e((string) $nilai);
+        }
+
+        $this->blok[] = ['branch', implode("\n", $baris)];
+
+        return $this;
+    }
+
+    /**
      * Daftar berpoin untuk konsekuensi atau langkah lanjutan.
      *
      * @param  array<int,string>  $item
@@ -252,6 +306,53 @@ final class Notice
         return $this;
     }
 
+    /**
+     * Satukan blok bercabang yang berurutan jadi satu `<pre>`.
+     *
+     * Dikerjakan di sini, bukan saat `branch()` dipanggil, karena saat itu
+     * belum diketahui apakah blok berikutnya juga bercabang. Menyusunnya di
+     * muka berarti menebak, dan tebakan yang salah menghasilkan dua kotak
+     * yang seharusnya satu.
+     *
+     * @return array<int,array{0:string,1:string}>
+     */
+    private function gabungCabang(): array
+    {
+        $hasil = [];
+
+        $kumpul = [];
+
+        $simpan = function () use (&$hasil, &$kumpul): void {
+
+            if ($kumpul === []) {
+                return;
+            }
+
+            $hasil[] = ['rows', '<pre>'
+                .implode("\n".self::GARIS_TIPIS."\n", $kumpul)
+                .'</pre>'];
+
+            $kumpul = [];
+        };
+
+        foreach ($this->blok as [$jenis, $teks]) {
+
+            if ($jenis === 'branch') {
+                $kumpul[] = $teks;
+
+                continue;
+            }
+
+            $simpan();
+
+            $hasil[] = [$jenis, $teks];
+        }
+
+        $simpan();
+
+        return $hasil;
+    }
+
     public function render(): string
     {
         $judul = trim($this->ikon.' <b>'.e(mb_strtoupper($this->judul)).'</b>');
@@ -259,7 +360,7 @@ final class Notice
         $keluar = $judul;
         $sebelumnya = 'judul';
 
-        foreach ($this->blok as $urutan => [$jenis, $teks]) {
+        foreach ($this->gabungCabang() as $urutan => [$jenis, $teks]) {
 
             /*
             |------------------------------------------------------------------
