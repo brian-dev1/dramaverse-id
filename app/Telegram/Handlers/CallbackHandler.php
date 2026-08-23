@@ -97,7 +97,36 @@ class CallbackHandler
         switch ($awalan) {
 
             case EpisodeKeyboard::WATCH:
-                app(WatchHandler::class)->handle($chatId, $user, (int) ($argumen[0] ?? 0));
+
+                /*
+                |--------------------------------------------------------------
+                | Video lama diganti, pesan lain tidak
+                |--------------------------------------------------------------
+                |
+                | Tombol WATCH menempel di dua tempat: papan tombol di bawah
+                | video, dan daftar part. Keduanya mengirim callback yang isinya
+                | sama persis, jadi yang membedakan hanya pesan asalnya.
+                |
+                | Yang berasal dari pesan video diganti: pengguna menekan Next
+                | sambil menonton, dan video lama tidak lagi berguna. Chat pun
+                | tidak memanjang satu video setiap kali pindah part.
+                |
+                | Yang berasal dari daftar part TIDAK diganti — daftarnya masih
+                | dibutuhkan untuk memilih part berikutnya, dan menghapusnya
+                | memaksa pengguna membuka ulang daftar yang sama setiap kali.
+                |
+                | Pembedanya keberadaan `video` pada pesan asal, bukan tebakan
+                | dari jenis tombolnya.
+                |
+                */
+                $dariVideo = isset($callback['message']['video']);
+
+                app(WatchHandler::class)->handle(
+                    $chatId,
+                    $user,
+                    (int) ($argumen[0] ?? 0),
+                    $dariVideo ? (int) ($callback['message']['message_id'] ?? 0) : null
+                );
 
                 return;
 

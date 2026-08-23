@@ -51,8 +51,12 @@ class TelegramDeliveryService
      * tombol lalu tidak menerima apa pun akan menekannya lagi, dan itu
      * gejala yang sama dengan bot yang mati.
      */
-    public function send(int|string $chatId, ?User $user, Episode $episode): void
-    {
+    public function send(
+        int|string $chatId,
+        ?User $user,
+        Episode $episode,
+        ?int $gantiPesanId = null
+    ): void {
         /*
         |----------------------------------------------------------------------
         | 1. Episode harus memang bisa ditonton
@@ -166,6 +170,28 @@ class TelegramDeliveryService
             $episode,
             (bool) $episode->is_vip
         );
+
+        /*
+        |----------------------------------------------------------------------
+        | 6. Baru hapus video sebelumnya
+        |----------------------------------------------------------------------
+        |
+        | Urutannya kirim-dulu-baru-hapus, dan itu bukan kebetulan. Kalau
+        | dibalik, pengiriman yang gagal meninggalkan pengguna tanpa video
+        | sama sekali: yang lama sudah lenyap, yang baru tidak pernah datang,
+        | dan satu-satunya jalan kembali adalah mencari ulang dramanya dari
+        | menu.
+        |
+        | Dengan urutan ini, kegagalan terburuk yang mungkin terjadi hanyalah
+        | dua video menumpuk — persis keadaan sebelum fitur ini ada.
+        |
+        | Hanya berlaku bila permintaannya datang dari pesan video, yang
+        | ditentukan CallbackHandler. Tombol di daftar part dan menu tidak
+        | menghapus apa pun, karena pesan itu masih berguna untuk memilih
+        | part berikutnya.
+        |
+        */
+        $this->retention->gantikan($chatId, $gantiPesanId);
 
         // Riwayat ditulis SETELAH pengiriman berhasil. Menulisnya lebih dulu
         // membuat episode yang gagal terkirim tetap muncul di "lanjut

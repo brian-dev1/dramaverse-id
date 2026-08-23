@@ -122,6 +122,85 @@ class TelegramRetentionService
      *
      * @return array{dihapus:int, terlalu_tua:int, gagal:int}
      */
+    /**
+     * Hapus satu pesan yang baru saja digantikan pesan lain.
+     *
+     * ## Kenapa terpisah dari penghapusan terjadwal
+     *
+     * `jalankanTerjadwal()` membersihkan video premium yang sudah lewat masa
+     * simpannya — pekerjaan latar yang boleh gagal dan dicoba lagi nanti.
+     * Yang ini berbeda: pengguna baru saja menekan tombol dan sedang menatap
+     * layar, dan pesan lama harus hilang SEKARANG supaya penggantiannya
+     * terasa mulus.
+     *
+     * ## Kegagalan tidak pernah dilempar
+     *
+     * Pada titik pemanggilannya, video pengganti SUDAH terkirim. Kalau
+     * penghapusan yang gagal dibiarkan naik jadi exception, pengguna melihat
+     * pesan galat padahal yang ia minta sudah ada di layarnya — dan yang
+     * tersisa hanyalah satu video lama yang tidak jadi hilang. Itu gangguan
+     * kecil, bukan kegagalan.
+     *
+     * Barisnya tetap ditandai supaya penghapus terjadwal tidak mencoba
+     * menghapus pesan yang sudah tidak ada.
+     *
+     * @return bool berhasil dihapus atau memang sudah tidak ada
+     */
+    public function gantikan(int|string $chatId, ?int $messageId): bool
+    {
+        if ($messageId === null || $messageId <= 0) {
+            return false;
+        }
+
+        $baris = TelegramDelivery::query()
+            ->where('chat_id', (int) $chatId)
+            ->where('message_id', $messageId)
+            ->first();
+
+        try {
+            $this->telegram->deleteMessage($chatId, $messageId);
+
+            $baris?->forceFill([
+                'delete_status' => TelegramDelivery::DELETED,
+                'deleted_at'    => now(),
+                'delete_error'  => null,
+            ])->save();
+
+            return true;
+
+        } catch (Throwable $e) {
+
+            $pesan = $e->getMessage();
+
+            /*
+            | "message to delete not found" berarti pesannya memang sudah
+            | tidak ada — pengguna menghapusnya sendiri, atau penghapus
+            | terjadwal mendahului. Tujuannya tercapai, jadi ditandai selesai
+            | alih-alih gagal; kalau tidak, penghapus terjadwal akan
+            | mencobanya berulang selamanya.
+            */
+            $sudahHilang = str_contains(strtolower($pesan), 'not found');
+
+            $baris?->forceFill([
+                'delete_status' => $sudahHilang
+                    ? TelegramDelivery::DELETED
+                    : TelegramDelivery::FAILED,
+                'deleted_at'   => $sudahHilang ? now() : null,
+                'delete_error' => mb_substr($pesan, 0, 250),
+            ])->save();
+
+            if (! $sudahHilang) {
+                Log::warning('telegram.retention.replace_failed', [
+                    'chat_id'    => $chatId,
+                    'message_id' => $messageId,
+                    'sebab'      => $pesan,
+                ]);
+            }
+
+            return $sudahHilang;
+        }
+    }
+
     public function tarikMilikPengguna(int $userId): array
     {
         if (! config('telegram.retention.on_expire', true)) {

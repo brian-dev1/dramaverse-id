@@ -30,9 +30,17 @@ class WatchHandler
      * @param  int  $episodeId  id dari deep link atau dari callback_data —
      *                          keduanya masukan dari luar, jadi keduanya
      *                          diperlakukan sebagai belum tentu ada
+     * @param  int|null  $gantiPesanId  pesan video yang harus lenyap setelah
+     *                          penggantinya terkirim. Null untuk deep link
+     *                          dan menu — di situ tidak ada video yang sedang
+     *                          ditonton, jadi tidak ada yang perlu diganti.
      */
-    public function handle(int|string $chatId, ?User $user, int $episodeId): void
-    {
+    public function handle(
+        int|string $chatId,
+        ?User $user,
+        int $episodeId,
+        ?int $gantiPesanId = null
+    ): void {
         $episode = Episode::with('drama', 'video')->find($episodeId);
 
         if ($episode === null) {
@@ -70,6 +78,6 @@ class WatchHandler
             return;
         }
 
-        $this->delivery->send($chatId, $user, $episode);
+        $this->delivery->send($chatId, $user, $episode, $gantiPesanId);
     }
 }
