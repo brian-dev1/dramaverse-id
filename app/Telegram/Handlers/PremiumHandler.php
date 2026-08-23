@@ -111,7 +111,16 @@ class PremiumHandler
             $this->sessions->clear((int) $user->id);
         }
 
-        $pesan = Notice::make('💎', 'Premium')->lead($this->statusLine($user));
+        // Dihitung sekali di sini lalu dioper. Kalimat status di atas dan
+        // judul ajakan di bawah harus berangkat dari keadaan yang SAMA —
+        // dua panggilan terpisah bisa jatuh di sisi berlawanan dari detik
+        // langganan berakhir, dan pesannya akan menyebut dirinya sendiri
+        // aktif sekaligus kedaluwarsa.
+        $status = $user === null
+            ? null
+            : ($this->membership->status($user)['status'] ?? null);
+
+        $pesan = Notice::make('💎', 'Premium')->lead($this->statusLine($user, $status));
 
         /*
         |----------------------------------------------------------------------
@@ -159,14 +168,15 @@ class PremiumHandler
 
         if ($this->wilayahTersedia()->isEmpty()) {
 
-            $pesan->text('Belum ada paket yang ditawarkan. Coba lagi nanti.');
+            $pesan->text('Paket langganan sedang tidak tersedia. '
+                .'Silakan coba beberapa saat lagi.');
 
             $this->telegram->sendMessage($chatId, $pesan->render());
 
             return;
         }
 
-        $this->antarKeEtalase($chatId, $pesan);
+        $this->antarKeEtalase($chatId, $pesan, $status);
     }
 
     /**
@@ -178,16 +188,43 @@ class PremiumHandler
      * menolak Mini App non-HTTPS — tombolnya turun jadi tautan biasa, bukan
      * hilang.
      */
-    private function antarKeEtalase(int|string $chatId, Notice $pesan): void
-    {
-        $pesan->section('💳', 'Harga paket ada di aplikasi')
+    private function antarKeEtalase(
+        int|string $chatId,
+        Notice $pesan,
+        ?string $status = null
+    ): void {
+
+        /*
+        | Judulnya mengikuti keadaan pembacanya.
+        |
+        | Satu kalimat untuk semua orang berarti kalimat itu salah sasaran
+        | untuk sebagian besar dari mereka: pelanggan yang masa aktifnya
+        | masih setahun lagi tidak sedang "mulai berlangganan", dan orang
+        | yang belum pernah membeli tidak punya apa pun untuk "diperpanjang".
+        */
+        $ajakan = match ($status) {
+            'premium' => 'Perpanjang langganan',
+            'expired' => 'Aktifkan kembali',
+            default   => 'Mulai berlangganan',
+        };
+
+        $pesan->section('💳', $ajakan)
             ->bullets([
-                'Semua paket beserta harga per harinya muat dalam satu layar.',
-                'Tekan paket yang Anda mau — Anda kembali ke chat ini.',
-                'Tagihan, QRIS, dan bukti bayarnya tetap di sini seperti biasa.',
-            ])
-            ->note('Pembayarannya tidak berubah sama sekali. Yang pindah ke '
-                .'aplikasi hanya layar memilih harganya.');
+                'Tekan tombol di bawah untuk melihat seluruh paket dan harganya.',
+                'Pilih paket yang Anda mau — Anda kembali ke chat ini.',
+                'Tagihan dan QRIS dikirim langsung di sini.',
+            ]);
+
+        /*
+        | Kalimat ini hanya berlaku bagi yang langganannya masih berjalan,
+        | dan hanya di sini letaknya benar: sebagai jawaban atas keraguan
+        | tepat pada saat orang menimbang untuk membeli lagi. Dulu ia
+        | menempel di baris status, tempat ia menjawab pertanyaan yang belum
+        | sempat muncul.
+        */
+        if ($status === 'premium') {
+            $pesan->note('Perpanjangan menambah sisa masa aktif Anda, bukan menggantinya.');
+        }
 
         $this->telegram->sendMessage($chatId, $pesan->render(), [
             'reply_markup' => ['inline_keyboard' => [
@@ -203,7 +240,7 @@ class PremiumHandler
      */
     private function tombolEtalase(): array
     {
-        $teks = '👑 Lihat harga paket';
+        $teks = '👑 Lihat paket & harga';
 
         // Alamat Mini App dipakai bila ada; `route()` di dalam pekerjaan bot
         // mengikuti APP_URL, dan di server yang APP_URL-nya masih localhost
@@ -807,29 +844,32 @@ class PremiumHandler
      * pengguna gratis" adalah jawaban yang terasa salah bagi orang yang baru
      * saja membayar.
      */
-    private function statusLine(?User $user): string
+    private function statusLine(?User $user, ?string $status): string
     {
         if ($user === null) {
             return 'Kirim /start dulu supaya akun Anda dikenali.';
         }
 
-        $status = $this->membership->status($user);
+        // Tanpa tag HTML: kalimat ini masuk ke Notice::lead(), yang
+        // meng-escape isinya supaya nama paket dari basis data tidak pernah
+        // bisa merusak parse pesan.
 
-        $aktif = $this->membership->active($user);
+        if ($status === 'premium') {
 
-        return match ($status['status']) {
+            $sampai = $this->membership->active($user)?->expired_at;
 
-            // Tanpa tag HTML: kalimat ini masuk ke Notice::lead(), yang
-            // meng-escape isinya supaya nama paket dari basis data tidak
-            // pernah bisa merusak parse pesan.
-            'premium' => 'Status Anda: Premium aktif'
-                .($aktif?->expired_at ? ' sampai '.Waktu::lengkap($aktif->expired_at) : '')
-                .'. Membeli lagi menambah masa aktif, bukan menggantinya.',
+            // Tanggalnya tidak selalu ada — langganan seumur hidup dan
+            // pemberian manual dari admin tidak punya tanggal berakhir.
+            return $sampai !== null
+                ? 'Langganan Anda aktif sampai '.Waktu::lengkap($sampai).'.'
+                : 'Langganan Anda aktif.';
+        }
 
-            'expired' => 'Status Anda: Kedaluwarsa. Perpanjang untuk membuka '
-                .'part premium lagi.',
+        return match ($status) {
+            'expired' => 'Langganan Anda sudah berakhir. '
+                .'Part premium terkunci sampai diperpanjang.',
 
-            default => 'Status Anda: Gratis. Part premium belum bisa dibuka.',
+            default => 'Anda belum berlangganan. Part premium masih terkunci.',
         };
     }
 }
