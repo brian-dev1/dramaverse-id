@@ -162,7 +162,8 @@ class TrakteerGateway extends AbstractGateway
     public function parseCallback(
         PaymentProvider $provider,
         array $payload,
-        array $headers = []
+        array $headers = [],
+        ?string $rawBody = null
     ): PaymentResult {
 
         $this->assertSignature($provider, $headers);

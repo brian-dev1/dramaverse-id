@@ -77,10 +77,31 @@ class PaymentCallbackController extends Controller
         }
 
         try {
+            /*
+            |------------------------------------------------------------------
+            | Body mentah ikut, di samping yang sudah di-parse
+            |------------------------------------------------------------------
+            |
+            | `$request->all()` nyaman dibaca dan itu yang dipakai hampir semua
+            | driver. Tetapi gateway yang memakai HMAC menghitung tanda
+            | tangannya atas BYTE body, dan byte itu tidak bisa disusun ulang
+            | dari array hasil parse — `json_encode` memilih sendiri cara
+            | meng-escape `/` dan karakter non-ASCII, dan `1500.00` kembali
+            | sebagai `1500`.
+            |
+            | Selisih sekecil apa pun mengubah HMAC-nya seluruhnya. Tanpa baris
+            | ini, tanda tangan yang sah akan SELALU ditolak, dan pesan
+            | galatnya menunjuk ke secret yang sebenarnya sudah benar.
+            |
+            | `getContent()` aman dipanggil setelah `all()`: Laravel membaca
+            | body ke memori, bukan dari stream yang habis sekali baca.
+            |
+            */
             $transaction = $this->callbacks->handle(
                 $model,
                 $request->all(),
-                $this->headers($request)
+                $this->headers($request),
+                $request->getContent()
             );
 
             return response()->json([

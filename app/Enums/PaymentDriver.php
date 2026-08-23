@@ -7,6 +7,7 @@ use App\Services\Payments\Drivers\MidtransGateway;
 use App\Services\Payments\Drivers\QrisGateway;
 use App\Services\Payments\Drivers\TrakteerGateway;
 use App\Services\Payments\Drivers\TripayGateway;
+use App\Services\Payments\Drivers\XoftwarePayGateway;
 use App\Services\Payments\Drivers\XenditGateway;
 
 /**
@@ -55,6 +56,15 @@ enum PaymentDriver: string
 
     case TRIPAY = 'tripay';
 
+    /**
+     * Xoftware Pay — agregator QRIS, e-wallet, dan Virtual Account.
+     *
+     * Satu baris provider mewakili SATU channel; `channel_code` yang
+     * menentukan. Menerima QRIS dan VA sekaligus berarti dua baris provider
+     * dengan `api_key` yang sama.
+     */
+    case XOFTWAREPAY = 'xoftwarepay';
+
     public function label(): string
     {
         return match ($this) {
@@ -64,6 +74,7 @@ enum PaymentDriver: string
             self::MIDTRANS => 'Midtrans',
             self::XENDIT   => 'Xendit',
             self::TRIPAY   => 'Tripay',
+            self::XOFTWAREPAY => 'Xoftware Pay',
         };
     }
 
@@ -77,6 +88,7 @@ enum PaymentDriver: string
             self::MIDTRANS => MidtransGateway::class,
             self::XENDIT   => XenditGateway::class,
             self::TRIPAY   => TripayGateway::class,
+            self::XOFTWAREPAY => XoftwarePayGateway::class,
         };
     }
 
@@ -89,7 +101,7 @@ enum PaymentDriver: string
     public function isImplemented(): bool
     {
         return match ($this) {
-            self::MANUAL, self::QRIS, self::TRAKTEER => true,
+            self::MANUAL, self::QRIS, self::TRAKTEER, self::XOFTWAREPAY => true,
             default => false,
         };
     }
@@ -152,6 +164,27 @@ enum PaymentDriver: string
                 'private_key'  => 'Private Key',
                 'merchant_code' => 'Merchant Code',
             ],
+
+            /*
+            | Dua kunci yang berbeda, dan keduanya wajib.
+            |
+            | `api_key` menandatangani permintaan KELUAR (base64), sementara
+            | `webhook_secret` memverifikasi callback MASUK (hex). Namanya
+            | mirip dan header pembawanya sama-sama `X-Signature`, tetapi
+            | tertukar sedikit pun membuat callback yang sah ditolak dengan
+            | pesan yang menunjuk ke arah yang salah.
+            |
+            | `base_url` ikut wajib karena dokumentasi Xoftware Pay hanya
+            | menyebut path relatif dan tidak pernah menyebut host-nya.
+            | Menanamkannya di kode berarti pindah ke sandbox butuh deploy.
+            */
+            self::XOFTWAREPAY => [
+                'base_url'       => 'Base URL API, misalnya https://api.xoftwarepay.com (tanpa garis miring di akhir)',
+                'merchant_id'    => 'Merchant ID (angka, ada di dashboard)',
+                'api_key'        => 'API Key — dipakai autentikasi DAN menandatangani permintaan keluar',
+                'webhook_secret' => 'Webhook Secret (HMAC) — dipakai memverifikasi callback masuk',
+                'channel_code'   => 'Kode channel, misalnya QRIS. Satu provider satu channel',
+            ],
         };
     }
 
@@ -183,6 +216,11 @@ enum PaymentDriver: string
                     ."Contoh:\nCendol=5000\nKopi=2000\nBoba=10000\n"
                     .'Boleh dikosongkan; hanya dipakai menyarankan jumlah unit '
                     .'ke pengguna, tidak memengaruhi pencocokan pembayaran.',
+            ],
+
+            self::XOFTWAREPAY => [
+                'fee_direction' => 'Siapa menanggung biaya layanan: `merchant` (dipotong dari '
+                    .'settlement) atau `user` (ditambahkan ke tagihan). Kosong = merchant.',
             ],
 
             default => [],

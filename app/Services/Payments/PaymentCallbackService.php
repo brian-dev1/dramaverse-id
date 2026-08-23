@@ -52,13 +52,24 @@ class PaymentCallbackService
     /**
      * Proses satu callback dari provider.
      *
+     * `$rawBody` diteruskan apa adanya ke driver dan tidak pernah dibaca di
+     * sini. Yang membutuhkannya hanya driver yang menghitung HMAC atas byte
+     * body — lihat `AbstractGateway::rawBody()` untuk alasan kenapa
+     * menyusunnya ulang dari `$payload` tidak pernah menghasilkan byte yang
+     * sama.
+     *
      * @param  array<string,mixed>  $payload
      * @param  array<string,string>  $headers
+     * @param  string|null  $rawBody  byte body apa adanya, bila jalurnya HTTP
      *
      * @throws PaymentException
      */
-    public function handle(PaymentProvider $provider, array $payload, array $headers = []): PaymentTransaction
-    {
+    public function handle(
+        PaymentProvider $provider,
+        array $payload,
+        array $headers = [],
+        ?string $rawBody = null
+    ): PaymentTransaction {
         $this->log('info', 'callback.received', [
             'provider' => $provider->slug,
             // Isi payload TIDAK ikut secara utuh: ia bisa memuat nama dan
@@ -69,7 +80,7 @@ class PaymentCallbackService
         // Tanda tangan diverifikasi DI DALAM driver. Kegagalannya dilempar,
         // bukan dikembalikan sebagai hasil dengan penanda — supaya tidak ada
         // jalan apa pun untuk terus memproses callback yang tidak sah.
-        $hasil = $this->gateways->for($provider)->parseCallback($provider, $payload, $headers);
+        $hasil = $this->gateways->for($provider)->parseCallback($provider, $payload, $headers, $rawBody);
 
         $transaction = $this->locate($provider, $hasil);
 

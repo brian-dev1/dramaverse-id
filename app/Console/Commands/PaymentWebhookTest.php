@@ -92,7 +92,27 @@ class PaymentWebhookTest extends Command
 
         $payload = $this->payload($provider->driver->value, $invoice->number, $amount);
 
-        $headers = $this->headers($provider->driver->value, $provider->credential('webhook_token'));
+        /*
+        |----------------------------------------------------------------------
+        | Body mentah disusun SEKALI, lalu dipakai di tiga tempat
+        |----------------------------------------------------------------------
+        |
+        | String inilah yang diteruskan sebagai `$rawBody`, yang dipakai
+        | menghitung tanda tangan, DAN yang dicetak di contoh curl. Ketiganya
+        | wajib byte yang sama persis: driver HMAC menghitung tandanya atas
+        | byte body, jadi menyusunnya dua kali dengan flag `json_encode` yang
+        | berbeda membuat uji lewat perintah ini lulus sementara uji lewat
+        | curl gagal — atau sebaliknya, yang lebih buruk lagi karena
+        | menyembunyikan pemasangan yang sebenarnya salah.
+        |
+        */
+        $rawBody = json_encode($payload);
+
+        $headers = $this->headers(
+            $provider->driver->value,
+            $provider->credential('webhook_token'),
+            $rawBody
+        );
 
         /*
         |----------------------------------------------------------------------
@@ -111,7 +131,7 @@ class PaymentWebhookTest extends Command
         $this->newLine();
 
         if ($this->option('dry')) {
-            $this->curlHint($provider->slug, $payload, $headers);
+            $this->curlHint($provider->slug, $rawBody, $headers);
 
             return self::SUCCESS;
         }
@@ -123,7 +143,7 @@ class PaymentWebhookTest extends Command
         */
 
         try {
-            $hasil = $this->callbacks->handle($provider, $payload, $headers);
+            $hasil = $this->callbacks->handle($provider, $payload, $headers, $rawBody);
 
         } catch (PaymentException $e) {
 
@@ -158,7 +178,7 @@ class PaymentWebhookTest extends Command
         );
 
         $this->newLine();
-        $this->curlHint($provider->slug, $payload, $headers);
+        $this->curlHint($provider->slug, $rawBody, $headers);
 
         return self::SUCCESS;
     }
@@ -210,8 +230,22 @@ class PaymentWebhookTest extends Command
      * pelengkap: memastikan callback yang tidak sah DITOLAK sama pentingnya
      * dengan memastikan yang sah diterima, dan yang kedua saja bisa lolos
      * meski verifikasi tanda tangannya tidak pernah berjalan.
+     *
+     * ## Untuk driver ber-HMAC
+     *
+     * `$rawBody` sudah tersedia di sini supaya driver yang tanda tangannya
+     * dihitung — bukan sekadar token tetap — bisa menambahkan case-nya
+     * sendiri tanpa mengubah bentuk method ini. Contohnya:
+     *
+     * ```php
+     * 'namadriver' => ['x-signature' => hash_hmac('sha256', $rawBody, $dipakai)],
+     * ```
+     *
+     * Yang di-hash WAJIB `$rawBody`, bukan `json_encode($payload)` yang
+     * disusun ulang di sini — dua-duanya kelihatan sama, tetapi hanya yang
+     * pertama byte-nya identik dengan yang dikirim curl.
      */
-    private function headers(string $driver, ?string $token): array
+    private function headers(string $driver, ?string $token, string $rawBody = ''): array
     {
         $dipakai = $this->option('bad-signature')
             ? 'token-yang-pasti-salah'
@@ -230,8 +264,14 @@ class PaymentWebhookTest extends Command
      * jadi penyebab kegagalan yang tidak terlihat sama sekali dari sisi
      * aplikasi — callback pembayaran sempat dijawab 419 oleh CSRF sebelum
      * satu baris kode pun berjalan.
+     *
+     * Yang dikirim adalah `$rawBody` yang sama persis dengan yang barusan
+     * diproses, bukan hasil `json_encode` yang disusun ulang di sini. Untuk
+     * driver ber-HMAC selisih satu byte saja sudah membuat tanda tangannya
+     * berbeda — dan contoh curl yang tidak bisa dipakai lebih buruk daripada
+     * tidak ada contoh sama sekali.
      */
-    private function curlHint(string $slug, array $payload, array $headers): void
+    private function curlHint(string $slug, string $rawBody, array $headers): void
     {
         $header = '';
 
@@ -243,6 +283,6 @@ class PaymentWebhookTest extends Command
 
         $this->line("\n  curl -i -X POST ".url('/payment/callback/'.$slug)." \\\n"
             ."  -H 'Content-Type: application/json'".$header." \\\n"
-            .'  -d '.escapeshellarg(json_encode($payload))."\n");
+            .'  -d '.escapeshellarg($rawBody)."\n");
     }
 }

@@ -74,15 +74,40 @@ interface PaymentGatewayInterface
      * Callback yang tidak sah tidak boleh punya jalan apa pun untuk terus
      * diproses.
      *
-     * @param  array<string,mixed>  $payload  isi body callback
+     * ## Kenapa `$rawBody` ada di samping `$payload`
+     *
+     * Keduanya memuat isi yang sama, tetapi tidak bisa saling menggantikan.
+     *
+     * `$payload` adalah hasil parse — nyaman dibaca, dan itu yang dipakai
+     * hampir semua driver. Tetapi HMAC dihitung provider atas **byte mentah
+     * body**, bukan atas array. Menyusun ulang string dari array yang sudah
+     * di-parse tidak pernah menghasilkan byte yang sama: `json_encode`
+     * memilih sendiri cara meng-escape garis miring dan karakter non-ASCII,
+     * dan `1500.00` yang dikirim provider kembali sebagai `1500`. Tanda
+     * tangan yang dihitung dari hasil susun ulang itu **selalu** berbeda,
+     * meski secret-nya benar — dan gejalanya menyesatkan, karena yang terlihat
+     * hanyalah "tanda tangan tidak cocok".
+     *
+     * Karena itu byte aslinya diteruskan apa adanya dari controller.
+     *
+     * Nilainya boleh null: driver yang tanda tangannya ada di header sebagai
+     * token biasa — Trakteer, misalnya — tidak pernah membutuhkannya, dan
+     * jalur non-HTTP (`payment:webhook-test`, verifikasi terjadwal) tidak
+     * selalu punya body mentah untuk diberikan. Driver yang MEMBUTUHKANNYA
+     * wajib menolak bila null, bukan diam-diam jatuh ke hasil susun ulang.
+     * `AbstractGateway::rawBody()` melakukan tepat itu.
+     *
+     * @param  array<string,mixed>  $payload  isi body callback, sudah di-parse
      * @param  array<string,string>  $headers  header, huruf kecil semua
+     * @param  string|null  $rawBody  byte body apa adanya, untuk verifikasi HMAC
      *
      * @throws \App\Services\Payments\Exceptions\PaymentException
      */
     public function parseCallback(
         PaymentProvider $provider,
         array $payload,
-        array $headers = []
+        array $headers = [],
+        ?string $rawBody = null
     ): PaymentResult;
 
     /**
