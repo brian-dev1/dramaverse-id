@@ -29,7 +29,18 @@
                 putaran tunggu sebelum gambar pertama muncul. Kartu teratas
                 karena itu diminta lebih dulu dan diberi prioritas tinggi.
             --}}
+            @php
+                // Turunan 360 piksel dipakai sebagai kandidat kecil. Bila
+                // posternya diunggah sebelum turunan ini ada, nilainya null
+                // dan img-nya kembali persis seperti sebelumnya.
+                $kecil = $drama->poster_thumb_url;
+            @endphp
+
             <img src="{{ $drama->poster_url }}"
+                 @if ($kecil)
+                     srcset="{{ $kecil }} 360w, {{ $drama->poster_url }} 600w"
+                     sizes="(max-width: 640px) 33vw, (max-width: 900px) 25vw, 190px"
+                 @endif
                  alt=""
                  loading="{{ $priority ? 'eager' : 'lazy' }}"
                  @if ($priority) fetchpriority="high" @endif

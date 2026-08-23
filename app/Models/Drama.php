@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
+use App\Services\Admin\ImageProcessor;
 
 class Drama extends Model
 {
@@ -147,6 +149,28 @@ class Drama extends Model
     public function getPosterUrlAttribute(): ?string
     {
         return $this->poster ? asset('storage/'.$this->poster) : null;
+    }
+
+    /**
+     * URL turunan poster berlebar 360 piksel, atau null bila belum dibuat.
+     *
+     * Dipakai sebagai kandidat `srcset` di kartu drama. Keberadaannya
+     * diperiksa, bukan diasumsikan: poster yang diunggah sebelum turunan ini
+     * ada belum punya berkasnya, dan mencantumkan kandidat yang 404 membuat
+     * gambar gagal muncul sama sekali. Jalankan `php artisan poster:derive`
+     * untuk membuatkan turunan poster-poster lama.
+     */
+    public function getPosterThumbUrlAttribute(): ?string
+    {
+        if (! $this->poster) {
+            return null;
+        }
+
+        $thumb = ImageProcessor::derivativePath($this->poster);
+
+        return Storage::disk('public')->exists($thumb)
+            ? asset('storage/'.$thumb)
+            : null;
     }
 
     public function getCoverUrlAttribute(): ?string

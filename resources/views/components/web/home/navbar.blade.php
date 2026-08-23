@@ -1,8 +1,23 @@
 <header class="navbar">
     <div class="navbar-inner">
 
-        {{-- Logo --}}
-        <x-web.home.brand :href="route('web.home')" text="DramaVerse" badge="ID" />
+        {{--
+            Logo.
+
+            Lambang kotaknya sengaja BUKAN tautan sendiri: brand-nya sudah
+            sebuah <a>, dan menyarangkan tautan di dalam tautan bukan HTML
+            yang sah. Pembungkusnya span, dan seluruh area yang bisa diklik
+            tetap milik wordmark.
+        --}}
+        <span class="nav-lock">
+            <span class="nav-mark" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+                    <path d="M4 4h16a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1m6 4v8l6-4z"/>
+                </svg>
+            </span>
+
+            <x-web.home.brand :href="route('web.home')" text="DramaVerse" badge="ID" />
+        </span>
 
         {{-- Menu utama --}}
         <nav class="nav-links">

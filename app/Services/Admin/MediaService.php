@@ -53,6 +53,12 @@ class MediaService
             self::PRESET_MAP[$folder] ?? 'default'
         );
 
+        // Turunan kecil hanya untuk poster: itu satu-satunya gambar yang
+        // dirender berpuluh-puluh kali dalam satu layar.
+        if ((self::PRESET_MAP[$folder] ?? null) === 'poster') {
+            $this->processor->derivative(Storage::disk('public')->path($path));
+        }
+
         if ($previous) {
             $this->delete($previous);
         }
@@ -60,11 +66,23 @@ class MediaService
         return $path;
     }
 
-    /** Menghapus berkas bila masih ada. */
+    /**
+     * Menghapus berkas bila masih ada, berikut turunan kecilnya.
+     *
+     * Turunannya ikut dihapus di sini — kalau tidak, mengganti poster akan
+     * meninggalkan `-360.webp` milik poster lama, dan berkas yatim itu tidak
+     * akan pernah dirujuk siapa pun lagi.
+     */
     public function delete(?string $path): void
     {
-        if ($path && Storage::disk('public')->exists($path)) {
-            Storage::disk('public')->delete($path);
+        if (! $path) {
+            return;
+        }
+
+        foreach ([$path, ImageProcessor::derivativePath($path)] as $target) {
+            if (Storage::disk('public')->exists($target)) {
+                Storage::disk('public')->delete($target);
+            }
         }
     }
 

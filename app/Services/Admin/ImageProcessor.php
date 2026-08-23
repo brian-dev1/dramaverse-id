@@ -24,6 +24,17 @@ class ImageProcessor
         'default'   => [1600, 1600],
     ];
 
+    /**
+     * Lebar turunan kecil untuk kartu di ponsel.
+     *
+     * Poster asli sudah dibatasi 600x900 oleh preset di atas, dan itu tepat
+     * untuk halaman detail. Tapi di beranda ponsel poster tampil selebar
+     * ~110 CSS piksel; bahkan pada layar 3x itu hanya butuh ~330 piksel.
+     * Mengirim yang 600 piksel ke sana berarti mengirim empat kali lipat
+     * piksel yang bisa dilihat mata, dikali 30 kartu.
+     */
+    public const DERIVATIVE_WIDTH = 360;
+
     private const JPEG_QUALITY = 82;
     private const WEBP_QUALITY = 80;
     private const PNG_LEVEL    = 7;
@@ -108,6 +119,105 @@ class ImageProcessor
 
             return false;
         }
+    }
+
+    /**
+     * Membuat turunan WebP berlebar {@see DERIVATIVE_WIDTH} di samping berkas
+     * asli, dengan akhiran `-360.webp`.
+     *
+     * Berkas aslinya TIDAK disentuh. Kalau langkah ini gagal — GD tanpa
+     * dukungan WebP, disk penuh, berkas rusak — yang terjadi hanya turunannya
+     * tidak ada, dan pemanggilnya tetap memakai poster asli seperti sebelumnya.
+     *
+     * @return string|null Path absolut turunan, atau null bila tidak dibuat.
+     */
+    public function derivative(string $absolutePath, ?int $maxWidth = null): ?string
+    {
+        $maxWidth = $maxWidth ?: self::DERIVATIVE_WIDTH;
+
+        if (! $this->available() || ! function_exists('imagewebp') || ! is_file($absolutePath)) {
+            return null;
+        }
+
+        $source = null;
+        $canvas = null;
+
+        try {
+            $info = @getimagesize($absolutePath);
+
+            if ($info === false) {
+                return null;
+            }
+
+            $source = $this->read($absolutePath, $info['mime'] ?? '');
+
+            if (! $source) {
+                return null;
+            }
+
+            $width  = imagesx($source);
+            $height = imagesy($source);
+
+            // Tidak pernah diperbesar: gambar yang sudah lebih kecil dari
+            // target cukup ditulis ulang sebagai WebP.
+            $scale = min($maxWidth / $width, 1);
+
+            $newW = max(1, (int) round($width * $scale));
+            $newH = max(1, (int) round($height * $scale));
+
+            $canvas = imagecreatetruecolor($newW, $newH);
+
+            imagealphablending($canvas, false);
+            imagesavealpha($canvas, true);
+            $transparent = imagecolorallocatealpha($canvas, 0, 0, 0, 127);
+            imagefilledrectangle($canvas, 0, 0, $newW, $newH, $transparent);
+
+            imagecopyresampled($canvas, $source, 0, 0, 0, 0, $newW, $newH, $width, $height);
+
+            $target = self::derivativePath($absolutePath);
+
+            return imagewebp($canvas, $target, self::WEBP_QUALITY) ? $target : null;
+        } catch (\Throwable $e) {
+            Log::warning('Gagal membuat turunan poster', [
+                'berkas' => basename($absolutePath),
+                'alasan' => $e->getMessage(),
+            ]);
+
+            return null;
+        } finally {
+            if ($source) {
+                imagedestroy($source);
+            }
+
+            if ($canvas) {
+                imagedestroy($canvas);
+            }
+        }
+    }
+
+    /**
+     * Nama turunan untuk sebuah path — dipakai baik oleh penyimpanan (path
+     * absolut) maupun oleh model (path relatif disk). Satu tempat, supaya
+     * pembuat dan pembaca tidak pernah berbeda pendapat soal namanya.
+     */
+    public static function derivativePath(string $path): string
+    {
+        // Sengaja tanpa regex. Pola untuk memotong ekstensi harus memuat
+        // backslash sebagai pemisah folder Windows, dan jumlah garis miring
+        // yang benar berbeda antara string PHP dan PCRE — versi pertama
+        // berkas ini salah hitung, polanya gagal dikompilasi, dan seluruh
+        // nama berkas hilang menyisakan '-360.webp'. Dengan strrpos, tidak
+        // ada lapisan pelolosan yang bisa salah.
+        $dot   = strrpos($path, '.');
+        $slash = max((int) strrpos($path, '/'), (int) strrpos($path, '\\'));
+
+        // Titik yang berada di dalam nama FOLDER bukan pemisah ekstensi:
+        // 'poster.lama/berkas' tidak berekstensi.
+        $stem = ($dot === false || $dot <= $slash)
+            ? $path
+            : substr($path, 0, $dot);
+
+        return $stem.'-'.self::DERIVATIVE_WIDTH.'.webp';
     }
 
     private function read(string $path, string $mime): \GdImage|false

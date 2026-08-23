@@ -13,6 +13,19 @@
 @section('content')
 
     {{--
+        Total judul, rata kanan tepat di bawah kolom cari.
+
+        Diletakkan di sini, bukan di dalam navbar, karena angkanya hanya
+        dikirim ke tampilan beranda — memasangnya di navbar berarti setiap
+        halaman lain harus ikut menghitungnya, atau menampilkan kosong.
+    --}}
+    @isset($totalDrama)
+        @if ($totalDrama > 0)
+            <p class="dv-total"><b>{{ number_format($totalDrama, 0, ',', '.') }}</b> judul</p>
+        @endif
+    @endisset
+
+    {{--
         Tamu yang menekan Riwayat, Profil, atau Favorit dilempar ke sini oleh
         `redirectGuestsTo()` dengan `?masuk=1`. Sampai sekarang parameter itu
         tidak dibaca siapa pun: yang terjadi hanyalah halaman berganti kembali

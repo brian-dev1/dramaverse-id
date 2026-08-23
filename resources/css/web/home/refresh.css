@@ -1,0 +1,197 @@
+/*
+|--------------------------------------------------------------------------
+| Penyegaran beranda + pemangkasan beban gulir
+|--------------------------------------------------------------------------
+| Dimuat PALING AKHIR, sesudah perf.css.
+|
+| Berkas ini berdiri sendiri: tidak ada berkas CSS lain yang diubah untuk
+| memasangnya. Membatalkannya cukup dengan menghapus satu baris @import di
+| app.css dan admin.css — sumber aslinya kembali berlaku apa adanya.
+|
+| Semua aturan berscope `body:not(.admin-body)` atau berada di dalam media
+| query sisi web. Panel admin tidak tersentuh.
+|
+| Isi:
+|   1. Kepala halaman jadi kartu membulat + lambang kotak
+|   2. Total judul, rata kanan di bawah kolom cari
+|   3. Pemangkasan pekerjaan per-frame saat halaman digulir
+*/
+
+
+/* ==========================================================================
+   1. Kepala halaman — kartu membulat
+   ==========================================================================
+   Di ponsel, bilah yang melebar penuh ke tepi layar membuat logo, tombol, dan
+   kolom cari terbaca sebagai tiga hal terpisah yang kebetulan bertetangga.
+   Dikurung dalam satu kartu, ketiganya terbaca sebagai satu perangkat kendali.
+
+   Tidak ada elemen baru yang dibutuhkan untuk kartunya: `.navbar` menyediakan
+   ruang tepi, `.navbar-inner` yang sudah ada menjadi kartunya. */
+
+body:not(.admin-body) .nav-lock {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    min-width: 0;
+}
+
+/* Lambang kotak di kiri wordmark — penanda yang terbaca sebagai ikon
+   aplikasi, bukan sekadar tulisan. */
+body:not(.admin-body) .nav-mark {
+    width: 30px;
+    height: 30px;
+    flex: none;
+    display: grid;
+    place-items: center;
+    border-radius: 9px;
+    color: #1A0A02;
+    background: linear-gradient(140deg, var(--dv-accent-2, #FFB84D), var(--dv-accent, #FF6A1A) 60%, #C13C10);
+}
+
+body:not(.admin-body) .nav-mark svg { width: 16px; height: 16px; }
+
+@media (max-width: 900px) {
+    body:not(.admin-body) .navbar {
+        background: var(--dv-bg, #08060D);
+        border-bottom: 0;
+        padding: 10px var(--dv-gut, 16px) 2px;
+    }
+
+    body:not(.admin-body) .navbar-inner {
+        padding: 10px 11px 11px;
+        background: #100C19;
+        border: 1px solid var(--dv-line, rgba(255, 255, 255, .08));
+        border-radius: 18px;
+    }
+
+    body:not(.admin-body) .nav-mark { width: 28px; height: 28px; border-radius: 8px; }
+    body:not(.admin-body) .nav-mark svg { width: 15px; height: 15px; }
+}
+
+
+/* ==========================================================================
+   2. Total judul
+   ==========================================================================
+   Diletakkan rata kanan tepat di bawah kolom cari. Angkanya dihitung sekali
+   per jam (lihat HomeRepository::totalDrama) — bukan sekali per kunjungan. */
+
+body:not(.admin-body) .dv-total {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 5px;
+    max-width: var(--dv-max, 1440px);
+    margin-inline: auto;
+    padding: 9px var(--dv-gut, 16px) 0;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--dv-accent-2, #FFB84D);
+}
+
+body:not(.admin-body) .dv-total::before {
+    content: "";
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--dv-accent, #FF6A1A);
+}
+
+body:not(.admin-body) .dv-total b {
+    font-family: var(--font-display, "Outfit", ui-sans-serif, system-ui, sans-serif);
+    font-weight: 800;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+}
+
+
+/* ==========================================================================
+   3. Beban gulir
+   ==========================================================================
+   Diurutkan dari yang paling mahal. Tiap blok menjelaskan pekerjaan apa yang
+   dihentikan, supaya kalau ada yang terasa hilang, blok yang tepat bisa
+   dihapus tanpa menebak-nebak. */
+
+/* --------------------------------------------------------------------------
+   3a. Wordmark yang bernapas selamanya
+   --------------------------------------------------------------------------
+   `.brand-letter` menjalankan `brandBreathe 3.6s infinite` pada SETIAP huruf —
+   sebelas elemen, masing-masing menganimasikan opacity, transform, DAN
+   `filter: drop-shadow()`. Filter memaksa penggambaran ulang tiap frame, dan
+   animasinya tidak pernah berhenti. Letaknya di dalam bilah atas yang menempel
+   di layar, jadi biayanya ditanggung persis selama halaman digulir.
+
+   Di ponsel animasinya dimatikan; hurufnya tetap ada, tetap bergradasi emas,
+   hanya diam. Pola pematiannya menyalin blok `prefers-reduced-motion` yang
+   sudah ada di brand.css supaya hasil akhirnya sudah terbukti benar —
+   `opacity:1` wajib, karena keyframe-nya berhenti di .45. */
+@media (max-width: 900px) {
+    body:not(.admin-body) .brand-letter {
+        animation: none;
+        opacity: 1;
+        transform: none;
+        filter: none;
+    }
+
+    body:not(.admin-body) .brand-shine { display: none; }
+}
+
+/* --------------------------------------------------------------------------
+   3b. Blur di belakang bilah atas
+   --------------------------------------------------------------------------
+   `.navbar` menempel di atas layar dengan `blur(18px) saturate(150%)`. Karena
+   posisinya sticky, browser wajib mengambil ulang piksel di belakangnya lalu
+   mem-blur-nya SETIAP frame selama halaman digulir — tidak peduli ada yang
+   bergerak di sana atau tidak.
+
+   Latarnya dijadikan padat. Gradasi lamanya semi-transparan, jadi tanpa blur
+   ia akan memperlihatkan kartu yang lewat di belakangnya. */
+body:not(.admin-body) .navbar {
+    background: var(--dv-bg, #08060D);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+
+/* --------------------------------------------------------------------------
+   3c. Bagian yang belum terlihat
+   --------------------------------------------------------------------------
+   `content-visibility:auto` memberi izin browser melewati tata letak dan
+   penggambaran bagian yang berada di luar layar. `contain-intrinsic-size`
+   memberi tinggi perkiraan supaya batang gulir tidak melompat saat bagian itu
+   akhirnya dihitung.
+
+   Tidak dipasang pada `.section` pertama secara khusus: bagian yang terlihat
+   tetap digambar normal — yang dilewati hanya yang di luar layar. */
+body:not(.admin-body) main .section {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 340px;
+}
+
+/* --------------------------------------------------------------------------
+   3d. Bayangan, transisi, dan tombol play pada tiap poster
+   --------------------------------------------------------------------------
+   Satu layar memuat 12-20 kartu. Masing-masing menyiapkan `box-shadow` dengan
+   radius 30px, `transition` untuk hover, dan satu lingkaran `.dv-play` yang
+   hanya muncul saat disentuh kursor. Di layar sentuh tidak ada kursor, jadi
+   ketiganya adalah pekerjaan yang hasilnya tidak pernah terlihat.
+
+   Bayangan diganti garis 1px lewat `inset box-shadow`: mengikuti sudut
+   membulat, tidak menggeser tata letak seperti `border`, dan tidak perlu
+   dihitung sebagai bayangan berkabur. */
+@media (hover: none) {
+    body:not(.admin-body) .dv-poster {
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .07);
+        transition: none;
+    }
+
+    body:not(.admin-body) .dv-play { display: none; }
+}
+
+/* --------------------------------------------------------------------------
+   3e. Gulir beranimasi
+   --------------------------------------------------------------------------
+   `scroll-behavior:smooth` berguna untuk lompat ke jangkar di desktop. Di
+   webview Telegram ia ikut menempel pada gulir biasa dan membuat jari terasa
+   tidak langsung terhubung dengan layar. */
+@media (max-width: 900px) {
+    html { scroll-behavior: auto; }
+}

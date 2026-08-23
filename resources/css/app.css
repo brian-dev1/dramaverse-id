@@ -70,8 +70,12 @@
        menimpa gaya .plan-* lama) --- */
 @import "./web/home/vip.css";
 
-/* --- Pemolesan performa (paling akhir, hanya mematikan kerja per-frame) --- */
+/* --- Pemolesan performa (hanya mematikan kerja per-frame) --- */
 @import "./web/home/perf.css";
+
+/* --- Penyegaran beranda + pemangkasan beban gulir (paling akhir).
+       Berdiri sendiri: hapus baris ini dan seluruh perubahannya batal. --- */
+@import "./web/home/refresh.css";
 
 /*
 |--------------------------------------------------------------------------

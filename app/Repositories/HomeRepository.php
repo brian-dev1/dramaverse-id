@@ -31,6 +31,7 @@ class HomeRepository implements HomeRepositoryInterface
         'home:trending',
         'home:latest',
         'home:popular',
+        'home:total-drama',
     ];
 
     /**
@@ -57,6 +58,7 @@ class HomeRepository implements HomeRepositoryInterface
             'popular'          => $this->popular(),
             'genres'           => $this->genres(),
             'countries'        => $this->countries(),
+            'totalDrama'       => $this->totalDrama(),
             'continueWatching' => $this->continueWatching($userId),
         ];
     }
@@ -106,6 +108,24 @@ class HomeRepository implements HomeRepositoryInterface
             'home:popular',
             now()->addMinutes(self::CACHE_TTL),
             fn () => $this->cardQuery()->popular()->take(10)->get()
+        );
+    }
+
+    /**
+     * Jumlah drama terbit, untuk angka di bawah kolom cari.
+     *
+     * Di-cache satu jam, bukan lima menit seperti blok katalog. Angka ini
+     * hanya berubah ketika ada judul baru diterbitkan, dan `flushCatalog()`
+     * sudah membuangnya bersama yang lain setiap kali baris drama disimpan —
+     * jadi TTL panjang tidak membuatnya basi, hanya membuat COUNT(*) tidak
+     * dijalankan ulang untuk setiap pengunjung.
+     */
+    private function totalDrama(): int
+    {
+        return Cache::remember(
+            'home:total-drama',
+            now()->addHour(),
+            fn () => Drama::query()->published()->count()
         );
     }
 
