@@ -168,24 +168,24 @@ class TelegramRouter
         $command = mb_strtolower((string) str($text)->before(' ')->before('@')->ltrim('/'));
 
         /*
-        |----------------------------------------------------------------------
-        | Perintah admin, ditangani sebelum menu biasa
-        |----------------------------------------------------------------------
+        | Ejaannya diterima longgar, dan itu bukan kemurahan hati.
         |
-        | Tidak lewat `TelegramMenuAction` karena bukan menu: ia membawa
-        | argumen pencarian, dan sengaja tidak didaftarkan di daftar command
-        | Telegram supaya tidak muncul di kotak saran perintah pengguna biasa.
+        | "Afiliasi" dan "affiliate" hanya berbeda satu huruf di dua tempat,
+        | dan orang yang mengetiknya cepat dari ponsel akan salah — terbukti
+        | pada percobaan pertama fitur ini dipakai. Perintah yang benar
+        | ditolak karena satu huruf membuat orang mengira fiturnya rusak,
+        | lalu berhenti mencoba.
         |
-        | Gerbang izinnya ada di dalam handler, bukan di sini. Menaruhnya di
-        | router berarti setiap perintah admin berikutnya harus mengingat
-        | menuliskannya lagi, dan yang lupa akan terbuka untuk semua orang.
-        |
-        | `$user` boleh null — orang yang belum pernah /start pun bisa
-        | mengetik perintah ini, dan handler menolaknya dengan pesan yang sama
-        | seperti non-admin lain.
-        |
+        | Daftar ini menerima seluruh ejaan yang wajar dalam dua bahasa,
+        | termasuk yang salah dengan cara yang bisa ditebak. Tidak ada
+        | risikonya: tidak satu pun bentrok dengan perintah lain.
         */
-        if (in_array($command, ['afiliasi', 'affiliate'], true)) {
+        $ejaanAfiliasi = [
+            'afiliasi', 'affiliasi', 'afiliate', 'affiliate',
+            'afiliase', 'affiliase', 'referral', 'refferal',
+        ];
+
+        if (in_array($command, $ejaanAfiliasi, true)) {
 
             $bagian = preg_split('/\s+/', trim($text), 2);
 
