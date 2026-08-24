@@ -156,14 +156,17 @@ class FakeSession:
     dc_id = 2
 
 
-class FakeInnerSender:
-    auth_key = b"k" * 8
-
-
 class FakeClient:
     def __init__(self, tracker, script=None):
         self.session = FakeSession()
-        self._sender = FakeInnerSender()
+        # Mode "main" memakai sender milik client, jadi ini harus
+        # sender sungguhan yang bisa melayani request -- bukan sekadar
+        # pembawa auth_key seperti model lama.
+        self._sender = FakeSender(
+            tracker,
+            script if script is not None else {},
+        )
+        self._sender.auth_key = b"k" * 8
         self._log = None
         self._proxy = None
         self._local_addr = None
@@ -251,6 +254,7 @@ async def test_basic_order_and_speed(tmp):
         num_connections=4,
         inflight_per_connection=3,
         min_free_bytes=1024,
+        clone_senders=True,
     )
     patch_senders(downloader, client)
 
@@ -302,6 +306,7 @@ async def test_old_style_one_per_connection(tmp):
         num_connections=4,
         inflight_per_connection=1,
         min_free_bytes=1024,
+        clone_senders=True,
     )
     patch_senders(downloader, client)
 
@@ -331,6 +336,7 @@ async def test_memory_window(tmp):
         num_connections=4,
         inflight_per_connection=3,
         min_free_bytes=1024,
+        clone_senders=True,
     )
     patch_senders(downloader, client)
 
@@ -398,6 +404,7 @@ async def test_flood_recovers(tmp):
         num_connections=4,
         inflight_per_connection=3,
         min_free_bytes=1024,
+        clone_senders=True,
     )
     patch_senders(downloader, client)
 
@@ -438,6 +445,7 @@ async def test_connection_dies_and_renews(tmp):
         num_connections=4,
         inflight_per_connection=3,
         min_free_bytes=1024,
+        clone_senders=True,
     )
     patch_senders(downloader, client)
 
@@ -471,6 +479,7 @@ async def test_hang_times_out(tmp):
         inflight_per_connection=3,
         min_free_bytes=1024,
         request_timeout=1.0,
+        clone_senders=True,
     )
     patch_senders(downloader, client)
 
@@ -504,6 +513,7 @@ async def test_resume(tmp):
         num_connections=4,
         inflight_per_connection=3,
         min_free_bytes=1024,
+        clone_senders=True,
     )
     downloader1.chunk_retries = 1
     patch_senders(downloader1, client1)
@@ -540,6 +550,7 @@ async def test_resume(tmp):
         num_connections=4,
         inflight_per_connection=3,
         min_free_bytes=1024,
+        clone_senders=True,
     )
     patch_senders(downloader2, client2)
 
@@ -594,6 +605,7 @@ async def test_resume_rejects_different_file(tmp):
         num_connections=2,
         inflight_per_connection=3,
         min_free_bytes=1024,
+        clone_senders=True,
     )
     patch_senders(downloader, client)
 
@@ -622,6 +634,7 @@ async def test_disk_space_guard(tmp):
         client,
         num_connections=2,
         min_free_bytes=10 ** 15,  # mustahil terpenuhi
+        clone_senders=True,
     )
     patch_senders(downloader, client)
 
@@ -652,6 +665,7 @@ async def test_reset_drives_limiter_down(tmp):
         num_connections=4,
         inflight_per_connection=3,
         min_free_bytes=1024,
+        clone_senders=True,
     )
     patch_senders(downloader, client)
 
@@ -678,6 +692,51 @@ async def test_reset_drives_limiter_down(tmp):
 
     return True
 
+async def test_main_mode_uses_client_sender(tmp):
+    """Default: satu soket milik client, dan JANGAN diputus di akhir."""
+    file_size = 16 * 1024 * 1024
+    tracker = Tracker(file_size)
+    client = FakeClient(tracker)
+
+    downloader = ParallelDownloader(
+        client,
+        num_connections=4,
+        min_free_bytes=1024,
+    )
+
+    made = {"n": 0}
+
+    async def _new_sender(dc_id, same_dc):
+        made["n"] += 1
+        return FakeSender(tracker, client.script)
+
+    downloader._new_sender = _new_sender
+
+    out = os.path.join(tmp, "main.mp4")
+    await downloader.download(FakeMessage(file_size), out)
+
+    verify_file(out, file_size, downloader.chunk_size)
+
+    stats = downloader.last_stats
+
+    print(
+        f"  mode={stats['mode']} unique_senders={stats['unique_senders']} "
+        f"sender baru dibuat={made['n']} "
+        f"client._sender.alive={client._sender.alive}"
+    )
+
+    assert stats["mode"] == "main", "default harus mode main"
+    assert made["n"] == 0, "mode main tidak boleh membuat sender baru"
+    assert client._sender.alive, (
+        "sender milik client DIPUTUS -- itu akan mematikan "
+        "seluruh sesi Telegram, bukan cuma download ini"
+    )
+    assert stats["inflight_max"] <= 4, "request bersamaan harus tetap 4"
+
+    return True
+
+
+
 async def main():
 
     tmp = tempfile.mkdtemp(prefix="dl-test-")
@@ -693,6 +752,7 @@ async def main():
         (".part asing ditolak", test_resume_rejects_different_file),
         ("penjaga sisa disk", test_disk_space_guard),
         ("reset menurunkan jatah", test_reset_drives_limiter_down),
+        ("mode main pakai sender client", test_main_mode_uses_client_sender),
     ]
 
     results = {}

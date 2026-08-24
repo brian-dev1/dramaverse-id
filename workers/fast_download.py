@@ -1,71 +1,80 @@
 """
-Modul download paralel multi-koneksi untuk Telethon.
+Modul download paralel untuk Telethon.
 
-Membagi file jadi potongan 1 MB dan mengambilnya lewat beberapa koneksi
-ke Telegram DC sekaligus, lalu menuliskannya ke disk sesuai urutan.
-
-Menangani 2 kasus koneksi:
-1. Video di DC BERBEDA dari koneksi utama -> pakai exported sender
-   (cara standar Telethon untuk pinjam koneksi ke DC lain).
-2. Video di DC SAMA dengan koneksi utama -> Telegram tidak mengizinkan
-   export authorization ke DC yang sama (karena sudah authorized di
-   situ). Solusinya: buka koneksi baru langsung pakai auth_key yang
-   sudah ada, tanpa proses export/import.
+Membagi file jadi potongan 1 MB, mengambil beberapa sekaligus, lalu
+menuliskannya ke disk sesuai urutan.
 
 
-APA YANG BERUBAH DARI VERSI SEBELUMNYA
---------------------------------------
-Versi sebelumnya sudah tahan flood, tapi lambat karena tiga hal:
+TIGA CARA MENDAPAT KONEKSI, DAN KENAPA DEFAULTNYA YANG PALING TENANG
+--------------------------------------------------------------------
+"main"   Video ada di DC yang sama dengan sesi login. Dipakai sender
+         milik client -- soket yang sudah terhubung dan sehat. Beberapa
+         request 1 MB terbang bersamaan di atasnya; MTProto memang
+         dirancang untuk itu. INI DEFAULT.
 
-1. JATAH IN-FLIGHT TERKUNCI DI JUMLAH KONEKSI.
-   Plafon limiter dihitung `min(max_connections, batch_size)`, dan
-   `max_connections` default-nya sama dengan `num_connections`. Dengan
-   4 koneksi berarti hanya 4 request yang boleh terbang bersamaan --
-   satu request 1 MB per koneksi. Throughput jadi terkunci di
-   `4 MB / RTT`: pada RTT 250 ms itu cuma ~16 MB/s teoretis, dan jauh
-   di bawah itu dalam praktik karena setiap koneksi menganggur penuh
-   selama satu perjalanan pulang-pergi. `batch_multiplier` sama sekali
-   tidak terpakai.
+"borrow" Video ada di DC lain. Telethon meminjamkan sender lewat
+         _borrow_exported_sender. Perlu diketahui: fungsi itu
+         mengembalikan SATU objek sender yang sama untuk satu DC,
+         berapa kali pun diminta -- ia cuma menghitung peminjaman.
+         Jadi meminta 4 "koneksi" ke DC lain tidak pernah menghasilkan
+         4 soket. Selalu 1.
 
-   Sekarang jumlah KONEKSI dan jumlah REQUEST BERSAMAAN dipisah. Tetap
-   4 koneksi, tapi tiap koneksi boleh menumpuk beberapa request
-   (default 3, jadi 12 in-flight). MTProto memang dirancang untuk itu:
-   satu koneksi bisa melayani banyak request sekaligus, jawabannya
-   datang tidak berurutan. Inilah pengubah kecepatan terbesar.
+"clone"  Beberapa soket dibuka sambil meminjam auth_key koneksi utama.
+         Ini satu-satunya cara mendapat soket yang benar-benar paralel
+         ke DC sendiri -- dan sumber masalah yang panjang. Telethon
+         mencatat persis soal ini di _create_exported_sender:
 
-2. BATCH BARRIER.
-   Dulu offset diproses per rombongan 12 chunk dengan `asyncio.gather`,
-   dan rombongan berikutnya baru mulai setelah SELURUH rombongan
-   sebelumnya tuntas. Satu chunk lambat menahan 11 lainnya, dan di
-   ekor tiap rombongan paralelismenya meluruh sampai tinggal satu.
-   Selama penulisan ke disk, tidak ada satu pun request yang terbang.
+             "Can't reuse self._sender._connection as it has its own
+              seqno. If one were to do that, Telegram would reset the
+              connection with no further clues."
 
-   Sekarang alirannya berkelanjutan: sekumpulan worker terus menarik
-   offset berikutnya begitu selesai, dan penulis terpisah menuliskan
-   hasil sesuai urutan dari buffer penyusun ulang. Tidak ada lagi titik
-   di mana pipa mengosong.
+         Gejalanya: banjir "connection reset by peer", "0 bytes read on
+         a total of 8 expected bytes", dan "Server replied with a wrong
+         session ID". Karena itu jalur ini HARUS diminta sadar-sadar
+         lewat clone_senders=True.
 
-3. PENULISAN DISK MEMBLOKIR EVENT LOOP.
-   `file.write()` dan `hasher.update()` dijalankan langsung di event
-   loop, jadi selama disk sibuk tidak ada byte yang diterima.
-   Sekarang keduanya pindah ke thread penulis tersendiri.
 
-Tambahan untuk kestabilan:
+PERBAIKAN YANG TIDAK MENAMBAH AGRESIVITAS SEDIKIT PUN
+-----------------------------------------------------
+Semua ini murni menghapus pemborosan, bukan menambah tekanan ke
+Telegram, jadi aman dipakai berapa pun jumlah request bersamaannya:
 
-- TIMEOUT PER REQUEST. Dulu `sender.send()` bisa menggantung selamanya
-  kalau koneksi mati diam-diam; downloadnya kelihatan "hidup" tapi
-  tidak maju-maju. Sekarang tiap request punya batas waktu.
-- RECONNECT OTOMATIS. Koneksi yang putus diganti baru, tidak menyeret
-  seluruh download gagal.
-- RESUME. File ditulis ke `<nama>.part`. Kalau gagal di tengah, file
-  itu ditahan berikut sidik jari dokumennya, dan percobaan berikutnya
-  melanjutkan dari byte terakhir -- bukan mengulang dari nol.
+1. TIDAK ADA LAGI BATCH BARRIER.
+   Dulu offset diproses per rombongan dengan asyncio.gather, dan
+   rombongan berikutnya baru mulai setelah SELURUH rombongan sebelumnya
+   tuntas. Satu chunk lambat menahan sisanya, di ekor tiap rombongan
+   paralelismenya meluruh sampai tinggal satu, dan selama penulisan ke
+   disk tidak ada satu pun request yang terbang -- terukur pipa kosong
+   30% waktu pada RTT rendah.
+
+   Sekarang alirannya berkelanjutan: worker menarik offset berikutnya
+   begitu selesai, penulis terpisah menuliskan sesuai urutan dari
+   buffer penyusun ulang.
+
+2. PENULISAN DISK TIDAK LAGI MEMBLOKIR EVENT LOOP.
+   file.write() dan hasher.update() pindah ke thread penulis sendiri.
+
+3. CHECKSUM DIHITUNG SAMBIL JALAN.
+   Lewat parameter `hasher`, jadi file tidak perlu dibaca ulang
+   seluruhnya setelah download.
+
+4. RESUME.
+   File ditulis ke <nama>.part berikut sidik jari dokumennya. Gagal di
+   menit ke-9 dilanjutkan, bukan diulang dari nol.
+
+5. CEK SISA DISK LINTAS-OS.
+   shutil.disk_usage menggantikan os.statvfs, yang tidak ada di Windows
+   dan diam-diam membuat seluruh mode paralel gagal di sana.
+
+6. FLOOD DAN RESET SAMA-SAMA JADI REM.
+   Flood wait sudah lama ditangani lewat palang bersama. Koneksi yang
+   DIPUTUS server dulu tidak dianggap apa-apa, jadi skrip menyambung
+   lagi dengan beban sama dan diputus lagi. Sekarang keduanya
+   menurunkan jatah request bersamaan.
 
 Pemakaian RAM tetap terbatas berapa pun ukuran videonya:
 
     window * CHUNK_SIZE  ~= (in-flight * 2) * 1 MB
-
-Dengan default 4 koneksi x 3 = 12 in-flight -> sekitar 24 MB.
 """
 
 import asyncio
@@ -442,6 +451,7 @@ class ParallelDownloader:
         min_free_bytes=512 * 1024 * 1024,
         chunk_size=CHUNK_SIZE,
         request_timeout=REQUEST_TIMEOUT,
+        clone_senders=False,
     ):
         """
         client                  : TelegramClient yang sudah terhubung.
@@ -473,6 +483,11 @@ class ParallelDownloader:
         request_timeout         : batas waktu satu request, detik.
         """
         self.client = client
+
+        # Membuka beberapa soket yang meminjam auth_key koneksi utama.
+        # Benar-benar paralel, tapi Telegram sering memutusnya -- lihat
+        # catatan di _new_sender. Default mati.
+        self.clone_senders = bool(clone_senders)
 
         self.num_connections = max(
             1,
@@ -519,8 +534,22 @@ class ParallelDownloader:
         if not same_dc:
             return await self.client._borrow_exported_sender(dc_id)
 
-        # DC sama dengan koneksi utama: reuse auth_key yang sudah ada,
-        # buka koneksi TCP baru tanpa export/import.
+        # DC sama dengan koneksi utama: buka koneksi TCP baru sambil
+        # MEMINJAM auth_key yang sudah ada, tanpa export/import.
+        #
+        # PERINGATAN: inilah sumber "connection reset by peer",
+        # "0 bytes read on a total of 8 expected bytes", dan "Server
+        # replied with a wrong session ID". Telethon memberi catatan
+        # tepat soal ini di _create_exported_sender:
+        #
+        #   "Can't reuse self._sender._connection as it has its own
+        #    seqno. If one were to do that, Telegram would reset the
+        #    connection with no further clues."
+        #
+        # Beberapa auth_key yang sama dipakai beberapa sesi MTProto
+        # sekaligus, dan Telegram menutup sambungannya tanpa penjelasan.
+        # Karena itu jalur ini sekarang HARUS diminta secara sadar
+        # lewat clone_senders=True.
         dc = await self.client._get_dc(dc_id)
 
         sender = MTProtoSender(
@@ -543,13 +572,28 @@ class ParallelDownloader:
 
     async def _open_connections(self, dc_id):
         """
-        Kembalikan (list_conn, same_dc).
+        Kembalikan (list_conn, mode).
 
-        same_dc True  -> sender dibuat manual, harus di-disconnect manual.
-        same_dc False -> sender dipinjam lewat _borrow_exported_sender,
-                         harus dikembalikan lewat _return_exported_sender.
+        mode "main"   -> memakai sender utama milik client. Satu soket,
+                         sehat, dan TIDAK boleh diputus di akhir karena
+                         client masih memakainya.
+        mode "borrow" -> sender pinjaman dari Telethon. Satu soket
+                         bersama per DC; dikembalikan lewat
+                         _return_exported_sender.
+        mode "clone"  -> beberapa soket yang meminjam auth_key utama.
+                         Benar-benar paralel, tapi Telegram sering
+                         memutusnya. Harus di-disconnect manual.
         """
         same_dc = dc_id == self.client.session.dc_id
+
+        if same_dc and not self.clone_senders:
+            # Sender utama client sudah terhubung dan sehat. Empat
+            # request 1 MB bisa terbang bersamaan di atasnya -- MTProto
+            # memang dirancang begitu -- tanpa satu pun sesi tambahan
+            # yang membuat Telegram curiga.
+            return [_Conn(self.client._sender)], "main"
+
+        mode = "clone" if same_dc else "borrow"
 
         conns = []
 
@@ -561,16 +605,21 @@ class ParallelDownloader:
                     )
                 )
 
-            return conns, same_dc
+            return conns, mode
 
         except Exception:
             # Jangan tinggalkan koneksi menggantung kalau gagal di tengah.
-            await self._close_connections(conns, same_dc)
+            await self._close_connections(conns, mode)
             raise
 
-    async def _drop_sender(self, sender, same_dc):
+    async def _drop_sender(self, sender, mode):
+        if mode == "main":
+            # Ini sender milik client. Memutusnya akan mematikan
+            # seluruh sesi Telegram, bukan cuma download ini.
+            return
+
         try:
-            if same_dc:
+            if mode == "clone":
                 await sender.disconnect()
             else:
                 await self.client._return_exported_sender(sender)
@@ -579,11 +628,11 @@ class ParallelDownloader:
             # yang sudah selesai.
             pass
 
-    async def _close_connections(self, conns, same_dc):
+    async def _close_connections(self, conns, mode):
         for conn in conns:
-            await self._drop_sender(conn.sender, same_dc)
+            await self._drop_sender(conn.sender, mode)
 
-    async def _renew(self, conn, dc_id, same_dc, stale):
+    async def _renew(self, conn, dc_id, mode, stale):
         """
         Ganti sender yang koneksinya sudah tidak sehat dengan yang baru.
 
@@ -596,17 +645,18 @@ class ParallelDownloader:
         -- Telethon masih bisa menyambung ulang sendiri, dan percobaan
         berikutnya akan mencoba mengganti lagi.
         """
-        if not same_dc:
-            # DC berbeda: sender-nya PINJAMAN, dan _borrow_exported_sender
-            # mengembalikan objek yang SAMA untuk satu DC -- ia hanya
-            # menghitung berapa kali dipinjam. Jadi "mengganti" sender di
-            # sini tidak menghasilkan koneksi baru sama sekali; yang
-            # terjadi cuma naik-turun penghitung pinjaman, dan kalau
-            # penghitungnya sempat menyentuh nol, Telethon memutus
-            # sambungan yang masih dipakai worker lain.
+        if mode != "clone":
+            # "main"   -> sender milik client; Telethon yang mengurus.
+            # "borrow" -> _borrow_exported_sender mengembalikan objek
+            #             yang SAMA untuk satu DC, ia cuma menghitung
+            #             peminjaman. "Mengganti" di sini tidak
+            #             menghasilkan koneksi baru sama sekali; yang
+            #             terjadi hanya naik-turun penghitung, dan kalau
+            #             sempat menyentuh nol Telethon memutus soket
+            #             yang masih dipakai worker lain.
             #
-            # Telethon sudah menyambung ulang sender pinjaman sendiri.
-            # Tugas kita cuma menunggu dan mencoba lagi.
+            # Keduanya menyambung ulang sendiri. Tugas kita cuma
+            # menunggu dan mencoba lagi.
             return False
 
         async with conn.lock:
@@ -614,14 +664,14 @@ class ParallelDownloader:
                 return True
 
             try:
-                new_sender = await self._new_sender(dc_id, same_dc)
+                new_sender = await self._new_sender(dc_id, True)
             except Exception:
                 return False
 
             conn.sender = new_sender
             conn.renewals += 1
 
-        await self._drop_sender(stale, same_dc)
+        await self._drop_sender(stale, mode)
 
         return True
 
@@ -637,7 +687,7 @@ class ParallelDownloader:
         gate,
         limiter,
         dc_id,
-        same_dc,
+        mode,
     ):
         """
         Ambil satu chunk.
@@ -721,7 +771,7 @@ class ParallelDownloader:
                         await limiter.penalize(generation)
 
                         # Ganti soket mati dengan yang baru.
-                        await self._renew(conn, dc_id, same_dc, sender)
+                        await self._renew(conn, dc_id, mode, sender)
 
                     # Backoff dengan jitter supaya semua koneksi tidak
                     # bangun serempak.
@@ -963,7 +1013,7 @@ class ParallelDownloader:
         # gilirannya ditulis menunggu di sini.
         window = self.max_inflight * 2
 
-        conns, same_dc = await self._open_connections(dc_id)
+        conns, mode = await self._open_connections(dc_id)
 
         state = {
             "claim": start_index,
@@ -1014,7 +1064,7 @@ class ParallelDownloader:
                         gate,
                         limiter,
                         dc_id,
-                        same_dc,
+                        mode,
                     )
 
                 except asyncio.CancelledError:
@@ -1117,7 +1167,7 @@ class ParallelDownloader:
 
             writer_pool.shutdown(wait=False)
 
-            await self._close_connections(conns, same_dc)
+            await self._close_connections(conns, mode)
 
         self.last_stats = {
             "bytes": downloaded,
@@ -1133,7 +1183,7 @@ class ParallelDownloader:
             # num_connections 4. Lebih baik ditampilkan apa adanya
             # daripada melaporkan "4 koneksi" yang tidak pernah ada.
             "unique_senders": len({id(conn.sender) for conn in conns}),
-            "same_dc": same_dc,
+            "mode": mode,
             "reconnects": sum(conn.renewals for conn in conns),
             "inflight_start": limiter.start_limit,
             "inflight_min": limiter.min_limit_seen,
