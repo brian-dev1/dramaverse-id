@@ -336,7 +336,39 @@ class ReferralService
         return $nama;
     }
 
-    /** Rate (persen) yang berlaku untuk seorang referrer saat ini. */
+    /**
+     * Rate (persen) yang berlaku untuk seorang referrer saat ini.
+     *
+     * Dua sumber, dan urutannya penting: **rate khusus milik orang itu
+     * menang**; bila tidak ada, barulah tingkatan otomatis yang dipakai.
+     *
+     * ## Kenapa ada pengecualian per orang
+     *
+     * Tingkatan otomatis adalah aturan yang adil untuk orang banyak: makin
+     * banyak mengundang, makin besar persennya. Tetapi ada hubungan yang
+     * tidak diatur oleh jumlah undangan — mitra dekat, kesepakatan tertentu —
+     * dan satu-satunya cara memberi mereka angka yang berbeda tanpa kolom ini
+     * adalah menyunting tabel tingkatan, yang mengubah angka SEMUA orang.
+     *
+     * ## `null`, bukan `0`
+     *
+     * Kolomnya kosong berarti "ikut tingkatan otomatis". Nol berarti sesuatu
+     * yang lain dan tetap dihormati: orang ini tidak dapat komisi sama
+     * sekali, sekalipun tingkatannya bilang dapat. Karena itu yang diperiksa
+     * `!== null`, bukan `filled()` atau `> 0` — keduanya akan diam-diam
+     * mengubah "nol persen" menjadi "ikut tingkatan".
+     *
+     * ## Levelnya tetap dihitung apa adanya
+     *
+     * Yang dikunci hanya persennya. Level tetap mengikuti jumlah undangan
+     * yang sebenarnya, supaya papan peringkat dan riwayat komisi tetap
+     * menggambarkan pencapaian orangnya — bukan angka karangan yang
+     * menyertai rate khusus. Penanda `custom` yang membedakan keduanya, dan
+     * halaman affiliate memakainya untuk tidak menyorot baris tingkatan yang
+     * persennya tidak lagi berlaku bagi orang itu.
+     *
+     * @return array{level:int,rate:float,custom:bool,tier_rate:float}
+     */
     public function rateFor(User $user): array
     {
         $jumlah = $this->totalReferrals($user);
@@ -350,7 +382,75 @@ class ReferralService
             }
         }
 
-        return ['level' => $level, 'rate' => $rate];
+        $khusus = $user->referral_rate_override;
+
+        return [
+            'level'     => $level,
+            'rate'      => $khusus !== null ? (float) $khusus : $rate,
+            'custom'    => $khusus !== null,
+
+            // Rate tingkatan yang SEHARUSNYA berlaku, ikut dibawa supaya panel
+            // admin bisa memperlihatkan "50% (biasanya 20%)" tanpa menghitung
+            // ulang aturan yang sama di tempat kedua.
+            'tier_rate' => $rate,
+        ];
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Rate khusus
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Kunci rate seorang pengguna di angka tertentu, atau lepaskan kuncinya.
+     *
+     * `$rate` bernilai `null` mengembalikan orang itu ke tingkatan otomatis.
+     *
+     * `saveQuietly` dan `forceFill`, mengikuti cara `attach()` dan
+     * `codeFor()` menulis kolom affiliate lain: nilainya tidak boleh bisa
+     * ikut terisi lewat mass-assignment dari form pengguna mana pun, dan
+     * observer pengguna tidak perlu terbangun untuk perubahan yang tidak
+     * mengubah status akunnya.
+     *
+     * Komisi yang SUDAH tercatat tidak ikut berubah — `rate` disalin ke tiap
+     * baris komisi saat dibuat. Yang berubah hanya komisi berikutnya, dan itu
+     * memang yang diinginkan: mengubah nilai transaksi yang sudah lewat
+     * berarti angka yang pernah dilihat orang tidak lagi bisa dipercaya.
+     */
+    public function setCustomRate(User $user, ?float $rate, ?string $note = null): void
+    {
+        $user->forceFill([
+            'referral_rate_override' => $rate === null ? null : round($rate, 2),
+            'referral_rate_note'     => $rate === null ? null : ($note ?: null),
+        ])->saveQuietly();
+
+        Log::info('referral.rate.custom', [
+            'user' => $user->id,
+            'rate' => $rate,
+        ]);
+    }
+
+    /**
+     * Semua pengguna yang sedang memakai rate khusus.
+     *
+     * Dipakai panel admin. Tanpa daftar seperti ini, pengecualian yang dibuat
+     * setahun lalu hanya bisa ditemukan bila ada yang ingat namanya.
+     *
+     * @return \Illuminate\Support\Collection<int,User>
+     */
+    public function customRates()
+    {
+        return User::query()
+            ->whereNotNull('referral_rate_override')
+            ->select([
+                'id', 'name', 'telegram_username', 'referral_code',
+                'referral_rate_override', 'referral_rate_note',
+            ])
+            ->selectRaw('(select count(*) from users u2 where u2.referred_by_id = users.id) as total_referral')
+            ->orderByDesc('referral_rate_override')
+            ->orderBy('name')
+            ->get();
     }
 
     public function totalReferrals(User $user): int
@@ -519,6 +619,11 @@ class ReferralService
             'balance'         => $this->balance($user),
             'rate'            => $tier['rate'],
             'level'           => $tier['level'],
+
+            // Dipakai halaman affiliate: dengan rate khusus, menyorot salah
+            // satu baris tangga tingkatan justru menyesatkan — persen yang
+            // berlaku bagi orang ini tidak ada di tangga itu.
+            'custom_rate'     => $tier['custom'],
             'transactions'    => ReferralCommission::where('referrer_id', $user->id)
                                     ->where('status', '!=', 'void')->count(),
             'total_referrals' => $total,

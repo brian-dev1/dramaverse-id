@@ -134,6 +134,139 @@
         </div>
     </section>
 
+    {{-- ========================== Komisi khusus ========================== --}}
+    <section class="panel">
+        <div class="panel-head"><h2>Komisi khusus per orang</h2></div>
+
+        <div class="detail-body-admin">
+            <p>
+                Tingkatan di atas tetap berjalan seperti biasa untuk semua orang.
+                Panel ini hanya untuk <strong>pengecualian</strong>: orang yang persennya
+                ditetapkan sendiri dan tidak ikut berubah saat jumlah undangannya naik
+                atau saat tabel tingkatan disunting.
+            </p>
+            <p>
+                Kotak persen yang <strong>dikosongkan</strong> berarti orang itu kembali ikut
+                tingkatan otomatis. Isi <strong>0</strong> bukan hal yang sama — itu berarti
+                tidak dapat komisi sama sekali. Perubahannya berlaku untuk transaksi
+                <strong>berikutnya</strong>; komisi yang sudah tercatat tidak ikut berubah,
+                karena persennya disalin ke tiap baris komisi saat dibuat.
+            </p>
+        </div>
+
+        {{-- Cari orangnya dulu. Daftar seluruh pengguna tidak disediakan:
+             tabelnya tumbuh terus, dan yang dicari selalu satu orang yang
+             namanya sudah diketahui. --}}
+        <form method="GET" class="filter-bar">
+            {{-- Filter tab lain (cari komisi, status penarikan) dibawa serta
+                 supaya mencari pengguna tidak mengosongkan filter di panel
+                 lain pada halaman yang sama. --}}
+            @foreach (request()->except(['quser', 'page', 'wpage']) as $k => $v)
+                @continue (! is_scalar($v))
+                <input type="hidden" name="{{ $k }}" value="{{ $v }}">
+            @endforeach
+
+            <input type="text" name="quser" value="{{ $qUser }}"
+                   placeholder="Cari nama, @username, email, atau kode referral...">
+            <button type="submit" class="btn btn-ghost">Cari pengguna</button>
+        </form>
+
+        @if (strlen($qUser) >= 2)
+            <div class="table-wrap">
+                <table class="table">
+                    <thead>
+                        <tr><th>Pengguna</th><th>Kode</th><th>Rate sekarang</th><th>Set rate khusus</th></tr>
+                    </thead>
+                    <tbody>
+                    @forelse ($cariUser as $u)
+                        <tr>
+                            <td>{{ $u->telegram_username ? '@'.$u->telegram_username : $u->name }}</td>
+                            <td><code>{{ $u->referral_code ?: '—' }}</code></td>
+                            <td>
+                                @if ($u->referral_rate_override !== null)
+                                    <strong>{{ rtrim(rtrim(number_format((float) $u->referral_rate_override, 2, ',', '.'), '0'), ',') }}%</strong>
+                                    <small>khusus</small>
+                                @else
+                                    <small>ikut tingkatan otomatis</small>
+                                @endif
+                            </td>
+                            <td>
+                                <form method="POST" action="{{ route('admin.referral.rate.custom') }}" class="inline-form">
+                                    @csrf
+                                    @method('PUT')
+                                    <input type="hidden" name="user_id" value="{{ $u->id }}">
+                                    <input type="number" name="rate" min="0" max="100" step="0.5"
+                                           style="width:90px"
+                                           value="{{ $u->referral_rate_override !== null ? (float) $u->referral_rate_override : '' }}"
+                                           placeholder="%">
+                                    <input type="text" name="note" maxlength="255" placeholder="Alasan (mis. mitra dekat)">
+                                    <button type="submit" class="btn btn-sm btn-primary">Simpan</button>
+                                </form>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="4">Tidak ada pengguna yang cocok dengan "{{ $qUser }}".</td></tr>
+                    @endforelse
+                    </tbody>
+                </table>
+            </div>
+        @endif
+
+        {{-- Yang sedang berlaku. Tanpa daftar ini, pengecualian yang dibuat
+             berbulan-bulan lalu hanya bisa ditemukan bila ada yang ingat
+             namanya. --}}
+        <div class="detail-body-admin">
+            <h3>Sedang berlaku ({{ $rateKhusus->count() }})</h3>
+        </div>
+
+        <div class="table-wrap">
+            <table class="table">
+                <thead>
+                    <tr><th>Pengguna</th><th>Rate khusus</th><th>Undangan</th><th>Alasan</th><th>Aksi</th></tr>
+                </thead>
+                <tbody>
+                @forelse ($rateKhusus as $u)
+                    <tr>
+                        <td>{{ $u->telegram_username ? '@'.$u->telegram_username : $u->name }}</td>
+                        <td><strong>{{ rtrim(rtrim(number_format((float) $u->referral_rate_override, 2, ',', '.'), '0'), ',') }}%</strong></td>
+                        <td>{{ number_format($u->total_referral, 0, ',', '.') }}</td>
+                        <td>{{ $u->referral_rate_note ?: '—' }}</td>
+                        <td>
+                            <form method="POST" action="{{ route('admin.referral.rate.custom') }}" class="inline-form">
+                                @csrf
+                                @method('PUT')
+                                <input type="hidden" name="user_id" value="{{ $u->id }}">
+                                <input type="number" name="rate" min="0" max="100" step="0.5"
+                                       style="width:90px"
+                                       value="{{ (float) $u->referral_rate_override }}">
+
+                                {{-- Alasannya ikut dikirim. Tanpa ini, menaikkan
+                                     rate dari 50 ke 60 akan menghapus catatan
+                                     kenapa orang ini punya rate khusus. --}}
+                                <input type="text" name="note" maxlength="255"
+                                       value="{{ $u->referral_rate_note }}" placeholder="Alasan">
+
+                                <button type="submit" class="btn btn-sm btn-primary">Ubah</button>
+                            </form>
+
+                            {{-- Mencabut = mengirim kotak rate yang kosong. Tombolnya
+                                 dipisah supaya tidak perlu menghapus isian dulu. --}}
+                            <form method="POST" action="{{ route('admin.referral.rate.custom') }}" class="inline-form">
+                                @csrf
+                                @method('PUT')
+                                <input type="hidden" name="user_id" value="{{ $u->id }}">
+                                <button type="submit" class="btn btn-sm btn-ghost">Cabut</button>
+                            </form>
+                        </td>
+                    </tr>
+                @empty
+                    <tr><td colspan="5">Belum ada yang pakai rate khusus. Semua ikut tingkatan otomatis.</td></tr>
+                @endforelse
+                </tbody>
+            </table>
+        </div>
+    </section>
+
     {{-- ======================= Penarikan menunggu ======================== --}}
     <section class="panel">
         <div class="panel-head"><h2>Penarikan saldo</h2></div>

@@ -1012,6 +1012,11 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 Route::get('/', 'index')->name('index');
                 Route::put('/settings', 'updateSettings')->name('settings');
                 Route::put('/tiers', 'updateTiers')->name('tiers');
+
+                // Rate komisi khusus untuk satu orang. Satu endpoint untuk
+                // memasang maupun mencabut: kotak persen yang dikosongkan
+                // berarti orang itu kembali ikut tingkatan otomatis.
+                Route::put('/rate-khusus', 'updateCustomRate')->name('rate.custom');
                 Route::post('/commission/{id}/void', 'voidCommission')->name('commission.void')->whereNumber('id');
                 Route::post('/commission/{id}/restore', 'restoreCommission')->name('commission.restore')->whereNumber('id');
                 Route::post('/withdrawal/{id}', 'processWithdrawal')->name('withdrawal.process')->whereNumber('id');

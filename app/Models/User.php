@@ -54,6 +54,19 @@ class User extends Authenticatable
             'is_banned'          => 'boolean',
             'last_login_at'      => 'datetime',
             'last_seen_at'       => 'datetime',
+
+            /*
+            | Rate komisi khusus. Sengaja TIDAK ada di $fillable: nilainya
+            | menentukan uang yang dibayarkan, jadi ia hanya boleh ditulis
+            | lewat ReferralService::setCustomRate() — bukan ikut terbawa
+            | update() mana pun yang kebetulan menerima array dari request.
+            |
+            | `decimal:2` mengembalikan string; setiap pembacanya menyaringnya
+            | jadi float sendiri. Yang penting dijaga di sini adalah bedanya
+            | null dan 0: null berarti ikut tingkatan otomatis, 0 berarti
+            | benar-benar tidak dapat komisi.
+            */
+            'referral_rate_override' => 'decimal:2',
         ];
     }
 

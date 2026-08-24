@@ -68,6 +68,12 @@ class ReferralController extends Controller
             'tab'        => $tab,
             'config'     => $this->referral->config(),
             'tiers'      => ReferralTier::orderBy('level')->get(),
+
+            // Panel "Komisi khusus": yang sedang berlaku, dan hasil pencarian
+            // orang yang hendak diberi rate khusus.
+            'rateKhusus' => $this->referral->customRates(),
+            'cariUser'   => $this->cariCalon($request),
+            'qUser'      => $request->string('quser')->toString(),
             'ewallets'   => $this->referral->ewallets(),
             'komisi'     => $komisi,
             'penarikan'  => $penarikan,
@@ -137,6 +143,89 @@ class ReferralController extends Controller
         $this->referral->flush();
 
         return back()->with('status', 'Tingkatan komisi diperbarui.');
+    }
+
+    /**
+     * Cari pengguna yang hendak diberi rate khusus.
+     *
+     * Dropdown berisi seluruh pengguna bukan pilihan: tabelnya tumbuh tanpa
+     * batas, dan yang dicari selalu satu orang yang sudah diketahui namanya.
+     * Jadi yang disediakan kotak cari, dan hasilnya dibatasi sepuluh baris —
+     * lebih dari itu berarti kata kuncinya yang perlu dipertajam, bukan
+     * daftarnya yang perlu diperpanjang.
+     *
+     * @return \Illuminate\Support\Collection<int,User>
+     */
+    private function cariCalon(Request $request)
+    {
+        $q = trim($request->string('quser')->toString());
+
+        if (mb_strlen($q) < 2) {
+            return collect();
+        }
+
+        $cari = '%'.$q.'%';
+
+        return User::query()
+            ->select(['id', 'name', 'telegram_username', 'referral_code', 'referral_rate_override'])
+            ->where(fn ($w) => $w->where('name', 'like', $cari)
+                ->orWhere('telegram_username', 'like', $cari)
+                ->orWhere('email', 'like', $cari)
+                ->orWhere('referral_code', $q))
+            ->orderBy('name')
+            ->take(10)
+            ->get();
+    }
+
+    /**
+     * Kunci rate komisi seorang pengguna, atau lepaskan kuncinya.
+     *
+     * Satu endpoint untuk memasang dan mencabut, bukan dua. Yang membedakan
+     * hanya kotak persennya diisi atau dikosongkan, dan itu satu keputusan
+     * yang sama dilihat dari sisi admin: "berapa persen orang ini?" — dengan
+     * "ikut aturan biasa" sebagai salah satu jawabannya.
+     *
+     * Tingkatan otomatis TIDAK disentuh sama sekali. Orang lain tetap naik
+     * turun mengikuti jumlah undangannya seperti sebelumnya; yang berubah
+     * hanya orang yang namanya disebut di sini.
+     */
+    public function updateCustomRate(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'user_id' => ['required', 'integer', 'exists:users,id'],
+
+            // `nullable` yang berarti sesuatu: kosong = cabut rate khusus.
+            // Batas bawahnya 0, dan nol memang boleh — artinya orang ini
+            // tidak dapat komisi sama sekali, dan itu keputusan yang sah.
+            'rate'    => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'note'    => ['nullable', 'string', 'max:255'],
+        ], [
+            'user_id.exists' => 'Penggunanya tidak ditemukan.',
+            'rate.max'       => 'Rate tidak boleh lebih dari 100%.',
+        ]);
+
+        $user = User::findOrFail($data['user_id']);
+
+        $rate = $request->filled('rate') ? (float) $data['rate'] : null;
+
+        $this->referral->setCustomRate($user, $rate, $data['note'] ?? null);
+
+        $nama = $user->telegram_username ? '@'.$user->telegram_username : $user->name;
+
+        if ($rate === null) {
+            return back()->with(
+                'status',
+                'Rate khusus '.$nama.' dicabut. Sekarang ikut tingkatan otomatis lagi.'
+            );
+        }
+
+        $persen = rtrim(rtrim(number_format($rate, 2, ',', '.'), '0'), ',');
+
+        return back()->with(
+            'status',
+            $nama.' sekarang dapat komisi '.$persen.'% untuk setiap transaksi berikutnya. '
+            .'Komisi yang sudah tercatat tidak berubah.'
+        );
     }
 
     /** Batalkan komisi (mis. pembayaran di-refund atau terbukti curang). */

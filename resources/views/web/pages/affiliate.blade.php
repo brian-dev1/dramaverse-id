@@ -69,8 +69,12 @@
             <div class="af-box">
                 <span class="af-box-k">Statistik Level Referral</span>
                 <ul class="af-tiers">
+                    {{-- Dengan rate khusus, tidak ada baris yang disorot: persen
+                         yang berlaku bagi orang ini memang tidak ada di tangga
+                         ini, dan menyorot salah satunya hanya akan membuat
+                         angka di kartu atas terlihat seperti salah hitung. --}}
                     @foreach ($tiers as $tier)
-                        <li class="{{ $tier->level === $summary['level'] ? 'now' : '' }}">
+                        <li class="{{ ! ($summary['custom_rate'] ?? false) && $tier->level === $summary['level'] ? 'now' : '' }}">
                             <span>Level {{ $tier->level }} - {{ rtrim(rtrim(number_format($tier->rate, 2, ',', '.'), '0'), ',') }}%</span>
                             <span class="af-tier-min">Min {{ number_format($tier->min_referrals, 0, ',', '.') }} referral</span>
                         </li>
@@ -80,6 +84,13 @@
                     Level saat ini: <strong data-af="level">{{ $summary['level'] }}</strong>
                     (<span data-af="rate2">{{ rtrim(rtrim(number_format($summary['rate'], 2, ',', '.'), '0'), ',') }}%</span>)
                 </p>
+
+                @if ($summary['custom_rate'] ?? false)
+                    <p class="af-hint">
+                        Persentase komisi Anda ditetapkan khusus, jadi tidak mengikuti
+                        tangga di atas dan tidak berubah saat jumlah undangan bertambah.
+                    </p>
+                @endif
             </div>
         </div>
     </section>
