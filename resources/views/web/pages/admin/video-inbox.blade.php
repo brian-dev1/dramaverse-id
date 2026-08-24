@@ -172,6 +172,46 @@
             opacity: .7;
         }
 
+        /* Kotak pindah part, tersembunyi sampai tombolnya ditekan. Dibuka
+           per baris, bukan sekaligus semuanya: memindahkan itu tindakan pada
+           satu video, dan lima kotak terbuka bersamaan hanya membuat halaman
+           terlihat seperti daftar kerja yang belum selesai. */
+        .inbox-move {
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 12px 0 0;
+            padding: 12px;
+            border: 1px dashed rgba(255,255,255,.18);
+            border-radius: 8px;
+        }
+
+        .inbox-move .field {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            flex: 1 1 200px;
+            min-width: 170px;
+            margin: 0;
+        }
+
+        .inbox-move label {
+            font-size: 11px;
+            letter-spacing: .04em;
+            text-transform: uppercase;
+            opacity: .55;
+        }
+
+        .inbox-move .control { width: 100%; }
+
+        .inbox-move-note {
+            flex: 1 1 100%;
+            margin: 0;
+            font-size: 12px;
+            opacity: .6;
+        }
+
         .inbox-form {
             display: flex;
             align-items: flex-end;
@@ -225,11 +265,12 @@
 
         <p class="inbox-intro">
             @if ($tampil === 'terpasang')
-                Video yang sudah dipasang ke part. Salah part? Tekan
-                <strong>Lepas dari part ini</strong> — partnya kosong lagi dan videonya
-                kembali ke tab Belum terpasang, tempat drama dan partnya dipilih ulang.
-                Berkasnya tetap utuh di storage provider, tidak ada yang diunduh atau
-                diunggah ulang.
+                Video yang sudah dipasang ke part. Salah drama atau salah part? Tekan
+                <strong>Pindahkan</strong> untuk memilih tujuan yang benar dalam satu
+                langkah — part lama otomatis kosong. Atau tekan
+                <strong>Lepas dari part ini</strong> bila ingin videonya kembali dulu ke
+                tab Belum terpasang. Berkasnya tetap utuh di storage provider, tidak ada
+                yang diunduh atau diunggah ulang.
             @else
                 Video di halaman ini sudah tersimpan di storage provider lewat worker
                 Telegram. Pilih drama dan part untuk tiap video — boleh beda-beda
@@ -394,6 +435,15 @@
                                     <p>Tidak lagi tersedia untuk dipasang.</p>
                                 @endif
 
+                                @if ($video->episode)
+                                    <button type="button"
+                                            class="btn btn-ghost btn-sm"
+                                            data-move-toggle
+                                            aria-expanded="false">
+                                        Pindahkan
+                                    </button>
+                                @endif
+
                                 <button type="submit"
                                         class="btn btn-ghost btn-sm"
                                         form="inbox-release-{{ $video->id }}">
@@ -401,6 +451,77 @@
                                 </button>
 
                             </div>
+
+                            {{--
+                                Kotak pindah part.
+
+                                Kedua dropdown-nya berada di dalam form
+                                pemasangan (lihat <form data-inbox-form> di
+                                atas), jadi yang harus ikut terkirim ditarik
+                                keluar lewat atribut `form`. Dropdown drama
+                                sengaja TIDAK diberi `name`: ia cuma alat untuk
+                                menyaring daftar part, dan yang menentukan
+                                tujuan hanyalah episodenya.
+                            --}}
+                            @if ($video->episode)
+                                <div class="inbox-move" data-move-box hidden>
+
+                                    @if ($dramas->isEmpty())
+
+                                        <p class="inbox-move-note field-error">
+                                            Tidak ada drama yang masih punya part kosong,
+                                            jadi tidak ada tujuan yang bisa dipilih. Buat
+                                            partnya dulu lewat <strong>+ Part</strong>.
+                                        </p>
+
+                                    @else
+
+                                        <div class="field">
+                                            <label for="move-drama-{{ $video->id }}">Drama tujuan</label>
+
+                                            <select id="move-drama-{{ $video->id }}"
+                                                    class="control"
+                                                    data-move-drama>
+                                                <option value="">— pilih drama —</option>
+                                                @foreach ($dramas as $drama)
+                                                    <option value="{{ $drama->id }}"
+                                                        @selected($video->episode->drama_id == $drama->id)>
+                                                        {{ $drama->title }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+
+                                        <div class="field">
+                                            <label for="move-episode-{{ $video->id }}">Part tujuan</label>
+
+                                            <select id="move-episode-{{ $video->id }}"
+                                                    name="episode_id"
+                                                    form="inbox-move-{{ $video->id }}"
+                                                    class="control"
+                                                    data-move-episode
+                                                    disabled>
+                                                <option value="">— pilih drama dulu —</option>
+                                            </select>
+                                        </div>
+
+                                        <button type="submit"
+                                                class="btn btn-primary btn-sm"
+                                                form="inbox-move-{{ $video->id }}"
+                                                data-move-submit
+                                                disabled>
+                                            Pindahkan ke sini
+                                        </button>
+
+                                        <p class="inbox-move-note">
+                                            Part yang sudah punya video tidak bisa dipilih —
+                                            lepas dulu isinya. Berkasnya tidak berpindah di storage.
+                                        </p>
+
+                                    @endif
+
+                                </div>
+                            @endif
 
                         @elseif ($bisaDipasang)
 
@@ -532,6 +653,20 @@
                   data-confirm-message="{{ $peringatan }}">
                 @csrf
             </form>
+
+            {{-- Pasangannya untuk pemindahan. Tanpa `data-confirm`: tidak ada
+                 yang hilang di sini — part lama kosong, part baru terisi, dan
+                 salah tujuan bisa langsung dipindahkan lagi. Dialog untuk
+                 tindakan yang mudah dibatalkan hanya melatih orang menekan
+                 "Ya" tanpa membaca. --}}
+            @if ($video->episode)
+                <form id="inbox-move-{{ $video->id }}"
+                      method="POST"
+                      action="{{ route('admin.video-inbox.move', ['video' => $video->id]) }}"
+                      hidden>
+                    @csrf
+                </form>
+            @endif
 
         @endforeach
 
@@ -897,6 +1032,164 @@
             } else {
                 segarkanPanel();
             }
+        });
+    </script>
+
+    <script>
+        /*
+         * Kotak "Pindahkan" pada tab Sudah terpasang.
+         *
+         * Sengaja TERPISAH dari skrip pemasangan di atas, bukan disisipkan ke
+         * dalamnya. Skrip itu berhenti lebih awal ketika tidak ada satu pun
+         * baris bercentang — dan di tab ini memang tidak ada, karena video yang
+         * sudah terpasang tidak punya checkbox. Menumpangkan kode ini di sana
+         * berarti ia tidak akan pernah berjalan justru di satu-satunya tab yang
+         * membutuhkannya.
+         *
+         * Berdiri sendiri juga berarti kesalahan di sini tidak bisa mematikan
+         * alur pemasangan yang sudah berjalan.
+         */
+        document.addEventListener('DOMContentLoaded', () => {
+
+            const kotak = Array.from(document.querySelectorAll('[data-move-box]'));
+
+            if (!kotak.length) {
+                return;
+            }
+
+            const templateUrl = document
+                .querySelector('[data-inbox-form]')
+                ?.dataset.episodesUrl;
+
+            if (!templateUrl) {
+                return;
+            }
+
+            // Sepuluh video dari drama yang sama cukup satu permintaan.
+            const cache = new Map();
+
+            const ambilEpisode = (dramaId) => {
+                if (!cache.has(dramaId)) {
+                    const url = templateUrl.replace(/\/0(?=\/?$)/, '/' + dramaId);
+
+                    cache.set(
+                        dramaId,
+                        fetch(url, { headers: { 'Accept': 'application/json' } })
+                            .then((r) => {
+                                if (!r.ok) {
+                                    throw new Error('Gagal mengambil part.');
+                                }
+
+                                return r.json();
+                            })
+                            .then(({ data }) => data || [])
+                            .catch((e) => {
+                                cache.delete(dramaId);
+                                throw e;
+                            })
+                    );
+                }
+
+                return cache.get(dramaId);
+            };
+
+            kotak.forEach((box) => {
+
+                const baris  = box.closest('[data-inbox-row]');
+                const tombol = baris?.querySelector('[data-move-toggle]');
+                const drama  = box.querySelector('[data-move-drama]');
+                const part   = box.querySelector('[data-move-episode]');
+                const kirim  = box.querySelector('[data-move-submit]');
+
+                if (!tombol) {
+                    return;
+                }
+
+                tombol.addEventListener('click', () => {
+                    const tampil = box.hidden;
+
+                    box.hidden = !tampil;
+                    tombol.setAttribute('aria-expanded', String(tampil));
+                    tombol.textContent = tampil ? 'Batal pindah' : 'Pindahkan';
+
+                    // Daftar partnya baru diambil saat kotaknya dibuka. Halaman
+                    // ini memuat 20 baris sekaligus; mengambil semuanya di muka
+                    // berarti 20 permintaan untuk sesuatu yang mungkin tidak
+                    // satu pun dipakai.
+                    if (tampil && drama && drama.value && part.options.length <= 1) {
+                        muat();
+                    }
+                });
+
+                if (!drama || !part || !kirim) {
+                    return;
+                }
+
+                const setOpsi = (teks) => {
+                    part.innerHTML = '<option value="">' + teks + '</option>';
+                    part.disabled = true;
+                    kirim.disabled = true;
+                };
+
+                async function muat() {
+                    if (!drama.value) {
+                        setOpsi('— pilih drama dulu —');
+                        return;
+                    }
+
+                    setOpsi('— memuat part —');
+
+                    let episodes;
+
+                    try {
+                        episodes = await ambilEpisode(drama.value);
+                    } catch (e) {
+                        setOpsi('Gagal memuat part');
+                        return;
+                    }
+
+                    /*
+                     * Part yang sudah berisi video DIBUANG dari daftar, bukan
+                     * ditampilkan sebagai pilihan yang nanti ditolak server.
+                     *
+                     * Ini berbeda dari daftar saat memasang, yang masih
+                     * menampilkannya dengan keterangan "akan dilewati" — di
+                     * sana admin memasang belasan sekaligus dan perlu tahu
+                     * mana yang terlewat. Di sini tindakannya satu video, dan
+                     * satu-satunya hasil dari memilih part berisi adalah
+                     * penolakan. Pilihan yang pasti gagal lebih baik tidak ada.
+                     */
+                    const bisa = episodes.filter((item) => !item.has_video);
+
+                    if (!bisa.length) {
+                        setOpsi('— semua partnya sudah berisi —');
+                        return;
+                    }
+
+                    part.innerHTML = '';
+
+                    const kosong = document.createElement('option');
+                    kosong.value = '';
+                    kosong.textContent = '— pilih part —';
+                    part.appendChild(kosong);
+
+                    bisa.forEach((item) => {
+                        const opsi = document.createElement('option');
+                        opsi.value = item.id;
+                        opsi.textContent = item.label;
+                        part.appendChild(opsi);
+                    });
+
+                    part.disabled = false;
+                    kirim.disabled = true;
+                }
+
+                drama.addEventListener('change', muat);
+
+                part.addEventListener('change', () => {
+                    kirim.disabled = !part.value;
+                });
+            });
         });
     </script>
 

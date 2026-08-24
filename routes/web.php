@@ -1053,6 +1053,15 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 // biasa di halaman inbox.
                 Route::post('/{video}/lepas', 'release')
                     ->name('release')->whereNumber('video');
+
+                // Memindahkan video yang sudah terpasang ke drama/part lain
+                // dalam satu langkah. Melepas lalu memasang ulang menghasilkan
+                // keadaan yang sama, tapi di antara keduanya part lama sudah
+                // kosong sementara yang baru belum terisi — dan admin harus
+                // mencari lagi berkasnya di tab sebelah. Di sini keduanya satu
+                // transaksi, jadi tidak ada jeda seperti itu.
+                Route::post('/{video}/pindah', 'move')
+                    ->name('move')->whereNumber('video');
             });
     });
 });

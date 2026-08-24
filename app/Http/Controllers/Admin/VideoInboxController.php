@@ -332,6 +332,144 @@ class VideoInboxController extends Controller
     }
 
     /**
+     * Memindahkan video yang sudah terpasang ke drama/part lain.
+     *
+     * ## Kenapa ada, padahal `release()` sudah ada
+     *
+     * Melepas lalu memasang ulang menghasilkan keadaan yang benar, tetapi
+     * lewat jalan yang salah: di antara kedua langkah itu partnya kosong dan
+     * videonya duduk di tab lain. Admin yang tinggal memperbaiki satu nomor
+     * part harus berpindah tab, mencari lagi berkas yang barusan dilepasnya
+     * di antara video lain yang juga menunggu, lalu memilih dramanya dari
+     * nol. Kesalahan yang paling sering terjadi di halaman ini justru yang
+     * paling mahal diperbaiki.
+     *
+     * Di sini keduanya jadi satu tindakan: satu tekan, satu transaksi, dan
+     * tidak ada jeda ketika part lama sudah kosong sementara part barunya
+     * belum terisi.
+     *
+     * ## Yang TIDAK dilakukan
+     *
+     * Part tujuan yang sudah punya video tidak ditimpa — aturan yang sama
+     * persis dengan `assign()`. Menimpa berarti membuang catatan berkas lain
+     * tanpa jalan kembali, sementara salah pilih part di dropdown jauh lebih
+     * mudah terjadi daripada niat mengganti video yang sudah benar.
+     *
+     * Berkasnya juga tidak disentuh. Object di storage provider tidak
+     * berpindah, tidak disalin, dan tidak dihapus; yang berpindah hanya
+     * catatan part mana yang menunjuk ke sana.
+     */
+    public function move(Request $request, VideoInbox $video): RedirectResponse
+    {
+        if ($video->isAvailable()) {
+            return back()->with(
+                'error',
+                'Video ini belum terpasang ke part mana pun. '
+                .'Pasang dari tab Belum terpasang.'
+            );
+        }
+
+        $data = $request->validate([
+            'episode_id' => ['required', 'integer'],
+        ], [
+            'episode_id.required' => 'Pilih dulu part tujuannya.',
+        ]);
+
+        $nama = $video->original_filename ?: 'Video #'.$video->id;
+
+        // Syarat yang sama seperti saat memasang pertama kali. Video yang
+        // kehilangan checksum atau providernya di tengah jalan tidak boleh
+        // dipindahkan ke part lain hanya karena dulu sempat lolos.
+        if (blank($video->checksum)) {
+            return back()->with('error', $nama.': belum punya checksum SHA-256.');
+        }
+
+        if ($video->provider === null) {
+            return back()->with('error', $nama.': storage provider tidak ditemukan.');
+        }
+
+        $tujuan = Episode::query()
+            ->with(['video', 'drama:id,title'])
+            ->find($data['episode_id']);
+
+        if ($tujuan === null) {
+            return back()->with('error', 'Part tujuan tidak ditemukan.');
+        }
+
+        if ((int) $tujuan->id === (int) $video->episode_id) {
+            return back()->with(
+                'error',
+                $nama.' memang sudah ada di part itu. Tidak ada yang diubah.'
+            );
+        }
+
+        if ($tujuan->video !== null) {
+            return back()->with(
+                'error',
+                $this->sebutPart($tujuan).' sudah punya video. '
+                .'Lepas dulu video yang ada di sana, baru pindahkan yang ini.'
+            );
+        }
+
+        $asal = Episode::query()
+            ->with(['video', 'drama:id,title'])
+            ->find($video->episode_id);
+
+        /*
+        | Baris di part ASAL hanya dihapus bila ia memang menunjuk berkas INI.
+        |
+        | Alasannya sama persis dengan `release()`: part yang sudah terpasang
+        | masih bisa diunggahi berkas lain lewat halaman Unggah, dan bila itu
+        | terjadi, yang duduk di sana bukan lagi video ini. Menghapusnya
+        | berarti mengosongkan part orang lain sebagai efek samping dari
+        | memindahkan video yang sama sekali berbeda.
+        */
+        $lama = $asal?->video;
+
+        $milikVideoIni = $lama !== null
+            && (int) $lama->storage_provider_id === (int) $video->storage_provider_id
+            && ltrim((string) $lama->object_key, '/') === ltrim((string) $video->object_key, '/');
+
+        DB::transaction(function () use ($video, $tujuan, $lama, $milikVideoIni) {
+
+            // Dihapus DULU, di dalam transaksi yang sama. Kalau pemasangan di
+            // bawah gagal, penghapusan ini ikut dibatalkan dan part asal tidak
+            // pernah sempat kosong.
+            if ($milikVideoIni) {
+                $lama->delete();
+            }
+
+            // `pasang()` sekaligus memperbarui baris inbox-nya, jadi tidak ada
+            // pembaruan status terpisah yang bisa tertinggal di sini.
+            $this->pasang($video, $tujuan);
+        });
+
+        $pesan = $nama.' dipindahkan ke '.$this->sebutPart($tujuan).'.';
+
+        if ($asal === null) {
+            $pesan .= ' Part lamanya sudah tidak ada.';
+        } elseif (! $milikVideoIni && $lama !== null) {
+            $pesan .= ' '.$this->sebutPart($asal).' sengaja TIDAK dikosongkan '
+                .'karena video yang ada di sana sekarang berkas lain.';
+        } else {
+            $pesan .= ' '.$this->sebutPart($asal).' kosong lagi.';
+        }
+
+        return back()->with('success', $pesan.' Berkasnya tidak berpindah di storage.');
+    }
+
+    /** Sebutan satu part yang selalu sama di seluruh pesan halaman ini. */
+    private function sebutPart(?Episode $episode): string
+    {
+        if ($episode === null) {
+            return 'Part yang sudah tidak ada';
+        }
+
+        return ($episode->drama?->title ?? 'Drama').' Part '
+            .str_pad((string) $episode->episode_number, 2, '0', STR_PAD_LEFT);
+    }
+
+    /**
      * Memasangkan satu object storage yang sudah ada ke satu episode.
      *
      * Tidak ada unduh maupun unggah ulang di sini — berkasnya sudah berada di
