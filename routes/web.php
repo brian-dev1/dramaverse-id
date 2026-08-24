@@ -1035,6 +1035,19 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 // Satu permintaan memasang banyak video sekaligus. Pasangan
                 // video->episode dikirim sebagai array `pairs`.
                 Route::post('/assign', 'assign')->name('assign');
+
+                // Membatalkan satu pemasangan. Jalan kembali untuk video yang
+                // masuk ke part yang salah: partnya dikosongkan lagi dan
+                // videonya kembali ke daftar Belum terpasang, siap dipilihkan
+                // drama dan part yang benar lewat alur yang sama seperti
+                // biasa. Berkas di storage provider tidak disentuh sama
+                // sekali — yang berubah hanya catatannya.
+                //
+                // POST, bukan DELETE: yang terjadi bukan penghapusan video
+                // melainkan pengembalian statusnya, dan tombolnya berupa form
+                // biasa di halaman inbox.
+                Route::post('/{video}/lepas', 'release')
+                    ->name('release')->whereNumber('video');
             });
     });
 });

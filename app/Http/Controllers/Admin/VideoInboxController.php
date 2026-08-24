@@ -241,6 +241,97 @@ class VideoInboxController extends Controller
     }
 
     /**
+     * Membatalkan satu pemasangan: partnya dikosongkan, videonya kembali.
+     *
+     * Salah pilih part adalah kesalahan yang paling mudah terjadi di halaman
+     * ini — nomor part ditebak dari nama berkas, dan tebakan itu sesekali
+     * meleset tanpa terlihat sampai ada yang menonton. Sampai sekarang satu-
+     * satunya jalan keluarnya ada di halaman lain, dan admin yang baru sadar
+     * salah pasang harus meninggalkan daftar yang sedang dikerjakannya.
+     *
+     * Yang dilakukan hanya membalik apa yang dilakukan `pasang()`: baris
+     * `episode_videos` dihapus sehingga partnya kosong lagi, dan baris inbox
+     * dikembalikan ke `available` sehingga videonya muncul lagi di tab Belum
+     * terpasang beserta kedua kotak pilihannya. Dari sana drama dan partnya
+     * dipilih ulang lewat alur yang sama seperti biasa — tidak ada jalur
+     * pemasangan kedua yang harus dijaga tetap sama dengan yang pertama.
+     *
+     * **Berkasnya tidak disentuh.** Object di storage provider tetap di
+     * tempatnya, dan itulah yang membuat tindakan ini aman dilakukan begitu
+     * ragu muncul: yang hilang cuma catatan, dan catatan itu dibuat ulang
+     * dalam satu kali pasang.
+     */
+    public function release(VideoInbox $video): RedirectResponse
+    {
+        if ($video->isAvailable()) {
+            return back()->with(
+                'error',
+                'Video ini memang belum terpasang ke part mana pun.'
+            );
+        }
+
+        $nama = $video->original_filename ?: 'Video #'.$video->id;
+
+        $episode = Episode::query()
+            ->with(['video', 'drama:id,title'])
+            ->find($video->episode_id);
+
+        /*
+        | Baris `episode_videos` hanya dihapus bila ia memang menunjuk berkas
+        | INI.
+        |
+        | Part yang sudah dipasangi masih bisa diunggahi berkas lain lewat
+        | halaman Unggah — `updateOrCreate` di `pasang()` memakai kunci
+        | `episode_id`, jadi barisnya ditimpa, bukan ditambah. Bila itu yang
+        | terjadi, yang duduk di part tersebut bukan lagi video ini, dan
+        | menghapusnya berarti membuang catatan berkas yang masih dipakai
+        | orang lain.
+        |
+        | Dalam keadaan itu baris inbox tetap dilepas — statusnya memang sudah
+        | tidak menggambarkan apa pun — dan admin diberi tahu bahwa partnya
+        | sengaja dibiarkan berisi.
+        */
+        $terpasang = $episode?->video;
+
+        $milikVideoIni = $terpasang !== null
+            && (int) $terpasang->storage_provider_id === (int) $video->storage_provider_id
+            && ltrim((string) $terpasang->object_key, '/') === ltrim((string) $video->object_key, '/');
+
+        DB::transaction(function () use ($video, $terpasang, $milikVideoIni) {
+            if ($milikVideoIni) {
+                $terpasang->delete();
+            }
+
+            $video->update([
+                'status'      => 'available',
+                'episode_id'  => null,
+                'assigned_at' => null,
+            ]);
+        });
+
+        $tujuan = $episode === null
+            ? 'part yang sudah tidak ada'
+            : ($episode->drama?->title ?? 'Drama').' Part '
+                .str_pad((string) $episode->episode_number, 2, '0', STR_PAD_LEFT);
+
+        if ($terpasang !== null && ! $milikVideoIni) {
+            return back()->with(
+                'success',
+                $nama.' kembali ke daftar Belum terpasang. '
+                .$tujuan.' tidak ikut dikosongkan karena video yang ada di sana '
+                .'sekarang berkas lain.'
+            );
+        }
+
+        return back()->with(
+            'success',
+            $nama.' dilepas dari '.$tujuan.'. Partnya kosong lagi dan videonya '
+            .'menunggu di tab Belum terpasang — pilih drama dan partnya di sana. '
+            .'Berkasnya masih utuh di storage.'
+        );
+    }
+
+    /**
      * Memasangkan satu object storage yang sudah ada ke satu episode.
      *
      * Tidak ada unduh maupun unggah ulang di sini — berkasnya sudah berada di

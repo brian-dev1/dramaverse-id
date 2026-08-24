@@ -156,8 +156,19 @@
         }
 
         .inbox-assigned {
-            margin: 8px 0 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin: 12px 0 0;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255,255,255,.08);
             font-size: 12.5px;
+        }
+
+        .inbox-assigned p {
+            margin: 0;
+            flex: 1 1 220px;
             opacity: .7;
         }
 
@@ -214,9 +225,11 @@
 
         <p class="inbox-intro">
             @if ($tampil === 'terpasang')
-                Video yang sudah dipasang ke part. Daftar ini hanya catatan — tidak ada
-                yang bisa dipasang ulang dari sini. Untuk mengganti video sebuah part,
-                lepaskan dulu videonya dari halaman Part.
+                Video yang sudah dipasang ke part. Salah part? Tekan
+                <strong>Lepas dari part ini</strong> — partnya kosong lagi dan videonya
+                kembali ke tab Belum terpasang, tempat drama dan partnya dipilih ulang.
+                Berkasnya tetap utuh di storage provider, tidak ada yang diunduh atau
+                diunggah ulang.
             @else
                 Video di halaman ini sudah tersimpan di storage provider lewat worker
                 Telegram. Pilih drama dan part untuk tiap video — boleh beda-beda
@@ -360,15 +373,34 @@
 
                         <p class="inbox-key">{{ $video->object_key }}</p>
 
-                        @if ($video->status === 'assigned' && $video->episode)
+                        @if (! $video->isAvailable())
 
-                            <p class="inbox-assigned">
-                                Terpasang ke
-                                <strong>
-                                    {{ $video->episode->drama?->title ?? 'Drama' }}
-                                    — Part {{ $video->episode->episode_number }}
-                                </strong>
-                            </p>
+                            {{-- Tombolnya berada di LUAR form pemasangan (lihat
+                                 kumpulan form di bawah daftar) dan ditarik ke sini
+                                 lewat atribut `form`. Form di dalam form bukan HTML
+                                 yang sah: peramban membuang yang di dalam, dan
+                                 tombolnya akan ikut mengirim form pemasangan. --}}
+                            <div class="inbox-assigned">
+
+                                @if ($video->episode)
+                                    <p>
+                                        Terpasang ke
+                                        <strong>
+                                            {{ $video->episode->drama?->title ?? 'Drama' }}
+                                            — Part {{ $video->episode->episode_number }}
+                                        </strong>
+                                    </p>
+                                @else
+                                    <p>Tidak lagi tersedia untuk dipasang.</p>
+                                @endif
+
+                                <button type="submit"
+                                        class="btn btn-ghost btn-sm"
+                                        form="inbox-release-{{ $video->id }}">
+                                    Lepas dari part ini
+                                </button>
+
+                            </div>
 
                         @elseif ($bisaDipasang)
 
@@ -424,8 +456,9 @@
 
                             </div>
 
-                        @elseif ($video->isAvailable())
+                        @else
 
+                            {{-- Sisanya: masih tersedia, tetapi checksumnya kosong. --}}
                             <p class="inbox-note field-error">
                                 Belum ada checksum SHA-256, video belum dapat dipasang.
                             </p>
@@ -457,6 +490,50 @@
             </div>
 
         </form>
+
+        {{--
+            Form pelepasan, satu per video terpasang.
+
+            Sengaja dikumpulkan di sini alih-alih ditaruh di dalam barisnya:
+            baris-baris itu berada di dalam form pemasangan, dan form bersarang
+            akan dibuang peramban. Tombolnya di baris masing-masing menunjuk ke
+            sini lewat atribut `form`.
+
+            `data-confirm` memunculkan dialog konfirmasi yang sama dengan
+            halaman admin lain (admin.js). Tombolnya tidak merah karena tidak
+            ada yang dihapus: berkasnya tetap di storage, dan pemasangannya
+            bisa diulang kapan saja.
+        --}}
+        @foreach ($videos as $video)
+
+            @continue ($video->isAvailable())
+
+            @php
+                $partnya = $video->episode
+                    ? ($video->episode->drama?->title ?? 'Drama').' Part '
+                        .str_pad((string) $video->episode->episode_number, 2, '0', STR_PAD_LEFT)
+                    : null;
+
+                $peringatan = $partnya
+                    ? $partnya.' akan kosong lagi dan '.$video->original_filename
+                        .' kembali ke tab Belum terpasang.'
+                    : $video->original_filename.' akan kembali ke tab Belum terpasang.';
+
+                $peringatan .= ' Berkasnya tidak dihapus dari storage, jadi pemasangannya bisa diulang.';
+            @endphp
+
+            <form id="inbox-release-{{ $video->id }}"
+                  method="POST"
+                  action="{{ route('admin.video-inbox.release', ['video' => $video->id]) }}"
+                  hidden
+                  data-confirm
+                  data-confirm-title="Lepas dari part?"
+                  data-confirm-ok="Lepas"
+                  data-confirm-message="{{ $peringatan }}">
+                @csrf
+            </form>
+
+        @endforeach
 
         @if ($videos->hasPages())
             <div class="inbox-pager">
