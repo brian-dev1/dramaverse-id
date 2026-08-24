@@ -10,6 +10,7 @@ import time
 
 import requests
 from telethon import TelegramClient
+from telethon.errors import ApiIdInvalidError
 
 from fast_download import ParallelDownloader
 
@@ -21,7 +22,24 @@ from fast_download import ParallelDownloader
 API_ID = os.environ.get("TG_API_ID")
 API_HASH = os.environ.get("TG_API_HASH")
 
-DOWNLOAD_DIR = "./downloads"
+# Semua jalur dipatok ke folder skrip ini, BUKAN ke direktori kerja.
+#
+# Telethon menyimpan sesi login sebagai "<nama>.session" relatif ke
+# direktori kerja. Selama skrip dijalankan lewat `unduh` (yang ber-`cd`
+# ke /root) itu tidak kelihatan bermasalah -- tapi begitu skrip
+# dipanggil langsung dari folder lain, Telethon tidak menemukan sesi
+# lama, menganggap ini login pertama, dan mulai meminta nomor HP.
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+SESSION_PATH = os.environ.get(
+    "TG_SESSION",
+    os.path.join(BASE_DIR, "telegram_session"),
+)
+
+DOWNLOAD_DIR = os.environ.get(
+    "TG_DOWNLOAD_DIR",
+    os.path.join(BASE_DIR, "downloads"),
+)
 
 SCAN_LIMIT = 50
 
@@ -38,14 +56,13 @@ MAX_PARALLEL = int(
 
 # Berapa request 1 MB yang boleh terbang bersamaan DI TIAP koneksi.
 #
-# Ini tombol kecepatan yang sebenarnya, bukan jumlah koneksi. Dengan
-# 4 koneksi x 3 = 12 request bersamaan. Versi lama terkunci di 1 per
-# koneksi, jadi tiap koneksi menganggur penuh selama satu perjalanan
-# pulang-pergi ke DC.
-#
-# Turunkan ke 1 kalau akun sering kena flood; naikkan hati-hati.
+# Default 1 -> total request bersamaan = jumlah koneksi = 4, persis
+# seperti perilaku asli. Menaikkannya ke 3 terbukti KONTRAPRODUKTIF
+# pada akun ini: koneksi tambahan modul ini dibuat dengan meminjam
+# auth_key koneksi utama, dan Telegram memutus sambungan begitu
+# ditembak terlalu keras lewat jalur itu.
 INFLIGHT_PER_CONNECTION = int(
-    os.environ.get("TG_INFLIGHT_PER_CONN", "3")
+    os.environ.get("TG_INFLIGHT_PER_CONN", "1")
 )
 
 # Berapa kali satu video dicoba ulang sebelum menyerah. Percobaan
@@ -122,6 +139,113 @@ def assert_running_on_vps():
     sys.exit(1)
 
 
+def validate_api_credentials(session_exists):
+    """
+    Periksa bentuk TG_API_ID / TG_API_HASH sebelum menyentuh jaringan.
+
+    Telegram HANYA memvalidasi pasangan ini saat LOGIN. Selama file sesi
+    masih sah, kredensial yang salah sama sekali tidak dipakai -- dan
+    karena itu pemeriksaan ini TIDAK boleh menghentikan skrip selama
+    sesinya ada. Menolak jalan dalam keadaan itu berarti memblokir
+    pekerjaan yang sebenarnya bisa berjalan sempurna.
+
+    Yang benar: kalau sesi ada, cukup diperingatkan -- ini ranjau yang
+    baru meledak saat sesi mati. Kalau sesi tidak ada, login pasti
+    terjadi, dan di situ kredensial yang salah memang menggagalkan
+    semuanya; barulah berhenti lebih awal itu menolong.
+    """
+    problems = []
+
+    if not (API_ID or "").strip().isdigit():
+        problems.append(
+            "TG_API_ID harus angka saja "
+            f"(sekarang: {len(API_ID or '')} karakter, bukan angka murni)."
+        )
+
+    api_hash = (API_HASH or "").strip()
+
+    if not re.fullmatch(r"[0-9a-fA-F]{32}", api_hash):
+        problems.append(
+            "TG_API_HASH harus 32 karakter heksadesimal "
+            f"(sekarang: {len(api_hash)} karakter)."
+        )
+
+    if not problems:
+        return
+
+    print()
+    print("========================================")
+
+    if session_exists:
+        print(" PERINGATAN: KREDENSIAL API BERMASALAH")
+    else:
+        print(" KREDENSIAL API TELEGRAM TIDAK VALID")
+
+    print("========================================")
+
+    for problem in problems:
+        print(f"- {problem}")
+
+    print()
+
+    if session_exists:
+        print(
+            "Sesi login masih ada, jadi kredensial ini TIDAK dipakai "
+            "sekarang dan skrip tetap jalan."
+        )
+        print(
+            "Tapi begitu sesi itu mati, login berikutnya pasti gagal. "
+            "Betulkan saat sempat."
+        )
+        print("========================================")
+        print()
+
+        return
+
+    print(
+        "Tidak ada file sesi, jadi login pasti terjadi -- dan dengan "
+        "kredensial ini login itu pasti ditolak."
+    )
+    print()
+    print(
+        "Ambil keduanya berpasangan dari https://my.telegram.org "
+        "-> API development tools."
+    )
+    print(
+        "api_id dan api_hash HARUS dari akun yang sama; menukar salah "
+        "satunya membuat pasangannya ditolak."
+    )
+    print("========================================")
+
+    sys.exit(1)
+
+
+def describe_session():
+    """
+    Beri tahu di awal apakah sesi login lama ditemukan.
+
+    Kalau tidak ada, Telethon akan minta nomor HP -- dan lebih baik itu
+    terbaca sebagai keterangan di awal daripada mengagetkan di tengah.
+    """
+    session_file = SESSION_PATH + ".session"
+
+    print(f"Sesi    : {session_file}")
+
+    if os.path.exists(session_file):
+        size = os.path.getsize(session_file)
+
+        print(f"          ditemukan ({size} byte), login dilewati.")
+
+        return True
+
+    print(
+        "          TIDAK ADA -- Telethon akan meminta nomor HP "
+        "dan kode OTP."
+    )
+
+    return False
+
+
 def detect_public_ip():
     """
     IP publik yang benar-benar dipakai keluar. Dicoba ke beberapa
@@ -156,6 +280,9 @@ def print_network_banner():
 
     print(f"Host    : {socket.gethostname()}")
     print(f"Sistem  : {platform.system()} {platform.release()}")
+    print(f"Folder  : {BASE_DIR}")
+
+    session_exists = describe_session()
 
     proxy_vars = [
         name
@@ -196,6 +323,8 @@ def print_network_banner():
         )
 
     print("========================================")
+
+    return session_exists
 
 
 # ============================================================
@@ -626,18 +755,38 @@ def print_download_stats(stats):
 
         print(line + ".")
 
+    unique = stats.get("unique_senders")
+    asked = stats.get("connections")
+
+    koneksi = f"{asked}"
+
+    if unique and unique != asked:
+        koneksi = (
+            f"{asked} diminta, tapi hanya {unique} soket nyata "
+            f"(video ada di DC lain, Telethon memakai satu "
+            f"sambungan pinjaman bersama)"
+        )
+
     print(
-        f"[TG] Koneksi {stats.get('connections')}, "
-        f"request bersamaan: mulai {stats.get('inflight_start')}, "
+        f"[TG] Koneksi {koneksi}. "
+        f"Request bersamaan: mulai {stats.get('inflight_start')}, "
         f"terendah {stats.get('inflight_min')}, "
         f"tertinggi {stats.get('inflight_max')}, "
         f"akhir {stats.get('inflight_end')}."
     )
 
-    if stats.get("flood_hits"):
+    if stats.get("flood_hits") or stats.get("reset_hits"):
         print(
-            f"[TG] Kena flood {stats['flood_hits']}x "
+            f"[TG] Direm: flood {stats.get('flood_hits', 0)}x, "
+            f"koneksi diputus server {stats.get('reset_hits', 0)}x "
             f"(total tunggu {stats['flood_seconds']}s)."
+        )
+
+    if stats.get("reset_hits", 0) > 20:
+        print(
+            "[TG] Koneksi diputus terlalu sering. Kalau ini berulang, "
+            "coba TG_INFLIGHT_PER_CONN=1 -- dan pastikan tidak ada "
+            "proses downloader lain yang jalan bersamaan."
         )
 
     if stats.get("reconnects"):
@@ -734,7 +883,11 @@ async def main():
         )
         sys.exit(1)
 
-    print_network_banner()
+    # Banner dulu supaya status sesi terbaca, baru kredensial dinilai --
+    # karena penilaiannya memang bergantung pada ada tidaknya sesi.
+    session_exists = print_network_banner()
+
+    validate_api_credentials(session_exists)
 
     try:
         selected_provider = choose_storage_provider()
@@ -750,12 +903,49 @@ async def main():
     )
 
     client = TelegramClient(
-        "telegram_session",
+        SESSION_PATH,
         int(API_ID),
         API_HASH,
     )
 
-    await client.start()
+    try:
+        await client.start()
+
+    except ApiIdInvalidError:
+        print()
+        print("========================================")
+        print(" LOGIN DITOLAK: api_id/api_hash SALAH")
+        print("========================================")
+        print(
+            "Telegram hanya memeriksa pasangan ini saat LOGIN. Selama "
+            "file sesi masih ada, kredensial yang salah tidak pernah "
+            "ketahuan -- jadi error ini biasanya muncul bukan karena "
+            "kredensialnya baru rusak, tapi karena sesinya baru hilang."
+        )
+        print()
+        print(f"Sesi yang dicari : {SESSION_PATH}.session")
+        print()
+        print("Periksa dua hal, berurutan:")
+        print()
+        print("1. Sesi lamanya masih ada di tempat lain?")
+        print("     find / -name 'telegram_session.session' 2>/dev/null")
+        print(
+            "   Kalau ketemu, salin ke sebelah skrip ini "
+            f"({BASE_DIR}/) lalu ulangi."
+        )
+        print()
+        print("2. Kalau sesinya memang sudah tidak ada, kredensialnya")
+        print("   harus benar. Ambil ulang berpasangan dari")
+        print("   https://my.telegram.org -> API development tools,")
+        print("   lalu set keduanya sekaligus:")
+        print()
+        print("     export TG_API_ID=<angka>")
+        print("     export TG_API_HASH=<32 karakter hex>")
+        print("========================================")
+
+        await client.disconnect()
+
+        sys.exit(1)
 
     print("\nTelegram berhasil terhubung.")
 

@@ -129,14 +129,20 @@ CHUNK_SIZE = 1024 * 1024
 
 # Berapa request 1 MB yang boleh terbang bersamaan PER KONEKSI.
 #
-# Ini yang menentukan kecepatan, bukan jumlah koneksi. Satu koneksi
-# MTProto sanggup melayani banyak request sekaligus; menunggu jawaban
-# satu per satu berarti tiap koneksi menganggur selama satu RTT penuh.
+# DEFAULT 1 -- artinya total request bersamaan = jumlah koneksi, persis
+# seperti perilaku asli sebelum revisi.
 #
-# 3 adalah titik aman: cukup untuk menutupi RTT ke DC mana pun, dan
-# masih di bawah ambang yang membuat akun non-premium kena flood.
-# Turunkan ke 1 kalau ingin persis seperti versi lama.
-INFLIGHT_PER_CONNECTION = 3
+# Saya sempat menaikkannya ke 3 dan itu keliru. Alasannya: koneksi
+# tambahan di modul ini dibuat dengan meminjam auth_key koneksi utama,
+# dan Telethon sendiri memperingatkan pola itu -- "Telegram would reset
+# the connection with no further clues". Dengan 4 request bersamaan
+# polanya masih tertahan; dengan 12 ia meledak jadi banjir
+# "connection reset by peer" dan "wrong session ID", dan kecepatannya
+# justru jatuh.
+#
+# Naikkan lewat TG_INFLIGHT_PER_CONN kalau mau bereksperimen, tapi
+# pantau baris "[TG] Direm:" di akhir download.
+INFLIGHT_PER_CONNECTION = 1
 
 # Batas aman koneksi paralel. Lebih dari ini Telegram gampang
 # melempar FLOOD_WAIT dan VPS kecil mulai tersengal.
@@ -152,7 +158,12 @@ CHUNK_RETRIES = 5
 # Batas waktu satu request 1 MB. Tanpa ini, koneksi yang mati diam-diam
 # membuat satu chunk menggantung selamanya dan seluruh download berhenti
 # maju tanpa pernah melempar error.
-REQUEST_TIMEOUT = 60
+#
+# Sengaja longgar. Ini jaring pengaman untuk koneksi yang benar-benar
+# mati, bukan alat pengatur kecepatan. Membatalkan request Telethon di
+# tengah jalan meninggalkan sisa di _pending_state sender, jadi makin
+# jarang ia terpicu makin baik.
+REQUEST_TIMEOUT = 180
 
 # Batas atas satu kali flood wait yang masih mau kita tunggu.
 MAX_FLOOD_WAIT = 120
@@ -164,6 +175,12 @@ MAX_FLOOD_TOTAL = 900
 # Setelah sekian chunk lancar berturut-turut, izin request bersamaan
 # dinaikkan satu lagi.
 RECOVERY_STREAK = 5
+
+# Lama palang ditutup saat Telegram MEMUTUS koneksi (bukan menyuruh
+# menunggu). Server tidak menyebutkan angka dalam kasus ini, jadi kita
+# pilih jeda pendek: cukup untuk memecah gelombang, tidak sampai
+# membuang waktu kalau ternyata cuma satu soket yang apes.
+RESET_PAUSE = 2
 
 
 class NotEnoughDiskSpace(Exception):
@@ -235,15 +252,32 @@ class _FloodGate:
         self._open_at = 0.0
         self.total_paused = 0.0
         self.flood_hits = 0
+        self.reset_hits = 0
 
-        # Nomor gelombang flood. Naik HANYA saat palang yang tadinya
-        # terbuka ditutup lagi -- jadi semua chunk yang kena flood dari
-        # gelombang yang sama membawa nomor yang sama.
+        # Nomor gelombang. Naik HANYA saat palang yang tadinya terbuka
+        # ditutup lagi -- jadi semua chunk yang kena gelombang yang sama
+        # membawa nomor yang sama.
         self.generation = 0
 
-    def pause(self, seconds):
-        """Tutup palang, kembalikan nomor gelombang flood saat ini."""
-        self.flood_hits += 1
+    def pause(self, seconds, reason="flood"):
+        """
+        Tutup palang, kembalikan nomor gelombang saat ini.
+
+        `reason` memisahkan dua bentuk penolakan yang butuh perlakuan
+        sama tapi perlu dihitung terpisah di statistik:
+
+        "flood" -- Telegram menyuruh menunggu secara eksplisit.
+        "reset" -- Telegram memutus koneksi begitu saja (connection
+                   reset / broken pipe). Ini juga backpressure, cuma
+                   disampaikan dengan kasar. Versi sebelumnya tidak
+                   menganggapnya begitu: jatah paralel tidak pernah
+                   turun karenanya, jadi skrip terus menembak sekeras
+                   tadi dan koneksinya diputus lagi, berulang-ulang.
+        """
+        if reason == "reset":
+            self.reset_hits += 1
+        else:
+            self.flood_hits += 1
 
         now = time.monotonic()
 
@@ -562,6 +596,19 @@ class ParallelDownloader:
         -- Telethon masih bisa menyambung ulang sendiri, dan percobaan
         berikutnya akan mencoba mengganti lagi.
         """
+        if not same_dc:
+            # DC berbeda: sender-nya PINJAMAN, dan _borrow_exported_sender
+            # mengembalikan objek yang SAMA untuk satu DC -- ia hanya
+            # menghitung berapa kali dipinjam. Jadi "mengganti" sender di
+            # sini tidak menghasilkan koneksi baru sama sekali; yang
+            # terjadi cuma naik-turun penghitung pinjaman, dan kalau
+            # penghitungnya sempat menyentuh nol, Telethon memutus
+            # sambungan yang masih dipakai worker lain.
+            #
+            # Telethon sudah menyambung ulang sender pinjaman sendiri.
+            # Tugas kita cuma menunggu dan mencoba lagi.
+            return False
+
         async with conn.lock:
             if conn.sender is not stale:
                 return True
@@ -655,9 +702,25 @@ class ParallelDownloader:
                     if attempt > self.chunk_retries:
                         break
 
-                    # Koneksinya yang sakit -> ganti baru, jangan
-                    # menembakkan percobaan berikutnya ke soket mati.
                     if is_connection_error(error):
+                        # Koneksi diputus server. Perlakukan sebagai
+                        # backpressure, sama seperti flood: tutup palang
+                        # sebentar untuk SEMUA koneksi dan turunkan
+                        # jatah paralel.
+                        #
+                        # Tanpa ini, satu koneksi yang diputus langsung
+                        # disambung lagi dengan beban yang sama persis,
+                        # dan Telegram memutusnya lagi. Itu yang membuat
+                        # log dibanjiri "connection reset by peer" tanpa
+                        # kecepatan pernah membaik.
+                        generation = gate.pause(
+                            RESET_PAUSE,
+                            reason="reset",
+                        )
+
+                        await limiter.penalize(generation)
+
+                        # Ganti soket mati dengan yang baru.
                         await self._renew(conn, dc_id, same_dc, sender)
 
                     # Backoff dengan jitter supaya semua koneksi tidak
@@ -1061,8 +1124,16 @@ class ParallelDownloader:
             "resumed_bytes": resume_bytes,
             "seconds": time.monotonic() - started_at,
             "flood_hits": gate.flood_hits,
+            "reset_hits": gate.reset_hits,
             "flood_seconds": round(gate.total_paused, 1),
             "connections": len(conns),
+            # Berapa SOKET yang benar-benar berbeda. Untuk video di DC
+            # lain, Telethon memberi satu sender pinjaman yang sama
+            # berapa kali pun diminta -- jadi angka ini bisa 1 meski
+            # num_connections 4. Lebih baik ditampilkan apa adanya
+            # daripada melaporkan "4 koneksi" yang tidak pernah ada.
+            "unique_senders": len({id(conn.sender) for conn in conns}),
+            "same_dc": same_dc,
             "reconnects": sum(conn.renewals for conn in conns),
             "inflight_start": limiter.start_limit,
             "inflight_min": limiter.min_limit_seen,
