@@ -72,7 +72,7 @@ class ReferralController extends Controller
             // Panel "Komisi khusus": yang sedang berlaku, dan hasil pencarian
             // orang yang hendak diberi rate khusus.
             'rateKhusus' => $this->referral->customRates(),
-            'cariUser'   => $this->cariCalon($request),
+            'cariUser'   => $this->daftarCalon($request),
             'qUser'      => $request->string('quser')->toString(),
             'ewallets'   => $this->referral->ewallets(),
             'komisi'     => $komisi,
@@ -146,35 +146,60 @@ class ReferralController extends Controller
     }
 
     /**
-     * Cari pengguna yang hendak diberi rate khusus.
+     * Daftar pengguna yang bisa diberi rate khusus.
      *
-     * Dropdown berisi seluruh pengguna bukan pilihan: tabelnya tumbuh tanpa
-     * batas, dan yang dicari selalu satu orang yang sudah diketahui namanya.
-     * Jadi yang disediakan kotak cari, dan hasilnya dibatasi sepuluh baris —
-     * lebih dari itu berarti kata kuncinya yang perlu dipertajam, bukan
-     * daftarnya yang perlu diperpanjang.
+     * ## Daftarnya tampil lebih dulu, pencarian menyaring
      *
-     * @return \Illuminate\Support\Collection<int,User>
+     * Versi pertama panel ini menuntut kata kunci sebelum menampilkan apa
+     * pun. Yang terjadi adalah halaman yang terlihat kosong dan tidak
+     * memberi tahu apa yang sebenarnya bisa dipilih — orang harus menebak
+     * nama sebelum boleh melihat daftarnya. Sekarang daftarnya selalu ada,
+     * dan kotak cari bekerja sebagai penyaring, bukan sebagai gerbang.
+     *
+     * ## Urutannya bukan abjad
+     *
+     * Yang sudah punya rate khusus di paling atas — itu yang paling sering
+     * dicari lagi untuk diubah. Sesudahnya yang undangannya terbanyak:
+     * merekalah affiliate sungguhan, dan pengecualian hampir selalu
+     * diberikan kepada salah satu dari mereka. Abjad baru dipakai untuk
+     * memisahkan yang seimbang, supaya urutannya tidak berubah-ubah sendiri
+     * antar halaman.
+     *
+     * ## `@` di depan kata kunci dibuang
+     *
+     * Telegram mengirim username TANPA `@`, dan `UserService` menyimpannya
+     * apa adanya. Sementara panel ini menampilkannya dengan `@` di depan —
+     * jadi orang menyalin apa yang dilihatnya, menempelkannya ke kotak cari,
+     * dan mendapat "tidak ada pengguna yang cocok" untuk orang yang jelas-
+     * jelas ada. Kotak cari harus menerima bentuk yang ditampilkannya sendiri.
+     *
+     * Halamannya bernama `upage`, bukan `page`: halaman ini sudah punya dua
+     * paginator lain (komisi dan penarikan), dan nama yang sama akan membuat
+     * ketiganya berpindah halaman bersamaan.
      */
-    private function cariCalon(Request $request)
+    private function daftarCalon(Request $request)
     {
-        $q = trim($request->string('quser')->toString());
-
-        if (mb_strlen($q) < 2) {
-            return collect();
-        }
-
-        $cari = '%'.$q.'%';
+        $q = ltrim(trim($request->string('quser')->toString()), '@');
 
         return User::query()
-            ->select(['id', 'name', 'telegram_username', 'referral_code', 'referral_rate_override'])
-            ->where(fn ($w) => $w->where('name', 'like', $cari)
-                ->orWhere('telegram_username', 'like', $cari)
-                ->orWhere('email', 'like', $cari)
-                ->orWhere('referral_code', $q))
+            ->select([
+                'id', 'name', 'telegram_username', 'referral_code',
+                'referral_rate_override',
+            ])
+            ->selectRaw('(select count(*) from users u2 where u2.referred_by_id = users.id) as total_referral')
+            ->when($q !== '', function ($w) use ($q) {
+                $cari = '%'.$q.'%';
+
+                $w->where(fn ($x) => $x->where('name', 'like', $cari)
+                    ->orWhere('telegram_username', 'like', $cari)
+                    ->orWhere('email', 'like', $cari)
+                    ->orWhere('referral_code', $q));
+            })
+            ->orderByRaw('referral_rate_override IS NULL')
+            ->orderByDesc('total_referral')
             ->orderBy('name')
-            ->take(10)
-            ->get();
+            ->paginate(15, ['*'], 'upage')
+            ->withQueryString();
     }
 
     /**

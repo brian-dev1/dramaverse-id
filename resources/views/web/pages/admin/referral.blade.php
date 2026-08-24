@@ -154,9 +154,9 @@
             </p>
         </div>
 
-        {{-- Cari orangnya dulu. Daftar seluruh pengguna tidak disediakan:
-             tabelnya tumbuh terus, dan yang dicari selalu satu orang yang
-             namanya sudah diketahui. --}}
+        {{-- Daftarnya selalu tampil; kotak ini menyaring, bukan membuka.
+             Halaman yang kosong sampai ada yang diketik tidak memberi tahu
+             apa yang sebenarnya bisa dipilih. --}}
         <form method="GET" class="filter-bar">
             {{-- Filter tab lain (cari komisi, status penarikan) dibawa serta
                  supaya mencari pengguna tidak mengosongkan filter di panel
@@ -167,50 +167,67 @@
             @endforeach
 
             <input type="text" name="quser" value="{{ $qUser }}"
-                   placeholder="Cari nama, @username, email, atau kode referral...">
-            <button type="submit" class="btn btn-ghost">Cari pengguna</button>
+                   placeholder="Saring: nama, @username, email, atau kode referral">
+            <button type="submit" class="btn btn-ghost">Saring</button>
+
+            @if ($qUser !== '')
+                <a href="{{ route('admin.referral.index') }}" class="btn btn-ghost">Tampilkan semua</a>
+            @endif
         </form>
 
-        @if (strlen($qUser) >= 2)
-            <div class="table-wrap">
-                <table class="table">
-                    <thead>
-                        <tr><th>Pengguna</th><th>Kode</th><th>Rate sekarang</th><th>Set rate khusus</th></tr>
-                    </thead>
-                    <tbody>
-                    @forelse ($cariUser as $u)
-                        <tr>
-                            <td>{{ $u->telegram_username ? '@'.$u->telegram_username : $u->name }}</td>
-                            <td><code>{{ $u->referral_code ?: '—' }}</code></td>
-                            <td>
-                                @if ($u->referral_rate_override !== null)
-                                    <strong>{{ rtrim(rtrim(number_format((float) $u->referral_rate_override, 2, ',', '.'), '0'), ',') }}%</strong>
-                                    <small>khusus</small>
-                                @else
-                                    <small>ikut tingkatan otomatis</small>
-                                @endif
-                            </td>
-                            <td>
-                                <form method="POST" action="{{ route('admin.referral.rate.custom') }}" class="inline-form">
-                                    @csrf
-                                    @method('PUT')
-                                    <input type="hidden" name="user_id" value="{{ $u->id }}">
-                                    <input type="number" name="rate" min="0" max="100" step="0.5"
-                                           style="width:90px"
-                                           value="{{ $u->referral_rate_override !== null ? (float) $u->referral_rate_override : '' }}"
-                                           placeholder="%">
-                                    <input type="text" name="note" maxlength="255" placeholder="Alasan (mis. mitra dekat)">
-                                    <button type="submit" class="btn btn-sm btn-primary">Simpan</button>
-                                </form>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr><td colspan="4">Tidak ada pengguna yang cocok dengan "{{ $qUser }}".</td></tr>
-                    @endforelse
-                    </tbody>
-                </table>
-            </div>
-        @endif
+        <div class="table-wrap">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Pengguna</th><th>Kode</th><th>Undangan</th>
+                        <th>Rate sekarang</th><th>Set rate khusus</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @forelse ($cariUser as $u)
+                    <tr>
+                        <td>{{ $u->telegram_username ? '@'.$u->telegram_username : $u->name }}</td>
+                        <td><code>{{ $u->referral_code ?: '—' }}</code></td>
+                        <td>{{ number_format($u->total_referral, 0, ',', '.') }}</td>
+                        <td>
+                            @if ($u->referral_rate_override !== null)
+                                <strong>{{ rtrim(rtrim(number_format((float) $u->referral_rate_override, 2, ',', '.'), '0'), ',') }}%</strong>
+                                <small>khusus</small>
+                            @else
+                                <small>ikut tingkatan otomatis</small>
+                            @endif
+                        </td>
+                        <td>
+                            <form method="POST" action="{{ route('admin.referral.rate.custom') }}" class="inline-form">
+                                @csrf
+                                @method('PUT')
+                                <input type="hidden" name="user_id" value="{{ $u->id }}">
+                                <input type="number" name="rate" min="0" max="100" step="0.5"
+                                       style="width:90px"
+                                       value="{{ $u->referral_rate_override !== null ? (float) $u->referral_rate_override : '' }}"
+                                       placeholder="%">
+                                <input type="text" name="note" maxlength="255" placeholder="Alasan (mis. mitra dekat)">
+                                <button type="submit" class="btn btn-sm btn-primary">Simpan</button>
+                            </form>
+                        </td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="5">
+                            @if ($qUser !== '')
+                                Tidak ada pengguna yang cocok dengan "{{ $qUser }}".
+                                Tanda <code>@</code> di depan boleh ikut ditulis maupun tidak.
+                            @else
+                                Belum ada pengguna terdaftar.
+                            @endif
+                        </td>
+                    </tr>
+                @endforelse
+                </tbody>
+            </table>
+        </div>
+
+        {{ $cariUser->links() }}
 
         {{-- Yang sedang berlaku. Tanpa daftar ini, pengecualian yang dibuat
              berbulan-bulan lalu hanya bisa ditemukan bila ada yang ingat
