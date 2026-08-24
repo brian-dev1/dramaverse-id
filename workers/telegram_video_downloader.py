@@ -2,8 +2,11 @@ import asyncio
 import hashlib
 import mimetypes
 import os
+import platform
 import re
+import socket
 import sys
+import time
 
 import requests
 from telethon import TelegramClient
@@ -22,21 +25,39 @@ DOWNLOAD_DIR = "./downloads"
 
 SCAN_LIMIT = 50
 
-# Titik awal jumlah koneksi paralel. Modul fast_download akan
-# menurunkannya sendiri kalau Telegram melempar flood wait, lalu
-# menaikkannya lagi begitu lancar. Naikkan lewat env kalau akunnya
-# premium.
+# Jumlah koneksi TCP paralel ke Telegram DC.
 PARALLEL_CONNECTIONS = int(
     os.environ.get("TG_PARALLEL_CONNECTIONS", "4")
 )
 
-# Plafon jatah paralel saat koneksi sedang lancar. Default sama dengan
-# titik awal, jadi angka di atas tidak pernah dilewati diam-diam. Set
-# lebih tinggi (mis. TG_MAX_PARALLEL=8) kalau mau limiter boleh memanjat
-# di atas titik awal selama tidak kena flood.
+# Plafon jumlah koneksi. Default sama dengan titik awal, jadi angka di
+# atas tidak pernah dilewati diam-diam.
 MAX_PARALLEL = int(
     os.environ.get("TG_MAX_PARALLEL", str(PARALLEL_CONNECTIONS))
 )
+
+# Berapa request 1 MB yang boleh terbang bersamaan DI TIAP koneksi.
+#
+# Ini tombol kecepatan yang sebenarnya, bukan jumlah koneksi. Dengan
+# 4 koneksi x 3 = 12 request bersamaan. Versi lama terkunci di 1 per
+# koneksi, jadi tiap koneksi menganggur penuh selama satu perjalanan
+# pulang-pergi ke DC.
+#
+# Turunkan ke 1 kalau akun sering kena flood; naikkan hati-hati.
+INFLIGHT_PER_CONNECTION = int(
+    os.environ.get("TG_INFLIGHT_PER_CONN", "3")
+)
+
+# Berapa kali satu video dicoba ulang sebelum menyerah. Percobaan
+# berikutnya MELANJUTKAN dari file .part, bukan mengulang dari nol.
+DOWNLOAD_ATTEMPTS = int(
+    os.environ.get("TG_DOWNLOAD_ATTEMPTS", "3")
+)
+
+# Skrip ini dirancang mengunduh lewat jaringan VPS. Menjalankannya dari
+# Windows berarti seluruh trafik lewat internet rumah/kantor, dan itu
+# yang bikin terasa lama. Set TG_ALLOW_NON_LINUX=1 kalau memang sengaja.
+ALLOW_NON_LINUX = os.environ.get("TG_ALLOW_NON_LINUX") == "1"
 
 
 # ============================================================
@@ -61,6 +82,120 @@ def api_headers():
         "Authorization": f"Bearer {LARAVEL_API_TOKEN}",
         "Accept": "application/json",
     }
+
+
+# ============================================================
+# Pemeriksaan jaringan
+#
+# Tujuannya satu: memastikan byte video mengalir lewat sambungan VPS,
+# bukan lewat internet komputer pribadi.
+# ============================================================
+
+def assert_running_on_vps():
+    if os.name == "posix":
+        return
+
+    print("========================================")
+    print(" SALAH TEMPAT")
+    print("========================================")
+    print(
+        f"Skrip ini terdeteksi jalan di {platform.system()}, "
+        "bukan di VPS."
+    )
+    print(
+        "Kalau dijalankan dari komputer sendiri, seluruh video "
+        "ditarik lewat internet rumah lalu diupload lagi dari "
+        "sana -- dua kali lipat kerja, dan jauh lebih lambat."
+    )
+    print()
+    print("Jalankan di VPS:")
+    print("    ssh root@<vps>")
+    print("    unduh          # 4 koneksi paralel")
+    print("    unduh 6        # 6 koneksi paralel")
+    print()
+    print(
+        "Kalau memang sengaja mau jalan di sini, "
+        "set TG_ALLOW_NON_LINUX=1."
+    )
+    print("========================================")
+
+    sys.exit(1)
+
+
+def detect_public_ip():
+    """
+    IP publik yang benar-benar dipakai keluar. Dicoba ke beberapa
+    layanan supaya satu yang mati tidak bikin kelihatan gagal.
+    """
+    services = (
+        "https://api.ipify.org",
+        "https://ifconfig.me/ip",
+        "https://icanhazip.com",
+    )
+
+    for url in services:
+        try:
+            response = requests.get(url, timeout=8)
+
+            if response.ok:
+                candidate = response.text.strip()
+
+                if re.match(r"^[0-9a-fA-F.:]+$", candidate):
+                    return candidate
+
+        except requests.RequestException:
+            continue
+
+    return None
+
+
+def print_network_banner():
+    print("========================================")
+    print(" JARINGAN")
+    print("========================================")
+
+    print(f"Host    : {socket.gethostname()}")
+    print(f"Sistem  : {platform.system()} {platform.release()}")
+
+    proxy_vars = [
+        name
+        for name in (
+            "HTTP_PROXY",
+            "HTTPS_PROXY",
+            "ALL_PROXY",
+            "http_proxy",
+            "https_proxy",
+            "all_proxy",
+        )
+        if os.environ.get(name)
+    ]
+
+    public_ip = detect_public_ip()
+
+    if public_ip:
+        print(f"IP keluar: {public_ip}")
+        print(
+            "Semua trafik Telegram dan upload storage keluar "
+            "lewat IP ini."
+        )
+    else:
+        print(
+            "IP keluar: tidak terdeteksi "
+            "(layanan pengecek tidak terjangkau)."
+        )
+
+    if proxy_vars:
+        print()
+        print(
+            "PERINGATAN: ada proxy aktif di environment "
+            f"({', '.join(proxy_vars)})."
+        )
+        print(
+            "Upload storage akan lewat proxy itu, bukan langsung "
+            "dari VPS."
+        )
+
+    print("========================================")
 
 
 # ============================================================
@@ -280,6 +415,8 @@ def upload_to_storage(
 
     file_size = os.path.getsize(local_file)
 
+    started_at = time.monotonic()
+
     with open(local_file, "rb") as file:
         response = requests.put(
             upload_url,
@@ -295,9 +432,12 @@ def upload_to_storage(
             f"{response.text[:500]}"
         )
 
+    elapsed = max(time.monotonic() - started_at, 0.001)
+
     print(
         "[STORAGE] Upload selesai "
-        f"({format_size(file_size)})."
+        f"({format_size(file_size)} dalam {elapsed:.1f}s, "
+        f"{file_size / (1024 * 1024) / elapsed:.2f} MB/s)."
     )
 
     return {
@@ -313,6 +453,10 @@ def upload_to_storage(
 # ============================================================
 
 def calculate_sha256(local_file):
+    """
+    Cadangan saja. Jalur normal menghitung checksum SAMBIL mendownload
+    (lihat parameter `hasher`), jadi file tidak perlu dibaca dua kali.
+    """
     sha256 = hashlib.sha256()
 
     with open(local_file, "rb") as file:
@@ -335,15 +479,17 @@ def sync_to_laravel(
     local_file,
     upload_result,
     telegram_message_id=None,
+    checksum=None,
 ):
     filename = os.path.basename(local_file)
     file_size = os.path.getsize(local_file)
 
-    print("[CHECKSUM] Menghitung SHA-256...")
+    if not checksum:
+        print("[CHECKSUM] Menghitung SHA-256...")
 
-    checksum = calculate_sha256(local_file)
+        checksum = calculate_sha256(local_file)
 
-    print("[CHECKSUM] Selesai.")
+        print("[CHECKSUM] Selesai.")
 
     payload = {
         "provider_slug": upload_result["provider_slug"],
@@ -387,30 +533,64 @@ def sync_to_laravel(
 # Helpers
 # ============================================================
 
-def progress_callback(current, total):
-    if not total:
-        return
+class ProgressPrinter:
+    """
+    Cetak bar kemajuan, tapi tidak lebih sering dari `interval` detik.
 
-    percent = current * 100 / total
+    Versi lama mencetak setiap chunk 1 MB dengan flush=True. Untuk video
+    1 GB itu 1000 kali tulis ke terminal, semuanya di dalam event loop
+    -- dan lewat SSH tiap flush itu satu paket jaringan tersendiri.
+    """
 
-    bar_len = 30
-    filled = int(bar_len * current / total)
+    def __init__(self, interval=0.2):
+        self.interval = interval
+        self.last_print = 0.0
+        self.started_at = time.monotonic()
 
-    bar = (
-        "#" * filled
-        + "-" * (bar_len - filled)
-    )
+    def reset(self):
+        self.last_print = 0.0
+        self.started_at = time.monotonic()
 
-    mb_current = current / (1024 * 1024)
-    mb_total = total / (1024 * 1024)
+    def __call__(self, current, total):
+        if not total:
+            return
 
-    print(
-        f"\r[{bar}] "
-        f"{percent:5.1f}%  "
-        f"({mb_current:.1f}/{mb_total:.1f} MB)",
-        end="",
-        flush=True,
-    )
+        now = time.monotonic()
+
+        is_last = current >= total
+
+        if not is_last and (now - self.last_print) < self.interval:
+            return
+
+        self.last_print = now
+
+        percent = current * 100 / total
+
+        bar_len = 30
+        filled = int(bar_len * current / total)
+
+        bar = (
+            "#" * filled
+            + "-" * (bar_len - filled)
+        )
+
+        mb_current = current / (1024 * 1024)
+        mb_total = total / (1024 * 1024)
+
+        elapsed = max(now - self.started_at, 0.001)
+        speed = mb_current / elapsed
+
+        print(
+            f"\r[{bar}] "
+            f"{percent:5.1f}%  "
+            f"({mb_current:.1f}/{mb_total:.1f} MB)  "
+            f"{speed:5.2f} MB/s",
+            end="",
+            flush=True,
+        )
+
+        if is_last:
+            print()
 
 
 def format_size(num_bytes):
@@ -425,11 +605,121 @@ def format_size(num_bytes):
     return f"{mb:.1f} MB"
 
 
+def print_download_stats(stats):
+    if not stats:
+        return
+
+    seconds = stats.get("seconds") or 0
+
+    if seconds:
+        mb = stats["bytes"] / (1024 * 1024)
+
+        line = (
+            f"[TG] {mb:.1f} MB dalam {seconds:.1f}s "
+            f"({mb / seconds:.2f} MB/s)"
+        )
+
+        if stats.get("resumed_bytes"):
+            resumed = stats["resumed_bytes"] / (1024 * 1024)
+
+            line += f", {resumed:.1f} MB di antaranya hasil lanjutan"
+
+        print(line + ".")
+
+    print(
+        f"[TG] Koneksi {stats.get('connections')}, "
+        f"request bersamaan: mulai {stats.get('inflight_start')}, "
+        f"terendah {stats.get('inflight_min')}, "
+        f"tertinggi {stats.get('inflight_max')}, "
+        f"akhir {stats.get('inflight_end')}."
+    )
+
+    if stats.get("flood_hits"):
+        print(
+            f"[TG] Kena flood {stats['flood_hits']}x "
+            f"(total tunggu {stats['flood_seconds']}s)."
+        )
+
+    if stats.get("reconnects"):
+        print(
+            f"[TG] Koneksi diganti baru "
+            f"{stats['reconnects']}x di tengah jalan."
+        )
+
+
+async def download_with_retry(
+    downloader,
+    client,
+    message,
+    out_path,
+    progress,
+):
+    """
+    Unduh satu video. Kembalikan (path, checksum_atau_None).
+
+    Percobaan ulang MELANJUTKAN dari file .part yang tertinggal, jadi
+    gangguan di menit ke-9 tidak membuang 9 menit pertama.
+    """
+    last_error = None
+
+    for attempt in range(1, DOWNLOAD_ATTEMPTS + 1):
+        hasher = hashlib.sha256()
+
+        progress.reset()
+
+        try:
+            path = await downloader.download(
+                message,
+                out_path,
+                progress_callback=progress,
+                hasher=hasher,
+            )
+
+            print_download_stats(downloader.last_stats)
+
+            return path, hasher.hexdigest()
+
+        except Exception as error:
+            last_error = error
+
+            print(f"\n[TG] Percobaan {attempt} gagal: {error}")
+
+            if attempt < DOWNLOAD_ATTEMPTS:
+                pause = 3 * attempt
+
+                print(
+                    f"[TG] Menunggu {pause}s lalu melanjutkan "
+                    "dari bagian yang sudah terunduh..."
+                )
+
+                await asyncio.sleep(pause)
+
+    print(
+        f"\n[TG] Mode paralel menyerah ({last_error}), "
+        "mencoba cara biasa satu koneksi..."
+    )
+
+    ParallelDownloader.cleanup_partial(out_path)
+
+    progress.reset()
+
+    path = await client.download_media(
+        message,
+        file=DOWNLOAD_DIR,
+        progress_callback=progress,
+    )
+
+    return path, None
+
+
 # ============================================================
 # Main
 # ============================================================
 
 async def main():
+    if not ALLOW_NON_LINUX:
+        assert_running_on_vps()
+
     if not API_ID or not API_HASH:
         print(
             "ERROR: TG_API_ID / TG_API_HASH "
@@ -443,6 +733,8 @@ async def main():
             "belum di-set sebagai environment variable."
         )
         sys.exit(1)
+
+    print_network_banner()
 
     try:
         selected_provider = choose_storage_provider()
@@ -466,6 +758,12 @@ async def main():
     await client.start()
 
     print("\nTelegram berhasil terhubung.")
+
+    if getattr(client, "_proxy", None):
+        print(
+            "PERINGATAN: Telethon memakai proxy. Video tidak "
+            "ditarik langsung lewat sambungan VPS."
+        )
 
     bot_username = input(
         "Masukkan username bot "
@@ -582,6 +880,15 @@ async def main():
         client,
         num_connections=PARALLEL_CONNECTIONS,
         max_connections=MAX_PARALLEL,
+        inflight_per_connection=INFLIGHT_PER_CONNECTION,
+    )
+
+    progress = ProgressPrinter()
+
+    print(
+        f"\n[TG] {downloader.num_connections} koneksi, "
+        f"maksimal {downloader.max_inflight} request 1 MB "
+        "terbang bersamaan."
     )
 
     for index, message in enumerate(
@@ -590,9 +897,7 @@ async def main():
     ):
         print(
             f"\nMendownload video "
-            f"{index}/{len(selected)} "
-            f"(mode paralel, "
-            f"{PARALLEL_CONNECTIONS} koneksi)..."
+            f"{index}/{len(selected)}..."
         )
 
         file_name = (
@@ -608,48 +913,23 @@ async def main():
         )
 
         try:
-            path = await downloader.download(
+            path, checksum = await download_with_retry(
+                downloader,
+                client,
                 message,
                 out_path,
-                progress_callback=progress_callback,
+                progress,
             )
-
-            stats = downloader.last_stats
-
-            if stats.get("seconds"):
-                mb = stats["bytes"] / (1024 * 1024)
-
-                print(
-                    f"\n[TG] {mb:.1f} MB dalam "
-                    f"{stats['seconds']:.1f}s "
-                    f"({mb / stats['seconds']:.2f} MB/s)."
-                )
-
-            if stats.get("flood_hits"):
-                print(
-                    f"[TG] Kena flood {stats['flood_hits']}x "
-                    f"(total tunggu {stats['flood_seconds']}s). "
-                    f"Jatah paralel: mulai "
-                    f"{stats['connections_start']}, "
-                    f"terendah {stats['connections_min']}, "
-                    f"tertinggi {stats['connections_max']}, "
-                    f"akhir {stats['connections_end']}."
-                )
 
         except Exception as error:
             print(
-                "\nMode paralel gagal "
-                f"({error}), mencoba cara biasa..."
+                f"\n[TG] Video ini gagal diunduh: {error}"
             )
 
-            path = await client.download_media(
-                message,
-                file=DOWNLOAD_DIR,
-                progress_callback=progress_callback,
-            )
+            continue
 
         print(
-            f"\nSelesai! File tersimpan di: {path}"
+            f"Selesai! File tersimpan di: {path}"
         )
 
         try:
@@ -678,6 +958,7 @@ async def main():
                 path,
                 upload_result,
                 telegram_message_id=message.id,
+                checksum=checksum,
             )
 
         except Exception as error:

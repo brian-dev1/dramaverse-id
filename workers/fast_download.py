@@ -1,9 +1,8 @@
 """
 Modul download paralel multi-koneksi untuk Telethon.
 
-Membagi file jadi beberapa bagian (part) dan mendownloadnya secara
-bersamaan lewat beberapa koneksi ke Telegram DC, lalu menuliskannya ke
-disk sesuai urutan.
+Membagi file jadi potongan 1 MB dan mengambilnya lewat beberapa koneksi
+ke Telegram DC sekaligus, lalu menuliskannya ke disk sesuai urutan.
 
 Menangani 2 kasus koneksi:
 1. Video di DC BERBEDA dari koneksi utama -> pakai exported sender
@@ -13,46 +12,72 @@ Menangani 2 kasus koneksi:
    situ). Solusinya: buka koneksi baru langsung pakai auth_key yang
    sudah ada, tanpa proses export/import.
 
-PERBEDAAN DARI VERSI SEBELUMNYA
--------------------------------
-Versi sebelumnya gagal total begitu Telegram melempar
-FLOOD_PREMIUM_WAIT ("A wait of N seconds is required in non-premium
-accounts"). Tiga hal yang bikin gagal:
 
-1. FloodPremiumWaitError BUKAN turunan FloodWaitError di Telethon,
-   jadi jatuh ke `except Exception` dan di-backoff 1s/2s/4s tanpa
-   menghormati `error.seconds`.
-2. Waktu satu chunk kena flood, koneksi lain tetap menembak. Telegram
-   membaca itu sebagai flood berkelanjutan dan waktu tunggunya naik
-   terus, sampai jatah 3 percobaan habis.
-3. Jatah percobaan dipakai bersama antara error nyata dan flood wait.
-   Flood wait itu backpressure, bukan kegagalan -- tidak seharusnya
-   memotong jatah retry.
+APA YANG BERUBAH DARI VERSI SEBELUMNYA
+--------------------------------------
+Versi sebelumnya sudah tahan flood, tapi lambat karena tiga hal:
 
-Versi ini:
-- Mengenali flood lewat kelas error DAN teks pesannya, jadi aman untuk
-  FloodWaitError, FloodPremiumWaitError, dan varian baru apa pun.
-- Punya "flood gate" global: satu chunk kena flood -> SEMUA koneksi
-  ikut berhenti selama durasi yang diminta Telegram, lalu jalan lagi.
-- Punya limiter adaptif: jumlah request bersamaan otomatis turun tiap
-  kali kena flood dan naik lagi pelan-pelan setelah lancar. Download
-  menyesuaikan diri dengan jatah akun, tidak menyerah.
-- Chunk 1 MB (batas maksimum Telegram) -> jumlah request separuh
-  dibanding 512 KB, jadi jauh lebih jarang kena flood.
-- Menulis tiap batch ke disk begitu selesai lalu membuangnya dari
-  memori, jadi pemakaian RAM tetap konstan:
+1. JATAH IN-FLIGHT TERKUNCI DI JUMLAH KONEKSI.
+   Plafon limiter dihitung `min(max_connections, batch_size)`, dan
+   `max_connections` default-nya sama dengan `num_connections`. Dengan
+   4 koneksi berarti hanya 4 request yang boleh terbang bersamaan --
+   satu request 1 MB per koneksi. Throughput jadi terkunci di
+   `4 MB / RTT`: pada RTT 250 ms itu cuma ~16 MB/s teoretis, dan jauh
+   di bawah itu dalam praktik karena setiap koneksi menganggur penuh
+   selama satu perjalanan pulang-pergi. `batch_multiplier` sama sekali
+   tidak terpakai.
 
-      batch_size * CHUNK_SIZE = (num_connections * BATCH_MULTIPLIER) * 1 MB
+   Sekarang jumlah KONEKSI dan jumlah REQUEST BERSAMAAN dipisah. Tetap
+   4 koneksi, tapi tiap koneksi boleh menumpuk beberapa request
+   (default 3, jadi 12 in-flight). MTProto memang dirancang untuk itu:
+   satu koneksi bisa melayani banyak request sekaligus, jawabannya
+   datang tidak berurutan. Inilah pengubah kecepatan terbesar.
 
-  Dengan default 4 koneksi -> sekitar 12 MB, berapa pun ukuran videonya.
+2. BATCH BARRIER.
+   Dulu offset diproses per rombongan 12 chunk dengan `asyncio.gather`,
+   dan rombongan berikutnya baru mulai setelah SELURUH rombongan
+   sebelumnya tuntas. Satu chunk lambat menahan 11 lainnya, dan di
+   ekor tiap rombongan paralelismenya meluruh sampai tinggal satu.
+   Selama penulisan ke disk, tidak ada satu pun request yang terbang.
+
+   Sekarang alirannya berkelanjutan: sekumpulan worker terus menarik
+   offset berikutnya begitu selesai, dan penulis terpisah menuliskan
+   hasil sesuai urutan dari buffer penyusun ulang. Tidak ada lagi titik
+   di mana pipa mengosong.
+
+3. PENULISAN DISK MEMBLOKIR EVENT LOOP.
+   `file.write()` dan `hasher.update()` dijalankan langsung di event
+   loop, jadi selama disk sibuk tidak ada byte yang diterima.
+   Sekarang keduanya pindah ke thread penulis tersendiri.
+
+Tambahan untuk kestabilan:
+
+- TIMEOUT PER REQUEST. Dulu `sender.send()` bisa menggantung selamanya
+  kalau koneksi mati diam-diam; downloadnya kelihatan "hidup" tapi
+  tidak maju-maju. Sekarang tiap request punya batas waktu.
+- RECONNECT OTOMATIS. Koneksi yang putus diganti baru, tidak menyeret
+  seluruh download gagal.
+- RESUME. File ditulis ke `<nama>.part`. Kalau gagal di tengah, file
+  itu ditahan berikut sidik jari dokumennya, dan percobaan berikutnya
+  melanjutkan dari byte terakhir -- bukan mengulang dari nol.
+
+Pemakaian RAM tetap terbatas berapa pun ukuran videonya:
+
+    window * CHUNK_SIZE  ~= (in-flight * 2) * 1 MB
+
+Dengan default 4 koneksi x 3 = 12 in-flight -> sekitar 24 MB.
 """
 
 import asyncio
+import json
 import math
 import os
 import random
 import re
+import shutil
 import time
+
+from concurrent.futures import ThreadPoolExecutor
 
 from telethon.network import MTProtoSender
 from telethon.tl.functions.upload import GetFileRequest
@@ -100,21 +125,34 @@ _FLOOD_TEXT = re.compile(
 
 # 1 MB per request. Ini batas maksimum GetFileRequest dan tetap
 # kelipatan yang sah (limit habis dibagi 4096, 1 MB habis dibagi limit).
-# Dua kali lebih besar dari 512 KB = setengah jumlah request untuk file
-# yang sama = jauh lebih jarang kena FLOOD_PREMIUM_WAIT.
 CHUNK_SIZE = 1024 * 1024
 
-# Berapa chunk yang boleh "in-flight" per koneksi.
-# Makin besar = makin cepat tapi makin boros RAM.
-BATCH_MULTIPLIER = 3
+# Berapa request 1 MB yang boleh terbang bersamaan PER KONEKSI.
+#
+# Ini yang menentukan kecepatan, bukan jumlah koneksi. Satu koneksi
+# MTProto sanggup melayani banyak request sekaligus; menunggu jawaban
+# satu per satu berarti tiap koneksi menganggur selama satu RTT penuh.
+#
+# 3 adalah titik aman: cukup untuk menutupi RTT ke DC mana pun, dan
+# masih di bawah ambang yang membuat akun non-premium kena flood.
+# Turunkan ke 1 kalau ingin persis seperti versi lama.
+INFLIGHT_PER_CONNECTION = 3
 
 # Batas aman koneksi paralel. Lebih dari ini Telegram gampang
 # melempar FLOOD_WAIT dan VPS kecil mulai tersengal.
 MAX_CONNECTIONS = 8
 
+# Plafon keras jumlah request bersamaan, berapa pun setelan di atas.
+MAX_INFLIGHT = 32
+
 # Berapa kali satu chunk dicoba ulang untuk error NYATA (timeout,
 # koneksi putus, dsb). Flood wait tidak memotong jatah ini.
 CHUNK_RETRIES = 5
+
+# Batas waktu satu request 1 MB. Tanpa ini, koneksi yang mati diam-diam
+# membuat satu chunk menggantung selamanya dan seluruh download berhenti
+# maju tanpa pernah melempar error.
+REQUEST_TIMEOUT = 60
 
 # Batas atas satu kali flood wait yang masih mau kita tunggu.
 MAX_FLOOD_WAIT = 120
@@ -125,16 +163,7 @@ MAX_FLOOD_TOTAL = 900
 
 # Setelah sekian chunk lancar berturut-turut, izin request bersamaan
 # dinaikkan satu lagi.
-#
-# Dulu 20. Dengan chunk 1 MB itu berarti 20 MB per satu langkah naik --
-# pulih dari 1 ke 4 butuh 60 MB transfer bersih, dan flood yang datang
-# lebih rapat dari itu membuat jatah tidak pernah naik lagi sama sekali.
 RECOVERY_STREAK = 5
-
-# Jatah paralel tidak boleh turun sampai benar-benar serial. Pada 1,
-# hanya ada satu request 1 MB terbang pada satu waktu dan seluruh
-# throughput ditentukan RTT ke DC.
-MIN_LIMIT = 2
 
 
 class NotEnoughDiskSpace(Exception):
@@ -162,13 +191,44 @@ def flood_seconds(error):
     return None
 
 
+def is_connection_error(error):
+    """
+    True kalau `error` menandakan koneksinya yang bermasalah, bukan
+    permintaannya -- artinya sender-nya layak diganti baru.
+    """
+    if isinstance(
+        error,
+        (
+            asyncio.TimeoutError,
+            ConnectionError,
+            OSError,
+            EOFError,
+        ),
+    ):
+        return True
+
+    text = str(error).lower()
+
+    return any(
+        mark in text
+        for mark in (
+            "disconnect",
+            "not connected",
+            "connection",
+            "broken",
+            "timed out",
+            "timeout",
+        )
+    )
+
+
 class _FloodGate:
     """
     Palang buka-tutup bersama. Begitu satu chunk kena flood, palang
     ditutup untuk SEMUA koneksi selama durasi yang diminta Telegram.
 
-    Ini inti perbaikannya: dulu koneksi lain tetap menembak selama satu
-    koneksi menunggu, jadi Telegram menaikkan hukumannya terus.
+    Tanpa ini, koneksi lain tetap menembak selama satu koneksi
+    menunggu, jadi Telegram menaikkan hukumannya terus.
     """
 
     def __init__(self):
@@ -222,8 +282,7 @@ class _FloodGate:
             # milidetik yang sama begitu palang dibuka, Telegram melihat
             # lonjakan yang sama persis seperti yang tadi dihukum, dan
             # langsung menutup palang lagi. Jeda acak kecil memecah
-            # gelombang itu -- ini yang paling menentukan, karena waktu
-            # tunggu palang jauh lebih mahal daripada jumlah koneksi.
+            # gelombang itu.
             await asyncio.sleep(random.uniform(0, 0.25))
 
 
@@ -232,22 +291,21 @@ class _AdaptiveLimiter:
     Pembatas request bersamaan yang bisa berubah saat jalan.
 
     Satu GELOMBANG flood -> jatah turun satu (tidak pernah di bawah
-    `floor`). Turun sekali per gelombang, bukan sekali per chunk: dulu
-    satu gelombang mengenai semua chunk yang sedang terbang sekaligus,
-    jadi 4 koneksi jatuh ke 1 dalam satu tarikan napas.
+    `floor`). Turun sekali per gelombang, bukan sekali per chunk: satu
+    gelombang mengenai semua chunk yang sedang terbang sekaligus, dan
+    tanpa penjagaan ini jatahnya anjlok dalam satu tarikan napas.
 
-    Lancar terus -> jatah naik satu lagi, sampai `maximum` (yang boleh
-    lebih tinggi dari titik awal, supaya koneksi yang lancar tidak
-    selamanya mentok di angka start).
+    Lancar terus -> jatah naik satu lagi, sampai `maximum`.
     """
 
-    def __init__(self, start, maximum, floor=MIN_LIMIT):
+    def __init__(self, start, maximum, floor):
         self._max = max(1, int(maximum))
-        self._floor = max(1, min(int(floor), int(start), self._max))
+        self._floor = max(1, min(int(floor), self._max))
         self._limit = max(self._floor, min(int(start), self._max))
         self._in_flight = 0
         self._streak = 0
         self._cond = asyncio.Condition()
+        self.start_limit = self._limit
         self.min_limit_seen = self._limit
         self.max_limit_seen = self._limit
 
@@ -275,8 +333,8 @@ class _AdaptiveLimiter:
         """
         Turunkan jatah satu tingkat untuk gelombang flood `generation`.
 
-        Gelombang yang sudah pernah dihukum diabaikan, jadi 12 chunk yang
-        kena flood bersamaan tetap dihitung satu kali.
+        Gelombang yang sudah pernah dihukum diabaikan, jadi 12 chunk
+        yang kena flood bersamaan tetap dihitung satu kali.
         """
         async with self._cond:
             if generation is not None:
@@ -318,34 +376,75 @@ class _AdaptiveLimiter:
                 self._cond.notify(1)
 
 
+class _Conn:
+    """
+    Pembungkus sender supaya koneksi yang putus bisa diganti baru
+    tanpa mengubah siapa pun yang sedang memegangnya.
+
+    Satu koneksi dipakai beberapa worker sekaligus -- itu memang
+    tujuannya, karena MTProto sanggup melayani banyak request dalam
+    satu sambungan. Konsekuensinya, kalau koneksi putus, semua worker
+    yang memegangnya akan minta ganti pada saat yang hampir sama.
+    `lock` + pemeriksaan identitas memastikan yang benar-benar dibuat
+    cuma satu sender baru, bukan satu per worker.
+    """
+
+    __slots__ = ("sender", "renewals", "lock")
+
+    def __init__(self, sender):
+        self.sender = sender
+        self.renewals = 0
+        self.lock = asyncio.Lock()
+
+
 class ParallelDownloader:
     def __init__(
         self,
         client,
         num_connections=4,
         max_connections=None,
-        batch_multiplier=BATCH_MULTIPLIER,
+        inflight_per_connection=INFLIGHT_PER_CONNECTION,
+        batch_multiplier=None,
         min_free_bytes=512 * 1024 * 1024,
         chunk_size=CHUNK_SIZE,
+        request_timeout=REQUEST_TIMEOUT,
     ):
         """
-        client          : TelegramClient yang sudah terhubung.
-        num_connections : jumlah koneksi paralel (dibatasi 1..MAX_CONNECTIONS).
-        max_connections : plafon jatah paralel saat koneksi lancar. Default
-                          sama dengan num_connections, jadi setelan yang
-                          Anda pilih tidak pernah dilewati diam-diam.
-                          Naikkan (mis. 8) kalau mau limiter boleh memanjat
-                          di atas titik awal saat tidak ada flood.
-        batch_multiplier: chunk in-flight per koneksi. Turunkan kalau RAM tipis.
-        min_free_bytes  : sisa disk yang harus tetap tersedia setelah download.
-        chunk_size      : besar satu request. Harus kelipatan 4096 dan
-                          membagi habis 1 MB.
+        client                  : TelegramClient yang sudah terhubung.
+
+        num_connections         : jumlah koneksi TCP paralel ke DC
+                                  (dibatasi 1..MAX_CONNECTIONS).
+
+        max_connections         : plafon jumlah koneksi. Default sama
+                                  dengan num_connections. Ini TIDAK
+                                  lagi membatasi jumlah request
+                                  bersamaan -- lihat di bawah.
+
+        inflight_per_connection : berapa request 1 MB yang boleh
+                                  terbang bersamaan di tiap koneksi.
+                                  Inilah tombol kecepatan yang
+                                  sebenarnya. Default 3. Isi 1 untuk
+                                  meniru perilaku versi lama.
+
+        batch_multiplier        : nama lama dari inflight_per_connection,
+                                  masih diterima supaya kode pemanggil
+                                  lama tidak rusak.
+
+        min_free_bytes          : sisa disk yang harus tetap tersedia
+                                  setelah download.
+
+        chunk_size              : besar satu request. Harus kelipatan
+                                  4096 dan membagi habis 1 MB.
+
+        request_timeout         : batas waktu satu request, detik.
         """
         self.client = client
+
         self.num_connections = max(
             1,
             min(int(num_connections), MAX_CONNECTIONS),
         )
+
         self.max_connections = max(
             self.num_connections,
             min(
@@ -353,10 +452,27 @@ class ParallelDownloader:
                 MAX_CONNECTIONS,
             ),
         )
-        self.batch_multiplier = max(1, int(batch_multiplier))
+
+        if batch_multiplier is not None:
+            inflight_per_connection = batch_multiplier
+
+        self.inflight_per_connection = max(
+            1,
+            int(inflight_per_connection),
+        )
+
+        self.max_inflight = max(
+            self.num_connections,
+            min(
+                self.num_connections * self.inflight_per_connection,
+                MAX_INFLIGHT,
+            ),
+        )
+
         self.min_free_bytes = int(min_free_bytes)
         self.chunk_size = int(chunk_size)
         self.chunk_retries = CHUNK_RETRIES
+        self.request_timeout = float(request_timeout)
 
         # Statistik ringkas, berguna buat log di worker.
         self.last_stats = {}
@@ -365,72 +481,102 @@ class ParallelDownloader:
     # Koneksi
     # --------------------------------------------------------
 
-    async def _get_dc_senders(self, dc_id):
-        """
-        Kembalikan (list_senders, same_dc).
+    async def _new_sender(self, dc_id, same_dc):
+        if not same_dc:
+            return await self.client._borrow_exported_sender(dc_id)
 
-        same_dc True  -> senders dibuat manual, harus di-disconnect manual.
-        same_dc False -> senders dipinjam lewat _borrow_exported_sender,
+        # DC sama dengan koneksi utama: reuse auth_key yang sudah ada,
+        # buka koneksi TCP baru tanpa export/import.
+        dc = await self.client._get_dc(dc_id)
+
+        sender = MTProtoSender(
+            self.client._sender.auth_key,
+            loggers=self.client._log,
+        )
+
+        await sender.connect(
+            self.client._connection(
+                dc.ip_address,
+                dc.port,
+                dc.id,
+                loggers=self.client._log,
+                proxy=self.client._proxy,
+                local_addr=self.client._local_addr,
+            )
+        )
+
+        return sender
+
+    async def _open_connections(self, dc_id):
+        """
+        Kembalikan (list_conn, same_dc).
+
+        same_dc True  -> sender dibuat manual, harus di-disconnect manual.
+        same_dc False -> sender dipinjam lewat _borrow_exported_sender,
                          harus dikembalikan lewat _return_exported_sender.
         """
-        my_dc_id = self.client.session.dc_id
+        same_dc = dc_id == self.client.session.dc_id
 
-        senders = []
+        conns = []
 
         try:
-            if dc_id == my_dc_id:
-                # DC sama dengan koneksi utama: reuse auth_key yang sudah
-                # ada, buka koneksi TCP baru tanpa export/import.
-                dc = await self.client._get_dc(dc_id)
-                auth_key = self.client._sender.auth_key
-
-                for _ in range(self.num_connections):
-                    sender = MTProtoSender(
-                        auth_key,
-                        loggers=self.client._log,
-                    )
-
-                    await sender.connect(
-                        self.client._connection(
-                            dc.ip_address,
-                            dc.port,
-                            dc.id,
-                            loggers=self.client._log,
-                            proxy=self.client._proxy,
-                            local_addr=self.client._local_addr,
-                        )
-                    )
-
-                    senders.append(sender)
-
-                return senders, True
-
-            # DC berbeda: cara standar, pinjam exported sender.
             for _ in range(self.num_connections):
-                sender = await self.client._borrow_exported_sender(dc_id)
-                senders.append(sender)
+                conns.append(
+                    _Conn(
+                        await self._new_sender(dc_id, same_dc)
+                    )
+                )
 
-            return senders, False
+            return conns, same_dc
 
         except Exception:
             # Jangan tinggalkan koneksi menggantung kalau gagal di tengah.
-            await self._release_senders(
-                senders,
-                dc_id == my_dc_id,
-            )
+            await self._close_connections(conns, same_dc)
             raise
 
-    async def _release_senders(self, senders, same_dc):
-        for sender in senders:
+    async def _drop_sender(self, sender, same_dc):
+        try:
+            if same_dc:
+                await sender.disconnect()
+            else:
+                await self.client._return_exported_sender(sender)
+        except Exception:
+            # Pelepasan koneksi tidak boleh menggagalkan download
+            # yang sudah selesai.
+            pass
+
+    async def _close_connections(self, conns, same_dc):
+        for conn in conns:
+            await self._drop_sender(conn.sender, same_dc)
+
+    async def _renew(self, conn, dc_id, same_dc, stale):
+        """
+        Ganti sender yang koneksinya sudah tidak sehat dengan yang baru.
+
+        `stale` adalah sender yang tadi gagal. Kalau ternyata koneksinya
+        sudah diganti worker lain, tidak ada yang perlu dikerjakan --
+        tanpa penjagaan ini, 12 worker yang jatuh bersamaan akan membuka
+        12 koneksi baru sekaligus.
+
+        Kalau pembuatan yang baru gagal, sender lama dibiarkan terpasang
+        -- Telethon masih bisa menyambung ulang sendiri, dan percobaan
+        berikutnya akan mencoba mengganti lagi.
+        """
+        async with conn.lock:
+            if conn.sender is not stale:
+                return True
+
             try:
-                if same_dc:
-                    await sender.disconnect()
-                else:
-                    await self.client._return_exported_sender(sender)
+                new_sender = await self._new_sender(dc_id, same_dc)
             except Exception:
-                # Pelepasan koneksi tidak boleh menggagalkan download
-                # yang sudah selesai.
-                pass
+                return False
+
+            conn.sender = new_sender
+            conn.renewals += 1
+
+        await self._drop_sender(stale, same_dc)
+
+        return True
 
     # --------------------------------------------------------
     # Chunk
@@ -438,11 +584,13 @@ class ParallelDownloader:
 
     async def _download_chunk(
         self,
-        sender,
+        conn,
         location,
         offset,
         gate,
         limiter,
+        dc_id,
+        same_dc,
     ):
         """
         Ambil satu chunk.
@@ -467,19 +615,31 @@ class ParallelDownloader:
             await gate.wait()
             await limiter.acquire()
 
+            # Dicatat sebelum dikirim: kalau gagal, inilah sender yang
+            # harus diganti -- bukan sender yang barangkali sudah
+            # dipasang worker lain sementara kita menunggu.
+            sender = conn.sender
+
             try:
-                result = await sender.send(
-                    GetFileRequest(
-                        location=location,
-                        offset=offset,
-                        limit=self.chunk_size,
-                    )
+                result = await asyncio.wait_for(
+                    sender.send(
+                        GetFileRequest(
+                            location=location,
+                            offset=offset,
+                            limit=self.chunk_size,
+                        )
+                    ),
+                    timeout=self.request_timeout,
                 )
 
                 await limiter.release()
                 await limiter.reward()
 
-                return offset, result.bytes
+                return result.bytes
+
+            except asyncio.CancelledError:
+                await limiter.release()
+                raise
 
             except Exception as error:
                 await limiter.release()
@@ -489,13 +649,19 @@ class ParallelDownloader:
                 seconds = flood_seconds(error)
 
                 if seconds is None:
-                    # Error nyata: potong jatah, backoff dengan jitter
-                    # supaya semua koneksi tidak bangun serempak.
+                    # Error nyata: potong jatah percobaan.
                     attempt += 1
 
                     if attempt > self.chunk_retries:
                         break
 
+                    # Koneksinya yang sakit -> ganti baru, jangan
+                    # menembakkan percobaan berikutnya ke soket mati.
+                    if is_connection_error(error):
+                        await self._renew(conn, dc_id, same_dc, sender)
+
+                    # Backoff dengan jitter supaya semua koneksi tidak
+                    # bangun serempak.
                     await asyncio.sleep(
                         (2 ** (attempt - 1))
                         + random.uniform(0, 0.5)
@@ -541,9 +707,10 @@ class ParallelDownloader:
 
         os.makedirs(target_dir, exist_ok=True)
 
-        stat = os.statvfs(target_dir)
-
-        free_bytes = stat.f_bavail * stat.f_frsize
+        # shutil.disk_usage jalan di Linux maupun Windows. os.statvfs
+        # tidak ada di Windows, dan dulu itu membuat mode paralel
+        # gagal seketika lalu diam-diam jatuh ke download satu koneksi.
+        free_bytes = shutil.disk_usage(target_dir).free
 
         needed = file_size + self.min_free_bytes
 
@@ -557,6 +724,109 @@ class ParallelDownloader:
             )
 
     # --------------------------------------------------------
+    # Resume
+    # --------------------------------------------------------
+
+    @staticmethod
+    def part_paths(out_path):
+        return out_path + ".part", out_path + ".part.json"
+
+    @classmethod
+    def cleanup_partial(cls, out_path):
+        """Buang sisa file .part. Dipanggil kalau sudah menyerah."""
+        removed = False
+
+        for path in cls.part_paths(out_path):
+            try:
+                if os.path.exists(path):
+                    os.remove(path)
+                    removed = True
+            except OSError:
+                pass
+
+        return removed
+
+    def _resume_offset(self, out_path, doc, file_size, resume):
+        """
+        Berapa byte dari .part yang masih bisa dipakai.
+
+        Hanya potongan utuh yang dipakai: ekor yang tidak genap satu
+        chunk dibuang, supaya offset request tetap rapi di kelipatan
+        chunk_size.
+        """
+        part_path, meta_path = self.part_paths(out_path)
+
+        fingerprint = {
+            "document_id": str(getattr(doc, "id", "")),
+            "size": int(file_size),
+            "chunk_size": int(self.chunk_size),
+        }
+
+        usable = 0
+
+        if resume and os.path.exists(part_path):
+            meta = None
+
+            try:
+                with open(meta_path, "r", encoding="utf-8") as file:
+                    meta = json.load(file)
+            except (OSError, ValueError):
+                meta = None
+
+            if meta == fingerprint:
+                have = min(os.path.getsize(part_path), file_size)
+
+                usable = (have // self.chunk_size) * self.chunk_size
+
+        if usable <= 0:
+            self.cleanup_partial(out_path)
+
+        try:
+            with open(meta_path, "w", encoding="utf-8") as file:
+                json.dump(fingerprint, file)
+        except OSError:
+            # Tanpa sidik jari, resume berikutnya batal -- tapi
+            # download sekarang tetap boleh jalan.
+            pass
+
+        return usable
+
+    def _open_part(self, out_path, resume_bytes, hasher):
+        part_path, _ = self.part_paths(out_path)
+
+        if resume_bytes <= 0:
+            return open(part_path, "wb")
+
+        file = open(part_path, "r+b")
+
+        try:
+            file.truncate(resume_bytes)
+
+            if hasher is not None:
+                # Checksum harus mencakup bagian yang sudah ada di
+                # disk, bukan cuma yang diunduh sesi ini.
+                file.seek(0)
+
+                left = resume_bytes
+
+                while left > 0:
+                    block = file.read(min(1024 * 1024, left))
+
+                    if not block:
+                        break
+
+                    hasher.update(block)
+                    left -= len(block)
+
+            file.seek(resume_bytes)
+
+        except BaseException:
+            file.close()
+            raise
+
+        return file
+
+    # --------------------------------------------------------
     # Download
     # --------------------------------------------------------
 
@@ -566,6 +836,7 @@ class ParallelDownloader:
         out_path,
         progress_callback=None,
         hasher=None,
+        resume=True,
     ):
         """
         Download `message` ke `out_path` secara paralel.
@@ -573,6 +844,9 @@ class ParallelDownloader:
         hasher : objek hashlib opsional (mis. hashlib.sha256()). Kalau
                  diisi, checksum dihitung SAMBIL menulis file sehingga
                  tidak perlu membaca ulang seluruh file setelahnya.
+
+        resume : lanjutkan dari `<out_path>.part` kalau sisa download
+                 sebelumnya masih cocok dengan dokumen yang sama.
         """
         doc = message.document if message.document else None
 
@@ -594,106 +868,206 @@ class ParallelDownloader:
         )
 
         total_chunks = math.ceil(file_size / self.chunk_size)
-        offsets = [i * self.chunk_size for i in range(total_chunks)]
 
-        batch_size = self.num_connections * self.batch_multiplier
+        resume_bytes = self._resume_offset(
+            out_path,
+            doc,
+            file_size,
+            resume,
+        )
+
+        start_index = resume_bytes // self.chunk_size
+
+        part_path, meta_path = self.part_paths(out_path)
 
         gate = _FloodGate()
 
-        # Plafon dipisahkan dari titik awal, tapi default-nya SAMA dengan
-        # num_connections: setelan yang dipilih pengguna tidak pernah
-        # dilewati diam-diam. Naikkan lewat max_connections kalau mau
-        # limiter boleh memanjat saat tidak ada flood sama sekali.
-        ceiling = max(
-            self.num_connections,
-            min(self.max_connections, batch_size),
-        )
-
+        # Jumlah request bersamaan sekarang lepas dari jumlah koneksi.
+        # Mulai dari separuh plafon lalu memanjat kalau lancar: naik
+        # bertahap jauh lebih jarang memicu flood daripada langsung
+        # menembak di plafon sejak byte pertama.
         limiter = _AdaptiveLimiter(
-            self.num_connections,
-            ceiling,
+            start=max(
+                self.num_connections,
+                self.max_inflight // 2,
+            ),
+            maximum=self.max_inflight,
+            floor=self.num_connections,
         )
 
-        senders, same_dc = await self._get_dc_senders(dc_id)
+        # Sejauh mana worker boleh berlari mendahului penulis. Ini yang
+        # mengunci pemakaian RAM: chunk yang sudah tiba tapi belum
+        # gilirannya ditulis menunggu di sini.
+        window = self.max_inflight * 2
 
-        downloaded = 0
+        conns, same_dc = await self._open_connections(dc_id)
+
+        state = {
+            "claim": start_index,
+            "write": start_index,
+            "error": None,
+            "stop": False,
+        }
+
+        pending = {}
+        cond = asyncio.Condition()
+
+        loop = asyncio.get_running_loop()
+
+        writer_pool = ThreadPoolExecutor(
+            max_workers=1,
+            thread_name_prefix="dl-writer",
+        )
+
+        downloaded = resume_bytes
         started_at = time.monotonic()
 
-        try:
-            # File dibuka sekali; tiap batch langsung ditulis lalu
-            # dibuang dari memori. RAM tetap konstan.
-            with open(out_path, "wb") as file:
-                for batch_start in range(0, len(offsets), batch_size):
-                    batch = offsets[batch_start:batch_start + batch_size]
+        async def worker(conn):
+            while True:
+                async with cond:
+                    while (
+                        not state["stop"]
+                        and state["error"] is None
+                        and state["claim"] < total_chunks
+                        and state["claim"] - state["write"] >= window
+                    ):
+                        await cond.wait()
 
-                    tasks = [
-                        self._download_chunk(
-                            senders[index % len(senders)],
-                            location,
-                            offset,
-                            gate,
-                            limiter,
-                        )
-                        for index, offset in enumerate(batch)
-                    ]
+                    if (
+                        state["stop"]
+                        or state["error"] is not None
+                        or state["claim"] >= total_chunks
+                    ):
+                        return
 
-                    # return_exceptions=True supaya tugas lain dalam batch
-                    # tetap tuntas sebelum kita melempar error. Tanpa ini,
-                    # ada task menggantung yang masih memakai sender saat
-                    # sender-nya sudah diputus di blok finally.
-                    batch_results = await asyncio.gather(
-                        *tasks,
-                        return_exceptions=True,
+                    index = state["claim"]
+                    state["claim"] += 1
+
+                try:
+                    data = await self._download_chunk(
+                        conn,
+                        location,
+                        index * self.chunk_size,
+                        gate,
+                        limiter,
+                        dc_id,
+                        same_dc,
                     )
 
-                    failed = [
-                        item
-                        for item in batch_results
-                        if isinstance(item, BaseException)
-                    ]
+                except asyncio.CancelledError:
+                    raise
 
-                    if failed:
-                        raise failed[0]
+                except BaseException as error:
+                    async with cond:
+                        if state["error"] is None:
+                            state["error"] = error
 
-                    # Urutkan supaya penulisan tetap berurutan.
-                    batch_results.sort(key=lambda item: item[0])
+                        cond.notify_all()
 
-                    for _, data in batch_results:
-                        file.write(data)
+                    return
 
-                        if hasher is not None:
-                            hasher.update(data)
+                async with cond:
+                    pending[index] = data
+                    cond.notify_all()
 
-                        downloaded += len(data)
+        def sink(data):
+            file.write(data)
 
-                        if progress_callback:
-                            progress_callback(downloaded, file_size)
+            if hasher is not None:
+                hasher.update(data)
 
-                    # Lepaskan referensi batch sebelum lanjut.
-                    del batch_results
+        file = self._open_part(out_path, resume_bytes, hasher)
 
-        except BaseException:
-            # Jangan tinggalkan file setengah jadi memenuhi disk.
+        worker_tasks = []
+
+        try:
+            # Satu worker = satu request yang bisa terbang. Jumlahnya
+            # mengikuti plafon in-flight, BUKAN jumlah koneksi: kalau
+            # worker hanya sebanyak koneksi, tiap koneksi selamanya
+            # cuma punya satu request di udara dan plafon limiter tidak
+            # pernah tercapai. Beberapa worker berbagi satu koneksi --
+            # persis kemampuan yang memang disediakan MTProto.
+            worker_tasks = [
+                asyncio.ensure_future(
+                    worker(conns[slot % len(conns)])
+                )
+                for slot in range(self.max_inflight)
+            ]
+
+            while state["write"] < total_chunks:
+                async with cond:
+                    while state["write"] not in pending:
+                        if state["error"] is not None:
+                            raise state["error"]
+
+                        await cond.wait()
+
+                    data = pending.pop(state["write"])
+                    state["write"] += 1
+
+                    cond.notify_all()
+
+                # Menulis ke disk dan mengaduk checksum dilakukan di
+                # thread lain, jadi request tetap terbang selama disk
+                # sibuk.
+                await loop.run_in_executor(writer_pool, sink, data)
+
+                downloaded += len(data)
+
+                if progress_callback:
+                    progress_callback(downloaded, file_size)
+
+            file.close()
+            file = None
+
+            os.replace(part_path, out_path)
+
             try:
-                if os.path.exists(out_path):
-                    os.remove(out_path)
+                os.remove(meta_path)
             except OSError:
                 pass
 
-            raise
-
         finally:
-            await self._release_senders(senders, same_dc)
+            # Suruh worker berhenti, apa pun yang terjadi di atas.
+            async with cond:
+                state["stop"] = True
+                cond.notify_all()
+
+            for task in worker_tasks:
+                task.cancel()
+
+            if worker_tasks:
+                await asyncio.gather(
+                    *worker_tasks,
+                    return_exceptions=True,
+                )
+
+            pending.clear()
+
+            if file is not None:
+                # Gagal di tengah: file .part SENGAJA ditahan supaya
+                # percobaan berikutnya melanjutkan, bukan mengulang.
+                try:
+                    file.close()
+                except OSError:
+                    pass
+
+            writer_pool.shutdown(wait=False)
+
+            await self._close_connections(conns, same_dc)
 
         self.last_stats = {
             "bytes": downloaded,
+            "resumed_bytes": resume_bytes,
             "seconds": time.monotonic() - started_at,
             "flood_hits": gate.flood_hits,
             "flood_seconds": round(gate.total_paused, 1),
-            "connections_start": self.num_connections,
-            "connections_min": limiter.min_limit_seen,
-            "connections_max": limiter.max_limit_seen,
-            "connections_end": limiter.limit,
+            "connections": len(conns),
+            "reconnects": sum(conn.renewals for conn in conns),
+            "inflight_start": limiter.start_limit,
+            "inflight_min": limiter.min_limit_seen,
+            "inflight_max": limiter.max_limit_seen,
+            "inflight_end": limiter.limit,
         }
 
         return out_path

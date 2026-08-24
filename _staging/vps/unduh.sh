@@ -10,6 +10,13 @@
 #   unduh          -> 4 koneksi paralel (default)
 #   unduh 6        -> 6 koneksi paralel
 #
+# Yang menentukan kecepatan sebenarnya bukan jumlah koneksi, tapi
+# berapa request 1 MB yang boleh terbang bersamaan di TIAP koneksi:
+#
+#   TG_INFLIGHT_PER_CONN=3 unduh      # default, 4 x 3 = 12 in-flight
+#   TG_INFLIGHT_PER_CONN=1 unduh      # perilaku lama, paling hemat
+#   TG_INFLIGHT_PER_CONN=4 unduh      # lebih agresif, lebih rawan flood
+#
 set -euo pipefail
 
 VENV="/root/telegram-env"
@@ -25,10 +32,22 @@ if [ ! -f "$SKRIP" ]; then
     exit 1
 fi
 
+if [ ! -f "/root/fast_download.py" ]; then
+    echo "GAGAL: fast_download.py tidak ada di /root" >&2
+    exit 1
+fi
+
 export TG_PARALLEL_CONNECTIONS="${1:-4}"
+export TG_INFLIGHT_PER_CONN="${TG_INFLIGHT_PER_CONN:-3}"
+
+# Jangan biarkan proxy warisan di shell membelokkan trafik keluar dari
+# VPS. Skrip juga akan mencetak IP publiknya sendiri saat start.
+unset HTTP_PROXY HTTPS_PROXY ALL_PROXY http_proxy https_proxy all_proxy
 
 cd /root
 
-echo "==> Koneksi paralel: $TG_PARALLEL_CONNECTIONS"
+echo "==> Koneksi paralel   : $TG_PARALLEL_CONNECTIONS"
+echo "==> Request/koneksi   : $TG_INFLIGHT_PER_CONN"
+echo "==> Total in-flight   : $((TG_PARALLEL_CONNECTIONS * TG_INFLIGHT_PER_CONN)) MB"
 
 exec "$VENV/bin/python3" "$SKRIP"
