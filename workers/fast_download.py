@@ -537,6 +537,7 @@ class ParallelDownloader:
         chunk_size=CHUNK_SIZE,
         request_timeout=REQUEST_TIMEOUT,
         clone_senders=False,
+        extra_sockets=True,
     ):
         """
         client                  : TelegramClient yang sudah terhubung.
@@ -608,9 +609,13 @@ class ParallelDownloader:
         self.chunk_retries = CHUNK_RETRIES
         self.request_timeout = float(request_timeout)
 
-        # Boleh membuka soket tambahan sama sekali? Dimatikan hanya untuk
-        # pengujian atau saat Telethon-nya tidak mendukung.
-        self.extra_sockets = True
+        # Boleh membuka soket tambahan sama sekali?
+        #
+        # Dimatikan -> pakai satu soket yang sudah ada. Lebih lambat di
+        # atas kertas, tapi tanpa putus-sambung sama sekali. Pada akun
+        # yang soket tambahannya terus diputus Telegram, yang tenang bisa
+        # justru menang.
+        self.extra_sockets = bool(extra_sockets)
 
         # Jeda antar pembukaan sambungan, detik.
         self.open_stagger = 0.3

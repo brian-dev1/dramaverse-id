@@ -70,6 +70,13 @@ INFLIGHT_PER_CONNECTION = int(
     os.environ.get("TG_INFLIGHT_PER_CONN", "2")
 )
 
+# Boleh membuka soket tambahan? TG_EXTRA_SOCKETS=0 memaksa satu soket.
+#
+# Gunanya untuk membandingkan langsung: soket tambahan menaikkan
+# paralelisme tapi pada akun ini terus diputus Telegram. Mana yang lebih
+# cepat hanya bisa diketahui dengan mengukur, bukan menalar.
+EXTRA_SOCKETS = os.environ.get("TG_EXTRA_SOCKETS", "1") != "0"
+
 # Berapa kali satu video dicoba ulang sebelum menyerah. Percobaan
 # berikutnya MELANJUTKAN dari file .part, bukan mengulang dari nol.
 DOWNLOAD_ATTEMPTS = int(
@@ -1245,6 +1252,7 @@ async def main():
         num_connections=PARALLEL_CONNECTIONS,
         max_connections=MAX_PARALLEL,
         inflight_per_connection=INFLIGHT_PER_CONNECTION,
+        extra_sockets=EXTRA_SOCKETS,
     )
 
     progress = ProgressPrinter()
