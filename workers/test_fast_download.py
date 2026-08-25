@@ -725,7 +725,7 @@ async def test_main_mode_uses_client_sender(tmp):
 
     # Meniru keadaan di mana sambungan berotorisasi sendiri tidak bisa
     # dibuat -- harus jatuh ke sender milik client, bukan gagal.
-    downloader.exported_senders = False
+    downloader.extra_sockets = False
 
     await downloader.download(FakeMessage(file_size), out)
 
@@ -896,7 +896,7 @@ async def test_exported_mode_gives_real_sockets(tmp):
     # Tiap panggilan menghasilkan sender BERBEDA -- itulah yang
     # membedakan sambungan berotorisasi sendiri dari sender pinjaman.
     async def _new_sender(dc_id, mode):
-        assert mode == "exported", f"mode tak terduga: {mode}"
+        assert mode == "clone", f"mode tak terduga: {mode}"
         return FakeSender(tracker, client.script)
 
     downloader._new_sender = _new_sender
@@ -914,7 +914,7 @@ async def test_exported_mode_gives_real_sockets(tmp):
         f"in-flight puncak={tracker.peak} (plafon 12)"
     )
 
-    assert stats["mode"] == "exported"
+    assert stats["mode"] == "clone"
     assert stats["unique_senders"] == 6, (
         f"cuma {stats['unique_senders']} soket -- paralelismenya semu"
     )
@@ -998,9 +998,9 @@ async def test_failed_sender_is_disconnected(tmp):
             await super().disconnect()
 
     async def _new_sender(dc_id, mode):
-        if mode == "exported":
-            # Meniru _buat_exported_sender: sambungannya jadi, lalu
-            # permintaan otorisasinya ditolak.
+        if mode in ("exported", "clone"):
+            # Meniru pembuatan soket tambahan: sambungannya jadi, lalu
+            # salam pembuka / otorisasinya ditolak.
             s = SenderSetengahJadi(tracker, client.script)
             dibuat.append(s)
 

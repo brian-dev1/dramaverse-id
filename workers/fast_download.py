@@ -608,9 +608,9 @@ class ParallelDownloader:
         self.chunk_retries = CHUNK_RETRIES
         self.request_timeout = float(request_timeout)
 
-        # Boleh membuka sambungan berotorisasi sendiri? Dimatikan hanya
-        # untuk pengujian atau saat Telethon-nya tidak mendukung.
-        self.exported_senders = True
+        # Boleh membuka soket tambahan sama sekali? Dimatikan hanya untuk
+        # pengujian atau saat Telethon-nya tidak mendukung.
+        self.extra_sockets = True
 
         # Jeda antar pembukaan sambungan, detik.
         self.open_stagger = 0.3
@@ -640,10 +640,34 @@ class ParallelDownloader:
             # menghitung peminjaman. Dipakai sebagai cadangan saja.
             return await self.client._borrow_exported_sender(dc_id)
 
-        # mode "clone" -- warisan, dan sumber masalah yang panjang.
-        # Beberapa soket dibuka sambil MEMINJAM auth_key koneksi utama,
-        # tepat pola yang Telethon peringatkan di _create_exported_sender:
-        # "Telegram would reset the connection with no further clues."
+        # mode "clone" -- beberapa soket ke DC SENDIRI, memakai auth_key
+        # koneksi utama.
+        #
+        # Ini satu-satunya cara mendapat soket paralel ke DC sendiri,
+        # karena Telegram menolak mengekspor otorisasi ke DC yang sudah
+        # kita masuki. Versi sebelumnya melakukannya dan berakhir dengan
+        # banjir "connection reset by peer" dan "wrong session ID" --
+        # tetapi bukan karena auth_key-nya dipakai berdua.
+        #
+        # Yang hilang adalah SALAM PEMBUKA. Setiap sesi MTProto baru
+        # wajib memperkenalkan dirinya lewat initConnection yang
+        # dibungkus invokeWithLayer sebelum mengirim permintaan apa pun.
+        # Sender baru memang mendapat session_id dan seqno sendiri, tapi
+        # server tidak pernah diberi tahu sesi itu ada. Permintaan yang
+        # datang dari sesi tak dikenal itulah yang dijawab dengan
+        # pemutusan tanpa penjelasan.
+        return await self._buat_clone_sender(dc_id)
+
+    async def _buat_clone_sender(self, dc_id):
+        """
+        Soket tambahan ke DC sendiri, lengkap dengan salam pembukanya.
+        """
+        if _tl_functions is None or _TL_LAYER is None:
+            raise RuntimeError(
+                "Telethon versi ini tidak menyediakan "
+                "functions/LAYER yang dibutuhkan."
+            )
+
         dc = await self.client._get_dc(dc_id)
 
         sender = MTProtoSender(
@@ -651,18 +675,39 @@ class ParallelDownloader:
             loggers=self.client._log,
         )
 
-        await sender.connect(
-            self.client._connection(
-                dc.ip_address,
-                dc.port,
-                dc.id,
-                loggers=self.client._log,
-                proxy=self.client._proxy,
-                local_addr=self.client._local_addr,
+        try:
+            await sender.connect(
+                self.client._connection(
+                    dc.ip_address,
+                    dc.port,
+                    dc.id,
+                    loggers=self.client._log,
+                    proxy=self.client._proxy,
+                    local_addr=self.client._local_addr,
+                )
             )
-        )
 
-        return sender
+            # Salam pembuka. Tanpa ini server tidak mengenali sesinya.
+            self.client._init_request.query = (
+                _tl_functions.help.GetConfigRequest()
+            )
+
+            await sender.send(
+                _tl_functions.InvokeWithLayerRequest(
+                    _TL_LAYER,
+                    self.client._init_request,
+                )
+            )
+
+            return sender
+
+        except BaseException:
+            try:
+                await sender.disconnect()
+            except Exception:
+                pass
+
+            raise
 
     async def _buat_exported_sender(self, dc_id):
         """
@@ -781,23 +826,15 @@ class ParallelDownloader:
 
         same_dc = dc_id == self.client.session.dc_id
 
-        if self.clone_senders:
-            mode = "clone" if same_dc else "borrow"
+        if self.extra_sockets:
+            # DC sendiri  -> clone + salam pembuka (export ditolak di sini).
+            # DC lain     -> exported, tiap soket auth key sendiri.
+            utama = "clone" if same_dc else "exported"
 
-            conns = await self._buka_banyak(dc_id, mode, self.num_connections)
-
-            if conns:
-                return conns, mode
-
-        if self.exported_senders:
-            conns = await self._buka_banyak(
-                dc_id,
-                "exported",
-                self.num_connections,
-            )
+            conns = await self._buka_banyak(dc_id, utama, self.num_connections)
 
             if conns:
-                return conns, "exported"
+                return conns, utama
 
         # Cadangan: satu soket, tapi soket yang pasti sehat.
         if same_dc:
@@ -1223,6 +1260,7 @@ class ParallelDownloader:
         hasher=None,
         resume=True,
         refresh_message=None,
+        on_connect=None,
     ):
         """
         Download `message` ke `out_path` secara paralel.
@@ -1277,6 +1315,16 @@ class ParallelDownloader:
         # Koneksi dibuka LEBIH DULU, karena jatah request bersamaan
         # dihitung dari soket yang benar-benar berhasil dibuka.
         conns, mode = await self._open_connections(dc_id)
+
+        # Dilaporkan SEKARANG, bukan di akhir. Menunggu satu video 300 MB
+        # selesai hanya untuk tahu berapa soket yang terbuka membuang
+        # waktu yang tidak perlu dibuang.
+        if on_connect:
+            on_connect(
+                mode,
+                len({id(conn.sender) for conn in conns}),
+                list(self.open_errors),
+            )
 
         # Mulai dari separuh plafon lalu memanjat kalau lancar: naik
         # bertahap jauh lebih jarang memicu flood daripada langsung
