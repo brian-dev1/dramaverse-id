@@ -1,4 +1,5 @@
 import asyncio
+import collections
 import hashlib
 import logging
 import mimetypes
@@ -779,21 +780,51 @@ def sync_to_laravel(
 
 class ProgressPrinter:
     """
-    Cetak bar kemajuan, tapi tidak lebih sering dari `interval` detik.
+    Bar kemajuan dengan kecepatan SESAAT, bukan rata-rata sejak awal.
 
-    Versi lama mencetak setiap chunk 1 MB dengan flush=True. Untuk video
-    1 GB itu 1000 kali tulis ke terminal, semuanya di dalam event loop
-    -- dan lewat SSH tiap flush itu satu paket jaringan tersendiri.
+    Rata-rata kumulatif selalu berangkat dari nol dan butuh separuh
+    berkas untuk mendekati angka sebenarnya. Akibatnya menit pertama
+    tiap unduhan selalu terlihat lambat, dan dua setelan jadi mustahil
+    dibandingkan kecuali keduanya ditunggu sampai selesai.
+
+    Yang ditampilkan sekarang adalah laju beberapa detik terakhir --
+    angka yang langsung bergerak saat setelannya berubah. Rata-rata
+    keseluruhan tetap dicetak di akhir, karena itu yang menentukan
+    berapa lama sebenarnya.
     """
+
+    JENDELA = 5.0
 
     def __init__(self, interval=0.2):
         self.interval = interval
         self.last_print = 0.0
         self.started_at = time.monotonic()
+        self.samples = collections.deque()
 
     def reset(self):
         self.last_print = 0.0
         self.started_at = time.monotonic()
+        self.samples.clear()
+
+    def _laju_sesaat(self, now, current):
+        self.samples.append((now, current))
+
+        batas = now - self.JENDELA
+
+        while len(self.samples) > 2 and self.samples[0][0] < batas:
+            self.samples.popleft()
+
+        awal_waktu, awal_byte = self.samples[0]
+
+        selang = now - awal_waktu
+
+        if selang < 0.5:
+            # Belum cukup data untuk laju sesaat; pakai rata-rata.
+            selang = max(now - self.started_at, 0.001)
+
+            return current / (1024 * 1024) / selang
+
+        return (current - awal_byte) / (1024 * 1024) / selang
 
     def __call__(self, current, total):
         if not total:
@@ -808,27 +839,23 @@ class ProgressPrinter:
 
         self.last_print = now
 
+        laju = self._laju_sesaat(now, current)
+
         percent = current * 100 / total
 
         bar_len = 30
         filled = int(bar_len * current / total)
 
-        bar = (
-            "#" * filled
-            + "-" * (bar_len - filled)
-        )
+        bar = "#" * filled + "-" * (bar_len - filled)
 
         mb_current = current / (1024 * 1024)
         mb_total = total / (1024 * 1024)
-
-        elapsed = max(now - self.started_at, 0.001)
-        speed = mb_current / elapsed
 
         print(
             f"\r[{bar}] "
             f"{percent:5.1f}%  "
             f"({mb_current:.1f}/{mb_total:.1f} MB)  "
-            f"{speed:5.2f} MB/s",
+            f"{laju:5.2f} MB/s",
             end="",
             flush=True,
         )
