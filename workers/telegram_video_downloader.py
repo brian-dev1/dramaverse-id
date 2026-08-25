@@ -41,7 +41,18 @@ DOWNLOAD_DIR = os.environ.get(
     os.path.join(BASE_DIR, "downloads"),
 )
 
-SCAN_LIMIT = 50
+# Berapa pesan terakhir di chat bot yang dipindai saat mencari video.
+#
+# Naik dari 50 ke 100. Satu batch unggahan sering lebih panjang daripada
+# yang terlihat, dan video yang jatuh di luar batas pindaian TIDAK muncul
+# di daftar sama sekali -- tanpa satu pun keterangan bahwa ada yang
+# terlewat. Yang terlihat cuma "videonya tidak ada di sini".
+#
+# Bisa ditimpa lewat TG_SCAN_LIMIT tanpa menyunting berkas ini, sama
+# seperti TG_PARALLEL_CONNECTIONS di bawah.
+SCAN_LIMIT = int(
+    os.environ.get("TG_SCAN_LIMIT", "100")
+)
 
 # Jumlah koneksi TCP paralel ke Telegram DC.
 PARALLEL_CONNECTIONS = int(
