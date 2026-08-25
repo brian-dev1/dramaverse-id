@@ -1,5 +1,6 @@
 import asyncio
 import hashlib
+import logging
 import mimetypes
 import os
 import platform
@@ -103,6 +104,70 @@ def api_headers():
         "Authorization": f"Bearer {LARAVEL_API_TOKEN}",
         "Accept": "application/json",
     }
+
+
+# ============================================================
+# Peredam log Telethon
+# ============================================================
+
+class PeredamKoneksi(logging.Filter):
+    """
+    Kumpulkan pesan putus-sambung Telethon jadi satu angka.
+
+    Telethon mencatat tiap sambungan yang diputus server, lalu
+    menyambungnya kembali sendiri. Untuk unduhan bermulti-soket, itu
+    puluhan baris per menit yang menenggelamkan bar kemajuan -- padahal
+    tidak satu pun byte hilang karenanya: chunk yang gagal diulang, dan
+    berkasnya diverifikasi checksum.
+
+    Yang dilakukan di sini BUKAN menyembunyikannya. Pesannya dihitung
+    dan jumlahnya dilaporkan di akhir tiap video, jadi kalau angkanya
+    membengkak Anda tetap tahu. Set TG_VERBOSE=1 untuk melihat aslinya
+    satu per satu.
+    """
+
+    POLA = (
+        "server closed the connection",
+        "connection reset",
+        "broken pipe",
+        "wrong session id",
+        "0 bytes read",
+    )
+
+    def __init__(self):
+        super().__init__()
+        self.jumlah = 0
+
+    def filter(self, record):
+        try:
+            pesan = record.getMessage().lower()
+        except Exception:
+            return True
+
+        if any(pola in pesan for pola in self.POLA):
+            self.jumlah += 1
+
+            return False
+
+        return True
+
+    def ambil(self):
+        jumlah = self.jumlah
+        self.jumlah = 0
+
+        return jumlah
+
+
+PEREDAM = PeredamKoneksi()
+
+
+def pasang_peredam():
+    if os.environ.get("TG_VERBOSE") == "1":
+        return False
+
+    logging.getLogger("telethon").addFilter(PEREDAM)
+
+    return True
 
 
 # ============================================================
@@ -224,6 +289,43 @@ def validate_api_credentials(session_exists):
     sys.exit(1)
 
 
+def describe_crypto():
+    """
+    Pastikan AES-nya dikerjakan kode terkompilasi, bukan Python murni.
+
+    Telethon jalan tanpa `cryptg`, hanya saja seluruh enkripsi jatuh ke
+    implementasi Python murni. Tidak ada galat, tidak ada peringatan --
+    yang terjadi cuma satu inti CPU terpakai penuh dan kecepatan mentok
+    di sekitar 1-2 MB/s berapa pun koneksi yang dibuka.
+
+    Ini paling menyesatkan justru karena diam. Gejalanya terlihat persis
+    seperti masalah jaringan, dan menambah paralelisme sama sekali tidak
+    menolong karena hambatannya ada di CPU satu proses.
+    """
+    try:
+        import cryptg  # noqa: F401
+
+        versi = getattr(cryptg, "__version__", "?")
+
+        print(f"Enkripsi: cryptg {versi} (terkompilasi)")
+
+        return True
+
+    except ImportError:
+        pass
+
+    print("Enkripsi: PYTHON MURNI -- ini akan sangat lambat.")
+    print()
+    print("  cryptg tidak terpasang, jadi setiap byte didekripsi oleh")
+    print("  Python. Kecepatan mentok di sekitar 1-2 MB/s dan satu inti")
+    print("  CPU terpakai penuh, berapa pun koneksi yang dibuka.")
+    print()
+    print("  Pasang:")
+    print(f"      {sys.executable} -m pip install cryptg")
+
+    return False
+
+
 def describe_session():
     """
     Beri tahu di awal apakah sesi login lama ditemukan.
@@ -287,6 +389,8 @@ def print_network_banner():
     print(f"Folder  : {BASE_DIR}")
 
     session_exists = describe_session()
+
+    describe_crypto()
 
     proxy_vars = [
         name
@@ -828,6 +932,19 @@ async def download_with_retry(
     """
     last_error = None
 
+    def lapor_koneksi(mode, soket, kesalahan):
+        penjelasan = {
+            "exported": "soket berdiri sendiri, auth key masing-masing",
+            "main": "sender milik client -- sambungan tambahan DITOLAK",
+            "borrow": "satu sambungan pinjaman bersama (DC lain)",
+            "clone": "soket kloningan, meminjam auth_key utama",
+        }.get(mode, mode)
+
+        print(f"[TG] Terbuka {soket} soket ({penjelasan}).")
+
+        for alasan in kesalahan:
+            print(f"[TG] Gagal membuka -> {alasan}")
+
     async def ambil_pesan_baru():
         """
         Ambil ulang pesannya untuk mendapat file_reference yang segar.
@@ -851,9 +968,19 @@ async def download_with_retry(
                 progress_callback=progress,
                 hasher=hasher,
                 refresh_message=ambil_pesan_baru,
+                on_connect=lapor_koneksi,
             )
 
             print_download_stats(downloader.last_stats)
+
+            diredam = PEREDAM.ambil()
+
+            if diredam:
+                print(
+                    f"[TG] {diredam} pesan putus-sambung Telethon "
+                    "diredam (tidak ada byte yang hilang; "
+                    "TG_VERBOSE=1 untuk melihatnya)."
+                )
 
             return path, hasher.hexdigest()
 
@@ -929,6 +1056,12 @@ async def main():
     session_exists = print_network_banner()
 
     validate_api_credentials(session_exists)
+
+    if pasang_peredam():
+        print(
+            "[TG] Pesan putus-sambung Telethon diredam dan dihitung. "
+            "TG_VERBOSE=1 untuk menampilkannya."
+        )
 
     try:
         selected_provider = choose_storage_provider()
