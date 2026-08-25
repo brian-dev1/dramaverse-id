@@ -51,11 +51,70 @@ class EpisodeVideoObserver
     public function saved(EpisodeVideo $video): void
     {
         $this->cache->forget($video->episode_id);
+
+        $this->terbitkanBilaSiap($video);
     }
 
     public function deleted(EpisodeVideo $video): void
     {
         $this->cache->forget($video->episode_id);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Terbit otomatis
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Terbitkan part begitu videonya benar-benar bisa ditonton.
+     *
+     * ## Kenapa pemicunya sinkronisasi, bukan pemasangan video
+     *
+     * Memasang video ke sebuah part TIDAK membuatnya bisa ditonton. Penonton
+     * dilayani `TelegramDeliveryService`, dan ia mengirim `telegram_file_id`
+     * yang baru ada setelah videonya diunggah ke channel penyimpanan. Sebelum
+     * itu, halaman episode hanya menampilkan "Video belum siap ditonton".
+     *
+     * Kalau part diterbitkan pada saat video dipasang, ia muncul di katalog
+     * dengan tombol tonton yang tidak menghasilkan apa-apa — persis keluhan
+     * yang paling merepotkan untuk ditelusuri, karena datanya terlihat
+     * lengkap. Karena itu penerbitannya menunggu `isSyncedToTelegram()`.
+     *
+     * ## Yang sengaja tidak disentuh
+     *
+     * Part yang `published_at`-nya masih di masa depan DIBIARKAN sebagai
+     * draf. Itu jadwal tayang yang sengaja dipasang admin, dan
+     * `EpisodeSchedulerService` yang berhak menerbitkannya pada waktunya.
+     * Menerbitkannya lebih awal di sini akan membocorkan part yang belum
+     * waktunya keluar.
+     */
+    private function terbitkanBilaSiap(EpisodeVideo $video): void
+    {
+        if (! $video->isSyncedToTelegram()) {
+            return;
+        }
+
+        $episode = $video->episode;
+
+        if ($episode === null || $episode->status === 'published') {
+            return;
+        }
+
+        // Dijadwalkan untuk nanti -> bukan urusan kita.
+        if ($episode->published_at !== null && $episode->published_at->isFuture()) {
+            return;
+        }
+
+        $episode->forceFill([
+            'status'       => 'published',
+            'published_at' => $episode->published_at ?? now(),
+        ])->save();
+
+        Log::info('episode.terbit_otomatis', [
+            'episode_id' => $episode->id,
+            'video_id'   => $video->id,
+        ]);
     }
 
     /*
