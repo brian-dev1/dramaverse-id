@@ -170,10 +170,31 @@ PEREDAM = PeredamKoneksi()
 
 
 def pasang_peredam():
+    """
+    Pasang peredam pada HANDLER, bukan pada logger.
+
+    Ini pembedaan yang menggigit saya sekali. Filter yang ditempelkan ke
+    sebuah logger hanya berlaku untuk pesan yang dicatat LANGSUNG ke
+    logger itu -- pesan dari logger anaknya tidak pernah melewatinya.
+    Telethon mencatat lewat `telethon.network.mtprotosender` dan
+    kerabatnya, jadi filter di `telethon` tidak menyentuh apa pun.
+
+    Yang benar: pasang handler sendiri di `telethon`, taruh filternya di
+    handler itu, lalu matikan propagasi. Pesan dari seluruh logger anak
+    tetap naik ke handler ini, dan filter pada handler MEMANG berlaku
+    untuk pesan yang naik.
+    """
     if os.environ.get("TG_VERBOSE") == "1":
         return False
 
-    logging.getLogger("telethon").addFilter(PEREDAM)
+    handler = logging.StreamHandler(sys.stderr)
+    handler.addFilter(PEREDAM)
+    handler.setFormatter(logging.Formatter("%(levelname)s %(message)s"))
+
+    log = logging.getLogger("telethon")
+    log.handlers = [handler]
+    log.propagate = False
+    log.setLevel(logging.WARNING)
 
     return True
 
