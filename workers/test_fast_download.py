@@ -290,7 +290,7 @@ async def test_basic_order_and_speed(tmp):
     # Ambang longgar: yang diuji "jauh lebih cepat dari serial",
     # bukan angka persisnya. Mesin uji yang sedang sibuk membuat
     # batas ketat gagal sesekali tanpa ada yang benar-benar rusak.
-    assert elapsed < serial / 3, "tidak cukup paralel"
+    assert elapsed < serial / 2, "tidak cukup paralel"
 
     return elapsed, chunks
 

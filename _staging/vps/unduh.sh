@@ -2,27 +2,21 @@
 #
 # Pintasan menjalankan downloader Telegram di VPS.
 #
-# Pemasangan (sekali saja, di VPS):
-#   cp unduh.sh /root/unduh.sh && chmod +x /root/unduh.sh
+# Pemasangan: tidak perlu manual. `deploy-worker` menyalin berkas ini ke
+# /root/unduh.sh setiap kali dijalankan.
+#
+# Pintasan perintah (sekali saja):
 #   echo "alias unduh='/root/unduh.sh'" >> /root/.bashrc && source /root/.bashrc
 #
+# PENTING: jangan menyunting /root/unduh.sh langsung — `deploy-worker`
+# akan menimpanya. Sunting _staging/vps/unduh.sh di repo, commit, lalu
+# deploy.
+#
 # Pemakaian:
-#   unduh          -> 4 koneksi paralel (default)
-#   unduh 6        -> 6 koneksi paralel
-#
-# Yang menentukan kecepatan sebenarnya bukan jumlah koneksi, tapi
-# berapa request 1 MB yang boleh terbang bersamaan di TIAP koneksi:
-#
-#   TG_INFLIGHT_PER_CONN=3 unduh      # default, 4 x 3 = 12 in-flight
-#   TG_INFLIGHT_PER_CONN=1 unduh      # perilaku lama, paling hemat
-#   TG_INFLIGHT_PER_CONN=4 unduh      # lebih agresif, lebih rawan flood
-#
-# Berapa pesan terakhir di chat bot yang dipindai saat mencari video.
-# Video di luar batas ini TIDAK muncul di daftar, tanpa keterangan apa
-# pun -- terlihat sama persis dengan videonya memang tidak ada:
-#
-#   unduh                             # 100 pesan terakhir (default)
-#   TG_SCAN_LIMIT=300 unduh           # kalau video lama belum kebaca
+#   unduh                          -> 4 koneksi paralel
+#   unduh 6                        -> 6 koneksi paralel
+#   TG_SCAN_LIMIT=300 unduh        -> pindai 300 pesan terakhir
+#   TG_INFLIGHT_PER_CONN=3 unduh   -> lebih agresif (lihat catatan)
 #
 set -euo pipefail
 
@@ -45,8 +39,22 @@ if [ ! -f "/root/fast_download.py" ]; then
 fi
 
 export TG_PARALLEL_CONNECTIONS="${1:-4}"
-export TG_INFLIGHT_PER_CONN="${TG_INFLIGHT_PER_CONN:-3}"
-export TG_SCAN_LIMIT="${TG_SCAN_LIMIT:-100}"
+
+# Berapa pesan terakhir yang dipindai untuk mencari video.
+export TG_SCAN_LIMIT="${TG_SCAN_LIMIT:-50}"
+
+# Berapa request 1 MB yang boleh terbang bersamaan di TIAP koneksi.
+#
+# Default 1 -> total 4 request bersamaan, sama dengan perilaku asli.
+#
+# Berkas ini sempat memaksa 3, yang membatalkan default aman di
+# fast_download.py tanpa terlihat — dan 3 itulah yang memicu banjir
+# "connection reset by peer" dan "wrong session ID", karena koneksi
+# tambahan modul itu meminjam auth_key koneksi utama.
+#
+# Naikkan hanya untuk bereksperimen, dan pantau baris "[TG] Direm:"
+# di akhir download.
+export TG_INFLIGHT_PER_CONN="${TG_INFLIGHT_PER_CONN:-1}"
 
 # Jangan biarkan proxy warisan di shell membelokkan trafik keluar dari
 # VPS. Skrip juga akan mencetak IP publiknya sendiri saat start.
