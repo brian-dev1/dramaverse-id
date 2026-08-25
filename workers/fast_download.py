@@ -127,6 +127,53 @@ _FLOOD_TEXT = re.compile(
     re.IGNORECASE,
 )
 
+# ------------------------------------------------------------------
+# file_reference kedaluwarsa.
+#
+# Setiap dokumen Telegram dibawa bersama `file_reference` -- sepotong byte
+# yang membuktikan kita memang pernah melihat pesannya. Byte itu punya
+# masa berlaku, sekitar sejam dan kadang jauh lebih pendek.
+#
+# Ini menggigit tepat pada pemakaian normal skrip ini: daftar pesan
+# dipindai sekali di awal, lalu video diunduh satu per satu. Video ke-10
+# baru mulai berjam-jam kemudian, dan referensinya sudah basi sebelum
+# byte pertamanya diminta. Video yang sangat besar bahkan bisa
+# kedaluwarsa di tengah unduhan.
+#
+# Yang benar bukan menyerah, melainkan mengambil ulang pesannya untuk
+# mendapat referensi baru lalu melanjutkan dari tempat berhenti.
+# ------------------------------------------------------------------
+
+_REFERENCE_ERRORS = []
+
+for _name in ("FileReferenceExpiredError", "FileReferenceInvalidError"):
+    try:
+        _REFERENCE_ERRORS.append(
+            getattr(
+                __import__("telethon.errors", fromlist=[_name]),
+                _name,
+            )
+        )
+    except (AttributeError, ImportError):
+        pass
+
+REFERENCE_ERRORS = tuple(_REFERENCE_ERRORS)
+
+# Dua bentuk: kalimat panjang dari Telethon, dan konstanta mentah dari
+# server ("FILE_REFERENCE_EXPIRED"). Keduanya harus tertangkap.
+_REFERENCE_TEXT = re.compile(
+    r"file[ _]reference[ _]?.{0,40}?(expired|invalid)",
+    re.IGNORECASE,
+)
+
+
+def is_reference_expired(error):
+    """True kalau `file_reference` dokumennya sudah tidak berlaku."""
+    if REFERENCE_ERRORS and isinstance(error, REFERENCE_ERRORS):
+        return True
+
+    return bool(_REFERENCE_TEXT.search(str(error)))
+
 
 # ------------------------------------------------------------------
 # Konstanta
@@ -151,7 +198,7 @@ CHUNK_SIZE = 1024 * 1024
 #
 # Naikkan lewat TG_INFLIGHT_PER_CONN kalau mau bereksperimen, tapi
 # pantau baris "[TG] Direm:" di akhir download.
-INFLIGHT_PER_CONNECTION = 1
+INFLIGHT_PER_CONNECTION = 2
 
 # Batas aman koneksi paralel. Lebih dari ini Telegram gampang
 # melempar FLOOD_WAIT dan VPS kecil mulai tersengal.
@@ -190,6 +237,11 @@ RECOVERY_STREAK = 5
 # pilih jeda pendek: cukup untuk memecah gelombang, tidak sampai
 # membuang waktu kalau ternyata cuma satu soket yang apes.
 RESET_PAUSE = 2
+
+# Berapa kali satu chunk boleh meminta referensi baru sebelum menyerah.
+# Referensi yang baru diambil lalu langsung basi lagi menandakan sesuatu
+# yang lebih dalam, bukan sekadar masa berlaku yang habis.
+MAX_REFERENCE_REFRESH = 3
 
 
 class NotEnoughDiskSpace(Exception):
@@ -419,6 +471,29 @@ class _AdaptiveLimiter:
                 self._cond.notify(1)
 
 
+class _Referensi:
+    """
+    Pemegang `location` yang bisa diperbarui saat download berjalan.
+
+    Semua worker membaca `location` dari sini, bukan menyimpan salinannya
+    sendiri. Waktu satu worker mendapati referensinya basi, ia mengambil
+    pesan yang baru sekali saja lalu menaikkan `generasi`; worker lain
+    melihat nomor generasi berubah dan tahu tidak perlu ikut mengambil.
+    Tanpa itu, 4 worker yang jatuh bersamaan akan menembakkan 4
+    permintaan get_messages untuk pesan yang sama.
+    """
+
+    __slots__ = ("location", "generasi", "lock", "doc_id", "size", "jumlah")
+
+    def __init__(self, location, doc_id, size):
+        self.location = location
+        self.doc_id = doc_id
+        self.size = size
+        self.generasi = 0
+        self.jumlah = 0
+        self.lock = asyncio.Lock()
+
+
 class _Conn:
     """
     Pembungkus sender supaya koneksi yang putus bisa diganti baru
@@ -523,6 +598,15 @@ class ParallelDownloader:
         self.chunk_retries = CHUNK_RETRIES
         self.request_timeout = float(request_timeout)
 
+        # Jeda antar pembukaan sambungan, detik.
+        self.open_stagger = 0.3
+
+        # Kenapa sambungan ke-N gagal dibuka, kalau memang gagal.
+        self.open_errors = []
+
+        # Diisi tiap kali download() dipanggil.
+        self.refresh_message = None
+
         # Statistik ringkas, berguna buat log di worker.
         self.last_stats = {}
 
@@ -530,26 +614,26 @@ class ParallelDownloader:
     # Koneksi
     # --------------------------------------------------------
 
-    async def _new_sender(self, dc_id, same_dc):
-        if not same_dc:
+    async def _new_sender(self, dc_id, mode):
+        if mode == "main":
+            return self.client._sender
+
+        if mode == "exported":
+            # Jalan yang benar. Sender dibuat dengan auth_key SENDIRI --
+            # Telethon mengekspor lalu mengimpor otorisasi untuk koneksi
+            # itu, persis cara resmi mendapat sambungan tambahan yang sah.
+            # Tiap panggilan menghasilkan soket baru yang berdiri sendiri.
+            return await self.client._create_exported_sender(dc_id)
+
+        if mode == "borrow":
+            # Satu objek sender yang sama untuk satu DC; ia hanya
+            # menghitung peminjaman. Dipakai sebagai cadangan saja.
             return await self.client._borrow_exported_sender(dc_id)
 
-        # DC sama dengan koneksi utama: buka koneksi TCP baru sambil
-        # MEMINJAM auth_key yang sudah ada, tanpa export/import.
-        #
-        # PERINGATAN: inilah sumber "connection reset by peer",
-        # "0 bytes read on a total of 8 expected bytes", dan "Server
-        # replied with a wrong session ID". Telethon memberi catatan
-        # tepat soal ini di _create_exported_sender:
-        #
-        #   "Can't reuse self._sender._connection as it has its own
-        #    seqno. If one were to do that, Telegram would reset the
-        #    connection with no further clues."
-        #
-        # Beberapa auth_key yang sama dipakai beberapa sesi MTProto
-        # sekaligus, dan Telegram menutup sambungannya tanpa penjelasan.
-        # Karena itu jalur ini sekarang HARUS diminta secara sadar
-        # lewat clone_senders=True.
+        # mode "clone" -- warisan, dan sumber masalah yang panjang.
+        # Beberapa soket dibuka sambil MEMINJAM auth_key koneksi utama,
+        # tepat pola yang Telethon peringatkan di _create_exported_sender:
+        # "Telegram would reset the connection with no further clues."
         dc = await self.client._get_dc(dc_id)
 
         sender = MTProtoSender(
@@ -570,47 +654,78 @@ class ParallelDownloader:
 
         return sender
 
+    async def _buka_banyak(self, dc_id, mode, jumlah):
+        """
+        Buka sampai `jumlah` sambungan, terima kalau dapatnya kurang.
+
+        Kegagalan sebagian bukan alasan membatalkan seluruh unduhan:
+        empat soket yang berhasil jauh lebih baik daripada menyerah
+        karena yang keenam ditolak.
+        """
+        conns = []
+
+        for urutan in range(jumlah):
+            try:
+                conns.append(_Conn(await self._new_sender(dc_id, mode)))
+            except Exception as galat:
+                self.open_errors.append(
+                    f"{mode} #{urutan + 1}: {galat}"
+                )
+                break
+
+            # Jangan buka semuanya dalam satu tarikan napas. Tiap
+            # sambungan "exported" berarti satu ExportAuthorization, dan
+            # enam sekaligus terlihat seperti lonjakan yang pantas direm.
+            if urutan + 1 < jumlah and self.open_stagger > 0:
+                await asyncio.sleep(self.open_stagger)
+
+        return conns
+
     async def _open_connections(self, dc_id):
         """
         Kembalikan (list_conn, mode).
 
-        mode "main"   -> memakai sender utama milik client. Satu soket,
-                         sehat, dan TIDAK boleh diputus di akhir karena
-                         client masih memakainya.
-        mode "borrow" -> sender pinjaman dari Telethon. Satu soket
-                         bersama per DC; dikembalikan lewat
-                         _return_exported_sender.
-        mode "clone"  -> beberapa soket yang meminjam auth_key utama.
-                         Benar-benar paralel, tapi Telegram sering
-                         memutusnya. Harus di-disconnect manual.
+        Urutan pilihan:
+
+        1. "exported" -- beberapa soket berdiri sendiri, masing-masing
+           dengan auth key sendiri. Inilah paralelisme yang sesungguhnya.
+        2. "main"     -- sender milik client (DC yang sama). Satu soket
+                         sehat; TIDAK boleh diputus di akhir.
+        3. "borrow"   -- sender pinjaman bersama (DC lain). Satu soket.
+
+        "clone" hanya dipakai bila diminta sadar-sadar lewat
+        clone_senders=True.
         """
+        self.open_errors = []
+
         same_dc = dc_id == self.client.session.dc_id
 
-        if same_dc and not self.clone_senders:
-            # Sender utama client sudah terhubung dan sehat. Empat
-            # request 1 MB bisa terbang bersamaan di atasnya -- MTProto
-            # memang dirancang begitu -- tanpa satu pun sesi tambahan
-            # yang membuat Telegram curiga.
+        if self.clone_senders:
+            mode = "clone" if same_dc else "borrow"
+
+            conns = await self._buka_banyak(dc_id, mode, self.num_connections)
+
+            if conns:
+                return conns, mode
+
+        if hasattr(self.client, "_create_exported_sender"):
+            conns = await self._buka_banyak(
+                dc_id,
+                "exported",
+                self.num_connections,
+            )
+
+            if conns:
+                return conns, "exported"
+
+        # Cadangan: satu soket, tapi soket yang pasti sehat.
+        if same_dc:
             return [_Conn(self.client._sender)], "main"
 
-        mode = "clone" if same_dc else "borrow"
-
-        conns = []
-
-        try:
-            for _ in range(self.num_connections):
-                conns.append(
-                    _Conn(
-                        await self._new_sender(dc_id, same_dc)
-                    )
-                )
-
-            return conns, mode
-
-        except Exception:
-            # Jangan tinggalkan koneksi menggantung kalau gagal di tengah.
-            await self._close_connections(conns, mode)
-            raise
+        return (
+            [_Conn(await self.client._borrow_exported_sender(dc_id))],
+            "borrow",
+        )
 
     async def _drop_sender(self, sender, mode):
         if mode == "main":
@@ -619,7 +734,7 @@ class ParallelDownloader:
             return
 
         try:
-            if mode == "clone":
+            if mode in ("clone", "exported"):
                 await sender.disconnect()
             else:
                 await self.client._return_exported_sender(sender)
@@ -645,7 +760,7 @@ class ParallelDownloader:
         -- Telethon masih bisa menyambung ulang sendiri, dan percobaan
         berikutnya akan mencoba mengganti lagi.
         """
-        if mode != "clone":
+        if mode not in ("clone", "exported"):
             # "main"   -> sender milik client; Telethon yang mengurus.
             # "borrow" -> _borrow_exported_sender mengembalikan objek
             #             yang SAMA untuk satu DC, ia cuma menghitung
@@ -664,7 +779,7 @@ class ParallelDownloader:
                 return True
 
             try:
-                new_sender = await self._new_sender(dc_id, True)
+                new_sender = await self._new_sender(dc_id, mode)
             except Exception:
                 return False
 
@@ -682,7 +797,7 @@ class ParallelDownloader:
     async def _download_chunk(
         self,
         conn,
-        location,
+        referensi,
         offset,
         gate,
         limiter,
@@ -704,6 +819,7 @@ class ParallelDownloader:
         """
         attempt = 0
         flood_total = 0.0
+        segar_ulang = 0
         last_error = None
 
         while attempt <= self.chunk_retries:
@@ -716,6 +832,11 @@ class ParallelDownloader:
             # harus diganti -- bukan sender yang barangkali sudah
             # dipasang worker lain sementara kita menunggu.
             sender = conn.sender
+
+            # Dibaca ulang tiap percobaan: worker lain mungkin sudah
+            # menggantinya dengan referensi yang segar.
+            generasi = referensi.generasi
+            location = referensi.location
 
             try:
                 result = await asyncio.wait_for(
@@ -742,6 +863,34 @@ class ParallelDownloader:
                 await limiter.release()
 
                 last_error = error
+
+                if is_reference_expired(error):
+                    # Bukan kegagalan koneksi dan bukan flood: bukti
+                    # kepemilikan dokumennya yang basi. Ambil pesan yang
+                    # baru, lalu ulangi dari chunk yang sama.
+                    #
+                    # Ini TIDAK memotong jatah percobaan error nyata --
+                    # sama seperti flood, ini instruksi dari server, bukan
+                    # tanda ada yang rusak. Tapi jatahnya sendiri dibatasi:
+                    # referensi yang baru diambil lalu basi lagi seketika
+                    # menandakan masalah yang lebih dalam.
+                    segar_ulang += 1
+
+                    if segar_ulang > MAX_REFERENCE_REFRESH:
+                        last_error = RuntimeError(
+                            "file_reference tetap basi setelah "
+                            f"{MAX_REFERENCE_REFRESH}x diperbarui: {error}"
+                        )
+                        break
+
+                    if not await self._perbarui_referensi(referensi, generasi):
+                        last_error = RuntimeError(
+                            "file_reference kedaluwarsa dan tidak bisa "
+                            f"diperbarui: {error}"
+                        )
+                        break
+
+                    continue
 
                 seconds = flood_seconds(error)
 
@@ -810,6 +959,48 @@ class ParallelDownloader:
         raise RuntimeError(
             f"Chunk offset {offset} gagal: {last_error}"
         )
+
+    async def _perbarui_referensi(self, referensi, generasi):
+        """
+        Ambil pesannya sekali lagi untuk mendapat `file_reference` baru.
+
+        Mengembalikan False bila tidak ada cara memperbaruinya, atau bila
+        pesan yang didapat ternyata dokumen yang BERBEDA -- menyambung
+        unduhan setengah jadi dengan dokumen lain akan menghasilkan berkas
+        campuran yang lolos begitu saja tanpa ada yang menyadarinya.
+        """
+        async with referensi.lock:
+            if referensi.generasi != generasi:
+                # Worker lain sudah memperbaruinya.
+                return True
+
+            if self.refresh_message is None:
+                return False
+
+            try:
+                pesan = await self.refresh_message()
+            except Exception:
+                return False
+
+            doc = getattr(pesan, "document", None)
+
+            if doc is None:
+                return False
+
+            if doc.id != referensi.doc_id or doc.size != referensi.size:
+                return False
+
+            referensi.location = InputDocumentFileLocation(
+                id=doc.id,
+                access_hash=doc.access_hash,
+                file_reference=doc.file_reference,
+                thumb_size="",
+            )
+
+            referensi.generasi += 1
+            referensi.jumlah += 1
+
+            return True
 
     # --------------------------------------------------------
     # Disk
@@ -950,6 +1141,7 @@ class ParallelDownloader:
         progress_callback=None,
         hasher=None,
         resume=True,
+        refresh_message=None,
     ):
         """
         Download `message` ke `out_path` secara paralel.
@@ -961,6 +1153,8 @@ class ParallelDownloader:
         resume : lanjutkan dari `<out_path>.part` kalau sisa download
                  sebelumnya masih cocok dengan dokumen yang sama.
         """
+        self.refresh_message = refresh_message
+
         doc = message.document if message.document else None
 
         if not doc:
@@ -973,11 +1167,15 @@ class ParallelDownloader:
 
         self._assert_disk_space(out_path, file_size)
 
-        location = InputDocumentFileLocation(
-            id=doc.id,
-            access_hash=doc.access_hash,
-            file_reference=doc.file_reference,
-            thumb_size="",
+        referensi = _Referensi(
+            InputDocumentFileLocation(
+                id=doc.id,
+                access_hash=doc.access_hash,
+                file_reference=doc.file_reference,
+                thumb_size="",
+            ),
+            doc_id=doc.id,
+            size=file_size,
         )
 
         total_chunks = math.ceil(file_size / self.chunk_size)
@@ -995,25 +1193,45 @@ class ParallelDownloader:
 
         gate = _FloodGate()
 
-        # Jumlah request bersamaan sekarang lepas dari jumlah koneksi.
+        # Koneksi dibuka LEBIH DULU, karena jatah request bersamaan
+        # dihitung dari soket yang benar-benar berhasil dibuka.
+        conns, mode = await self._open_connections(dc_id)
+
         # Mulai dari separuh plafon lalu memanjat kalau lancar: naik
         # bertahap jauh lebih jarang memicu flood daripada langsung
         # menembak di plafon sejak byte pertama.
+        #
+        # Bedanya nyata. Kalau enam soket berdiri sendiri berhasil dibuka,
+        # dua request per soket itu wajar. Kalau yang tersedia cuma satu
+        # soket bersama, menaruh dua belas request di atasnya bukan
+        # paralelisme -- itu antrean, dan justru mengundang pemutusan.
+        soket = max(1, len(conns))
+
+        if mode in ("exported", "clone"):
+            plafon = min(
+                soket * self.inflight_per_connection,
+                MAX_INFLIGHT,
+            )
+        else:
+            # Satu soket harus memikul seluruh jatah sendirian, jadi
+            # angkanya mengikuti niat pengguna, bukan jumlah soket.
+            plafon = min(
+                self.num_connections * self.inflight_per_connection,
+                MAX_INFLIGHT,
+            )
+
+        plafon = max(soket, plafon)
+
         limiter = _AdaptiveLimiter(
-            start=max(
-                self.num_connections,
-                self.max_inflight // 2,
-            ),
-            maximum=self.max_inflight,
-            floor=self.num_connections,
+            start=max(soket, plafon // 2),
+            maximum=plafon,
+            floor=soket,
         )
 
         # Sejauh mana worker boleh berlari mendahului penulis. Ini yang
         # mengunci pemakaian RAM: chunk yang sudah tiba tapi belum
         # gilirannya ditulis menunggu di sini.
-        window = self.max_inflight * 2
-
-        conns, mode = await self._open_connections(dc_id)
+        window = plafon * 2
 
         state = {
             "claim": start_index,
@@ -1059,7 +1277,7 @@ class ParallelDownloader:
                 try:
                     data = await self._download_chunk(
                         conn,
-                        location,
+                        referensi,
                         index * self.chunk_size,
                         gate,
                         limiter,
@@ -1104,7 +1322,7 @@ class ParallelDownloader:
                 asyncio.ensure_future(
                     worker(conns[slot % len(conns)])
                 )
-                for slot in range(self.max_inflight)
+                for slot in range(plafon)
             ]
 
             while state["write"] < total_chunks:
@@ -1183,8 +1401,11 @@ class ParallelDownloader:
             # num_connections 4. Lebih baik ditampilkan apa adanya
             # daripada melaporkan "4 koneksi" yang tidak pernah ada.
             "unique_senders": len({id(conn.sender) for conn in conns}),
+            "connections_asked": self.num_connections,
+            "open_errors": list(self.open_errors),
             "mode": mode,
             "reconnects": sum(conn.renewals for conn in conns),
+            "reference_refreshes": referensi.jumlah,
             "inflight_start": limiter.start_limit,
             "inflight_min": limiter.min_limit_seen,
             "inflight_max": limiter.max_limit_seen,

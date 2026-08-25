@@ -174,6 +174,10 @@ class FakeClient:
         self.script = script if script is not None else {}
         self.senders_made = 0
 
+    async def _create_exported_sender(self, dc_id):
+        self.senders_made += 1
+        return FakeSender(self.tracker, self.script)
+
     async def _get_dc(self, dc_id):
         return FakeDc()
 
@@ -182,27 +186,28 @@ class FakeClient:
 
 
 class FakeDoc:
-    def __init__(self, size):
-        self.id = 12345
+    def __init__(self, size, ref=b"ref-0", doc_id=12345):
+        self.id = doc_id
         self.size = size
         self.dc_id = 2
         self.access_hash = 999
-        self.file_reference = b"ref"
+        self.file_reference = ref
 
 
 class FakeMessage:
-    def __init__(self, size):
-        self.document = FakeDoc(size)
+    def __init__(self, size, ref=b"ref-0", doc_id=12345):
+        self.document = FakeDoc(size, ref, doc_id)
 
 
 def patch_senders(downloader, client):
     """Ganti pembuatan sender asli dengan sender tiruan."""
 
-    async def _new_sender(dc_id, same_dc):
+    async def _new_sender(dc_id, mode):
         client.senders_made += 1
         return FakeSender(client.tracker, client.script)
 
     downloader._new_sender = _new_sender
+    downloader.open_stagger = 0
 
 
 def expected_digest(file_size, chunk_size):
@@ -237,6 +242,9 @@ def verify_file(path, file_size, chunk_size):
     assert sha.hexdigest() == want, "isi file tidak sesuai urutan"
 
     return sha.hexdigest()
+
+
+_create_exported_sender_asli = FakeClient._create_exported_sender
 
 
 # ==========================================================
@@ -693,10 +701,13 @@ async def test_reset_drives_limiter_down(tmp):
     return True
 
 async def test_main_mode_uses_client_sender(tmp):
-    """Default: satu soket milik client, dan JANGAN diputus di akhir."""
+    """Cadangan: satu soket milik client, dan JANGAN diputus di akhir."""
     file_size = 16 * 1024 * 1024
     tracker = Tracker(file_size)
     client = FakeClient(tracker)
+
+    # Telethon versi lama tidak punya method ini -> harus jatuh ke "main".
+    del FakeClient._create_exported_sender
 
     downloader = ParallelDownloader(
         client,
@@ -706,14 +717,21 @@ async def test_main_mode_uses_client_sender(tmp):
 
     made = {"n": 0}
 
-    async def _new_sender(dc_id, same_dc):
-        made["n"] += 1
-        return FakeSender(tracker, client.script)
+    asli_new = downloader._new_sender
+
+    async def _new_sender(dc_id, mode):
+        if mode != "main":
+            made["n"] += 1
+        return await asli_new(dc_id, mode)
 
     downloader._new_sender = _new_sender
 
     out = os.path.join(tmp, "main.mp4")
-    await downloader.download(FakeMessage(file_size), out)
+
+    try:
+        await downloader.download(FakeMessage(file_size), out)
+    finally:
+        FakeClient._create_exported_sender = _create_exported_sender_asli
 
     verify_file(out, file_size, downloader.chunk_size)
 
@@ -731,7 +749,221 @@ async def test_main_mode_uses_client_sender(tmp):
         "sender milik client DIPUTUS -- itu akan mematikan "
         "seluruh sesi Telegram, bukan cuma download ini"
     )
-    assert stats["inflight_max"] <= 4, "request bersamaan harus tetap 4"
+    # Satu soket memikul seluruh jatah sendirian, jadi plafonnya
+    # mengikuti niat pengguna (koneksi x in-flight), bukan jumlah soket.
+    plafon = downloader.num_connections * downloader.inflight_per_connection
+
+    assert stats["inflight_max"] <= plafon, (
+        f"melewati plafon {plafon} (tercatat {stats['inflight_max']})"
+    )
+
+    return True
+
+
+
+async def test_reference_expired_refreshes(tmp):
+    """file_reference basi -> ambil pesan baru, lanjutkan, jangan gagal."""
+    file_size = 20 * 1024 * 1024
+    chunk = 1024 * 1024
+    tracker = Tracker(file_size)
+    client = FakeClient(tracker)
+
+    # Referensi yang dianggap sah oleh "server" tiruan.
+    sah = {"ref": b"ref-0"}
+    diambil = {"n": 0}
+
+    downloader = ParallelDownloader(
+        client,
+        num_connections=4,
+        min_free_bytes=1024,
+    )
+
+    asli = FakeSender.send
+
+    async def send_dengan_referensi(self, request):
+        if request.location.file_reference != sah["ref"]:
+            raise RuntimeError(
+                "The file reference has expired and is no longer valid "
+                "or it belongs to self-destructing media and cannot be "
+                "resent (caused by GetFileRequest)"
+            )
+
+        return await asli(self, request)
+
+    FakeSender.send = send_dengan_referensi
+
+    async def ambil_pesan_baru():
+        diambil["n"] += 1
+        return FakeMessage(file_size, ref=sah["ref"])
+
+    out = os.path.join(tmp, "ref.mp4")
+
+    try:
+        # Referensi berubah tepat setelah chunk ke-2 -- meniru masa
+        # berlaku yang habis di tengah unduhan.
+        async def kadaluarsa_nanti():
+            await asyncio.sleep(0.15)
+            sah["ref"] = b"ref-1"
+
+        pengubah = asyncio.ensure_future(kadaluarsa_nanti())
+
+        await downloader.download(
+            FakeMessage(file_size, ref=b"ref-0"),
+            out,
+            refresh_message=ambil_pesan_baru,
+        )
+
+        await pengubah
+
+    finally:
+        FakeSender.send = asli
+
+    verify_file(out, file_size, downloader.chunk_size)
+
+    stats = downloader.last_stats
+
+    print(
+        f"  get_messages dipanggil={diambil['n']}x "
+        f"reference_refreshes={stats['reference_refreshes']}"
+    )
+
+    assert diambil["n"] >= 1, "referensi tidak pernah diperbarui"
+    assert stats["reference_refreshes"] >= 1
+
+    # Beberapa worker jatuh bersamaan pada gelombang yang sama; hanya
+    # satu yang boleh benar-benar mengambil ulang pesannya.
+    assert stats["reference_refreshes"] <= 3, (
+        f"terlalu sering ambil ulang ({stats['reference_refreshes']}x)"
+    )
+
+    return True
+
+
+async def test_reference_refresh_rejects_other_document(tmp):
+    """Pesan baru berisi dokumen LAIN -> harus gagal, bukan mencampur."""
+    file_size = 8 * 1024 * 1024
+    tracker = Tracker(file_size)
+    client = FakeClient(tracker)
+
+    downloader = ParallelDownloader(
+        client,
+        num_connections=2,
+        min_free_bytes=1024,
+    )
+
+    asli = FakeSender.send
+
+    async def selalu_basi(self, request):
+        raise RuntimeError("FILE_REFERENCE_EXPIRED")
+
+    FakeSender.send = selalu_basi
+
+    async def pesan_dokumen_lain():
+        return FakeMessage(file_size, ref=b"ref-9", doc_id=99999)
+
+    out = os.path.join(tmp, "beda-dok.mp4")
+    gagal = False
+
+    try:
+        await downloader.download(
+            FakeMessage(file_size),
+            out,
+            refresh_message=pesan_dokumen_lain,
+        )
+    except Exception as error:
+        gagal = True
+        print(f"  ditolak dengan benar: {str(error)[:70]}")
+    finally:
+        FakeSender.send = asli
+
+    assert gagal, "dokumen berbeda diterima -- berkas bisa tercampur"
+    assert not os.path.exists(out), "berkas akhir tidak boleh terbentuk"
+
+    return True
+
+
+
+async def test_exported_mode_gives_real_sockets(tmp):
+    """6 koneksi diminta -> 6 soket berdiri sendiri, bukan satu bersama."""
+    file_size = 30 * 1024 * 1024
+    tracker = Tracker(file_size)
+    client = FakeClient(tracker)
+
+    downloader = ParallelDownloader(
+        client,
+        num_connections=6,
+        inflight_per_connection=2,
+        min_free_bytes=1024,
+    )
+    downloader.open_stagger = 0
+
+    out = os.path.join(tmp, "exported.mp4")
+    await downloader.download(FakeMessage(file_size), out)
+
+    verify_file(out, file_size, downloader.chunk_size)
+
+    stats = downloader.last_stats
+
+    print(
+        f"  mode={stats['mode']} diminta={stats['connections_asked']} "
+        f"soket nyata={stats['unique_senders']} "
+        f"in-flight puncak={tracker.peak} (plafon 12)"
+    )
+
+    assert stats["mode"] == "exported"
+    assert stats["unique_senders"] == 6, (
+        f"cuma {stats['unique_senders']} soket -- paralelismenya semu"
+    )
+    assert tracker.peak <= 12, "melewati plafon in-flight"
+    assert tracker.peak > 6, "in-flight tidak pernah naik di atas 1 per soket"
+
+    return True
+
+
+async def test_partial_open_shrinks_inflight(tmp):
+    """Cuma 2 dari 6 soket terbuka -> jatah ikut menyusut, bukan 12."""
+    file_size = 20 * 1024 * 1024
+    tracker = Tracker(file_size)
+    client = FakeClient(tracker)
+
+    downloader = ParallelDownloader(
+        client,
+        num_connections=6,
+        inflight_per_connection=2,
+        min_free_bytes=1024,
+    )
+    downloader.open_stagger = 0
+
+    dibuat = {"n": 0}
+
+    async def _new_sender(dc_id, mode):
+        dibuat["n"] += 1
+
+        if dibuat["n"] > 2:
+            raise RuntimeError("Telegram menolak sambungan tambahan")
+
+        return FakeSender(tracker, client.script)
+
+    downloader._new_sender = _new_sender
+
+    out = os.path.join(tmp, "sebagian.mp4")
+    await downloader.download(FakeMessage(file_size), out)
+
+    verify_file(out, file_size, downloader.chunk_size)
+
+    stats = downloader.last_stats
+
+    print(
+        f"  soket nyata={stats['unique_senders']}/6 "
+        f"in-flight puncak={tracker.peak} (plafon 4) "
+        f"alasan gagal={len(stats['open_errors'])}"
+    )
+
+    assert stats["unique_senders"] == 2, "harus memakai yang berhasil saja"
+    assert tracker.peak <= 4, (
+        f"jatah tidak menyusut mengikuti soket ({tracker.peak})"
+    )
+    assert stats["open_errors"], "kegagalan pembukaan tidak tercatat"
 
     return True
 
@@ -752,7 +984,11 @@ async def main():
         (".part asing ditolak", test_resume_rejects_different_file),
         ("penjaga sisa disk", test_disk_space_guard),
         ("reset menurunkan jatah", test_reset_drives_limiter_down),
-        ("mode main pakai sender client", test_main_mode_uses_client_sender),
+        ("mode exported: soket sungguhan", test_exported_mode_gives_real_sockets),
+        ("soket sebagian: jatah menyusut", test_partial_open_shrinks_inflight),
+        ("cadangan main pakai sender client", test_main_mode_uses_client_sender),
+        ("file_reference basi -> diperbarui", test_reference_expired_refreshes),
+        ("pesan baru dokumen lain -> ditolak", test_reference_refresh_rejects_other_document),
     ]
 
     results = {}

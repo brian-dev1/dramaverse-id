@@ -13,8 +13,8 @@
 # deploy.
 #
 # Pemakaian:
-#   unduh                          -> 4 koneksi paralel
-#   unduh 6                        -> 6 koneksi paralel
+#   unduh                          -> 6 koneksi paralel
+#   unduh 4                        -> 4 koneksi paralel
 #   TG_SCAN_LIMIT=300 unduh        -> pindai 300 pesan terakhir
 #   TG_INFLIGHT_PER_CONN=3 unduh   -> lebih agresif (lihat catatan)
 #
@@ -38,23 +38,25 @@ if [ ! -f "/root/fast_download.py" ]; then
     exit 1
 fi
 
-export TG_PARALLEL_CONNECTIONS="${1:-4}"
+export TG_PARALLEL_CONNECTIONS="${1:-6}"
 
 # Berapa pesan terakhir yang dipindai untuk mencari video.
 export TG_SCAN_LIMIT="${TG_SCAN_LIMIT:-50}"
 
 # Berapa request 1 MB yang boleh terbang bersamaan di TIAP koneksi.
 #
-# Default 1 -> total 4 request bersamaan, sama dengan perilaku asli.
+# Default 2 -> 6 soket x 2 = 12 request bersamaan, tersebar di soket
+# yang benar-benar terpisah.
 #
-# Berkas ini sempat memaksa 3, yang membatalkan default aman di
-# fast_download.py tanpa terlihat — dan 3 itulah yang memicu banjir
-# "connection reset by peer" dan "wrong session ID", karena koneksi
-# tambahan modul itu meminjam auth_key koneksi utama.
+# Angka ini aman sekarang karena sambungan tambahan dibuat lewat
+# _create_exported_sender: tiap soket punya auth key SENDIRI. Waktu 12
+# request dulu memicu banjir "connection reset by peer", soketnya masih
+# meminjam auth_key koneksi utama -- itu yang dihukum Telegram, bukan
+# jumlah requestnya.
 #
-# Naikkan hanya untuk bereksperimen, dan pantau baris "[TG] Direm:"
-# di akhir download.
-export TG_INFLIGHT_PER_CONN="${TG_INFLIGHT_PER_CONN:-1}"
+# Limiter tetap mulai dari separuh (1 per soket) dan memanjat hanya
+# kalau lancar. Pantau baris "[TG] Direm:" di akhir download.
+export TG_INFLIGHT_PER_CONN="${TG_INFLIGHT_PER_CONN:-2}"
 
 # Jangan biarkan proxy warisan di shell membelokkan trafik keluar dari
 # VPS. Skrip juga akan mencetak IP publiknya sendiri saat start.

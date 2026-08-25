@@ -48,7 +48,7 @@ SCAN_LIMIT = int(
 
 # Jumlah koneksi TCP paralel ke Telegram DC.
 PARALLEL_CONNECTIONS = int(
-    os.environ.get("TG_PARALLEL_CONNECTIONS", "4")
+    os.environ.get("TG_PARALLEL_CONNECTIONS", "6")
 )
 
 # Plafon jumlah koneksi. Default sama dengan titik awal, jadi angka di
@@ -59,13 +59,14 @@ MAX_PARALLEL = int(
 
 # Berapa request 1 MB yang boleh terbang bersamaan DI TIAP koneksi.
 #
-# Default 1 -> total request bersamaan = jumlah koneksi = 4, persis
-# seperti perilaku asli. Menaikkannya ke 3 terbukti KONTRAPRODUKTIF
-# pada akun ini: koneksi tambahan modul ini dibuat dengan meminjam
-# auth_key koneksi utama, dan Telegram memutus sambungan begitu
-# ditembak terlalu keras lewat jalur itu.
+# Default 2 -> 6 soket x 2 = 12 request bersamaan.
+#
+# Sambungan tambahan sekarang dibuat lewat _create_exported_sender, jadi
+# tiap soket punya auth key sendiri. Yang dulu memicu banjir "connection
+# reset by peer" bukan jumlah requestnya, melainkan soket yang meminjam
+# auth_key koneksi utama.
 INFLIGHT_PER_CONNECTION = int(
-    os.environ.get("TG_INFLIGHT_PER_CONN", "1")
+    os.environ.get("TG_INFLIGHT_PER_CONN", "2")
 )
 
 # Berapa kali satu video dicoba ulang sebelum menyerah. Percobaan
@@ -792,6 +793,12 @@ def print_download_stats(stats):
             "proses downloader lain yang jalan bersamaan."
         )
 
+    if stats.get("reference_refreshes"):
+        print(
+            f"[TG] file_reference diperbarui "
+            f"{stats['reference_refreshes']}x di tengah jalan."
+        )
+
     if stats.get("reconnects"):
         print(
             f"[TG] Koneksi diganti baru "
@@ -802,6 +809,7 @@ def print_download_stats(stats):
 async def download_with_retry(
     downloader,
     client,
+    entity,
     message,
     out_path,
     progress,
@@ -814,6 +822,17 @@ async def download_with_retry(
     """
     last_error = None
 
+    async def ambil_pesan_baru():
+        """
+        Ambil ulang pesannya untuk mendapat file_reference yang segar.
+
+        Daftar video dipindai sekali di awal, lalu diunduh satu per satu.
+        Video terakhir bisa baru mulai berjam-jam kemudian, dan bukti
+        kepemilikan dokumennya sudah basi jauh sebelum itu. Dipanggil oleh
+        modul unduh begitu Telegram menolak dengan FILE_REFERENCE_EXPIRED.
+        """
+        return await client.get_messages(entity, ids=message.id)
+
     for attempt in range(1, DOWNLOAD_ATTEMPTS + 1):
         hasher = hashlib.sha256()
 
@@ -825,6 +844,7 @@ async def download_with_retry(
                 out_path,
                 progress_callback=progress,
                 hasher=hasher,
+                refresh_message=ambil_pesan_baru,
             )
 
             print_download_stats(downloader.last_stats)
@@ -854,6 +874,18 @@ async def download_with_retry(
     ParallelDownloader.cleanup_partial(out_path)
 
     progress.reset()
+
+    # Jalur cadangan juga butuh referensi yang segar. Memakai objek pesan
+    # lama di sini berarti mengulang kegagalan yang sama dengan satu
+    # koneksi -- lebih lambat, sama-sama gagal.
+    try:
+        segar = await client.get_messages(entity, ids=message.id)
+
+        if segar is not None and segar.document is not None:
+            message = segar
+
+    except Exception as error:
+        print(f"[TG] Gagal mengambil ulang pesan: {error}")
 
     path = await client.download_media(
         message,
@@ -1109,6 +1141,7 @@ async def main():
             path, checksum = await download_with_retry(
                 downloader,
                 client,
+                entity,
                 message,
                 out_path,
                 progress,
