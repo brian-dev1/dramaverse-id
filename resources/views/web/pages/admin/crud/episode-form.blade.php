@@ -44,7 +44,22 @@
             <section class="form-card">
                 <h2>Akses dan jadwal</h2>
 
-                <x-admin.field name="is_vip" label="Khusus VIP" type="checkbox" :value="$record->is_vip" />
+                {{--
+                    Akses tidak lagi bisa dipilih di sini: aturannya
+                    ditegakkan EpisodeObserver berdasarkan nomor part.
+                    Menampilkan kotak centang yang nilainya akan ditimpa
+                    saat disimpan hanya akan menyesatkan.
+                --}}
+                <div class="field">
+                    <span class="field-label">Akses</span>
+                    <p class="field-static">
+                        {{ ($record->episode_number ?? 1) > 1 ? 'Khusus VIP' : 'Gratis' }}
+                    </p>
+                    <span class="field-hint">
+                        Mengikuti nomor part secara otomatis: part 1 gratis,
+                        part 2 dan seterusnya VIP.
+                    </span>
+                </div>
 
                 <x-admin.field name="status" label="Status" type="select"
                                :value="$record->status ?? 'draft'" :options="$statuses" required />

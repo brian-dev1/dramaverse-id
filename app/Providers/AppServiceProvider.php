@@ -50,7 +50,9 @@ use App\Services\Storage\StorageManager;
 use App\Listeners\LogAuthenticationEvents;
 use App\Models\Drama;
 use App\Models\EpisodeVideo;
+use App\Models\Episode;
 use App\Observers\DramaObserver;
+use App\Observers\EpisodeObserver;
 use App\Observers\EpisodeVideoObserver;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Lockout;
@@ -224,6 +226,27 @@ class AppServiceProvider extends ServiceProvider
         |
         */
         Drama::observe(DramaObserver::class);
+
+        /*
+        |----------------------------------------------------------------------
+        | Observer episode
+        |----------------------------------------------------------------------
+        |
+        | Menegakkan aturan akses: part 1 gratis, part 2 dan seterusnya VIP.
+        |
+        | Observer, bukan panggilan di controller, karena baris `episodes`
+        | dibuat dari beberapa tempat: form satuan, form massal per rentang,
+        | pembuatan otomatis dari form drama, serta seeder dan tinker.
+        | Menaruhnya di salah satunya berarti jalur lain diam-diam tidak
+        | mengikutinya — dan yang ketahuan belakangan adalah penonton gratis
+        | yang bisa menonton part 7.
+        |
+        | Sama seperti drama, aksi massal `$query->update()` melewati event
+        | model. Untuk merapikan data yang sudah terlanjur ada, pakai
+        | `php artisan episode:selaraskan-akses`.
+        |
+        */
+        Episode::observe(EpisodeObserver::class);
 
         /*
         |----------------------------------------------------------------------

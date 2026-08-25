@@ -48,9 +48,21 @@
                 <x-admin.field name="status" label="Status" type="select"
                                :value="$record->status ?? 'ongoing'" :options="$statuses" required />
 
+                @php
+                    $partAda   = $jumlahPart ?? 0;
+                    $partHint  = 'Isi jumlahnya, part-nya dibuat otomatis sebagai draf. '
+                               . 'Part 1 gratis, part 2 dan seterusnya VIP.';
+
+                    if ($partAda > 0) {
+                        $partHint .= ' Saat ini sudah ada '.$partAda.' part; '
+                                   . 'nomor yang sudah ada tidak ditimpa, dan '
+                                   . 'mengecilkan angka ini tidak menghapus part mana pun.';
+                    }
+                @endphp
+
                 <x-admin.field name="total_episode" label="Jumlah part" type="number"
-                               :value="$record->total_episode" min="0"
-                               hint="Diperbarui otomatis saat part ditambah." />
+                               :value="$record->total_episode" min="0" max="9999"
+                               :hint="$partHint" />
 
             </section>
 

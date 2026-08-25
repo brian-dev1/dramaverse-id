@@ -4,11 +4,13 @@ namespace App\Http\Controllers\Admin;
 
 use App\Models\Country;
 use App\Models\Drama;
+use App\Models\Episode;
 use App\Models\Genre;
 use App\Repositories\HomeRepository;
 use App\Services\Admin\MediaService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -96,6 +98,17 @@ class DramaController extends AdminCrudController
                 'upcoming'  => 'Akan tayang',
             ],
             'gradients'      => ['g1', 'g2', 'g3', 'g4', 'g5', 'g6', 'g7', 'g8'],
+
+            /*
+            | Jumlah part yang BENAR-BENAR ada, bukan angka di kolom
+            | `total_episode`. Keduanya bisa berbeda: kolom itu hanya
+            | catatan, sedangkan yang menentukan apa yang ditonton orang
+            | adalah baris di tabel `episodes`. Form menampilkan keduanya
+            | supaya selisihnya terlihat, bukan tersembunyi.
+            */
+            'jumlahPart'     => $model?->exists
+                ? Episode::where('drama_id', $model->getKey())->count()
+                : 0,
         ];
     }
 
@@ -179,6 +192,93 @@ class DramaController extends AdminCrudController
     protected function afterSave(Request $request, Model $drama, bool $created): void
     {
         $drama->genres()->sync($request->input('genre_ids', []));
+
+        $this->selaraskanPart($request, $drama);
+    }
+
+    /**
+     * Batas part yang boleh dibuat dalam satu kali simpan.
+     *
+     * Kolom `total_episode` menerima sampai 9999. Salah ketik satu angka
+     * saja akan membuat ribuan baris episode di dalam satu transaksi —
+     * lambat, mengunci tabel, dan merepotkan untuk dibersihkan. Form
+     * massal memakai batas yang sama (300).
+     */
+    private const BATAS_BUAT = 300;
+
+    /**
+     * Buat part yang belum ada supaya jumlahnya mencapai "Jumlah part".
+     *
+     * Tiga hal yang SENGAJA tidak dilakukan:
+     *
+     * 1. Tidak pernah menghapus. Angka yang dikecilkan tidak membuang part
+     *    yang sudah ada — sebuah episode bisa memuat video, `telegram_file_id`,
+     *    dan riwayat tontonan yang tidak bisa dikembalikan. Selisihnya
+     *    ditampilkan di form sebagai keterangan, dan penghapusan tetap
+     *    dilakukan sendiri lewat halaman Episode.
+     *
+     * 2. Tidak menimpa nomor yang sudah dipakai. Part yang sudah ada
+     *    dilewati apa adanya, termasuk judul dan video yang sudah diisi.
+     *
+     * 3. Tidak menetapkan `is_vip` di sini. Itu tugas EpisodeObserver,
+     *    supaya aturannya hanya ditulis di satu tempat.
+     *
+     * Part baru dibuat sebagai DRAF karena belum punya video. Menerbitkan
+     * part kosong berarti penonton menemukan tombol tonton yang tidak
+     * menghasilkan apa-apa.
+     */
+    private function selaraskanPart(Request $request, Drama $drama): void
+    {
+        $diminta = $request->input('total_episode');
+
+        // Field dikosongkan -> admin tidak sedang mengurus jumlah part.
+        if (! is_numeric($diminta)) {
+            return;
+        }
+
+        $diminta = (int) $diminta;
+
+        if ($diminta < 1) {
+            return;
+        }
+
+        $ada = Episode::where('drama_id', $drama->id)
+            ->pluck('episode_number')
+            ->flip();
+
+        $dibuat = 0;
+
+        DB::transaction(function () use ($drama, $diminta, $ada, &$dibuat): void {
+            for ($nomor = 1; $nomor <= $diminta; $nomor++) {
+                if ($ada->has($nomor)) {
+                    continue;
+                }
+
+                if ($dibuat >= self::BATAS_BUAT) {
+                    break;
+                }
+
+                Episode::create([
+                    'drama_id'       => $drama->id,
+                    'episode_number' => $nomor,
+                    'title'          => 'Part '.$nomor,
+                    'slug'           => Str::slug($drama->slug.'-episode-'.$nomor),
+                    'status'         => 'draft',
+                    'published_at'   => null,
+                ]);
+
+                $dibuat++;
+            }
+        });
+
+        // `total_episode` selalu mengikuti kenyataan, bukan angka yang
+        // diketik. Kalau ada 10 part sementara yang diisi 5, kolomnya
+        // tetap 10 — karena itulah yang benar-benar ada.
+        $jumlah = Episode::where('drama_id', $drama->id)->count();
+
+        if ((int) $drama->total_episode !== $jumlah) {
+            $drama->forceFill(['total_episode' => $jumlah])->saveQuietly();
+        }
     }
 
     protected function bulkActions(): array

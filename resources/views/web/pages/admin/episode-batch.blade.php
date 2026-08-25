@@ -18,16 +18,18 @@
     | menekan Simpan dan tidak ada satu pun episode yang bertambah.
     |
     | Karena itu nomor berikutnya dihitung di sini. Drama yang belum punya
-    | episode tetap mendapat contoh dua baris (episode 1 gratis sebagai umpan,
-    | sisanya VIP) — pola itu memang berguna untuk drama baru.
+    | episode tetap mendapat contoh dua baris — pola itu memang berguna untuk
+    | drama baru. Aksesnya sendiri tidak lagi diatur di sini.
     */
     $mulai = $dramaId ? (int) ($nextNumbers[$dramaId] ?? 1) : 1;
 
+    // Akses tidak lagi ikut di sini: EpisodeObserver yang menentukannya
+    // dari nomor part, jadi nilai apa pun di sini akan ditimpa.
     $bawaan = $mulai > 1
-        ? [['from' => $mulai, 'to' => $mulai, 'is_vip' => 1, 'status' => 'published']]
+        ? [['from' => $mulai, 'to' => $mulai, 'status' => 'published']]
         : [
-            ['from' => 1, 'to' => 1, 'is_vip' => 0, 'status' => 'published'],
-            ['from' => 2, 'to' => 5, 'is_vip' => 1, 'status' => 'published'],
+            ['from' => 1, 'to' => 1, 'status' => 'published'],
+            ['from' => 2, 'to' => 5, 'status' => 'published'],
         ];
 
     $rentang = old('ranges', $bawaan);
@@ -76,7 +78,7 @@
                             <tr>
                                 <th style="width:22%">Dari nomor</th>
                                 <th style="width:22%">Sampai nomor</th>
-                                <th style="width:20%">Akses</th>
+                                <th style="width:20%">Akses</th>{{-- otomatis dari nomor part --}}
                                 <th style="width:24%">Status</th>
                                 <th style="width:12%"></th>
                             </tr>
@@ -103,12 +105,15 @@
                                         @enderror
                                     </td>
 
-                                    <td>
-                                        <select name="ranges[{{ $i }}][is_vip]" class="control control-sm">
-                                            <option value="0" @selected(! ($baris['is_vip'] ?? false))>Gratis</option>
-                                            <option value="1" @selected((bool) ($baris['is_vip'] ?? false))>VIP</option>
-                                        </select>
-                                    </td>
+                                    {{--
+                                        Dulu ini pilihan Gratis/VIP. Sekarang
+                                        aturannya ditegakkan EpisodeObserver,
+                                        jadi apa pun yang dipilih akan ditimpa.
+                                        Lebih jujur menampilkannya sebagai
+                                        keterangan daripada membiarkan admin
+                                        memilih sesuatu yang diabaikan.
+                                    --}}
+                                    <td class="col-muted">Otomatis</td>
 
                                     <td>
                                         <select name="ranges[{{ $i }}][status]" class="control control-sm">
