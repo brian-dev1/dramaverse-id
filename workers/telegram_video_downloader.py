@@ -760,19 +760,22 @@ def print_download_stats(stats):
         print(line + ".")
 
     unique = stats.get("unique_senders")
-    asked = stats.get("connections")
+    asked = stats.get("connections_asked") or stats.get("connections")
 
-    koneksi = f"{asked}"
+    penjelasan = {
+        "exported": "soket berdiri sendiri, masing-masing auth key sendiri",
+        "main": "sender milik client -- sambungan tambahan tidak tersedia",
+        "borrow": "satu sambungan pinjaman bersama (video di DC lain)",
+        "clone": "soket kloningan, meminjam auth_key koneksi utama",
+    }.get(stats.get("mode"), stats.get("mode"))
 
-    if unique and unique != asked:
-        koneksi = (
-            f"{asked} diminta, tapi hanya {unique} soket nyata "
-            f"(video ada di DC lain, Telethon memakai satu "
-            f"sambungan pinjaman bersama)"
-        )
+    if unique and asked and unique != asked:
+        koneksi = f"{unique} dari {asked} diminta"
+    else:
+        koneksi = f"{unique}"
 
     print(
-        f"[TG] Koneksi {koneksi}. "
+        f"[TG] Koneksi {koneksi} ({penjelasan}). "
         f"Request bersamaan: mulai {stats.get('inflight_start')}, "
         f"terendah {stats.get('inflight_min')}, "
         f"tertinggi {stats.get('inflight_max')}, "
@@ -792,6 +795,9 @@ def print_download_stats(stats):
             "coba TG_INFLIGHT_PER_CONN=1 -- dan pastikan tidak ada "
             "proses downloader lain yang jalan bersamaan."
         )
+
+    for alasan in stats.get("open_errors", []):
+        print(f"[TG] Sambungan gagal dibuka -> {alasan}")
 
     if stats.get("reference_refreshes"):
         print(

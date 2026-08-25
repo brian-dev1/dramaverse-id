@@ -92,6 +92,16 @@ from telethon.network import MTProtoSender
 from telethon.tl.functions.upload import GetFileRequest
 from telethon.tl.types import InputDocumentFileLocation
 
+# Dipakai untuk membuat sambungan tambahan yang punya auth key sendiri.
+# Dibungkus supaya modul tetap bisa dimuat di Telethon yang menaruhnya
+# di tempat berbeda; kalau tidak ada, mode "exported" dilewati saja.
+try:
+    from telethon.tl import functions as _tl_functions
+    from telethon.tl.alltlobjects import LAYER as _TL_LAYER
+except ImportError:
+    _tl_functions = None
+    _TL_LAYER = None
+
 # ------------------------------------------------------------------
 # Kelas error flood.
 #
@@ -598,6 +608,10 @@ class ParallelDownloader:
         self.chunk_retries = CHUNK_RETRIES
         self.request_timeout = float(request_timeout)
 
+        # Boleh membuka sambungan berotorisasi sendiri? Dimatikan hanya
+        # untuk pengujian atau saat Telethon-nya tidak mendukung.
+        self.exported_senders = True
+
         # Jeda antar pembukaan sambungan, detik.
         self.open_stagger = 0.3
 
@@ -619,11 +633,7 @@ class ParallelDownloader:
             return self.client._sender
 
         if mode == "exported":
-            # Jalan yang benar. Sender dibuat dengan auth_key SENDIRI --
-            # Telethon mengekspor lalu mengimpor otorisasi untuk koneksi
-            # itu, persis cara resmi mendapat sambungan tambahan yang sah.
-            # Tiap panggilan menghasilkan soket baru yang berdiri sendiri.
-            return await self.client._create_exported_sender(dc_id)
+            return await self._buat_exported_sender(dc_id)
 
         if mode == "borrow":
             # Satu objek sender yang sama untuk satu DC; ia hanya
@@ -653,6 +663,77 @@ class ParallelDownloader:
         )
 
         return sender
+
+    async def _buat_exported_sender(self, dc_id):
+        """
+        Buka satu sambungan yang punya auth key SENDIRI.
+
+        Isinya sama dengan `TelegramClient._create_exported_sender`, dan
+        ditulis ulang di sini hanya untuk satu alasan: kebersihan saat
+        gagal. Versi Telethon membuat sender, menyambungkannya, LALU
+        meminta otorisasi. Kalau permintaan itu ditolak -- dan penolakan
+        memang mungkin, misalnya saat mengekspor ke DC sendiri -- sender
+        yang sudah terlanjur tersambung tidak pernah diputus oleh
+        siapa pun.
+
+        Gejalanya bukan galat, melainkan sampah di akhir program:
+
+            Task was destroyed but it is pending!
+            task: <Task pending coro=<Connection._recv_loop() ...>>
+
+        Dua gelung baca/tulis yang menggantung selamanya per sender yang
+        gagal. Di sini sender-nya milik kita, jadi bisa dipastikan
+        tertutup sebelum galatnya dilempar ulang.
+        """
+        if _tl_functions is None or _TL_LAYER is None:
+            raise RuntimeError(
+                "Telethon versi ini tidak menyediakan "
+                "functions/LAYER yang dibutuhkan."
+            )
+
+        dc = await self.client._get_dc(dc_id)
+
+        sender = MTProtoSender(None, loggers=self.client._log)
+
+        try:
+            await sender.connect(
+                self.client._connection(
+                    dc.ip_address,
+                    dc.port,
+                    dc.id,
+                    loggers=self.client._log,
+                    proxy=self.client._proxy,
+                    local_addr=self.client._local_addr,
+                )
+            )
+
+            auth = await self.client(
+                _tl_functions.auth.ExportAuthorizationRequest(dc_id)
+            )
+
+            self.client._init_request.query = (
+                _tl_functions.auth.ImportAuthorizationRequest(
+                    id=auth.id,
+                    bytes=auth.bytes,
+                )
+            )
+
+            await sender.send(
+                _tl_functions.InvokeWithLayerRequest(
+                    _TL_LAYER,
+                    self.client._init_request,
+                )
+            )
+
+            return sender
+
+        except BaseException:
+            try:
+                await sender.disconnect()
+            except Exception:
+                pass
+
+            raise
 
     async def _buka_banyak(self, dc_id, mode, jumlah):
         """
@@ -708,7 +789,7 @@ class ParallelDownloader:
             if conns:
                 return conns, mode
 
-        if hasattr(self.client, "_create_exported_sender"):
+        if self.exported_senders:
             conns = await self._buka_banyak(
                 dc_id,
                 "exported",

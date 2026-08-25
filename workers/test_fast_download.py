@@ -244,9 +244,6 @@ def verify_file(path, file_size, chunk_size):
     return sha.hexdigest()
 
 
-_create_exported_sender_asli = FakeClient._create_exported_sender
-
-
 # ==========================================================
 # Uji
 # ==========================================================
@@ -706,8 +703,6 @@ async def test_main_mode_uses_client_sender(tmp):
     tracker = Tracker(file_size)
     client = FakeClient(tracker)
 
-    # Telethon versi lama tidak punya method ini -> harus jatuh ke "main".
-    del FakeClient._create_exported_sender
 
     downloader = ParallelDownloader(
         client,
@@ -728,10 +723,11 @@ async def test_main_mode_uses_client_sender(tmp):
 
     out = os.path.join(tmp, "main.mp4")
 
-    try:
-        await downloader.download(FakeMessage(file_size), out)
-    finally:
-        FakeClient._create_exported_sender = _create_exported_sender_asli
+    # Meniru keadaan di mana sambungan berotorisasi sendiri tidak bisa
+    # dibuat -- harus jatuh ke sender milik client, bukan gagal.
+    downloader.exported_senders = False
+
+    await downloader.download(FakeMessage(file_size), out)
 
     verify_file(out, file_size, downloader.chunk_size)
 
@@ -897,6 +893,14 @@ async def test_exported_mode_gives_real_sockets(tmp):
     )
     downloader.open_stagger = 0
 
+    # Tiap panggilan menghasilkan sender BERBEDA -- itulah yang
+    # membedakan sambungan berotorisasi sendiri dari sender pinjaman.
+    async def _new_sender(dc_id, mode):
+        assert mode == "exported", f"mode tak terduga: {mode}"
+        return FakeSender(tracker, client.script)
+
+    downloader._new_sender = _new_sender
+
     out = os.path.join(tmp, "exported.mp4")
     await downloader.download(FakeMessage(file_size), out)
 
@@ -969,6 +973,72 @@ async def test_partial_open_shrinks_inflight(tmp):
 
 
 
+async def test_failed_sender_is_disconnected(tmp):
+    """Sender yang gagal berotorisasi harus DIPUTUS, bukan dibiarkan."""
+    file_size = 8 * 1024 * 1024
+    tracker = Tracker(file_size)
+    client = FakeClient(tracker)
+
+    downloader = ParallelDownloader(
+        client,
+        num_connections=4,
+        min_free_bytes=1024,
+    )
+    downloader.open_stagger = 0
+
+    dibuat = []
+
+    class SenderSetengahJadi(FakeSender):
+        def __init__(self, *a, **k):
+            super().__init__(*a, **k)
+            self.diputus = False
+
+        async def disconnect(self):
+            self.diputus = True
+            await super().disconnect()
+
+    async def _new_sender(dc_id, mode):
+        if mode == "exported":
+            # Meniru _buat_exported_sender: sambungannya jadi, lalu
+            # permintaan otorisasinya ditolak.
+            s = SenderSetengahJadi(tracker, client.script)
+            dibuat.append(s)
+
+            try:
+                raise RuntimeError("AUTH_EXPORT ditolak")
+            except BaseException:
+                await s.disconnect()
+                raise
+
+        return client._sender
+
+    downloader._new_sender = _new_sender
+
+    out = os.path.join(tmp, "bocor.mp4")
+    await downloader.download(FakeMessage(file_size), out)
+
+    verify_file(out, file_size, downloader.chunk_size)
+
+    stats = downloader.last_stats
+
+    menggantung = [s for s in dibuat if not s.diputus]
+
+    print(
+        f"  sender gagal={len(dibuat)} menggantung={len(menggantung)} "
+        f"mode akhir={stats['mode']} alasan={len(stats['open_errors'])}"
+    )
+
+    assert not menggantung, (
+        f"{len(menggantung)} sender dibiarkan menggantung -- "
+        "inilah 'Task was destroyed but it is pending'"
+    )
+    assert stats["mode"] == "main", "harus jatuh ke sender milik client"
+    assert stats["open_errors"], "alasan kegagalan tidak tercatat"
+
+    return True
+
+
+
 async def main():
 
     tmp = tempfile.mkdtemp(prefix="dl-test-")
@@ -987,6 +1057,7 @@ async def main():
         ("mode exported: soket sungguhan", test_exported_mode_gives_real_sockets),
         ("soket sebagian: jatah menyusut", test_partial_open_shrinks_inflight),
         ("cadangan main pakai sender client", test_main_mode_uses_client_sender),
+        ("sender gagal harus diputus", test_failed_sender_is_disconnected),
         ("file_reference basi -> diperbarui", test_reference_expired_refreshes),
         ("pesan baru dokumen lain -> ditolak", test_reference_refresh_rejects_other_document),
     ]
