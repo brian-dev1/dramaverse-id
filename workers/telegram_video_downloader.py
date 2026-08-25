@@ -1413,4 +1413,18 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+
+    except KeyboardInterrupt:
+        # Ctrl+C adalah cara yang sah untuk berhenti, bukan kecelakaan.
+        # Menampilkan 40 baris traceback asyncio untuk itu membuat
+        # penghentian yang disengaja terlihat seperti kerusakan.
+        print()
+        print("Dihentikan.")
+        print(
+            "Berkas .part yang tertinggal tetap disimpan; menjalankan "
+            "ulang akan melanjutkan dari situ, bukan mengulang dari nol."
+        )
+
+        sys.exit(130)

@@ -13,10 +13,14 @@
 # deploy.
 #
 # Pemakaian:
-#   unduh                          -> 6 koneksi paralel
-#   unduh 4                        -> 4 koneksi paralel
-#   TG_SCAN_LIMIT=300 unduh        -> pindai 300 pesan terakhir
-#   TG_INFLIGHT_PER_CONN=3 unduh   -> lebih agresif (lihat catatan)
+#   unduh              -> 6 koneksi, pindai 300 pesan terakhir
+#   unduh 4            -> 4 koneksi, pindai 300
+#   unduh 6 500        -> 6 koneksi, pindai 500 pesan
+#
+# Setelan lanjutan lewat environment:
+#   TG_INFLIGHT_PER_CONN=1 unduh   -> 6 request bersamaan, bukan 12
+#   TG_EXTRA_SOCKETS=0 unduh       -> satu soket saja
+#   TG_VERBOSE=1 unduh             -> tampilkan log Telethon apa adanya
 #
 set -euo pipefail
 
@@ -41,7 +45,11 @@ fi
 export TG_PARALLEL_CONNECTIONS="${1:-6}"
 
 # Berapa pesan terakhir yang dipindai untuk mencari video.
-export TG_SCAN_LIMIT="${TG_SCAN_LIMIT:-50}"
+#
+# 300 jadi bawaan karena itu yang dipakai sehari-hari; 50 terlalu sedikit
+# dan membuat video lama tidak ikut terlihat. Bisa ditimpa lewat argumen
+# kedua (unduh 6 500) atau lewat environment.
+export TG_SCAN_LIMIT="${2:-${TG_SCAN_LIMIT:-300}}"
 
 # Berapa request 1 MB yang boleh terbang bersamaan di TIAP koneksi.
 #
