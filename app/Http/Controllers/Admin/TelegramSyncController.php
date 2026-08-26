@@ -29,8 +29,21 @@ use Illuminate\Http\Request;
  */
 class TelegramSyncController extends Controller
 {
-    /** Batas sekali tekan "Sinkronkan yang menunggu". */
-    private const BATCH_LIMIT = 25;
+    /**
+     * Batas sekali tekan "Sinkronkan yang menunggu".
+     *
+     * Dibaca dari konfigurasi, bukan ditulis mati di sini, supaya bisa
+     * disesuaikan lewat TELEGRAM_SYNC_BATCH tanpa menyunting kode dan
+     * menunggu deploy berikutnya.
+     *
+     * Angka bawaannya 50. Batasnya sendiri tetap perlu ada: tiap pekerjaan
+     * mengunggah ratusan megabyte ke Telegram, dan mengantrekan seluruh
+     * tunggakan sekaligus membuat akun bot menembak berjam-jam tanpa jeda.
+     */
+    private function batasSekaliTekan(): int
+    {
+        return max(1, (int) config('telegram.sync.batch_limit', 50));
+    }
 
     /**
      * Kolom yang boleh diurutkan.
@@ -131,7 +144,7 @@ class TelegramSyncController extends Controller
         $ids = EpisodeVideo::query()
             ->where('sync_status', TelegramSyncStatus::PENDING->value)
             ->orderBy('id')
-            ->limit(self::BATCH_LIMIT)
+            ->limit($this->batasSekaliTekan())
             ->pluck('id')
             ->all();
 
@@ -256,7 +269,7 @@ class TelegramSyncController extends Controller
      * Laporkan hasil aksi massal apa adanya.
      *
      * Yang dilewati disebutkan beserta alasannya, bukan disembunyikan di
-     * balik angka. "20 dari 25 diproses" tanpa penjelasan membuat admin
+     * balik angka. "20 dari 50 diproses" tanpa penjelasan membuat admin
      * menekan tombolnya lagi dan lagi.
      */
     private function reportBulk(array $hasil, string $kalimat): RedirectResponse

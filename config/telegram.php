@@ -364,6 +364,20 @@ return [
 
         'queue' => env('TELEGRAM_SYNC_QUEUE') ?: 'default',
 
+        /*
+        | Berapa video yang diantrekan sekali tekan "Sinkronkan yang
+        | menunggu".
+        |
+        | Batasnya ada bukan karena antreannya rapuh, melainkan karena tiap
+        | pekerjaan mengunggah ratusan megabyte ke Telegram. Mengantrekan
+        | seluruh tunggakan sekaligus berarti akun bot menembak berjam-jam
+        | tanpa jeda, dan itu jalan tercepat menuju flood wait yang panjang.
+        |
+        | Naikkan kalau worker antrean Anda memang sanggup dan akunnya tidak
+        | sering kena rem. Turunkan kalau sebaliknya.
+        */
+        'batch_limit' => $angka('TELEGRAM_SYNC_BATCH', 50, 1),
+
     ],
 
     /*
