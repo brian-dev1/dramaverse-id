@@ -52,6 +52,17 @@ Schedule::call(function () {
 |
 */
 
+// Isi ulang antrean sinkronisasi Telegram supaya tunggakan habis sendiri.
+//
+// Tiap menit, tetapi hampir selalu langsung keluar tanpa melakukan apa pun:
+// selama antrean masih penuh tidak ada slot yang perlu diisi. Memeriksanya
+// tiap lima menit berarti worker menganggur sampai empat menit setiap kali
+// rombongan terakhir habis lebih cepat dari perkiraan.
+Schedule::command('telegram:sinkron-lanjut')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->runInBackground();
+
 // Ulangi sinkronisasi yang gagal. Tiap 15 menit: cukup cepat supaya gangguan
 // sesaat pulih sendiri, cukup jarang supaya kegagalan permanen tidak
 // memenuhi antrean.

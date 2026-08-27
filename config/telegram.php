@@ -378,6 +378,23 @@ return [
         */
         'batch_limit' => $angka('TELEGRAM_SYNC_BATCH', 50, 1),
 
+        /*
+        | Isi ulang antrean sendiri, tanpa menunggu tombol ditekan lagi.
+        |
+        | Penjadwal memeriksa tiap menit dan menambah video PENDING sampai
+        | antrean mencapai `batch_limit`. Efeknya: seluruh tunggakan
+        | tersinkron sendiri sampai habis.
+        |
+        | Perlu disadari, ini membuat SETIAP video yang diunggah akhirnya
+        | tersinkron ke Telegram tanpa ada yang memutuskannya satu per
+        | satu — kuota bot terpakai tanpa diawasi. Itu memang yang
+        | diminta, tetapi kalau suatu saat Anda ingin kembali memutuskan
+        | sendiri kapan sinkronisasi berjalan, matikan lewat:
+        |
+        |     TELEGRAM_SYNC_AUTO_CONTINUE=false
+        */
+        'auto_continue' => $boolean('TELEGRAM_SYNC_AUTO_CONTINUE', true),
+
     ],
 
     /*
