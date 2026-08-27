@@ -162,6 +162,20 @@ class SettingService
             'Dipakai tombol di bawah video dan di halaman Profil. Label di menu utama '
             .'diatur terpisah lewat Telegram → Menu.'],
 
+        // --- Grup partner ---
+        //
+        // Terpisah dari grup 'channel'. Keduanya chat Telegram, tetapi yang
+        // satu channel berisi pelanggan dan yang satu grup berisi partner
+        // konten — menaruhnya di tab yang sama berarti satu salah tempel
+        // mengirim katalog ke alamat yang keliru.
+        'partner_chat_id'   => ['partner', 'Chat ID grup partner', 'text', null,
+            'Diawali -100 untuk supergrup, misalnya -1001234567890. Bot harus sudah menjadi '
+            .'anggota grup itu dan boleh mengirim media.'],
+
+        'partner_thread_id' => ['partner', 'ID topik tujuan', 'text', null,
+            'Hanya untuk grup bertopik. Buka topiknya di Telegram Web, angka terakhir pada '
+            .'URL-nya adalah ID topik. Kosongkan untuk mengirim ke topik General.'],
+
         'footer_text'      => ['system', 'Teks footer', 'text', null, 'Kosongkan untuk memakai bawaan.'],
         'maintenance_mode' => ['system', 'Mode pemeliharaan', 'boolean', '0', 'Situs publik ditutup, panel admin tetap bisa diakses.'],
         'maintenance_text' => ['system', 'Pesan pemeliharaan', 'textarea', 'Kami sedang berbenah. Silakan kembali beberapa saat lagi.', null],
@@ -175,6 +189,7 @@ class SettingService
         'social'  => 'Media sosial',
         'channel' => 'Channel Telegram',
         'bot'     => 'Bot Telegram',
+        'partner' => 'Grup Partner',
         'system'  => 'Sistem',
     ];
 

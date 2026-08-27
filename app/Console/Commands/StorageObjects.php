@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\DramaAsset;
 use App\Models\EpisodeVideo;
 use App\Models\StorageProvider;
+use App\Models\VideoInbox;
 use App\Services\Storage\Contracts\StorageEngineInterface;
 use App\Services\Storage\Contracts\StorageManagerInterface;
 use App\Support\Bytes;
@@ -237,6 +238,21 @@ class StorageObjects extends Command
             ->pluck('asset_type', 'object_key')
             ->all();
 
+        /*
+        | Video Inbox adalah tabel ketiga yang menunjuk objek di bucket, dan
+        | paling mudah terlupakan karena isinya berkas yang BELUM jadi apa-apa
+        | — belum ditempelkan ke episode mana pun.
+        |
+        | Tanpa peta ini, berkas antrean tampil sebagai "tak tercatat" alias
+        | sisa sampah, lalu terhapus. Barisnya tetap ada di panel dengan label
+        | TERSEDIA, mengarah ke berkas yang tidak ada lagi, dan baru ketahuan
+        | ketika seseorang mencoba memasangkannya ke episode.
+        */
+        $antrean = VideoInbox::query()
+            ->where('storage_provider_id', $id)
+            ->pluck('status', 'object_key')
+            ->all();
+
         $hasil = [];
 
         foreach ($objek as $i => $o) {
@@ -244,9 +260,10 @@ class StorageObjects extends Command
             $key = $o['key'];
 
             $status = match (true) {
-                array_key_exists($key, $video) => blank($video[$key]) ? 'belum' : 'aman',
-                array_key_exists($key, $aset)  => 'aset',
-                default                        => 'lepas',
+                array_key_exists($key, $video)   => blank($video[$key]) ? 'belum' : 'aman',
+                array_key_exists($key, $aset)    => 'aset',
+                array_key_exists($key, $antrean) => 'antrean',
+                default                          => 'lepas',
             };
 
             $hasil[] = [
@@ -263,10 +280,11 @@ class StorageObjects extends Command
     private function lencana(string $status): string
     {
         return match ($status) {
-            'aman'  => '<fg=green>aman</>',
-            'belum' => '<fg=red>belum sinkron</>',
-            'aset'  => '<fg=yellow>aset web</>',
-            default => '<fg=gray>tak tercatat</>',
+            'aman'    => '<fg=green>aman</>',
+            'belum'   => '<fg=red>belum sinkron</>',
+            'aset'    => '<fg=yellow>aset web</>',
+            'antrean' => '<fg=yellow>antrean inbox</>',
+            default   => '<fg=gray>tak tercatat</>',
         };
     }
 
@@ -277,6 +295,7 @@ class StorageObjects extends Command
         $this->line('  <fg=green>aman</>          <fg=gray>video sudah punya telegram_file_id — tetap bisa diputar di bot</>');
         $this->line('  <fg=red>belum sinkron</> <fg=gray>berkas di bucket satu-satunya salinan. JANGAN dihapus</>');
         $this->line('  <fg=yellow>aset web</>      <fg=gray>poster/cover yang dipakai website. Menghapusnya membuat gambar hilang</>');
+        $this->line('  <fg=yellow>antrean inbox</> <fg=gray>menunggu dipasang ke episode di /admin/video-inbox</>');
         $this->line('  <fg=gray>tak tercatat   tidak ada di database — sisa unggahan lama atau berkas uji</>');
     }
 
@@ -318,7 +337,7 @@ class StorageObjects extends Command
 
         foreach ($terpilih as $o) {
 
-            $terlarang = in_array($o['status'], ['belum', 'aset'], true);
+            $terlarang = in_array($o['status'], ['belum', 'aset', 'antrean'], true);
 
             if ($terlarang && ! $this->option('paksa')) {
                 $tolak[] = $o;
@@ -460,9 +479,12 @@ class StorageObjects extends Command
                 ['No', 'Alasan', 'Object key'],
                 array_map(fn (array $o) => [
                     $o['no'],
-                    $o['status'] === 'belum'
-                        ? 'belum punya file_id'
-                        : 'aset web (poster/cover)',
+                    match ($o['status']) {
+                        'belum'   => 'belum punya file_id',
+                        'aset'    => 'aset web (poster/cover)',
+                        'antrean' => 'masih di antrean Video Inbox',
+                        default   => $o['status'],
+                    },
                     $o['key'],
                 ], array_slice($tolak, 0, self::CONTOH))
             );
@@ -470,6 +492,15 @@ class StorageObjects extends Command
             $this->line(
                 '  <fg=gray>Kalau memang disengaja, ulangi dengan --paksa. '
                 .'Untuk yang belum sinkron, itu berarti videonya hilang selamanya.</>'
+            );
+
+            $this->line(
+                '  <fg=gray>Untuk yang masih di antrean, hapus juga barisnya — kalau tidak, '
+                .'panel tetap menampilkannya sebagai TERSEDIA padahal berkasnya sudah tidak ada:</>'
+            );
+
+            $this->line(
+                '  <fg=gray>  php artisan tinker --execute=\'App\Models\VideoInbox::where("object_key","KEY")->delete();\'</>'
             );
         }
 

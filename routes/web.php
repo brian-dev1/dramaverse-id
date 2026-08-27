@@ -697,6 +697,31 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
             Route::post('/channel-post/pengumuman/{pengumuman}/batal', [Admin\ChannelAnnouncementController::class, 'cancel'])
                 ->name('channel-announcement.cancel')->whereNumber('pengumuman');
+
+            /*
+            |------------------------------------------------------------------
+            | Kirim poster ke grup partner
+            |
+            | Halaman sendiri, BUKAN tab di Kirim ke Channel. Tujuannya lain
+            | (grup partner, bukan channel pelanggan), isinya lain (poster dan
+            | judul saja, tanpa daftar episode maupun tautan bot), dan
+            | pembacanya lain. Satu tombol Kirim yang artinya bergantung pada
+            | tab mana yang sedang terbuka adalah kiriman salah alamat yang
+            | menunggu terjadi — dan di sini yang melihatnya orang, bukan log.
+            |------------------------------------------------------------------
+            */
+            Route::get('/partner-poster', [Admin\PartnerPosterController::class, 'index'])
+                ->name('partner-poster.index');
+
+            // Mengantrekan seluruh drama yang belum pernah dikirim.
+            Route::post('/partner-poster/kirim', [Admin\PartnerPosterController::class, 'bulk'])
+                ->name('partner-poster.bulk');
+
+            // Satu drama, termasuk yang sudah pernah dikirim. Endpoint sendiri
+            // karena maksudnya berlawanan dengan yang di atas: "kirim lagi
+            // yang ini" versus "lanjutkan yang belum".
+            Route::post('/partner-poster/{drama}', [Admin\PartnerPosterController::class, 'one'])
+                ->name('partner-poster.one')->whereNumber('drama');
         });
 
         /*
