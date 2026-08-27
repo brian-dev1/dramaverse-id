@@ -31,8 +31,19 @@ use Throwable;
  * php artisan storage:baru kilat --jam=24       # sehari terakhir
  * php artisan storage:baru kilat --semua        # semua, terbaru di atas
  * php artisan storage:baru kilat --db           # + status sinkron Telegram
+ * php artisan storage:baru kilat --cari="dicium sang tuan"
  * php artisan storage:baru                      # semua provider
  * ```
+ *
+ * `--cari` mencocokkan bentuk yang sudah diseragamkan, bukan teks mentah.
+ * Object key dibuat oleh `make_safe_filename()` yang mengubah spasi dan
+ * tanda baca jadi tanda hubung, jadi mencari "Dicium Sang Tuan" secara
+ * harfiah tidak akan pernah menemukan `dicium-sang-tuan-part-1.mp4`.
+ * Kedua sisi diseragamkan lebih dulu supaya yang diketik pengguna cukup
+ * judul apa adanya.
+ *
+ * Karena mencari satu drama hampir selalu berarti mencari di seluruh
+ * riwayat, `--cari` otomatis mengabaikan saringan waktu.
  *
  * Opsi `--db` mencocokkan tiap objek dengan barisnya di `episode_videos`,
  * jadi terlihat sekaligus mana yang sudah tersinkron ke Telegram dan mana
@@ -44,6 +55,7 @@ class StorageBaru extends Command
                             {provider?* : Slug atau id provider. Kosongkan untuk semua}
                             {--jam=6 : Hanya objek yang lebih baru dari sekian jam}
                             {--semua : Abaikan --jam, tampilkan semuanya}
+                            {--cari= : Hanya object key yang memuat teks ini}
                             {--jumlah=50 : Maksimal baris yang ditampilkan}
                             {--db : Cocokkan dengan catatan episode_videos}';
 
@@ -67,6 +79,14 @@ class StorageBaru extends Command
             return self::FAILURE;
         }
 
+        $cari = (string) ($this->option('cari') ?? '');
+
+        // Mencari satu judul hampir selalu berarti mencari di seluruh
+        // riwayat, bukan cuma beberapa jam terakhir.
+        if ($cari !== '') {
+            $semua = true;
+        }
+
         $batas = $semua
             ? null
             : Carbon::now()->subHours($jam)->getTimestamp();
@@ -78,7 +98,7 @@ class StorageBaru extends Command
             $this->line("=== {$provider->name} ({$provider->slug})");
 
             try {
-                $berkas = $this->kumpulkan($storage, $provider, $batas);
+                $berkas = $this->kumpulkan($storage, $provider, $batas, $cari);
             } catch (Throwable $galat) {
                 $this->error("Gagal membaca bucket: {$galat->getMessage()}");
 
@@ -119,8 +139,11 @@ class StorageBaru extends Command
     private function kumpulkan(
         StorageManagerInterface $storage,
         $provider,
-        ?int $batas
+        ?int $batas,
+        string $cari = ''
     ): array {
+        $polaCari = $cari === '' ? null : $this->seragamkan($cari);
+
         $disk = $storage->build($provider);
 
         $berkas = [];
@@ -128,6 +151,13 @@ class StorageBaru extends Command
         foreach ($disk->getDriver()->listContents('', true) as $item) {
             /** @var StorageAttributes $item */
             if (! $item->isFile()) {
+                continue;
+            }
+
+            if (
+                $polaCari !== null
+                && ! str_contains($this->seragamkan($item->path()), $polaCari)
+            ) {
                 continue;
             }
 
@@ -180,11 +210,17 @@ class StorageBaru extends Command
         int $jam
     ): void {
         if ($berkas === []) {
-            $this->warn(
-                $semua
-                    ? 'Bucket kosong.'
-                    : "Tidak ada objek baru dalam {$jam} jam terakhir."
-            );
+            $cari = (string) ($this->option('cari') ?? '');
+
+            if ($cari !== '') {
+                $this->warn("Tidak ada object key yang cocok dengan '{$cari}'.");
+            } else {
+                $this->warn(
+                    $semua
+                        ? 'Bucket kosong.'
+                        : "Tidak ada objek baru dalam {$jam} jam terakhir."
+                );
+            }
 
             return;
         }
@@ -278,6 +314,22 @@ class StorageBaru extends Command
         }
 
         return $hasil;
+    }
+
+    /**
+     * Seragamkan teks supaya judul dan object key bisa dibandingkan.
+     *
+     * "Dicium Sang Tuan Kejam part 5.mp4" dan
+     * "telegram/dicium-sang-tuan-kejam-part-5.mp4" sama-sama menjadi
+     * "dicium-sang-tuan-kejam-part-5-mp4".
+     */
+    private function seragamkan(string $teks): string
+    {
+        $teks = strtolower($teks);
+
+        $teks = preg_replace('/[^a-z0-9]+/', '-', $teks) ?? $teks;
+
+        return trim($teks, '-');
     }
 
     private function umur(?int $waktu): string

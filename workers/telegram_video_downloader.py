@@ -1,5 +1,6 @@
 import asyncio
 import collections
+import fcntl
 import hashlib
 import logging
 import mimetypes
@@ -112,6 +113,91 @@ def api_headers():
         "Authorization": f"Bearer {LARAVEL_API_TOKEN}",
         "Accept": "application/json",
     }
+
+
+# ============================================================
+# Kunci satu instansi
+# ============================================================
+
+LOCK_PATH = SESSION_PATH + ".lock"
+
+_pemegang_kunci = None
+
+
+def kunci_instansi():
+    """
+    Pastikan hanya satu downloader yang memakai file sesi ini.
+
+    Berkas sesi Telethon adalah database SQLite. Dua proses yang
+    membukanya bersamaan menghasilkan:
+
+        sqlite3.OperationalError: database is locked
+
+    ...dan itu baru gejala yang paling sopan. Yang lebih buruk terjadi
+    kalau keduanya sempat tersambung: satu auth_key dipakai dua sesi
+    MTProto sekaligus, Telegram membalas ke sesi yang salah, lalu
+    memutus sambungannya -- persis "Server replied with a wrong session
+    ID" yang dulu memakan waktu lama untuk ditelusuri.
+
+    Lebih baik berhenti di detik pertama dengan keterangan yang jelas
+    daripada jalan setengah lalu gagal dengan cara yang membingungkan.
+
+    Kunci dilepas sendiri oleh kernel begitu prosesnya berakhir, apa pun
+    penyebabnya -- termasuk Ctrl+C dan kill. Tidak ada berkas kunci
+    basi yang perlu dibersihkan manual.
+    """
+    global _pemegang_kunci
+
+    try:
+        _pemegang_kunci = open(LOCK_PATH, "a+")
+
+        fcntl.flock(_pemegang_kunci, fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+    except OSError:
+        pemilik = "?"
+
+        try:
+            _pemegang_kunci.seek(0)
+            pemilik = _pemegang_kunci.read().strip() or "?"
+        except OSError:
+            pass
+
+        print()
+        print("========================================")
+        print(" SUDAH ADA YANG JALAN")
+        print("========================================")
+        print(
+            "Downloader lain sedang memakai file sesi yang sama "
+            f"(PID {pemilik})."
+        )
+        print()
+        print(
+            "Dua proses tidak boleh memakai satu sesi Telethon: "
+            "sesinya database SQLite, dan Telegram akan memutus "
+            "sambungan begitu satu auth_key dipakai dua tempat."
+        )
+        print()
+        print("Lihat prosesnya:")
+        print("    ps aux | grep telegram_video_downloader | grep -v grep")
+        print()
+        print("Kalau memang sudah tidak dipakai, hentikan:")
+        print(f"    kill {pemilik}")
+        print()
+        print("Kalau itu sesi tmux yang Anda tinggalkan, masuk lagi:")
+        print("    tmux attach -t unduh")
+        print("========================================")
+
+        return False
+
+    try:
+        _pemegang_kunci.seek(0)
+        _pemegang_kunci.truncate()
+        _pemegang_kunci.write(str(os.getpid()))
+        _pemegang_kunci.flush()
+    except OSError:
+        pass
+
+    return True
 
 
 # ============================================================
@@ -1111,6 +1197,11 @@ async def main():
     session_exists = print_network_banner()
 
     validate_api_credentials(session_exists)
+
+    # Diperiksa SEBELUM daftar storage diminta. Berhenti setelah admin
+    # memilih storage dan mengetik nama bot berarti membuang pekerjaannya.
+    if not kunci_instansi():
+        sys.exit(1)
 
     if pasang_peredam():
         print(
