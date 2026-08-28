@@ -720,7 +720,14 @@ Route::prefix('admin')->name('admin.')->group(function () {
             // Satu drama, termasuk yang sudah pernah dikirim. Endpoint sendiri
             // karena maksudnya berlawanan dengan yang di atas: "kirim lagi
             // yang ini" versus "lanjutkan yang belum".
-            Route::post('/partner-poster/{drama}', [Admin\PartnerPosterController::class, 'one'])
+            //
+            // `{drama:id}`, BUKAN `{drama}`. `Drama::getRouteKeyName()`
+            // mengembalikan 'slug', jadi `{drama}` polos membuat Laravel
+            // mencari berdasarkan slug — sementara `whereNumber` di bawah
+            // hanya menerima angka. Dua aturan yang saling meniadakan, dan
+            // akibatnya halaman ini sempat 500 sebelum satu barisnya sempat
+            // dirender.
+            Route::post('/partner-poster/{drama:id}', [Admin\PartnerPosterController::class, 'one'])
                 ->name('partner-poster.one')->whereNumber('drama');
         });
 

@@ -105,8 +105,13 @@
                                 {{-- Tombol satuan selalu mengirim, termasuk yang sudah
                                      pernah. Gunanya justru untuk mengulang kiriman yang
                                      gagal atau terlanjur terhapus dari grup. --}}
+                                {{-- $d->id, bukan $d. `route()` menurunkan
+                                     parameternya dari getRouteKey(), yang di
+                                     model Drama berarti kolom `slug` — dan
+                                     slug tidak ikut di-select oleh
+                                     kandidat(), sehingga nilainya null. --}}
                                 <form method="POST"
-                                      action="{{ route('admin.partner-poster.one', $d) }}">
+                                      action="{{ route('admin.partner-poster.one', $d->id) }}">
                                     @csrf
 
                                     <button type="submit" class="btn btn-sm"
