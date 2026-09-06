@@ -7,6 +7,7 @@ use App\Models\Drama;
 use App\Models\Episode;
 use App\Models\EpisodeVideo;
 use App\Models\VideoInbox;
+use App\Services\Storage\Contracts\StorageManagerInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -35,13 +36,48 @@ class VideoInboxController extends Controller
     {
         $tampil = $request->query('tampil') === 'terpasang' ? 'terpasang' : 'tersedia';
 
+        /*
+        | Video Inbox hanya menampilkan video BELUM TERPASANG yang object-nya
+        | masih benar-benar ada di storage.
+        |
+        | Ini murni filter tampilan. Tidak ada update/delete ke VideoInbox,
+        | EpisodeVideo, episode, drama, ataupun telegram_file_id.
+        |
+        | Bila provider sedang tidak bisa dihubungi, videonya sengaja tetap
+        | dianggap ada. Gangguan storage sementara tidak boleh membuat inbox
+        | terlihat kosong dan menyesatkan admin.
+        */
+        $storage = app(StorageManagerInterface::class);
+
+        $tersediaIds = $this->belumTerpasang(
+            VideoInbox::query()->with('provider:id,slug')
+        )
+            ->get(['id', 'storage_provider_id', 'object_key'])
+            ->filter(function (VideoInbox $video) use ($storage): bool {
+                if ($video->provider === null || blank($video->object_key)) {
+                    return false;
+                }
+
+                try {
+                    return $storage
+                        ->disk($video->provider->slug)
+                        ->exists(ltrim((string) $video->object_key, '/'));
+                } catch (\Throwable $e) {
+                    return true;
+                }
+            })
+            ->pluck('id');
+
         $videos = VideoInbox::query()
             ->with([
                 'provider:id,name,slug,bucket',
                 'episode:id,drama_id,episode_number,title',
                 'episode.drama:id,title,slug',
             ])
-            ->when($tampil === 'tersedia', fn ($q) => $this->belumTerpasang($q))
+            ->when(
+                $tampil === 'tersedia',
+                fn ($q) => $this->belumTerpasang($q)->whereIn('id', $tersediaIds)
+            )
             ->when($tampil === 'terpasang', fn ($q) => $this->sudahTerpasang($q))
             ->latest('uploaded_at')
             ->paginate(20)
@@ -78,7 +114,7 @@ class VideoInboxController extends Controller
             ->get();
 
         $jumlah = [
-            'tersedia'  => $this->belumTerpasang(VideoInbox::query())->count(),
+            'tersedia'  => $tersediaIds->count(),
             'terpasang' => $this->sudahTerpasang(VideoInbox::query())->count(),
         ];
 
