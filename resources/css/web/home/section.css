@@ -165,3 +165,82 @@
     .login-prompt{ flex-wrap:wrap; }
     .login-prompt .btn{ width:100%; align-self:stretch; text-align:center; }
 }
+
+/* =========================================================
+   INFINITE SCROLL - RILIS TERBARU
+   ========================================================= */
+
+.dv-infinite-sentinel {
+    width: 100%;
+    min-height: 64px;
+    margin-top: var(--space-4);
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+
+    color: var(--text-muted);
+    font-size: 12px;
+    text-align: center;
+
+    user-select: none;
+}
+
+/* Spinner */
+
+.dv-infinite-spinner {
+    width: 18px;
+    height: 18px;
+
+    border: 2px solid rgba(255, 255, 255, .12);
+    border-top-color: var(--accent, #ff6b1a);
+
+    border-radius: 50%;
+
+    opacity: 0;
+}
+
+/* Sedang mengambil halaman berikutnya */
+
+.dv-infinite-sentinel[data-state="loading"]
+.dv-infinite-spinner {
+    opacity: 1;
+    animation: dv-infinite-spin .75s linear infinite;
+}
+
+/* Gagal — bisa diketuk untuk retry */
+
+.dv-infinite-sentinel[data-state="error"] {
+    cursor: pointer;
+    color: var(--accent, #ff6b1a);
+}
+
+/* Saat idle tidak perlu ada spinner */
+
+.dv-infinite-sentinel[data-state="idle"]
+.dv-infinite-spinner {
+    display: none;
+}
+
+/* Kalau semua halaman sudah selesai */
+
+.dv-infinite-sentinel[data-state="done"]
+.dv-infinite-spinner {
+    display: none;
+}
+
+.dv-infinite-sentinel[data-state="idle"] {
+    min-height: 48px;
+}
+
+.dv-infinite-sentinel[data-state="done"] {
+    min-height: 56px;
+    opacity: .75;
+}
+
+@keyframes dv-infinite-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}

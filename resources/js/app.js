@@ -26,6 +26,7 @@ import heroSlider from './web/hero-slider';
 import animation from './web/animation';
 import railArrows from './web/rail-arrows';
 import liveSearch from './web/live-search';
+import infiniteScroll from './web/infinite-scroll';
 import player from './player';
 
 function mulai() {
@@ -34,6 +35,7 @@ function mulai() {
     animation();
     railArrows();
     liveSearch();
+    infiniteScroll();
     player();
 }
 
