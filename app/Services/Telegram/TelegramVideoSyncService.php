@@ -133,6 +133,10 @@ class TelegramVideoSyncService
 
         $this->log('info', 'sync.started', $video);
 
+        // Bersihkan sisa file temporary dari worker lama yang mati paksa.
+        // Hanya file tgsync_* yang berumur lebih dari 2 jam yang disentuh.
+        $this->cleanupStaleTempFiles();
+
         $temp = null;
 
         try {
@@ -225,31 +229,60 @@ class TelegramVideoSyncService
      */
     private function pullToTempFile(EpisodeVideo $video): string
     {
-        $sumber = $this->storage->readStream(
-            $video->storage_provider_id,
-            $video->object_key
-        );
-
-        if (! is_resource($sumber)) {
-            throw new RuntimeException(
-                "Berkas `{$video->object_key}` tidak bisa dibaca dari storage provider."
-            );
-        }
-
-        $path = tempnam(sys_get_temp_dir(), 'tgsync_');
-
-        if ($path === false) {
-            throw new RuntimeException('Tidak bisa membuat berkas sementara di server.');
-        }
-
-        $tujuan = fopen($path, 'w');
+        $sumber = null;
+        $tujuan = null;
+        $path = null;
 
         try {
-            if ($tujuan === false) {
-                throw new RuntimeException("Berkas sementara {$path} tidak bisa ditulis.");
+            $sumber = $this->storage->readStream(
+                $video->storage_provider_id,
+                $video->object_key
+            );
+
+            if (! is_resource($sumber)) {
+                throw new RuntimeException(
+                    "Berkas `{$video->object_key}` tidak bisa dibaca dari storage provider."
+                );
             }
 
-            stream_copy_to_stream($sumber, $tujuan);
+            $path = tempnam(sys_get_temp_dir(), 'tgsync_');
+
+            if ($path === false) {
+                $path = null;
+
+                throw new RuntimeException(
+                    'Tidak bisa membuat berkas sementara di server.'
+                );
+            }
+
+            $tujuan = fopen($path, 'w');
+
+            if ($tujuan === false) {
+                throw new RuntimeException(
+                    "Berkas sementara {$path} tidak bisa ditulis."
+                );
+            }
+
+            $copied = stream_copy_to_stream($sumber, $tujuan);
+
+            if ($copied === false) {
+                throw new RuntimeException(
+                    "Gagal menyalin `{$video->object_key}` ke berkas sementara server."
+                );
+            }
+
+            return $path;
+
+        } catch (Throwable $e) {
+
+            // Jika gagal sebelum path dikembalikan ke sync(), sync() belum
+            // mengetahui file temp ini. Bersihkan langsung di sini.
+            if ($path !== null && is_file($path)) {
+                @unlink($path);
+            }
+
+            throw $e;
+
         } finally {
             if (is_resource($tujuan)) {
                 fclose($tujuan);
@@ -259,8 +292,39 @@ class TelegramVideoSyncService
                 fclose($sumber);
             }
         }
+    }
 
-        return $path;
+    /**
+     * Bersihkan sisa file temporary Telegram sync dari worker yang mati paksa.
+     *
+     * File milik job yang masih berjalan tidak disentuh: hanya tgsync_* yang
+     * lebih tua dari dua jam yang dibuang.
+     */
+    private function cleanupStaleTempFiles(): void
+    {
+        $files = glob(
+            rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR)
+            .DIRECTORY_SEPARATOR
+            .'tgsync_*'
+        );
+
+        if ($files === false) {
+            return;
+        }
+
+        $cutoff = time() - 7200;
+
+        foreach ($files as $file) {
+            if (! is_file($file)) {
+                continue;
+            }
+
+            $modified = @filemtime($file);
+
+            if ($modified !== false && $modified < $cutoff) {
+                @unlink($file);
+            }
+        }
     }
 
     private function succeed(EpisodeVideo $video, TelegramResponse $response): EpisodeVideo
