@@ -1,7 +1,7 @@
 @extends('web.layouts.app')
 
 @section('title', 'Beranda')
-@section('description', 'Streaming drama Korea, Tiongkok, Thailand, dan Jepang dengan subtitle Bahasa Indonesia.')
+@section('description', 'Streaming drama Korea, China, Thailand, dan Jepang dengan subtitle Bahasa Indonesia.')
 
 @php
     // Katalog dianggap kosong bila tidak ada satu pun drama terbit.
@@ -120,4 +120,3 @@
     @endif
 
 @endsection
-

@@ -1,0 +1,353 @@
+/*
+| DramaVerse ID — Premium Streaming
+| Lapisan visual CSS-only. Seluruh selector dibatasi ke sisi web sehingga
+| panel admin, route, data, formulir, dan perilaku komponen tetap apa adanya.
+*/
+
+body:not(.admin-body) {
+    --dv-bg: #050506;
+    --dv-glass: #101014;
+    --dv-line: rgba(255,255,255,.11);
+    --dv-accent: #ff671d;
+    --dv-accent-2: #ffb24a;
+    --dv-text: #f7f7f8;
+    --dv-dim: #a6a4ad;
+    --dv-r: 13px;
+    background: #050506;
+}
+
+body:not(.admin-body)::before {
+    background: linear-gradient(180deg, #0b0908 0, #050506 280px);
+}
+
+/* Header tenang dan solid: tetap ringan saat digulir. */
+body:not(.admin-body) .navbar {
+    background: #070708;
+    border-bottom: 0;
+}
+
+body:not(.admin-body) .navbar-inner {
+    border-color: rgba(255,255,255,.10);
+    background: #0c0c0f;
+    box-shadow: 0 18px 38px -30px #000;
+}
+
+body:not(.admin-body) .nav-mark,
+body:not(.admin-body) .nav-right .btn-primary,
+body:not(.admin-body) .mobile-nav a.active,
+body:not(.admin-body) .btn-primary {
+    background: linear-gradient(135deg, #ff9b35, #ff5f17);
+}
+
+body:not(.admin-body) .nav-search form {
+    background: #15151b;
+    border-color: rgba(255,255,255,.11);
+}
+
+body:not(.admin-body) .dv-total { color: #ffad47; }
+
+body:not(.admin-body) .dv-chiprow { gap: 7px; }
+body:not(.admin-body) .dv-chip {
+    padding: 8px 13px;
+    color: #c2beca;
+    background: #111116;
+    border-color: rgba(255,255,255,.12);
+}
+
+body:not(.admin-body) .country-badge.country-flag {
+    display: inline-flex;
+    width: 20px;
+    height: 14px;
+    flex: 0 0 20px;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,.20);
+    border-radius: 3px;
+    background: transparent;
+    vertical-align: middle;
+    box-shadow: 0 2px 8px rgba(0,0,0,.30);
+}
+
+body:not(.admin-body) .country-flag svg { width: 100%; height: 100%; }
+body:not(.admin-body) .country-label { line-height: 1; }
+
+body:not(.admin-body) .section { padding-block: 20px; }
+body:not(.admin-body) .section-title { font-size: clamp(19px, 2.2vw, 25px); }
+body:not(.admin-body) .section-title::before {
+    width: 4px;
+    background: linear-gradient(180deg, #ffb24a, #ff5f17) !important;
+}
+
+body:not(.admin-body) .see-all {
+    background: transparent;
+    border-color: rgba(255,255,255,.12);
+}
+
+/* Kartu dibuat tegas, tanpa dekor atau blur berat. */
+body:not(.admin-body) .dv-card { gap: 8px; }
+body:not(.admin-body) .dv-poster {
+    border-radius: 12px;
+    background: #111116;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);
+}
+body:not(.admin-body) .dv-shade {
+    height: 48%;
+    background: linear-gradient(180deg, transparent, rgba(0,0,0,.82));
+}
+body:not(.admin-body) .dv-title { color: #f1f0f3; font-weight: 700; }
+body:not(.admin-body) .dv-sub { color: #92909a; }
+body:not(.admin-body) .dv-rank {
+    left: 9px;
+    bottom: 9px;
+    font-size: 38px;
+    color: #fff;
+    -webkit-text-stroke: 1px rgba(0,0,0,.45);
+}
+body:not(.admin-body) .dv-tag { backdrop-filter: none; -webkit-backdrop-filter: none; }
+
+/* Lanjutkan Menonton: poster pertama menjadi banner sinematik dari data lama. */
+body:not(.admin-body) .dv-continue .rail {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    overflow: visible;
+    gap: 14px;
+}
+
+body:not(.admin-body) .dv-continue .rail > .dv-card { min-width: 0; }
+body:not(.admin-body) .dv-continue .rail > .dv-card:first-child {
+    position: relative;
+    grid-column: 1 / -1;
+    display: block;
+}
+
+body:not(.admin-body) .dv-continue .rail > .dv-card:first-child .dv-poster {
+    aspect-ratio: 21 / 8;
+    min-height: 250px;
+}
+
+body:not(.admin-body) .dv-continue .rail > .dv-card:first-child .dv-poster img {
+    object-position: center 28%;
+}
+
+body:not(.admin-body) .dv-continue .rail > .dv-card:first-child .dv-shade {
+    inset: 0;
+    height: auto;
+    background: linear-gradient(90deg, rgba(0,0,0,.88) 0, rgba(0,0,0,.36) 52%, rgba(0,0,0,.08) 75%),
+                linear-gradient(0deg, rgba(0,0,0,.76), transparent 62%);
+}
+
+body:not(.admin-body) .dv-continue .rail > .dv-card:first-child .dv-meta {
+    position: absolute;
+    left: clamp(18px, 4vw, 46px);
+    right: 42%;
+    bottom: clamp(22px, 4vw, 44px);
+    z-index: 3;
+    gap: 7px;
+}
+
+body:not(.admin-body) .dv-continue .rail > .dv-card:first-child .dv-title {
+    font-family: var(--font-display);
+    font-size: clamp(25px, 4vw, 48px);
+    line-height: 1.02;
+    color: #fff;
+}
+
+body:not(.admin-body) .dv-continue .rail > .dv-card:first-child .dv-sub {
+    font-size: 13px;
+    color: #ddd9e0;
+}
+
+body:not(.admin-body) .dv-continue .rail > .dv-card:first-child .dv-bar {
+    left: clamp(18px, 4vw, 46px);
+    right: 46%;
+    bottom: 14px;
+    z-index: 4;
+    height: 4px;
+}
+
+/* Detail: poster lama menjadi visual hero, informasi tetap sama. */
+body:not(.admin-body) .detail-hero {
+    max-width: 1440px;
+    min-height: 610px;
+    margin: 0 auto;
+    border: 0;
+    border-radius: 0 0 24px 24px;
+    background-color: #09090b;
+    background-position: center 24%;
+}
+
+body:not(.admin-body) .detail-hero::after {
+    background: linear-gradient(90deg, rgba(5,5,6,.98) 0, rgba(5,5,6,.80) 43%, rgba(5,5,6,.20) 76%),
+                linear-gradient(0deg, #050506 0, transparent 45%);
+}
+
+body:not(.admin-body) .detail-hero-inner {
+    min-height: 610px;
+    align-items: center;
+    padding-top: 42px;
+    padding-bottom: 52px;
+}
+
+body:not(.admin-body) .detail-poster {
+    order: 2;
+    flex: 0 0 min(39vw, 430px);
+    aspect-ratio: 2 / 3;
+    margin-left: auto;
+    padding: 0;
+    border: 0;
+    border-radius: 16px;
+    box-shadow: 0 30px 70px -38px rgba(0,0,0,.95);
+}
+
+body:not(.admin-body) .detail-body {
+    order: 1;
+    max-width: 650px;
+    align-self: center;
+}
+
+body:not(.admin-body) .detail-body .hero-title {
+    max-width: 620px;
+    margin-bottom: 10px;
+    font-size: clamp(42px, 6vw, 78px);
+    line-height: .94;
+    letter-spacing: -.045em;
+    color: #fff;
+}
+
+body:not(.admin-body) .detail-original { color: #aaa7b0; }
+body:not(.admin-body) .hero-meta { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 12px; }
+body:not(.admin-body) .hero-meta .chip,
+body:not(.admin-body) .detail-genres .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 13px;
+    color: #eeeaf0;
+    background: rgba(8,8,9,.72);
+    border: 1px solid rgba(255,158,54,.48);
+    backdrop-filter: none;
+}
+
+body:not(.admin-body) .hero-desc {
+    max-width: 620px;
+    color: #bbb8c0;
+    line-height: 1.7;
+}
+
+body:not(.admin-body) .hero-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    max-width: 620px;
+    margin-top: 24px;
+}
+
+body:not(.admin-body) .hero-actions > .btn-primary { grid-column: 1 / -1; }
+body:not(.admin-body) .hero-actions form { min-width: 0; }
+body:not(.admin-body) .hero-actions .btn {
+    width: 100%;
+    min-height: 52px;
+    justify-content: center;
+    border-radius: 10px;
+    font-weight: 750;
+}
+body:not(.admin-body) .hero-actions .btn-ghost {
+    background: rgba(8,8,9,.76);
+    border-color: rgba(255,158,54,.55);
+    backdrop-filter: none;
+}
+
+body:not(.admin-body) .episode-list { gap: 9px; }
+body:not(.admin-body) .episode-item {
+    min-height: 58px;
+    border-radius: 11px;
+    border-color: rgba(255,255,255,.10);
+    background: #101014;
+}
+body:not(.admin-body) .episode-item:first-child {
+    border-color: rgba(255,135,39,.55);
+    background: linear-gradient(90deg, rgba(255,103,29,.18), #101014 55%);
+}
+body:not(.admin-body) .episode-item::after {
+    content: "›";
+    margin-left: 4px;
+    color: #8f8b96;
+    font-size: 26px;
+    line-height: 1;
+}
+body:not(.admin-body) .episode-number { color: #ffae43; font-weight: 800; }
+
+body:not(.admin-body) .mobile-nav {
+    background: #0b0b0f;
+    border-color: rgba(255,255,255,.12);
+    box-shadow: 0 18px 42px -20px #000;
+}
+
+@media (max-width: 900px) {
+    body:not(.admin-body) .dv-continue .rail { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    body:not(.admin-body) .detail-hero-inner { gap: 22px; }
+}
+
+@media (max-width: 768px) {
+    body:not(.admin-body) .detail-hero {
+        min-height: 0;
+        border-radius: 0;
+        background-image: none !important;
+    }
+    body:not(.admin-body) .detail-hero::after { content: none; }
+    body:not(.admin-body) .detail-hero-inner {
+        display: grid;
+        min-height: 0;
+        padding: 0 0 28px;
+    }
+    body:not(.admin-body) .detail-poster {
+        order: 1;
+        width: 100%;
+        max-height: 72vh;
+        aspect-ratio: 4 / 5;
+        margin: 0;
+        border-radius: 0;
+        -webkit-mask-image: linear-gradient(#000 72%, transparent 100%);
+        mask-image: linear-gradient(#000 72%, transparent 100%);
+    }
+    body:not(.admin-body) .detail-poster img { object-position: center 18%; }
+    body:not(.admin-body) .detail-body {
+        order: 2;
+        position: relative;
+        z-index: 3;
+        width: 100%;
+        max-width: none;
+        margin-top: -120px;
+        padding: 0 18px;
+    }
+    body:not(.admin-body) .detail-body .hero-title { font-size: clamp(38px, 11vw, 58px); }
+    body:not(.admin-body) .detail-body .hero-desc { font-size: 13px; }
+}
+
+@media (max-width: 640px) {
+    body:not(.admin-body) .dv-continue .section-head { margin-bottom: 10px; }
+    body:not(.admin-body) .dv-continue .rail { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+    body:not(.admin-body) .dv-continue .rail > .dv-card:first-child .dv-poster {
+        min-height: 0;
+        aspect-ratio: 16 / 9;
+    }
+    body:not(.admin-body) .dv-continue .rail > .dv-card:first-child .dv-meta {
+        left: 16px;
+        right: 28%;
+        bottom: 25px;
+    }
+    body:not(.admin-body) .dv-continue .rail > .dv-card:first-child .dv-title { font-size: clamp(21px, 7vw, 34px); }
+    body:not(.admin-body) .dv-continue .rail > .dv-card:first-child .dv-bar { left: 16px; right: 30%; bottom: 12px; }
+    body:not(.admin-body) .detail-genres { margin-bottom: 12px; }
+    body:not(.admin-body) .hero-actions { margin-top: 18px; }
+    body:not(.admin-body) .hero-actions .btn { min-height: 50px; padding: 11px 12px; font-size: 13px; }
+    body:not(.admin-body) .episode-item { padding: 13px 14px; }
+}
+
+@media (max-width: 400px) {
+    body:not(.admin-body) .dv-continue .rail { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body:not(.admin-body) .dv-card:hover .dv-poster { transform: none; }
+}

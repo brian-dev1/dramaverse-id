@@ -5,7 +5,7 @@
     <nav class="dv-chiprow" aria-label="Jelajahi negara">
         @foreach ($countries as $country)
             <a href="{{ route('web.country.show', $country->slug) }}" class="dv-chip">
-                <x-web.home.country-badge :country="$country" /> {{ $country->name }}
+                <x-web.home.country-badge :country="$country" :show-label="true" />
             </a>
         @endforeach
 

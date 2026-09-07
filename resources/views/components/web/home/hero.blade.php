@@ -94,7 +94,7 @@
                 <h1 class="hero-title">Drama Asia,<br>tanpa jeda.</h1>
 
                 <p class="hero-desc">
-                    Platform streaming privat untuk drama Korea, Tiongkok, Thailand, dan Jepang
+                    Platform streaming privat untuk drama Korea, China, Thailand, dan Jepang
                     dengan subtitle Bahasa Indonesia. Akses lewat Telegram.
                 </p>
 

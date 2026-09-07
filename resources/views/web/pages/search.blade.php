@@ -43,7 +43,7 @@
                 <option value="">Semua Negara</option>
                 @foreach ($countries as $country)
                     <option value="{{ $country->slug }}" @selected(request('country') === $country->slug)>
-                        {{ $country->name }}
+                        {{ strcasecmp((string) $country->name, 'Tiongkok') === 0 ? 'China' : $country->name }}
                     </option>
                 @endforeach
             </select>

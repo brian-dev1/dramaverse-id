@@ -89,7 +89,7 @@
                 {{ $progress ?? 0 }}% selesai
             @else
                 @if ($drama->relationLoaded('country') && $drama->country)
-                    {{ $drama->country->name }}
+                    {{ strcasecmp((string) $drama->country->name, 'Tiongkok') === 0 ? 'China' : $drama->country->name }}
                 @endif
                 @if ($drama->total_episode)
                     {{ ($drama->relationLoaded('country') && $drama->country) ? '· ' : '' }}{{ $drama->total_episode }} EP

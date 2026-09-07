@@ -15,7 +15,7 @@
 
             <h2>Apa yang kami sediakan</h2>
             <ul>
-                <li>Drama Korea, Tiongkok, Thailand, Jepang, Taiwan, dan Filipina</li>
+                <li>Drama Korea, China, Thailand, Jepang, Taiwan, dan Filipina</li>
                 <li>Subtitle Bahasa Indonesia</li>
                 <li>Kualitas hingga 4K untuk anggota Premium</li>
                 <li>Riwayat tontonan yang tersinkronisasi antar perangkat</li>

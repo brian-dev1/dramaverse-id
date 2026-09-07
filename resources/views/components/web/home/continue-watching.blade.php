@@ -1,7 +1,7 @@
 @props(['histories'])
 
 @if ($histories->isNotEmpty())
-    <section class="section section-pad">
+    <section class="section section-pad dv-continue">
 
         <x-web.home.section-header
             title="Lanjutkan Menonton"

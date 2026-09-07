@@ -32,7 +32,7 @@
 
                 <div class="hero-meta">
                     @if ($drama->country)
-                        <span class="chip"><x-web.home.country-badge :country="$drama->country" /> {{ $drama->country->name }}</span>
+                        <span class="chip"><x-web.home.country-badge :country="$drama->country" :show-label="true" /></span>
                     @endif
                     <span class="chip">
                         {{ ['ongoing' => 'Sedang Tayang', 'completed' => 'Tamat', 'upcoming' => 'Akan Tayang'][$drama->status] ?? $drama->status }}
