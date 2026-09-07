@@ -31,24 +31,24 @@ body:not(.admin-body) { overflow-x: hidden; }
 /* ---------- Bilah navigasi bawah ---------- */
 body:not(.admin-body) .mobile-nav {
     position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    translate: none;
-    width: 100%;
-    max-width: none;
+    left: 50%;
+    right: auto;
+    bottom: max(22px, calc(env(safe-area-inset-bottom, 0px) + 16px));
+    translate: -50% 0;
+    z-index: 70;
+    width: min(calc(100% - 32px), 440px);
+    max-width: 440px;
     display: flex;
-    align-items: stretch;
-    justify-content: space-around;
-    gap: 0;
-    padding: 7px 2px calc(7px + env(safe-area-inset-bottom, 0px));
-    border: 0;
-    border-top: 1px solid var(--dv-line, rgba(255, 255, 255, .07));
-    border-radius: 0;
-    background: rgba(12, 9, 18, .97);
-    backdrop-filter: blur(18px) saturate(150%);
-    -webkit-backdrop-filter: blur(18px) saturate(150%);
-    box-shadow: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+    padding: 6px;
+    border: 1px solid rgba(255, 255, 255, .10);
+    border-radius: var(--dv-pill, 999px);
+    background: #0C0912;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    box-shadow: 0 14px 32px -18px rgba(0, 0, 0, .95);
 }
 
 /*
@@ -71,33 +71,26 @@ body:not(.admin-body) .mobile-nav a {
     justify-content: center;
     gap: 0;
     width: auto;
-    height: 44px;
+    height: 48px;
     min-width: 0;
     padding: 0;
     border-radius: var(--dv-pill, 999px);
     background: none;
     box-shadow: none;
     color: var(--dv-dim, #9C93A6);
-    transition: color .18s ease;
+    transition: color .18s ease, background-color .18s ease, box-shadow .18s ease;
 }
 
-/* Kapsulnya dipasang pada elemen semu supaya lebarnya mengikuti ikon, bukan
-   seluruh kolom — kapsul selebar seperempat layar terlihat seperti tombol
-   yang salah ukuran. */
+/* Penanda aktif memakai kolom menu secara langsung agar menyatu dengan
+   siluet kapsul utama seperti navigasi pada referensi. */
 body:not(.admin-body) .mobile-nav a::before {
-    content: "";
-    position: absolute;
-    width: 46px;
-    height: 34px;
-    border-radius: var(--dv-pill, 999px);
-    background: transparent;
-    transition: background .18s ease, box-shadow .18s ease;
+    content: none;
 }
 
 body:not(.admin-body) .mobile-nav a svg {
     position: relative;
-    width: 21px;
-    height: 21px;
+    width: 23px;
+    height: 23px;
     flex: none;
 }
 
@@ -105,13 +98,8 @@ body:not(.admin-body) .mobile-nav a:hover { color: #fff; }
 
 body:not(.admin-body) .mobile-nav a.active {
     color: #fff;
-    background: none;
-    box-shadow: none;
-}
-
-body:not(.admin-body) .mobile-nav a.active::before {
-    background: linear-gradient(135deg, var(--dv-accent, #FF6A1A), #FF9445);
-    box-shadow: 0 8px 20px -10px var(--dv-accent, #FF6A1A);
+    background: var(--dv-accent, #FF6A1A);
+    box-shadow: 0 8px 18px -11px var(--dv-accent, #FF6A1A);
 }
 
 /* Mahkota dibedakan bahkan saat tidak aktif: ia satu-satunya tujuan di bilah
@@ -121,15 +109,11 @@ body:not(.admin-body) .mobile-nav a.is-vip { color: var(--dv-accent-2, #FFB84D);
 
 body:not(.admin-body) .mobile-nav a.is-vip.active {
     color: #fff;
-}
-
-body:not(.admin-body) .mobile-nav a.is-vip.active::before {
-    background: linear-gradient(135deg, #7B5CF0, #9C7BFF);
-    box-shadow: 0 8px 20px -10px #7B5CF0;
+    background: var(--dv-accent, #FF6A1A);
 }
 
 /* Ruang supaya kartu terakhir tidak tertutup bilah */
-body:not(.admin-body) main { padding-bottom: 84px; }
+body:not(.admin-body) main { padding-bottom: 112px; }
 
 /* ---------- Jarak yang lebih lega ---------- */
 body:not(.admin-body) .navbar-inner,

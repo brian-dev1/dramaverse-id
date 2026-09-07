@@ -16,8 +16,8 @@
     | vip-nav di miniapp-polish.css.
     */
     $items = [
-        ['route' => 'web.home',       'icon' => 'home',  'label' => 'Beranda'],
-        ['route' => 'web.history',    'icon' => 'clock', 'label' => 'Riwayat'],
+        ['route' => 'web.home',       'icon' => 'home-solid', 'label' => 'Beranda'],
+        ['route' => 'web.history',    'icon' => 'restore',    'label' => 'Riwayat'],
         ['route' => 'web.membership', 'icon' => 'crown', 'label' => 'VIP', 'vip' => true],
         ['route' => 'web.profile',    'icon' => 'user',  'label' => 'Profil'],
     ];

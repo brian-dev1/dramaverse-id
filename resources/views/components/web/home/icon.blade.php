@@ -21,6 +21,7 @@
         'search'      => '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
         'bell'        => '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
         'home'        => '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+        'home-solid'  => '<path fill-rule="evenodd" clip-rule="evenodd" d="M12 2 2 10h3v12h14V10h3L12 2Zm-2 20v-7a2 2 0 0 1 4 0v7h-4Z"/>',
         'trend'       => '<path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/>',
         'clock'       => '<circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 3"/>',
         'user'        => '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>',
@@ -62,7 +63,7 @@
         'lock'        => '<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',
     ];
 
-    $filled = in_array($name, ['star', 'play'], true);
+    $filled = in_array($name, ['star', 'play', 'home-solid'], true);
 @endphp
 
 <svg class="icon icon-{{ $name }}"
