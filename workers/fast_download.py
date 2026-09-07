@@ -221,15 +221,16 @@ MAX_INFLIGHT = 32
 # koneksi putus, dsb). Flood wait tidak memotong jatah ini.
 CHUNK_RETRIES = 5
 
-# Batas waktu satu request 1 MB. Tanpa ini, koneksi yang mati diam-diam
-# membuat satu chunk menggantung selamanya dan seluruh download berhenti
-# maju tanpa pernah melempar error.
-#
-# Sengaja longgar. Ini jaring pengaman untuk koneksi yang benar-benar
-# mati, bukan alat pengatur kecepatan. Membatalkan request Telethon di
-# tengah jalan meninggalkan sisa di _pending_state sender, jadi makin
-# jarang ia terpicu makin baik.
-REQUEST_TIMEOUT = 180
+# Batas waktu satu request 1 MB. Pada koneksi normal satu chunk selesai
+# jauh di bawah satu detik; menunggu 180 detik saat satu socket sudah mati
+# membuat seluruh jendela reorder akhirnya penuh dan progress terlihat
+# berhenti total. 45 detik masih sangat longgar untuk jaringan lambat,
+# tetapi cukup cepat untuk membuang sender yang benar-benar membeku.
+# Bisa ditimpa tanpa mengubah kode: TG_REQUEST_TIMEOUT=60 unduh.
+REQUEST_TIMEOUT = max(
+    15.0,
+    float(os.environ.get("TG_REQUEST_TIMEOUT", "45")),
+)
 
 # Batas atas satu kali flood wait yang masih mau kita tunggu.
 MAX_FLOOD_WAIT = 120
@@ -244,9 +245,13 @@ RECOVERY_STREAK = 5
 
 # Lama palang ditutup saat Telegram MEMUTUS koneksi (bukan menyuruh
 # menunggu). Server tidak menyebutkan angka dalam kasus ini, jadi kita
-# pilih jeda pendek: cukup untuk memecah gelombang, tidak sampai
-# membuang waktu kalau ternyata cuma satu soket yang apes.
-RESET_PAUSE = 2
+# pilih jeda sangat pendek: cukup memecah gelombang request, tetapi tidak
+# membuat lima socket sehat ikut diam beberapa detik. Worker pada socket
+# yang rusak tetap menunggu jitter lokal sebelum mencoba kembali.
+RESET_PAUSE = max(
+    0.0,
+    float(os.environ.get("TG_RESET_PAUSE", "0.25")),
+)
 
 # Berapa kali satu chunk boleh meminta referensi baru sebelum menyerah.
 # Referensi yang baru diambil lalu langsung basi lagi menandakan sesuatu
@@ -1024,7 +1029,9 @@ class ParallelDownloader:
                     if attempt > self.chunk_retries:
                         break
 
-                    if is_connection_error(error):
+                    connection_error = is_connection_error(error)
+
+                    if connection_error:
                         # Koneksi diputus server. Perlakukan sebagai
                         # backpressure, sama seperti flood: tutup palang
                         # sebentar untuk SEMUA koneksi dan turunkan
@@ -1045,12 +1052,18 @@ class ParallelDownloader:
                         # Ganti soket mati dengan yang baru.
                         await self._renew(conn, dc_id, mode, sender)
 
-                    # Backoff dengan jitter supaya semua koneksi tidak
-                    # bangun serempak.
-                    await asyncio.sleep(
-                        (2 ** (attempt - 1))
-                        + random.uniform(0, 0.5)
-                    )
+                    # Sender yang mati sudah diganti dan palang bersama
+                    # sudah memecah gelombangnya. Menambahkan exponential
+                    # backoff di sini membuat jeda dibayar dua kali dan
+                    # itulah yang terlihat sebagai download berhenti.
+                    # Error selain koneksi tetap memakai backoff lama.
+                    if connection_error:
+                        await asyncio.sleep(random.uniform(0.10, 0.35))
+                    else:
+                        await asyncio.sleep(
+                            (2 ** (attempt - 1))
+                            + random.uniform(0, 0.5)
+                        )
 
                     continue
 

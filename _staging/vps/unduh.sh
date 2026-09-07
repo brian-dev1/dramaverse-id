@@ -20,6 +20,8 @@
 # Setelan lanjutan lewat environment:
 #   TG_INFLIGHT_PER_CONN=1 unduh   -> 6 request bersamaan, bukan 12
 #   TG_EXTRA_SOCKETS=0 unduh       -> satu soket saja
+#   TG_REQUEST_TIMEOUT=60 unduh    -> tunggu socket beku maksimal 60 detik
+#   TG_RESET_PAUSE=0.5 unduh       -> jeda global saat socket diputus
 #   TG_VERBOSE=1 unduh             -> tampilkan log Telethon apa adanya
 #
 set -euo pipefail
