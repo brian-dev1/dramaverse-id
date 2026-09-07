@@ -1049,15 +1049,24 @@ class ParallelDownloader:
 
                         await limiter.penalize(generation)
 
-                        # Ganti soket mati dengan yang baru.
-                        await self._renew(conn, dc_id, mode, sender)
+                        # Ganti soket mati dengan yang baru. Mode main/borrow
+                        # tidak boleh kita ganti sendiri karena Telethon yang
+                        # mengelola receive-loop dan reconnect-nya.
+                        renewed = await self._renew(
+                            conn,
+                            dc_id,
+                            mode,
+                            sender,
+                        )
+                    else:
+                        renewed = False
 
                     # Sender yang mati sudah diganti dan palang bersama
                     # sudah memecah gelombangnya. Menambahkan exponential
                     # backoff di sini membuat jeda dibayar dua kali dan
                     # itulah yang terlihat sebagai download berhenti.
                     # Error selain koneksi tetap memakai backoff lama.
-                    if connection_error:
+                    if connection_error and renewed:
                         await asyncio.sleep(random.uniform(0.10, 0.35))
                     else:
                         await asyncio.sleep(

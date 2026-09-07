@@ -19,7 +19,7 @@
 #
 # Setelan lanjutan lewat environment:
 #   TG_INFLIGHT_PER_CONN=1 unduh   -> 6 request bersamaan, bukan 12
-#   TG_EXTRA_SOCKETS=0 unduh       -> satu soket saja
+#   TG_EXTRA_SOCKETS=1 unduh       -> uji socket tambahan (eksperimental)
 #   TG_REQUEST_TIMEOUT=60 unduh    -> tunggu socket beku maksimal 60 detik
 #   TG_RESET_PAUSE=0.5 unduh       -> jeda global saat socket diputus
 #   TG_VERBOSE=1 unduh             -> tampilkan log Telethon apa adanya
@@ -67,6 +67,11 @@ export TG_SCAN_LIMIT="${2:-${TG_SCAN_LIMIT:-300}}"
 # Limiter tetap mulai dari separuh (1 per soket) dan memanjat hanya
 # kalau lancar. Pantau baris "[TG] Direm:" di akhir download.
 export TG_INFLIGHT_PER_CONN="${TG_INFLIGHT_PER_CONN:-2}"
+
+# Socket kloning pada DC sesi utama bisa membuat receive-loop Telethon
+# bertabrakan. Mode stabil memakai sender utama, tetapi tetap mengizinkan
+# 6 x 2 = 12 request 1 MB terbang bersamaan di atasnya.
+export TG_EXTRA_SOCKETS="${TG_EXTRA_SOCKETS:-0}"
 
 # Jangan biarkan proxy warisan di shell membelokkan trafik keluar dari
 # VPS. Skrip juga akan mencetak IP publiknya sendiri saat start.
