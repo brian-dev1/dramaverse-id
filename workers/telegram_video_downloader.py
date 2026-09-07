@@ -2,6 +2,7 @@ import asyncio
 import collections
 import fcntl
 import hashlib
+import json
 import logging
 import mimetypes
 import os
@@ -42,6 +43,14 @@ SESSION_PATH = os.environ.get(
 DOWNLOAD_DIR = os.environ.get(
     "TG_DOWNLOAD_DIR",
     os.path.join(BASE_DIR, "downloads"),
+)
+
+# Status antrean download disimpan permanen di samping skrip.
+# Kalau proses putus di video 55/183, restart berikutnya langsung
+# melanjutkan dari 55 -- bukan kembali ke 1 dan bukan menghitung ulang.
+RESUME_STATE_PATH = os.environ.get(
+    "TG_RESUME_STATE",
+    os.path.join(BASE_DIR, "telegram_download_resume.json"),
 )
 
 # Berapa pesan terakhir di chat bot yang dipindai untuk mencari video.
@@ -584,6 +593,153 @@ def detect_mime_type(filename):
     mime_type, _ = mimetypes.guess_type(filename)
 
     return mime_type or "video/mp4"
+
+
+# ============================================================
+# Resume antrean
+# ============================================================
+
+def load_resume_state():
+    """Baca status antrean lama. File rusak dianggap tidak ada."""
+    if not os.path.isfile(RESUME_STATE_PATH):
+        return None
+
+    try:
+        with open(RESUME_STATE_PATH, "r", encoding="utf-8") as handle:
+            state = json.load(handle)
+    except (OSError, ValueError, TypeError) as error:
+        print(f"[RESUME] Status lama tidak bisa dibaca: {error}")
+        return None
+
+    if not isinstance(state, dict):
+        return None
+
+    message_ids = state.get("message_ids")
+    next_position = state.get("next_position")
+
+    if not isinstance(message_ids, list) or not message_ids:
+        return None
+
+    if not isinstance(next_position, int) or next_position < 1:
+        return None
+
+    return state
+
+
+def save_resume_state(bot_username, videos, next_position):
+    """Simpan antrean secara atomic agar aman walau proses mati mendadak."""
+    state = {
+        "version": 1,
+        "bot_username": bot_username.lower(),
+        "message_ids": [int(message.id) for message in videos],
+        "filenames": [
+            (
+                message.file.name
+                if message.file and message.file.name
+                else f"video_{message.id}.mp4"
+            )
+            for message in videos
+        ],
+        "total": len(videos),
+        "next_position": int(next_position),
+        "updated_at": int(time.time()),
+    }
+
+    temporary = RESUME_STATE_PATH + ".tmp"
+
+    with open(temporary, "w", encoding="utf-8") as handle:
+        json.dump(state, handle, ensure_ascii=False, indent=2)
+        handle.flush()
+        os.fsync(handle.fileno())
+
+    os.replace(temporary, RESUME_STATE_PATH)
+
+
+def update_resume_position(state, next_position):
+    if not state:
+        return
+
+    state["next_position"] = int(next_position)
+    state["updated_at"] = int(time.time())
+
+    temporary = RESUME_STATE_PATH + ".tmp"
+
+    with open(temporary, "w", encoding="utf-8") as handle:
+        json.dump(state, handle, ensure_ascii=False, indent=2)
+        handle.flush()
+        os.fsync(handle.fileno())
+
+    os.replace(temporary, RESUME_STATE_PATH)
+
+
+def clear_resume_state():
+    try:
+        os.remove(RESUME_STATE_PATH)
+    except FileNotFoundError:
+        pass
+
+
+def matching_resume_state(bot_username):
+    state = load_resume_state()
+
+    if not state:
+        return None
+
+    if state.get("bot_username", "").lower() != bot_username.lower():
+        return None
+
+    total = len(state.get("message_ids", []))
+    next_position = state.get("next_position", 1)
+
+    if next_position > total:
+        clear_resume_state()
+        return None
+
+    return state
+
+
+async def build_resume_items(client, entity, state):
+    """
+    Ambil ulang pesan berdasarkan message_id yang tersimpan.
+
+    Nomor antrean tetap memakai nomor dari sesi awal. Jadi kalau status
+    berhenti di 55/183, item pertama yang dicoba setelah restart tetap
+    ditampilkan sebagai 55/183 walau chat sudah mendapat pesan baru.
+    """
+    ids = state["message_ids"]
+    start_position = state["next_position"]
+    remaining_ids = ids[start_position - 1:]
+
+    messages = await client.get_messages(entity, ids=remaining_ids)
+
+    if not isinstance(messages, list):
+        messages = [messages]
+
+    by_id = {
+        int(message.id): message
+        for message in messages
+        if message is not None
+    }
+
+    items = []
+
+    for position, message_id in enumerate(
+        remaining_ids,
+        start=start_position,
+    ):
+        message = by_id.get(int(message_id))
+
+        if message is None:
+            print(
+                f"[RESUME] Video {position}/{len(ids)} tidak ditemukan "
+                f"lagi di chat (message_id={message_id}); dilewati."
+            )
+            update_resume_position(state, position + 1)
+            continue
+
+        items.append((position, message))
+
+    return items
 
 
 # ============================================================
@@ -1357,34 +1513,79 @@ async def main():
             f"{name} — {size} — {date}"
         )
 
-    choice = input(
-        "\nPilih nomor video yang mau didownload "
-        "(atau 'all' untuk semua): "
-    ).strip().lower()
+    resume_state = matching_resume_state(bot_username)
 
-    if choice == "all":
-        selected = videos
+    if resume_state:
+        total_resume = len(resume_state["message_ids"])
+        mulai_dari = resume_state["next_position"]
+
+        print()
+        print("========================================")
+        print(" MELANJUTKAN UNDUHAN SEBELUMNYA")
+        print("========================================")
+        print(
+            f"Terakhir terputus di video {mulai_dari}/{total_resume}."
+        )
+        print(
+            f"Downloader langsung melanjutkan dari video "
+            f"{mulai_dari}, bukan dari awal."
+        )
+        print(f"Status: {RESUME_STATE_PATH}")
+        print("========================================")
+
+        work_items = await build_resume_items(
+            client,
+            entity,
+            resume_state,
+        )
+        selected = [message for _, message in work_items]
+        total_selected = total_resume
 
     else:
-        try:
-            index = int(choice)
+        choice = input(
+            "\nPilih nomor video yang mau didownload "
+            "(atau 'all' untuk semua): "
+        ).strip().lower()
 
-            if (
-                index < 1
-                or index > len(videos)
-            ):
-                raise ValueError
+        if choice == "all":
+            selected = videos
+            total_selected = len(selected)
+            work_items = list(enumerate(selected, start=1))
 
-            selected = [
-                videos[index - 1]
-            ]
+            save_resume_state(
+                bot_username,
+                selected,
+                next_position=1,
+            )
+            resume_state = load_resume_state()
 
-        except ValueError:
-            print("Input tidak valid.")
+            print(
+                f"[RESUME] Antrean {total_selected} video disimpan. "
+                "Kalau proses terputus, jalankan downloader lagi dan "
+                "nomornya akan diteruskan otomatis."
+            )
 
-            await client.disconnect()
+        else:
+            try:
+                index = int(choice)
 
-            return
+                if (
+                    index < 1
+                    or index > len(videos)
+                ):
+                    raise ValueError
+
+                selected = [videos[index - 1]]
+                total_selected = 1
+                work_items = [(1, selected[0])]
+                resume_state = None
+
+            except ValueError:
+                print("Input tidak valid.")
+
+                await client.disconnect()
+
+                return
 
     downloader = ParallelDownloader(
         client,
@@ -1402,13 +1603,10 @@ async def main():
         "terbang bersamaan."
     )
 
-    for index, message in enumerate(
-        selected,
-        start=1,
-    ):
+    for index, message in work_items:
         print(
             f"\nMendownload video "
-            f"{index}/{len(selected)}..."
+            f"{index}/{total_selected}..."
         )
 
         file_name = (
@@ -1437,8 +1635,12 @@ async def main():
             print(
                 f"\n[TG] Video ini gagal diunduh: {error}"
             )
-
-            continue
+            if resume_state:
+                print(
+                    f"[RESUME] Posisi tetap di video {index}/{total_selected}. "
+                    "Jalankan ulang downloader; akan dilanjutkan dari sini."
+                )
+            break
 
         print(
             f"Selesai! File tersimpan di: {path}"
@@ -1462,8 +1664,12 @@ async def main():
             print(
                 "[LOCAL] File lokal tetap disimpan."
             )
-
-            continue
+            if resume_state:
+                print(
+                    f"[RESUME] Posisi tetap di video {index}/{total_selected}. "
+                    "Jalankan ulang downloader; akan dilanjutkan dari sini."
+                )
+            break
 
         try:
             sync_to_laravel(
@@ -1485,7 +1691,12 @@ async def main():
 
             # Jangan hapus file lokal jika metadata gagal
             # masuk ke Video Inbox.
-            continue
+            if resume_state:
+                print(
+                    f"[RESUME] Posisi tetap di video {index}/{total_selected}. "
+                    "Jalankan ulang downloader; akan dilanjutkan dari sini."
+                )
+            break
 
         try:
             os.remove(path)
@@ -1499,6 +1710,26 @@ async def main():
                 "[LOCAL] Gagal menghapus "
                 f"file lokal: {error}"
             )
+
+        if resume_state:
+            next_position = index + 1
+            update_resume_position(
+                resume_state,
+                next_position,
+            )
+
+            if next_position <= total_selected:
+                print(
+                    f"[RESUME] Video {index}/{total_selected} selesai. "
+                    f"Berikutnya: {next_position}/{total_selected}."
+                )
+            else:
+                clear_resume_state()
+                resume_state = None
+                print(
+                    f"[RESUME] Seluruh {total_selected} video selesai. "
+                    "Status lanjutan sudah dibersihkan."
+                )
 
     await client.disconnect()
 
@@ -1516,6 +1747,10 @@ if __name__ == "__main__":
         print(
             "Berkas .part yang tertinggal tetap disimpan; menjalankan "
             "ulang akan melanjutkan dari situ, bukan mengulang dari nol."
+        )
+        print(
+            "Nomor antrean juga disimpan. Kalau terputus di video 55, "
+            "jalankan ulang dan proses akan mulai lagi dari 55."
         )
 
         sys.exit(130)
