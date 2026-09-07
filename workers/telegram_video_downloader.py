@@ -26,6 +26,31 @@ from fast_download import ParallelDownloader
 API_ID = os.environ.get("TG_API_ID")
 API_HASH = os.environ.get("TG_API_HASH")
 
+# Proxy KHUSUS koneksi Telegram/Telethon.
+#
+# VPS ini saat ini tidak bisa menjangkau jaringan Telegram secara langsung,
+# sedangkan Cloudflare WARP SOCKS5 aktif di 127.0.0.1:40000.
+# Proxy ini hanya diberikan ke TelegramClient. Request HTTP ke Laravel dan
+# upload storage tetap keluar langsung dari VPS dan tidak ikut WARP.
+TG_PROXY_HOST = os.environ.get("TG_PROXY_HOST", "127.0.0.1").strip()
+TG_PROXY_PORT = int(os.environ.get("TG_PROXY_PORT", "40000"))
+TG_PROXY_ENABLED = os.environ.get("TG_PROXY_ENABLED", "1") != "0"
+
+
+def telegram_proxy():
+    """Kembalikan konfigurasi SOCKS5 Telethon tanpa memengaruhi requests."""
+    if not TG_PROXY_ENABLED:
+        return None
+
+    try:
+        import socks
+    except ImportError as error:
+        raise RuntimeError(
+            "PySocks belum terpasang. Jalankan: python3 -m pip install PySocks"
+        ) from error
+
+    return (socks.SOCKS5, TG_PROXY_HOST, TG_PROXY_PORT)
+
 # Semua jalur dipatok ke folder skrip ini, BUKAN ke direktori kerja.
 #
 # Telethon menyimpan sesi login sebagai "<nama>.session" relatif ke
@@ -530,6 +555,17 @@ def print_network_banner():
     ]
 
     public_ip = detect_public_ip()
+
+    if TG_PROXY_ENABLED:
+        print(
+            f"Telegram: SOCKS5 WARP {TG_PROXY_HOST}:{TG_PROXY_PORT} "
+            "(khusus Telegram)"
+        )
+        print(
+            "Storage : koneksi langsung VPS; tidak ikut proxy Telegram."
+        )
+    else:
+        print("Telegram: koneksi langsung (proxy Telegram dimatikan).")
 
     if public_ip:
         print(f"IP keluar: {public_ip}")
@@ -1378,10 +1414,17 @@ async def main():
         exist_ok=True,
     )
 
+    try:
+        tg_proxy = telegram_proxy()
+    except RuntimeError as error:
+        print(f"ERROR: {error}")
+        return
+
     client = TelegramClient(
         SESSION_PATH,
         int(API_ID),
         API_HASH,
+        proxy=tg_proxy,
     )
 
     try:
@@ -1427,8 +1470,11 @@ async def main():
 
     if getattr(client, "_proxy", None):
         print(
-            "PERINGATAN: Telethon memakai proxy. Video tidak "
-            "ditarik langsung lewat sambungan VPS."
+            f"[TG] Koneksi Telegram memakai SOCKS5 "
+            f"{TG_PROXY_HOST}:{TG_PROXY_PORT}."
+        )
+        print(
+            "[TG] Ini hanya untuk Telegram; upload storage tetap direct."
         )
 
     bot_username = input(
