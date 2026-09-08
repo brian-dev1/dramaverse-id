@@ -68,9 +68,8 @@ export TG_SCAN_LIMIT="${2:-${TG_SCAN_LIMIT:-300}}"
 # kalau lancar. Pantau baris "[TG] Direm:" di akhir download.
 export TG_INFLIGHT_PER_CONN="${TG_INFLIGHT_PER_CONN:-2}"
 
-# Enam socket tetap aktif. Masing-masing memakai auto_reconnect=False;
-# downloader sendiri yang mengganti socket rusak sehingga reconnect tidak
-# berjalan ganda di atas satu StreamReader.
+# Enam socket tetap aktif. Reconnect diserahkan hanya ke MTProtoSender;
+# downloader tidak ikut mengganti sender saat receive-loop masih reconnect.
 export TG_EXTRA_SOCKETS="${TG_EXTRA_SOCKETS:-1}"
 
 # Jangan biarkan proxy warisan di shell membelokkan trafik keluar dari
