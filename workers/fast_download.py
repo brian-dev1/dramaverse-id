@@ -683,6 +683,11 @@ class ParallelDownloader:
         sender = MTProtoSender(
             self.client._sender.auth_key,
             loggers=self.client._log,
+            # Socket tambahan dikelola oleh _renew() di bawah. Kalau
+            # auto-reconnect Telethon ikut aktif, ia dapat menyambungkan
+            # sender lama tepat saat _renew() menggantinya dan dua recv-loop
+            # akhirnya membaca StreamReader yang sama.
+            auto_reconnect=False,
         )
 
         try:
@@ -748,7 +753,13 @@ class ParallelDownloader:
 
         dc = await self.client._get_dc(dc_id)
 
-        sender = MTProtoSender(None, loggers=self.client._log)
+        sender = MTProtoSender(
+            None,
+            loggers=self.client._log,
+            # Sama seperti clone: hanya downloader yang boleh mengganti
+            # socket ini. Hindari dua pengelola reconnect berjalan bersama.
+            auto_reconnect=False,
+        )
 
         try:
             await sender.connect(
