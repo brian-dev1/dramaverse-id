@@ -263,6 +263,10 @@ class NotEnoughDiskSpace(Exception):
     """Sisa disk tidak cukup untuk menampung file."""
 
 
+class DownloadStalled(Exception):
+    """Tidak ada byte berurutan yang berhasil ditulis dalam batas waktu."""
+
+
 def flood_seconds(error):
     """
     Kembalikan lama tunggu (detik) kalau `error` adalah flood,
@@ -541,6 +545,7 @@ class ParallelDownloader:
         min_free_bytes=512 * 1024 * 1024,
         chunk_size=CHUNK_SIZE,
         request_timeout=REQUEST_TIMEOUT,
+        stall_timeout=None,
         clone_senders=False,
         extra_sockets=True,
     ):
@@ -613,6 +618,14 @@ class ParallelDownloader:
         self.chunk_size = int(chunk_size)
         self.chunk_retries = CHUNK_RETRIES
         self.request_timeout = float(request_timeout)
+        self.stall_timeout = max(
+            self.request_timeout + 10.0,
+            float(
+                stall_timeout
+                if stall_timeout is not None
+                else os.environ.get("TG_STALL_TIMEOUT", "75")
+            ),
+        )
 
         # Boleh membuka soket tambahan sama sekali?
         #
@@ -1426,6 +1439,7 @@ class ParallelDownloader:
 
         downloaded = resume_bytes
         started_at = time.monotonic()
+        last_written_at = started_at
 
         async def worker(conn):
             while True:
@@ -1505,7 +1519,26 @@ class ParallelDownloader:
                         if state["error"] is not None:
                             raise state["error"]
 
-                        await cond.wait()
+                        remaining = self.stall_timeout - (
+                            time.monotonic() - last_written_at
+                        )
+
+                        if remaining <= 0:
+                            raise DownloadStalled(
+                                "progress tidak bertambah selama "
+                                f"{self.stall_timeout:.0f} detik"
+                            )
+
+                        try:
+                            await asyncio.wait_for(
+                                cond.wait(),
+                                timeout=remaining,
+                            )
+                        except asyncio.TimeoutError as error:
+                            raise DownloadStalled(
+                                "progress tidak bertambah selama "
+                                f"{self.stall_timeout:.0f} detik"
+                            ) from error
 
                     data = pending.pop(state["write"])
                     state["write"] += 1
@@ -1518,6 +1551,7 @@ class ParallelDownloader:
                 await loop.run_in_executor(writer_pool, sink, data)
 
                 downloaded += len(data)
+                last_written_at = time.monotonic()
 
                 if progress_callback:
                     progress_callback(downloaded, file_size)
