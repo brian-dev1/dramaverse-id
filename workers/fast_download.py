@@ -840,14 +840,33 @@ class ParallelDownloader:
         same_dc = dc_id == self.client.session.dc_id
 
         if self.extra_sockets:
-            # DC sendiri  -> clone + salam pembuka (export ditolak di sini).
-            # DC lain     -> exported, tiap soket auth key sendiri.
-            utama = "clone" if same_dc else "exported"
+            # DC lain boleh memakai sender exported resmi: tiap socket
+            # memiliki auth_key dan receive-loop sendiri.
+            #
+            # Pada DC utama, JANGAN diam-diam membuat clone hanya karena
+            # extra_sockets aktif. Clone meminjam auth_key sender utama dan
+            # pada koneksi nyata dapat membuat dua receive-loop membaca
+            # StreamReader yang sama:
+            #
+            #   readexactly() called while another coroutine is already
+            #   waiting for incoming data
+            #
+            # Jalur clone tetap tersedia hanya untuk pengujian/eksperimen
+            # yang secara eksplisit memberi clone_senders=True.
+            if same_dc:
+                utama = "clone" if self.clone_senders else None
+            else:
+                utama = "exported"
 
-            conns = await self._buka_banyak(dc_id, utama, self.num_connections)
+            if utama is not None:
+                conns = await self._buka_banyak(
+                    dc_id,
+                    utama,
+                    self.num_connections,
+                )
 
-            if conns:
-                return conns, utama
+                if conns:
+                    return conns, utama
 
         # Cadangan: satu soket, tapi soket yang pasti sehat.
         if same_dc:

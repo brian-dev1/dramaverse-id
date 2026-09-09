@@ -19,7 +19,7 @@
 #
 # Setelan lanjutan lewat environment:
 #   TG_INFLIGHT_PER_CONN=1 unduh   -> 6 request bersamaan, bukan 12
-#   TG_EXTRA_SOCKETS=0 unduh       -> satu socket sebagai mode cadangan
+#   TG_EXTRA_SOCKETS=0 unduh       -> matikan sender exported untuk DC lain
 #   TG_REQUEST_TIMEOUT=60 unduh    -> tunggu socket beku maksimal 60 detik
 #   TG_RESET_PAUSE=0.5 unduh       -> jeda global saat socket diputus
 #   TG_VERBOSE=1 unduh             -> tampilkan log Telethon apa adanya
@@ -55,21 +55,16 @@ export TG_SCAN_LIMIT="${2:-${TG_SCAN_LIMIT:-300}}"
 
 # Berapa request 1 MB yang boleh terbang bersamaan di TIAP koneksi.
 #
-# Default 2 -> 6 soket x 2 = 12 request bersamaan, tersebar di soket
-# yang benar-benar terpisah.
-#
-# Angka ini aman sekarang karena sambungan tambahan dibuat lewat
-# _create_exported_sender: tiap soket punya auth key SENDIRI. Waktu 12
-# request dulu memicu banjir "connection reset by peer", soketnya masih
-# meminjam auth_key koneksi utama -- itu yang dihukum Telegram, bukan
-# jumlah requestnya.
+# Default 2 -> maksimal 12 request bersamaan. Pada DC utama request tetap
+# paralel, tetapi semuanya melewati sender resmi Telethon agar tidak ada
+# dua receive-loop yang membaca socket sama.
 #
 # Limiter tetap mulai dari separuh (1 per soket) dan memanjat hanya
 # kalau lancar. Pantau baris "[TG] Direm:" di akhir download.
 export TG_INFLIGHT_PER_CONN="${TG_INFLIGHT_PER_CONN:-2}"
 
-# Enam socket tetap aktif. Reconnect diserahkan hanya ke MTProtoSender;
-# downloader tidak ikut mengganti sender saat receive-loop masih reconnect.
+# Sender tambahan hanya dibuka melalui exported authorization resmi untuk
+# media di DC lain. Pada DC utama mode clone tidak pernah aktif otomatis.
 export TG_EXTRA_SOCKETS="${TG_EXTRA_SOCKETS:-1}"
 
 # Jangan biarkan proxy warisan di shell membelokkan trafik keluar dari
@@ -78,7 +73,7 @@ unset HTTP_PROXY HTTPS_PROXY ALL_PROXY http_proxy https_proxy all_proxy
 
 cd /root
 
-echo "==> Koneksi paralel   : $TG_PARALLEL_CONNECTIONS"
+echo "==> Jalur paralel     : $TG_PARALLEL_CONNECTIONS"
 echo "==> Request/koneksi   : $TG_INFLIGHT_PER_CONN"
 echo "==> Total in-flight   : $((TG_PARALLEL_CONNECTIONS * TG_INFLIGHT_PER_CONN)) MB"
 echo "==> Pesan dipindai    : $TG_SCAN_LIMIT"
