@@ -7,7 +7,9 @@ use App\Models\Drama;
 use App\Models\Episode;
 use App\Models\Genre;
 use App\Repositories\HomeRepository;
+use App\Services\Admin\DramaUploadCompleteness;
 use App\Services\Admin\MediaService;
+use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -84,6 +86,63 @@ class DramaController extends AdminCrudController
                 'options' => [0 => 'Gratis', 1 => 'VIP'],
             ],
         ];
+    }
+
+    /**
+     * Daftar drama yang masih memiliki nomor part kosong atau part tanpa video.
+     */
+    public function incomplete(Request $request, DramaUploadCompleteness $completeness): View
+    {
+        $keyword = trim((string) $request->get('q'));
+
+        $dramas = Drama::query()
+            ->with([
+                'country:id,name',
+                'episodes:id,drama_id,episode_number,video_url,embed_url',
+                'episodes.video:id,episode_id',
+            ])
+            ->when($keyword !== '', fn (Builder $query) => $query
+                ->where('title', 'like', "%{$keyword}%"))
+            ->where(function (Builder $query): void {
+                $query
+                    // Part sudah dibuat, tetapi belum punya sumber video.
+                    ->whereHas('episodes', function (Builder $episodes): void {
+                        $episodes
+                            ->where(function (Builder $source): void {
+                                $source->whereNull('video_url')->orWhere('video_url', '');
+                            })
+                            ->where(function (Builder $source): void {
+                                $source->whereNull('embed_url')->orWhere('embed_url', '');
+                            })
+                            ->whereDoesntHave('video');
+                    })
+                    // Jumlah rencana lebih besar daripada baris part yang ada.
+                    ->orWhereRaw(
+                        'dramas.total_episode > (SELECT COUNT(*) FROM episodes AS counted_episodes WHERE counted_episodes.drama_id = dramas.id)'
+                    )
+                    // Menangkap nomor yang lompat, misalnya 1, 3, 4 (part 2 hilang).
+                    ->orWhereRaw(
+                        '(SELECT COALESCE(MAX(numbered_episodes.episode_number), 0) FROM episodes AS numbered_episodes WHERE numbered_episodes.drama_id = dramas.id) '
+                        .'> (SELECT COUNT(*) FROM episodes AS counted_numbered_episodes WHERE counted_numbered_episodes.drama_id = dramas.id)'
+                    );
+            })
+            ->orderBy('title')
+            ->paginate(20)
+            ->withQueryString();
+
+        $dramas->getCollection()->each(function (Drama $drama) use ($completeness): void {
+            $gaps = $completeness->inspect($drama);
+            $gaps['missing_episodes_label'] = $completeness->ranges($gaps['missing_episodes']);
+            $gaps['missing_videos_label'] = $completeness->ranges($gaps['missing_videos']);
+
+            $drama->setAttribute('upload_gaps', $gaps);
+        });
+
+        return view('web.pages.admin.drama-incomplete', [
+            'title'   => 'Drama Belum Lengkap',
+            'dramas'  => $dramas,
+            'keyword' => $keyword,
+        ]);
     }
 
     protected function formData(?Model $model = null): array

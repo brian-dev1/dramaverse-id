@@ -116,6 +116,13 @@
         </div>
 
         <div class="toolbar-actions">
+            @if ($routeKey === 'drama' && Route::has('admin.drama.incomplete'))
+                <a href="{{ route('admin.drama.incomplete') }}" class="btn btn-ghost btn-sm">
+                    <x-web.home.icon name="list" :size="14" />
+                    Part belum upload
+                </a>
+            @endif
+
             @if ($routeKey === 'episode' && Route::has('admin.episode.batch'))
                 <a href="{{ route('admin.episode.batch', request()->only('drama_id') + $kembali) }}" class="btn btn-ghost btn-sm">
                     <x-web.home.icon name="list" :size="14" />

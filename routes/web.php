@@ -351,6 +351,12 @@ Route::prefix('admin')->name('admin.')->group(function () {
             });
         }
 
+        // Pemeriksaan kelengkapan part/video berada di modul Drama karena
+        // hasilnya dikelompokkan per judul, bukan sebagai ribuan baris episode.
+        Route::get('/drama/belum-lengkap', [Admin\DramaController::class, 'incomplete'])
+            ->name('drama.incomplete')
+            ->middleware('permission:drama.manage');
+
         /*
         |----------------------------------------------------------------------
         | Daftar baca-saja (CRUD menyusul di bagian berikutnya)
@@ -1097,4 +1103,3 @@ Route::prefix('admin')->name('admin.')->group(function () {
             });
     });
 });
-
